@@ -1,0 +1,998 @@
+.container {
+    max-width: 1440px;
+    margin: 0 auto;
+    padding: 2rem;
+    background-color: #F8F9FA;
+    min-height: calc(100vh - 80px);
+    /* Adjust based on header height */
+}
+
+/* Video Section */
+.videoWrapper {
+    position: relative;
+    width: 100%;
+    aspect-ratio: 16/9;
+    background: linear-gradient(135deg, #e0c3fc 0%, #8ec5fc 100%);
+    /* Placeholder gradient */
+    border-radius: 16px;
+    overflow: hidden;
+    box-shadow: 0 4px 20px rgba(0, 0, 0, 0.1);
+    margin-bottom: 1.5rem;
+}
+
+.videoPlaceholder {
+    width: 100%;
+    height: 100%;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    background-image: url('/placeholder-video-bg.jpg');
+    /* Just in case */
+    background-size: cover;
+    background-position: center;
+}
+
+.overlayTop {
+    position: absolute;
+    top: 1.5rem;
+    left: 0;
+    width: 100%;
+    padding: 0 1.5rem;
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+}
+
+.timerBadge {
+    background-color: #D32F2F;
+    color: white;
+    padding: 0.5rem 1rem;
+    border-radius: 20px;
+    display: flex;
+    align-items: center;
+    gap: 0.5rem;
+    font-weight: 700;
+    font-size: 0.9rem;
+}
+
+.viewerBadge {
+    background-color: rgba(0, 0, 0, 0.5);
+    backdrop-filter: blur(4px);
+    color: white;
+    padding: 0.5rem 1rem;
+    border-radius: 20px;
+    display: flex;
+    align-items: center;
+    gap: 0.5rem;
+    font-weight: 600;
+    font-size: 0.9rem;
+}
+
+.sellerOverlay {
+    position: absolute;
+    bottom: 1.5rem;
+    left: 1.5rem;
+    display: flex;
+    align-items: center;
+    gap: 1rem;
+}
+
+.sellerAvatar {
+    width: 48px;
+    height: 48px;
+    border-radius: 50%;
+    border: 2px solid white;
+    background-color: #eee;
+}
+
+.sellerInfo {
+    display: flex;
+    flex-direction: column;
+    color: white;
+    text-shadow: 0 1px 2px rgba(0, 0, 0, 0.5);
+}
+
+.sellerName {
+    font-weight: 700;
+    font-size: 1rem;
+}
+
+.sellerStats {
+    font-size: 0.8rem;
+    opacity: 0.9;
+    display: flex;
+    align-items: center;
+    gap: 0.25rem;
+}
+
+.followBtn {
+    background-color: #D32F2F;
+    color: white;
+    border: none;
+    padding: 0.4rem 1rem;
+    border-radius: 20px;
+    font-weight: 600;
+    font-size: 0.8rem;
+    cursor: pointer;
+    margin-left: 0.5rem;
+}
+
+/* Bottom Grid Layout */
+.bottomSection {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 1.5rem;
+}
+
+@media (max-width: 900px) {
+    .bottomSection {
+        grid-template-columns: 1fr;
+    }
+}
+
+/* Auction Controls (Left) */
+.auctionControl {
+    background: white;
+    border-radius: 12px;
+    padding: 1.5rem;
+    box-shadow: 0 2px 10px rgba(0, 0, 0, 0.05);
+    display: flex;
+    flex-direction: column;
+    gap: 1.5rem;
+}
+
+.productRow {
+    display: flex;
+    gap: 1.5rem;
+    border-bottom: 1px solid #eee;
+    padding-bottom: 1.5rem;
+}
+
+.productThumb {
+    width: 120px;
+    height: 120px;
+    border-radius: 8px;
+    object-fit: cover;
+    border: 1px solid #eee;
+}
+
+.productDetails {
+    flex: 1;
+    display: flex;
+    flex-direction: column;
+    justify-content: center;
+}
+
+.productTitle {
+    font-size: 1.1rem;
+    font-weight: 700;
+    color: #333;
+    margin-bottom: 0.5rem;
+}
+
+.bidInfo {
+    display: flex;
+    justify-content: space-between;
+    align-items: flex-end;
+}
+
+.currentBidLabel {
+    font-size: 0.9rem;
+    color: #666;
+    margin-bottom: 0.25rem;
+}
+
+.price {
+    font-size: 1.5rem;
+    font-weight: 800;
+    color: #333;
+}
+
+.countDown {
+    color: #D32F2F;
+    font-weight: 600;
+    margin-top: 0.5rem;
+    font-variant-numeric: tabular-nums;
+}
+
+.bidButton {
+    background-color: #D32F2F;
+    color: white;
+    border: none;
+    border-radius: 8px;
+    padding: 0 2rem;
+    height: 48px;
+    font-weight: 700;
+    font-size: 1.1rem;
+    cursor: pointer;
+    transition: background-color 0.2s;
+}
+
+.bidButton:hover {
+    background-color: #B71C1C;
+}
+
+/* Bid Ticker */
+.bidTicker {
+    display: flex;
+    flex-direction: column;
+    gap: 0.75rem;
+}
+
+.bidItem {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    background-color: #FFF;
+    padding: 0.5rem;
+    border-radius: 8px;
+    /* animation: fadeIn 0.3s ease; */
+}
+
+.bidderInfo {
+    display: flex;
+    align-items: center;
+    gap: 0.75rem;
+}
+
+.bidderAvatar {
+    width: 32px;
+    height: 32px;
+    border-radius: 50%;
+    background-color: #ffdcb8;
+    /* Random-ish avatar color */
+}
+
+.bidderName {
+    font-size: 0.9rem;
+    font-weight: 500;
+    color: #333;
+}
+
+.bidAmount {
+    font-weight: 700;
+    color: #333;
+}
+
+.bidTime {
+    font-size: 0.75rem;
+    color: #999;
+}
+
+/* Chat Section (Right) */
+.chatSection {
+    background: white;
+    border-radius: 12px;
+    padding: 1.5rem;
+    box-shadow: 0 2px 10px rgba(0, 0, 0, 0.05);
+    display: flex;
+    flex-direction: column;
+    height: 400px;
+}
+
+.chatHeader {
+    font-weight: 700;
+    margin-bottom: 1rem;
+    color: #333;
+}
+
+.messagesList {
+    flex: 1;
+    overflow-y: auto;
+    display: flex;
+    flex-direction: column;
+    gap: 1rem;
+    padding-right: 0.5rem;
+    margin-bottom: 1rem;
+}
+
+.messageItem {
+    display: flex;
+    gap: 0.75rem;
+    align-items: flex-start;
+}
+
+.chatAvatar {
+    width: 28px;
+    height: 28px;
+    border-radius: 50%;
+    background-color: #eee;
+    flex-shrink: 0;
+}
+
+.messageContent {
+    font-size: 0.9rem;
+}
+
+.messageAuthor {
+    font-weight: 600;
+    font-size: 0.8rem;
+    color: #555;
+    margin-bottom: 0.1rem;
+}
+
+.messageText {
+    color: #333;
+    line-height: 1.4;
+}
+
+.inputArea {
+    display: flex;
+    gap: 0.75rem;
+    align-items: center;
+    background-color: #F0F0F0;
+    padding: 0.5rem 1rem;
+    border-radius: 24px;
+}
+
+.chatInput {
+    flex: 1;
+    border: none;
+    background: transparent;
+    outline: none;
+    font-family: inherit;
+    font-size: 0.9rem;
+    padding: 0.5rem 0;
+}
+
+.sendBtn {
+    background: transparent;
+    border: none;
+    color: #333;
+    cursor: pointer;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+}
+
+/* Product Detail Modal Styles */
+.productModalContent {
+    background: white;
+    width: 100%;
+    max-width: 900px;
+    /* Wider modal for details */
+    border-radius: 12px;
+    padding: 2rem;
+    box-shadow: 0 10px 40px rgba(0, 0, 0, 0.2);
+    animation: scaleIn 0.2s ease-out;
+    position: relative;
+    display: flex;
+    gap: 2rem;
+    max-height: 90vh;
+    overflow-y: auto;
+}
+
+.modalCloseWrapper {
+    position: absolute;
+    top: 1.5rem;
+    right: 1.5rem;
+    z-index: 10;
+}
+
+/* Left side - Images and basic info */
+.detailLeft {
+    flex: 1;
+    display: flex;
+    flex-direction: column;
+    gap: 1.5rem;
+}
+
+.mainProductImg {
+    width: 100%;
+    aspect-ratio: 1;
+    object-fit: contain;
+    background-color: #f9f9f9;
+    border-radius: 8px;
+}
+
+.thumbnailRow {
+    display: flex;
+    gap: 0.75rem;
+    overflow-x: auto;
+    padding-bottom: 0.5rem;
+}
+
+.thumbImg {
+    width: 70px;
+    height: 70px;
+    border-radius: 6px;
+    object-fit: cover;
+    cursor: pointer;
+    border: 1px solid #eee;
+}
+
+.productBasics {
+    display: flex;
+    justify-content: space-between;
+    align-items: flex-start;
+}
+
+.productBasics h2 {
+    font-size: 1.5rem;
+    font-weight: 700;
+    margin-bottom: 0.25rem;
+}
+
+.bidSummary {
+    margin-top: 1rem;
+}
+
+.bidSummary p {
+    font-size: 1.1rem;
+    font-weight: 600;
+    margin-bottom: 0.25rem;
+}
+
+.shortDesc {
+    font-size: 0.9rem;
+    color: #666;
+    line-height: 1.5;
+    margin-top: 1rem;
+}
+
+/* Right side - Specifications and Seller */
+.detailRight {
+    flex: 1;
+    display: flex;
+    flex-direction: column;
+    gap: 1.5rem;
+}
+
+.shippingInfo {
+    display: flex;
+    align-items: center;
+    gap: 1rem;
+    padding-bottom: 1rem;
+    border-bottom: 1px solid #eee;
+}
+
+.shippingText {
+    font-size: 0.85rem;
+    color: #333;
+}
+
+.shippingText strong {
+    display: block;
+    color: #666;
+    font-weight: 500;
+}
+
+.specSection h3 {
+    font-size: 1.25rem;
+    font-weight: 700;
+    margin-bottom: 0.75rem;
+}
+
+.specText {
+    font-size: 0.85rem;
+    color: #333;
+    line-height: 1.6;
+}
+
+.sellerCard {
+    border: 1px solid #eee;
+    border-radius: 12px;
+    padding: 1.25rem;
+    display: flex;
+    flex-direction: column;
+    gap: 1rem;
+}
+
+.sellerHead {
+    display: flex;
+    align-items: center;
+    gap: 1rem;
+}
+
+.sellerAvatarLarge {
+    width: 48px;
+    height: 48px;
+    border-radius: 50%;
+    background-color: #eee;
+}
+
+.sellerMeta {
+    flex: 1;
+}
+
+.sellerNameBold {
+    font-weight: 700;
+    font-size: 1rem;
+}
+
+.ratingBadge {
+    display: flex;
+    align-items: center;
+    gap: 0.25rem;
+    font-size: 0.85rem;
+    font-weight: 600;
+    margin-top: 0.1rem;
+}
+
+.visitBtn {
+    border: 1px solid #eee;
+    background: white;
+    padding: 0.4rem 1.25rem;
+    border-radius: 6px;
+    font-size: 0.85rem;
+    font-weight: 500;
+    cursor: pointer;
+}
+
+.sellerStatsRow {
+    display: flex;
+    justify-content: space-between;
+    font-size: 0.8rem;
+    color: #666;
+    padding-top: 0.5rem;
+    border-top: 1px solid #f9f9f9;
+}
+
+.actionRow {
+    display: flex;
+    gap: 1rem;
+    align-items: center;
+}
+
+.mainBidBtn {
+    flex: 1;
+    background-color: #D32F2F;
+    color: white;
+    border: none;
+    border-radius: 8px;
+    padding: 1rem;
+    font-size: 1.1rem;
+    font-weight: 700;
+    cursor: pointer;
+}
+
+.wishlistBtn {
+    width: 48px;
+    height: 48px;
+    border-radius: 8px;
+    border: 1px solid #eee;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    background: white;
+    cursor: pointer;
+    color: #999;
+}
+
+@media (max-width: 850px) {
+    .productModalContent {
+        flex-direction: column;
+        max-width: 100%;
+        margin: 1rem;
+    }
+}
+
+/* Modal Styles */
+.modalOverlay {
+    position: fixed;
+    inset: 0;
+    background-color: rgba(0, 0, 0, 0.6);
+    backdrop-filter: blur(4px);
+    z-index: 1000;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    padding: 1rem;
+    animation: fadeIn 0.2s ease-out;
+}
+
+.modalContent {
+    background: white;
+    width: 100%;
+    max-width: 480px;
+    border-radius: 12px;
+    padding: 1.5rem;
+    box-shadow: 0 10px 40px rgba(0, 0, 0, 0.2);
+    animation: scaleIn 0.2s ease-out;
+    position: relative;
+}
+
+.modalHeader {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    margin-bottom: 1.5rem;
+    padding-bottom: 1rem;
+    border-bottom: 1px solid #eee;
+}
+
+.modalTitle {
+    font-size: 1.5rem;
+    /* Larger title as per design */
+    font-weight: 700;
+    color: #000;
+}
+
+.closeBtn {
+    background: #D32F2F;
+    border: none;
+    width: 28px;
+    height: 28px;
+    border-radius: 50%;
+    color: white;
+    cursor: pointer;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    transition: transform 0.2s;
+}
+
+.closeBtn:hover {
+    transform: scale(1.1);
+}
+
+.bidInfoRow {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    margin-bottom: 1.5rem;
+}
+
+.bidLabel {
+    font-size: 1.1rem;
+    font-weight: 600;
+    color: #000;
+}
+
+.bidValue {
+    font-size: 1.1rem;
+    font-weight: 600;
+    color: #000;
+}
+
+.inputGroup {
+    margin-bottom: 1.5rem;
+}
+
+.inputLabel {
+    display: block;
+    font-size: 0.9rem;
+    color: #999;
+    margin-bottom: 0.5rem;
+}
+
+.currencyInputWrapper {
+    display: flex;
+    align-items: center;
+    border: 1px solid #ccc;
+    border-radius: 4px;
+    /* Squared corners as per design */
+    padding: 0.75rem 1rem;
+}
+
+.currencySymbol {
+    font-size: 1.25rem;
+    font-weight: 700;
+    color: #666;
+    margin-right: 0.5rem;
+}
+
+.bidInput {
+    border: none;
+    font-size: 1.25rem;
+    font-weight: 600;
+    width: 100%;
+    outline: none;
+    color: #333;
+}
+
+.placeBidBtn {
+    width: 100%;
+    background-color: #D32F2F;
+    color: white;
+    border: none;
+    border-radius: 8px;
+    padding: 1rem;
+    font-size: 1.1rem;
+    font-weight: 700;
+    cursor: pointer;
+    transition: background-color 0.2s;
+}
+
+.placeBidBtn:hover {
+    background-color: #b71c1c;
+}
+
+@keyframes fadeIn {
+    from {
+        opacity: 0;
+    }
+
+    to {
+        opacity: 1;
+    }
+}
+
+@keyframes scaleIn {
+    from {
+        transform: scale(0.95);
+        opacity: 0;
+    }
+
+    to {
+        transform: scale(1);
+        opacity: 1;
+    }
+}
+
+/* Winner Modal Styles */
+.winnerModalContent {
+    background: white;
+    width: 100%;
+    max-width: 480px;
+    border-radius: 12px;
+    padding: 2rem;
+    box-shadow: 0 10px 40px rgba(0, 0, 0, 0.2);
+    animation: scaleIn 0.2s ease-out;
+    position: relative;
+    text-align: center;
+}
+
+.winnerTitle {
+    font-size: 2rem;
+    font-weight: 800;
+    margin-bottom: 1.5rem;
+    color: #000;
+}
+
+.winnerDivider {
+    width: 100%;
+    height: 1px;
+    background-color: #eee;
+    margin-bottom: 1.5rem;
+}
+
+.winnerSubTitle {
+    font-size: 1.25rem;
+    font-weight: 600;
+    color: #000;
+    margin-bottom: 1rem;
+}
+
+.winnerAmount {
+    font-size: 1.5rem;
+    font-weight: 700;
+    color: #000;
+    margin-bottom: 2rem;
+}
+
+.winnerActionRow {
+    display: flex;
+    flex-direction: column;
+    gap: 1rem;
+}
+
+.payNowBtn {
+    background-color: #D32F2F;
+    color: white;
+    border: none;
+    border-radius: 8px;
+    padding: 1rem;
+    font-size: 1.25rem;
+    font-weight: 700;
+    cursor: pointer;
+    transition: background-color 0.2s;
+}
+
+.payNowBtn:hover {
+    background-color: #b71c1c;
+}
+
+.cancelWinnerBtn {
+    background-color: white;
+    color: #D32F2F;
+    border: 1px solid #D32F2F;
+    border-radius: 8px;
+    padding: 1rem;
+    font-size: 1.25rem;
+    font-weight: 700;
+    cursor: pointer;
+    transition: all 0.2s;
+}
+
+.cancelWinnerBtn:hover {
+    background-color: #fff5f5;
+}
+
+/* Payment Modal Styles */
+.paymentModalContent {
+    background: white;
+    width: 100%;
+    max-width: 900px;
+    border-radius: 12px;
+    padding: 2.5rem;
+    box-shadow: 0 10px 40px rgba(0, 0, 0, 0.2);
+    animation: scaleIn 0.2s ease-out;
+    position: relative;
+    display: flex;
+    gap: 3rem;
+    max-height: 90vh;
+    overflow-y: auto;
+}
+
+.paymentLeft {
+    flex: 1;
+    display: flex;
+    flex-direction: column;
+    gap: 1.5rem;
+}
+
+.paymentRight {
+    flex: 1.2;
+    display: flex;
+    flex-direction: column;
+    gap: 1.5rem;
+}
+
+.paymentRight h2 {
+    font-size: 1.75rem;
+    font-weight: 700;
+    margin-bottom: 0.5rem;
+}
+
+.infoBlock {
+    background: #F9F9F9;
+    border-radius: 12px;
+    padding: 1.25rem;
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+}
+
+.infoContent h4 {
+    font-size: 1rem;
+    font-weight: 600;
+    margin-bottom: 0.25rem;
+}
+
+.infoContent p {
+    font-size: 0.85rem;
+    color: #666;
+    line-height: 1.4;
+}
+
+.editBtn {
+    background: #D32F2F;
+    color: white;
+    border: none;
+    width: 32px;
+    height: 32px;
+    border-radius: 50%;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    cursor: pointer;
+}
+
+.shippingOptions {
+    display: flex;
+    flex-direction: column;
+    gap: 0.75rem;
+}
+
+.discountBadge {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    background: #D32F2F;
+    color: white;
+    padding: 0.5rem 1rem;
+    border-radius: 6px;
+    font-size: 0.85rem;
+    font-weight: 600;
+    margin-bottom: 1rem;
+    align-self: flex-end;
+}
+
+.shipOption {
+    display: flex;
+    align-items: center;
+    gap: 1rem;
+    background: #F0F4FF;
+    padding: 1rem;
+    border-radius: 8px;
+    cursor: pointer;
+    border: 2px solid transparent;
+}
+
+.shipOption.selected {
+    border-color: #D32F2F;
+}
+
+.optionLabel {
+    flex: 1;
+    font-weight: 600;
+}
+
+.deliveryTime {
+    background: white;
+    padding: 0.2rem 0.6rem;
+    border-radius: 4px;
+    font-size: 0.75rem;
+    color: #D32F2F;
+    font-weight: 500;
+}
+
+.optionPrice {
+    font-weight: 700;
+}
+
+.deliveryNote {
+    font-size: 0.8rem;
+    color: #666;
+    margin-top: 0.5rem;
+}
+
+.paymentFooter {
+    margin-top: auto;
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    padding: 1rem;
+    background: #F9F9F9;
+    border-radius: 12px;
+}
+
+.totalLabel {
+    font-size: 1.5rem;
+    font-weight: 700;
+}
+
+.totalAmount {
+    font-size: 1.5rem;
+    font-weight: 700;
+    margin-left: 1rem;
+}
+
+.finalPayBtn {
+    background: #D32F2F;
+    color: white;
+    border: none;
+    padding: 0.75rem 3rem;
+    border-radius: 8px;
+    font-size: 1.1rem;
+    font-weight: 700;
+    cursor: pointer;
+}
+
+/* Simulation Controls */
+.simControls {
+    position: fixed;
+    bottom: 20px;
+    right: 20px;
+    background: rgba(255, 255, 255, 0.9);
+    padding: 1rem;
+    border-radius: 12px;
+    box-shadow: 0 4px 12px rgba(0, 0, 0, 0.1);
+    display: flex;
+    flex-direction: column;
+    gap: 0.5rem;
+    z-index: 50;
+    border: 1px dashed #ccc;
+}
+
+.simBtn {
+    font-size: 0.75rem;
+    padding: 0.4rem 0.8rem;
+    border-radius: 4px;
+    border: 1px solid #ddd;
+    background: white;
+    cursor: pointer;
+}
+
+.simBtn:hover {
+    background: #f0f0f0;
+}
+
+@media (max-width: 850px) {
+    .paymentModalContent {
+        flex-direction: column;
+        gap: 2rem;
+    }
+}

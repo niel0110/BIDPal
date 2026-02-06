@@ -1,0 +1,416 @@
+.container {
+    padding: 2rem;
+    max-width: 1200px;
+    margin: 0 auto;
+}
+
+.header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    margin-bottom: 2.5rem;
+}
+
+.titleGroup h1 {
+    font-size: 2.25rem;
+    font-weight: 800;
+    margin: 0 0 0.5rem 0;
+    color: #333;
+}
+
+.titleGroup p {
+    color: #666;
+    margin: 0;
+}
+
+.saveBtn {
+    background-color: var(--color-primary);
+    color: white;
+    padding: 0.75rem 1.5rem;
+    border-radius: 12px;
+    font-weight: 700;
+    border: none;
+    cursor: pointer;
+    display: flex;
+    align-items: center;
+    gap: 0.5rem;
+    transition: transform 0.2s;
+}
+
+.saveBtn:hover {
+    transform: translateY(-2px);
+    box-shadow: 0 4px 15px rgba(211, 47, 47, 0.3);
+}
+
+.settingsWrapper {
+    display: grid;
+    grid-template-columns: 280px 1fr;
+    gap: 3rem;
+}
+
+/* Side Nav */
+.sideNav {
+    display: flex;
+    flex-direction: column;
+    gap: 0.5rem;
+}
+
+.navItem {
+    display: flex;
+    align-items: center;
+    gap: 1rem;
+    padding: 1rem 1.25rem;
+    border-radius: 12px;
+    background: transparent;
+    border: none;
+    color: #666;
+    font-weight: 600;
+    cursor: pointer;
+    text-align: left;
+    transition: all 0.2s;
+}
+
+.navItem:hover {
+    background: #f5f5f5;
+    color: #333;
+}
+
+.activeNav {
+    background: #fff0f0;
+    color: var(--color-primary);
+}
+
+.navArrow {
+    margin-left: auto;
+    opacity: 0.5;
+}
+
+.activeNav .navArrow {
+    opacity: 1;
+}
+
+/* Content Area */
+.content {
+    background: white;
+    padding: 2.5rem;
+    border-radius: 24px;
+    border: 1px solid #f0f0f0;
+}
+
+.section {
+    display: flex;
+    flex-direction: column;
+    gap: 2.5rem;
+}
+
+.sectionHeader h2 {
+    font-size: 1.5rem;
+    font-weight: 800;
+    margin: 0 0 0.5rem 0;
+}
+
+.sectionHeader p {
+    color: #999;
+    margin: 0;
+}
+
+/* Profile Specific */
+.mediaUploads {
+    display: flex;
+    flex-direction: column;
+    gap: 1.5rem;
+    position: relative;
+    margin-bottom: 2rem;
+}
+
+.bannerUpload {
+    height: 180px;
+    background: #f9f9f9;
+    border: 2px dashed #eee;
+    border-radius: 16px;
+    overflow: hidden;
+}
+
+.bannerPlaceholder {
+    height: 100%;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    gap: 1rem;
+    color: #999;
+    font-size: 0.9rem;
+    font-weight: 600;
+    cursor: pointer;
+}
+
+.logoUpload {
+    position: absolute;
+    bottom: -40px;
+    left: 40px;
+    display: flex;
+    align-items: flex-end;
+    gap: 1.5rem;
+}
+
+.logoPlaceholder {
+    width: 100px;
+    height: 100px;
+    background: #fff;
+    border: 4px solid #fff;
+    border-radius: 20px;
+    box-shadow: 0 4px 15px rgba(0, 0, 0, 0.1);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+}
+
+.changeBtn {
+    margin-bottom: 10px;
+    background: #f5f5f5;
+    border: none;
+    padding: 0.5rem 1rem;
+    border-radius: 8px;
+    font-size: 0.85rem;
+    font-weight: 600;
+    cursor: pointer;
+}
+
+/* Forms */
+.formGrid {
+    display: flex;
+    flex-direction: column;
+    gap: 1.5rem;
+}
+
+.formGroup {
+    display: flex;
+    flex-direction: column;
+    gap: 0.6rem;
+}
+
+.formGroup label {
+    font-size: 0.9rem;
+    font-weight: 700;
+    color: #333;
+}
+
+.formGroup input,
+.formGroup textarea,
+.formGroup select {
+    padding: 1rem;
+    border-radius: 12px;
+    border: 1px solid #eee;
+    font-family: inherit;
+    font-size: 0.95rem;
+    outline: none;
+    transition: border-color 0.2s;
+}
+
+.formGroup input:focus,
+.formGroup textarea:focus {
+    border-color: var(--color-primary);
+}
+
+.charCount {
+    font-size: 0.75rem;
+    color: #ccc;
+    text-align: right;
+}
+
+.verifiedInput {
+    position: relative;
+    display: flex;
+    align-items: center;
+}
+
+.verifiedInput input {
+    width: 100%;
+    padding-right: 3rem;
+}
+
+.verifiedInput svg {
+    position: absolute;
+    right: 1.25rem;
+}
+
+/* Payouts */
+.payoutOptions {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 1.5rem;
+}
+
+.payoutCard {
+    padding: 1.5rem;
+    border-radius: 16px;
+    border: 2px solid #eee;
+    display: flex;
+    flex-direction: column;
+    gap: 1.25rem;
+}
+
+.activePayout {
+    border-color: #4A148C;
+    background: #fdfbff;
+}
+
+.payoutHeader {
+    display: flex;
+    align-items: center;
+    gap: 1rem;
+}
+
+.payoutIcon {
+    width: 48px;
+    height: 48px;
+    background: #f5f0ff;
+    border-radius: 12px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+}
+
+.payoutMeta {
+    display: flex;
+    flex-direction: column;
+}
+
+.payoutTitle {
+    font-weight: 800;
+    color: #333;
+}
+
+.payoutStatus {
+    font-size: 0.75rem;
+    color: #388E3C;
+    font-weight: 700;
+}
+
+.payoutAccount {
+    font-family: monospace;
+    font-size: 1.1rem;
+    color: #666;
+}
+
+.addPayoutBtn {
+    border: 2px dashed #eee;
+    border-radius: 16px;
+    background: transparent;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    gap: 0.75rem;
+    cursor: pointer;
+    color: #999;
+    font-weight: 600;
+    transition: all 0.2s;
+}
+
+.addPayoutBtn:hover {
+    border-color: #ccc;
+    color: #666;
+}
+
+/* Toggle Switches */
+.toggleGroup {
+    display: flex;
+    flex-direction: column;
+    gap: 1.5rem;
+}
+
+.toggleItem {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    padding: 1.25rem;
+    background: #fafafa;
+    border-radius: 16px;
+}
+
+.itemInfo h4 {
+    margin: 0;
+    font-size: 1rem;
+    font-weight: 700;
+}
+
+.itemInfo p {
+    margin: 0.25rem 0 0 0;
+    font-size: 0.85rem;
+    color: #999;
+}
+
+.timeInput {
+    position: relative;
+    display: flex;
+    align-items: center;
+}
+
+.timeInput svg {
+    position: absolute;
+    left: 1rem;
+    color: #ccc;
+}
+
+.timeInput input {
+    padding-left: 3rem !important;
+    width: 120px;
+}
+
+/* Switch Styles */
+.switch {
+    position: relative;
+    display: inline-block;
+    width: 48px;
+    height: 26px;
+}
+
+.switch input {
+    opacity: 0;
+    width: 0;
+    height: 0;
+}
+
+.slider {
+    position: absolute;
+    cursor: pointer;
+    top: 0;
+    left: 0;
+    right: 0;
+    bottom: 0;
+    background-color: #ccc;
+    transition: .4s;
+    border-radius: 34px;
+}
+
+.slider:before {
+    position: absolute;
+    content: "";
+    height: 18px;
+    width: 18px;
+    left: 4px;
+    bottom: 4px;
+    background-color: white;
+    transition: .4s;
+    border-radius: 50%;
+}
+
+input:checked+.slider {
+    background-color: #4A148C;
+}
+
+input:checked+.slider:before {
+    transform: translateX(22px);
+}
+
+@media (max-width: 900px) {
+    .settingsWrapper {
+        grid-template-columns: 1fr;
+    }
+
+    .logoUpload {
+        left: 50%;
+        transform: translateX(-50%);
+    }
+}

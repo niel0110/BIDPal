@@ -1,0 +1,140 @@
+.card {
+    width: 100%;
+    border: 1px solid #eee;
+    border-radius: 8px;
+    overflow: hidden;
+    background: white;
+    display: flex;
+    flex-direction: column;
+}
+
+.imageWrapper {
+    position: relative;
+    height: 200px;
+    background-color: #f9f9f9;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+}
+
+.image {
+    max-width: 80%;
+    max-height: 80%;
+    object-fit: contain;
+}
+
+.badges {
+    position: absolute;
+    top: 10px;
+    left: 10px;
+    display: flex;
+    flex-direction: column;
+    gap: 5px;
+}
+
+.badge {
+    font-size: 0.7rem;
+    font-weight: 700;
+    padding: 4px 8px;
+    color: white;
+    border-radius: 2px;
+}
+
+.yellow {
+    background-color: #FFC107;
+    color: #333;
+}
+
+.red {
+    background-color: #FF5252;
+}
+
+.gray {
+    background-color: #9E9E9E;
+}
+
+/* Sold out */
+
+.heartBtn {
+    position: absolute;
+    top: 10px;
+    right: 10px;
+    background: white;
+    border: none;
+    border-radius: 50%;
+    padding: 6px;
+    cursor: pointer;
+    box-shadow: 0 2px 5px rgba(0, 0, 0, 0.1);
+    color: #ccc;
+}
+
+.heartBtn:hover {
+    color: #FF5252;
+}
+
+.content {
+    padding: 1rem;
+    display: flex;
+    flex-direction: column;
+    gap: 0.5rem;
+}
+
+.title {
+    font-size: 1rem;
+    font-weight: 600;
+    color: #333;
+}
+
+.priceRow {
+    display: flex;
+    align-items: baseline;
+    gap: 0.5rem;
+    font-size: 0.8rem;
+    color: #666;
+}
+
+.price {
+    font-size: 1rem;
+    font-weight: 700;
+    color: #333;
+}
+
+.tags {
+    display: flex;
+    gap: 0.5rem;
+    margin-top: 0.5rem;
+}
+
+.tag {
+    font-size: 0.7rem;
+    padding: 2px 6px;
+    border-radius: 4px;
+    color: white;
+    display: flex;
+    align-items: center;
+    gap: 4px;
+}
+
+.purpleTag {
+    background-color: #7B1FA2;
+}
+
+.orangeTag {
+    background-color: #FFA000;
+}
+
+.flashBtn {
+    margin-top: 1rem;
+    background-color: #FF5722;
+    color: white;
+    border: none;
+    width: 100%;
+    padding: 0.5rem;
+    font-size: 0.8rem;
+    font-weight: 600;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 0.5rem;
+    cursor: pointer;
+}

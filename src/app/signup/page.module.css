@@ -1,0 +1,145 @@
+.container {
+    display: flex;
+    min-height: 100vh;
+    background-color: var(--color-bg);
+}
+
+.leftPanel {
+    flex: 1;
+    display: none;
+    align-items: center;
+    justify-content: center;
+    border-right: 1px solid var(--color-border);
+}
+
+.rightPanel {
+    flex: 1;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    padding: 2rem;
+}
+
+.formWrapper {
+    width: 100%;
+    max-width: 400px;
+}
+
+.logoWrapper {
+    transform: scale(1.5);
+}
+
+.titleWrapper {
+    margin-bottom: 2rem;
+}
+
+.title {
+    font-size: 2rem;
+    font-weight: 700;
+    color: var(--color-text);
+    margin-bottom: 0.5rem;
+}
+
+.highlight {
+    color: var(--color-primary);
+}
+
+.roleSelection {
+    display: flex;
+    gap: 1rem;
+    margin-bottom: 2rem;
+}
+
+.roleCard {
+    flex: 1;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    padding: 1.25rem;
+    border: 1px solid var(--color-border);
+    border-radius: 12px;
+    cursor: pointer;
+    transition: all 0.2s ease;
+    text-align: center;
+    background-color: white;
+}
+
+.roleCard:hover {
+    border-color: var(--color-primary);
+    background-color: var(--color-bg);
+}
+
+.activeRole {
+    border-color: var(--color-primary);
+    background-color: var(--color-bg);
+    box-shadow: 0 4px 12px rgba(251, 192, 45, 0.1);
+}
+
+.roleIcon {
+    width: 48px;
+    height: 48px;
+    background-color: #FFF9E6;
+    border-radius: 50%;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    margin-bottom: 0.75rem;
+    color: var(--color-primary);
+}
+
+.activeRole .roleIcon {
+    background-color: var(--color-primary);
+    color: white;
+}
+
+.roleMeta {
+    display: flex;
+    flex-direction: column;
+}
+
+.roleMeta strong {
+    font-size: 1rem;
+    color: var(--color-text);
+}
+
+.roleMeta span {
+    font-size: 0.7rem;
+    color: #999;
+    margin-top: 0.25rem;
+}
+
+.formGroup {
+    margin-bottom: 1.5rem;
+}
+
+.buttonWrapper {
+    margin-top: 2rem;
+    margin-bottom: 1.5rem;
+}
+
+.disclaimer {
+    display: flex;
+    align-items: flex-start;
+    gap: 0.75rem;
+    font-size: 0.75rem;
+    color: var(--color-text);
+    line-height: 1.4;
+}
+
+.checkIcon {
+    color: var(--color-primary);
+    flex-shrink: 0;
+    margin-top: 2px;
+}
+
+.link {
+    color: var(--color-text);
+    text-decoration: underline;
+    font-weight: 600;
+}
+
+@media (min-width: 768px) {
+    .leftPanel {
+        display: flex;
+    }
+}

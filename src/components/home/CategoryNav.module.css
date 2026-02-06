@@ -1,0 +1,94 @@
+.navContainer {
+    background: white;
+    padding: 1rem 0;
+    border-bottom: 1px solid #eee;
+}
+
+.scrollWrapper {
+    display: flex;
+    gap: 2rem;
+    overflow-x: auto;
+    padding: 0 2rem;
+    max-width: 1440px;
+    margin: 0 auto;
+    scrollbar-width: none;
+    /* Hide scrollbar Firefox */
+    -ms-overflow-style: none;
+    /* Hide scrollbar IE */
+}
+
+.scrollWrapper::-webkit-scrollbar {
+    display: none;
+    /* Hide scrollbar WebKit */
+}
+
+.categoryItem {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 0.5rem;
+    cursor: pointer;
+    min-width: 60px;
+}
+
+.iconCircle {
+    width: 50px;
+    height: 50px;
+    border-radius: 50%;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    color: white;
+    transition: transform 0.2s;
+}
+
+.iconCircle:hover {
+    transform: scale(1.1);
+}
+
+.label {
+    font-size: 0.8rem;
+    color: #333;
+    font-weight: 500;
+}
+
+/* Specific colors based on visual approximation or brand palette */
+.all {
+    background-color: #D32F2F;
+}
+
+.clothing {
+    background-color: #4A148C;
+}
+
+.shoes {
+    background-color: #FBC02D;
+}
+
+.bags {
+    background-color: #EF6C00;
+}
+
+.jewelry {
+    background-color: #D32F2F;
+}
+
+.gadgets {
+    background-color: #4A148C;
+}
+
+.appliances {
+    background-color: #FBC02D;
+}
+
+.furniture {
+    background-color: #EF6C00;
+}
+
+.garden {
+    background-color: #D32F2F;
+}
+
+.instruments {
+    background-color: #4A148C;
+}

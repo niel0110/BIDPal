@@ -1,0 +1,19 @@
+.sellerContainer {
+    min-height: 100vh;
+    display: flex;
+    flex-direction: column;
+    background-color: #F9F9F9;
+}
+
+.mainWrapper {
+    display: flex;
+    flex: 1;
+    padding-top: 70px;
+    /* Offset for sticky header */
+}
+
+.content {
+    flex: 1;
+    padding: 2rem;
+    overflow-y: auto;
+}
