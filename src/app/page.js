@@ -40,7 +40,14 @@ export default function Home() {
   const [isLogin, setIsLogin] = useState(true);
   const [selectedRole, setSelectedRole] = useState('buyer');
   const [showPassword, setShowPassword] = useState(false);
+  const [scrollProgress, setScrollProgress] = useState(0);
   const router = useRouter();
+
+  const handleScroll = (e) => {
+    const element = e.target;
+    const progress = element.scrollLeft / (element.scrollWidth - element.clientWidth);
+    setScrollProgress(progress);
+  };
 
   useEffect(() => {
     if (user?.role === 'seller') {
@@ -151,8 +158,18 @@ export default function Home() {
         <div className={styles.sectionHeader}>
           <h2 className={styles.sectionTitle}>Ongoing <span className={styles.redText}>Auctions</span></h2>
           <div className={styles.viewAll}>View all <ChevronRight size={16} /></div>
+          {/* Custom Scroll Indicator */}
+          <div className={styles.scrollIndicator}>
+            <div
+              className={styles.scrollThumb}
+              style={{
+                left: `${scrollProgress * 100}%`,
+                transform: `translateX(-${scrollProgress * 100}%)`
+              }}
+            />
+          </div>
         </div>
-        <div className={styles.horizontalScroll}>
+        <div className={styles.horizontalScroll} onScroll={handleScroll}>
           {auctionData.map(item => (
             <AuctionCard key={item.id} data={item} />
           ))}
@@ -160,7 +177,7 @@ export default function Home() {
       </section>
 
       <section className={styles.section}>
-        <div className={styles.sectionHeader}>
+        <div className={`${styles.sectionHeader} ${styles.staticIndicator}`}>
           <h2 className={styles.sectionTitle}>Weekly <span className={styles.redText}>Deals</span></h2>
           <div className={styles.viewAll}>View all <ChevronRight size={16} /></div>
         </div>
@@ -172,7 +189,7 @@ export default function Home() {
       </section>
 
       <section className={styles.section}>
-        <div className={styles.sectionHeader}>
+        <div className={`${styles.sectionHeader} ${styles.staticIndicator}`}>
           <h2 className={styles.sectionTitle}>12.12 <span className={styles.redText}>Clearance Sale</span></h2>
           <div className={styles.viewAll}>View all <ChevronRight size={16} /></div>
         </div>

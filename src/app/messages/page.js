@@ -10,11 +10,13 @@ import {
     Info,
     Image as ImageIcon,
     Paperclip,
-    Smile
+    Smile,
+    MessageCircle
 } from 'lucide-react';
+import { useAuth } from '@/context/AuthContext';
 import styles from './page.module.css';
 
-const chats = [
+const buyerChats = [
     {
         id: 1,
         name: 'RetroVault',
@@ -32,41 +34,64 @@ const chats = [
         unread: 0,
         online: false,
         avatar: 'https://api.dicebear.com/7.x/avataaars/svg?seed=Elegance'
-    },
-    {
-        id: 3,
-        name: 'Lilian Grace',
-        lastMessage: 'Is this still available?',
-        time: 'Feb 05',
-        unread: 0,
-        online: true,
-        avatar: 'https://api.dicebear.com/7.x/avataaars/svg?seed=Lilian'
     }
 ];
 
-const mockMessages = [
+const sellerChats = [
+    {
+        id: 101,
+        name: 'John Smith (Bidder)',
+        lastMessage: 'Is the leather genuine on the satchel?',
+        time: '2m ago',
+        unread: 1,
+        online: true,
+        avatar: 'https://api.dicebear.com/7.x/avataaars/svg?seed=John'
+    },
+    {
+        id: 102,
+        name: 'Maria Garcia',
+        lastMessage: 'I would like to offer ₱3,400.',
+        time: '15m ago',
+        unread: 0,
+        online: false,
+        avatar: 'https://api.dicebear.com/7.x/avataaars/svg?seed=Maria'
+    }
+];
+
+const buyerMessages = [
     { id: 1, text: 'Hi! I saw your post about the analog camera.', sender: 'me', time: '10:15 AM' },
     { id: 2, text: 'Hello! Yes, it is still available.', sender: 'them', time: '10:17 AM' },
     { id: 3, text: 'Does it come with the original lens cap?', sender: 'me', time: '10:18 AM' },
     { id: 4, text: 'The camera is in perfect condition! And yes, the lens cap is included.', sender: 'them', time: '10:24 AM' },
 ];
 
+const sellerMessages = [
+    { id: 1, text: 'Hello, I saw your Vintage Leather Satchel.', sender: 'them', time: '2:15 PM' },
+    { id: 2, text: 'Is the leather genuine?', sender: 'them', time: '2:16 PM' },
+    { id: 3, text: 'Hi John! Yes, it is 100% genuine top-grain leather.', sender: 'me', time: '2:20 PM' },
+];
+
 export default function MessagesPage() {
     const router = useRouter();
-    const [selectedChat, setSelectedChat] = useState(1);
+    const { user } = useAuth();
+    const isSeller = user?.role === 'seller';
+
+    const chats = isSeller ? sellerChats : buyerChats;
+    const [selectedChat, setSelectedChat] = useState(chats[0]?.id);
     const [messageInput, setMessageInput] = useState('');
 
     const currentChat = chats.find(c => c.id === selectedChat);
+    const messages = isSeller ? sellerMessages : buyerMessages;
 
     return (
         <div className={styles.messagesContainer}>
             <div className={styles.messagesContent}>
                 <header className={styles.messagesHeader}>
-                    <button className={styles.backBtn} onClick={() => router.push('/')}>
+                    <button className={styles.backBtn} onClick={() => router.push(isSeller ? '/seller' : '/')}>
                         <ChevronLeft size={20} />
-                        <span>Back to Marketplace</span>
+                        <span>{isSeller ? 'Back to Seller Hub' : 'Back to Marketplace'}</span>
                     </button>
-                    <h1>Messages</h1>
+                    <h1>{isSeller ? 'Merchant Messages' : 'My Messages'}</h1>
                 </header>
 
                 <div className={styles.chatWrapper}>
@@ -74,7 +99,7 @@ export default function MessagesPage() {
                     <aside className={styles.inboxSidebar}>
                         <div className={styles.searchBox}>
                             <Search size={18} />
-                            <input type="text" placeholder="Search messages..." />
+                            <input type="text" placeholder={isSeller ? "Search inquiry..." : "Search messages..."} />
                         </div>
                         <div className={styles.chatsList}>
                             {chats.map(chat => (
@@ -122,7 +147,7 @@ export default function MessagesPage() {
 
                                 <div className={styles.messageArea}>
                                     <div className={styles.dateDivider}>Today</div>
-                                    {mockMessages.map(msg => (
+                                    {messages.map(msg => (
                                         <div key={msg.id} className={`${styles.messageBubble} ${msg.sender === 'me' ? styles.sent : styles.received}`}>
                                             <div className={styles.bubbleContent}>
                                                 <p>{msg.text}</p>
@@ -153,10 +178,10 @@ export default function MessagesPage() {
                         ) : (
                             <div className={styles.noChatSelected}>
                                 <div className={styles.emptyIcon}>
-                                    <Send size={48} />
+                                    <MessageCircle size={48} />
                                 </div>
-                                <h2>Select a conversation</h2>
-                                <p>Choose a chat from the left to start messaging sellers.</p>
+                                <h2>{isSeller ? 'No inquiry selected' : 'Select a conversation'}</h2>
+                                <p>{isSeller ? 'Choose a buyer from the list to respond.' : 'Choose a chat from the left to start messaging sellers.'}</p>
                             </div>
                         )}
                     </main>

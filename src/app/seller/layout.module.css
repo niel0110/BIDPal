@@ -8,8 +8,7 @@
 .mainWrapper {
     display: flex;
     flex: 1;
-    padding-top: 70px;
-    /* Offset for sticky header */
+    /* Removed redundant padding-top: 70px as header is inside sellerContainer but relative */
 }
 
 .content {

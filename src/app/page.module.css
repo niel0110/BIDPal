@@ -20,7 +20,29 @@
   position: relative;
 }
 
-.sectionHeader::after {
+.scrollIndicator {
+  position: absolute;
+  bottom: -2px;
+  left: 0;
+  width: 100%;
+  height: 2px;
+  pointer-events: none;
+}
+
+.scrollThumb {
+  position: absolute;
+  top: 0;
+  left: 0;
+  width: 200px;
+  /* Further increased width for better presence */
+  height: 100%;
+  background-color: var(--color-primary);
+  border-radius: 10px;
+  transition: left 0.1s ease-out;
+  /* Smooth movement */
+}
+
+.staticIndicator::after {
   content: '';
   position: absolute;
   bottom: -2px;
@@ -53,8 +75,16 @@
   display: flex;
   gap: 1.5rem;
   overflow-x: auto;
-  padding-bottom: 1rem;
-  scrollbar-width: thin;
+  padding-bottom: 1.5rem;
+  scrollbar-width: none;
+  /* Hide scrollbar Firefox */
+  -ms-overflow-style: none;
+  /* Hide scrollbar IE/Edge */
+}
+
+.horizontalScroll::-webkit-scrollbar {
+  display: none;
+  /* Hide scrollbar Chrome/Safari/Blink */
 }
 
 .grid {

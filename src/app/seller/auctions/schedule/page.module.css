@@ -1,0 +1,248 @@
+.container {
+    max-width: 800px;
+    margin: 0 auto;
+    padding: 2.5rem 2rem;
+    padding-bottom: 5rem;
+}
+
+.header {
+    margin-bottom: 3rem;
+}
+
+.backBtn {
+    display: flex;
+    align-items: center;
+    gap: 0.5rem;
+    background: none;
+    border: none;
+    cursor: pointer;
+    font-size: 1.25rem;
+    font-weight: 700;
+    color: var(--color-text);
+    padding: 0;
+}
+
+.scheduleCard {
+    background: #fff;
+    border-radius: 28px;
+    padding: 3.5rem;
+    box-shadow: 0 10px 40px rgba(0, 0, 0, 0.02);
+    border: 1px solid #f8f8f8;
+}
+
+.productBrief {
+    display: flex;
+    align-items: center;
+    gap: 1.5rem;
+    margin-bottom: 3rem;
+    padding-bottom: 2rem;
+    border-bottom: 1px solid #f5f5f5;
+}
+
+.briefImg {
+    width: 64px;
+    height: 64px;
+    border-radius: 12px;
+    overflow: hidden;
+}
+
+.briefImg img {
+    width: 100%;
+    height: 100%;
+    object-fit: cover;
+}
+
+.briefInfo h2 {
+    font-size: 1.25rem;
+    font-weight: 800;
+    margin-bottom: 0.25rem;
+}
+
+.briefInfo p {
+    color: #999;
+    font-size: 0.9rem;
+    font-weight: 600;
+}
+
+.section {
+    margin-bottom: 2.5rem;
+}
+
+.sectionLabel {
+    display: block;
+    font-size: 0.85rem;
+    font-weight: 850;
+    text-transform: uppercase;
+    letter-spacing: 0.05em;
+    color: #111;
+    margin-bottom: 1.5rem;
+}
+
+.typeGrid {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 1.5rem;
+}
+
+.typeCard {
+    display: flex;
+    align-items: center;
+    gap: 1.25rem;
+    padding: 1.5rem;
+    background: #fff;
+    border: 2px solid #f0f0f0;
+    border-radius: 20px;
+    cursor: pointer;
+    transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+}
+
+.typeCard:hover {
+    border-color: #ddd;
+    background: #fafafa;
+}
+
+.activeType {
+    border-color: var(--color-primary);
+    background: rgba(211, 47, 47, 0.02);
+}
+
+.typeIcon {
+    width: 48px;
+    height: 48px;
+    background: #f8f8f8;
+    border-radius: 14px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    color: #666;
+    transition: all 0.3s;
+}
+
+.activeType .typeIcon {
+    background: var(--color-primary);
+    color: white;
+}
+
+.typeText strong {
+    display: block;
+    font-size: 1.05rem;
+    font-weight: 800;
+    margin-bottom: 0.15rem;
+}
+
+.typeText span {
+    font-size: 0.85rem;
+    color: #888;
+    font-weight: 500;
+}
+
+.inputGroup label {
+    display: block;
+    font-size: 0.95rem;
+    font-weight: 700;
+    margin-bottom: 0.75rem;
+    color: #444;
+}
+
+.priceInputWrapper {
+    position: relative;
+    display: flex;
+    align-items: center;
+}
+
+.currency {
+    position: absolute;
+    left: 1.5rem;
+    font-weight: 700;
+    color: #111;
+}
+
+.priceInputWrapper input {
+    width: 100%;
+    padding: 1.15rem 1.5rem 1.15rem 3rem;
+    background: #fafafa;
+    border: 1.5px solid #eee;
+    border-radius: 14px;
+    font-size: 1rem;
+    font-weight: 700;
+    outline: none;
+    transition: all 0.2s;
+}
+
+.priceInputWrapper input:focus {
+    border-color: #111;
+    background: #fff;
+    box-shadow: 0 4px 12px rgba(0, 0, 0, 0.03);
+}
+
+.dateTimeGrid {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 1.5rem;
+}
+
+.field label {
+    display: block;
+    font-size: 0.95rem;
+    font-weight: 700;
+    margin-bottom: 0.75rem;
+    color: #444;
+}
+
+.inputWithIcon {
+    position: relative;
+    display: flex;
+    align-items: center;
+}
+
+.inputWithIcon svg {
+    position: absolute;
+    left: 1.25rem;
+    color: #888;
+}
+
+.inputWithIcon input {
+    width: 100%;
+    padding: 1.15rem 1.5rem 1.15rem 3.25rem;
+    background: #fafafa;
+    border: 1.5px solid #eee;
+    border-radius: 14px;
+    font-family: inherit;
+    font-size: 0.95rem;
+    font-weight: 600;
+    outline: none;
+}
+
+.infoAlert {
+    display: flex;
+    align-items: center;
+    gap: 1rem;
+    padding: 1.25rem 1.5rem;
+    background: #fdfdfd;
+    border: 1px solid #f0f0f0;
+    border-radius: 16px;
+    margin: 2.5rem 0;
+    color: #666;
+    font-size: 0.9rem;
+    font-weight: 500;
+}
+
+.confirmBtn {
+    width: 100%;
+    padding: 1.25rem;
+    background: var(--color-primary);
+    color: white;
+    border: none;
+    border-radius: 16px;
+    font-size: 1rem;
+    font-weight: 800;
+    cursor: pointer;
+    transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+    box-shadow: 0 8px 20px rgba(211, 47, 47, 0.15);
+}
+
+.confirmBtn:hover {
+    background: #B71C1C;
+    transform: translateY(-2px);
+    box-shadow: 0 12px 24px rgba(211, 47, 47, 0.25);
+}

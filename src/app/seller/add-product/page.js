@@ -7,15 +7,99 @@ import styles from './page.module.css';
 import Button from '@/components/ui/Button';
 
 const steps = [
-    { id: 'description', name: 'Description', icon: <Plus size={18} /> },
+    { id: 'description', name: 'Description', icon: <Info size={18} /> },
     { id: 'categories', name: 'Categories', icon: <Grid size={18} /> },
     { id: 'photos', name: 'Photos', icon: <Camera size={18} /> },
     { id: 'delivery', name: 'Delivery', icon: <Truck size={18} /> },
 ];
 
+const categoriesData = [
+    {
+        id: 'electronics',
+        name: 'Electronics',
+        groups: [
+            {
+                title: 'Phones and Accessories',
+                items: ['Smartphones', 'Smartwatches', 'Tablets', 'Accessories GSM', 'Cases and covers']
+            },
+            {
+                title: 'Computers',
+                items: ['Laptops', 'Laptop components', 'Desktop Computers', 'Computer components', 'Printers and scanners']
+            },
+            {
+                title: 'Audio & Video',
+                items: ['TVs', 'Projectors', 'Headphones', 'Audio for home', 'Home cinema']
+            },
+            {
+                title: 'Gaming & Consoles',
+                items: ['Consoles PlayStation 5', 'Consoles Xbox Series X/S', 'Consoles PlayStation 4', 'Consoles Xbox One', 'Consoles Nintendo Switch']
+            },
+            {
+                title: 'Minor appliances',
+                items: ['Kitchen, cooking', 'Hygiene and care', 'For home', 'Vacuum cleaners']
+            },
+            {
+                title: 'Large Appliances',
+                items: ['Fridges', 'Washing machines', 'Clothes dryers', 'Free-standing kitchens']
+            },
+            {
+                title: 'Photography',
+                items: ['Digital cameras', 'Lenses', 'Photo accessories', 'Instant cameras (Instax, Polaroid)']
+            }
+        ]
+    },
+    {
+        id: 'fashion',
+        name: 'Fashion',
+        groups: [
+            { title: 'Women', items: ['Dresses', 'Tops', 'Pants', 'Shoes', 'Bags', 'Accessories'] },
+            { title: 'Men', items: ['Shirts', 'Jeans', 'Suits', 'Shoes', 'Watches', 'Accessories'] },
+            { title: 'Kids', items: ['Baby clothes', 'Kid clothes', 'Toys', 'Gear'] },
+            { title: 'Luxury & Jewelry', items: ['Necklaces', 'Rings', 'Luxury Watches', 'Vintage Bags'] }
+        ]
+    },
+    {
+        id: 'home',
+        name: 'Home & Living',
+        groups: [
+            { title: 'Furniture', items: ['Sofa', 'Bed', 'Dining Table', 'Chairs', 'Storage'] },
+            { title: 'Decor & Lighting', items: ['Lamps', 'Wall Art', 'Textiles', 'Kitchenware'] },
+            { title: 'Garden & Tools', items: ['Plants', 'Tools', 'Outdoor Furniture', 'Lighting'] }
+        ]
+    },
+    {
+        id: 'culture',
+        name: 'Collectibles & Culture',
+        groups: [
+            { title: 'Books', items: ['Fiction', 'Non-fiction', 'Comics', 'Antiquarian'] },
+            { title: 'Music & Film', items: ['Vinyl', 'CDs/DVDs', 'Instruments', 'Audio Equipment'] },
+            { title: 'Collectibles', items: ['Trading Cards', 'Action Figures', 'Antiques', 'Numismatics'] }
+        ]
+    },
+    {
+        id: 'sports',
+        name: 'Sports & Outdoors',
+        groups: [
+            { title: 'Exercise', items: ['Gym', 'Yoga', 'Bicycles', 'Weights'] },
+            { title: 'Outdoors', items: ['Tents', 'Backpacks', 'Sleeping Bags', 'Camping Gear'] },
+            { title: 'Team Sports', items: ['Basketball', 'Football', 'Tennis', 'Golf'] }
+        ]
+    },
+    {
+        id: 'automotive',
+        name: 'Automotive & Parts',
+        groups: [
+            { title: 'Car Parts', items: ['Wheels & Tires', 'Engines', 'Lighting', 'Filters'] },
+            { title: 'Interior & Audio', items: ['Seats', 'Head Units', 'Mats', 'Organizers'] },
+            { title: 'Accessories', items: ['Cleaning', 'Tools', 'Safety'] }
+        ]
+    },
+];
+
 export default function AddProductPage() {
     const router = useRouter();
     const [currentStep, setCurrentStep] = useState(0);
+    const [activeCategory, setActiveCategory] = useState(null);
     const [formData, setFormData] = useState({
         name: 'Graphic card GIGABYTE GeForce',
         description: 'The NVIDIA RTX 3050 graphics card is a design equipped with 8GB of GDDR6 memory, supports PCI-E 4.0 and offers a number of unique technologies from NVIDIA to enhance the smoothness and high quality of generated graphics. At the same time, it provides support for Ray Tracing, allowing you to enjoy photorealistic graphics.',
@@ -24,8 +108,19 @@ export default function AddProductPage() {
         width: '0',
         height: '0',
         price: '',
-        categories: []
+        categories: ['Laptop components', 'Desktop Computers']
     });
+
+    const toggleCategory = (catName) => {
+        setFormData(prev => {
+            const exists = prev.categories.includes(catName);
+            if (exists) {
+                return { ...prev, categories: prev.categories.filter(c => c !== catName) };
+            }
+            if (prev.categories.length >= 3) return prev;
+            return { ...prev, categories: [...prev.categories, catName] };
+        });
+    };
 
     const handleNext = () => {
         if (currentStep < steps.length - 1) {
@@ -33,7 +128,7 @@ export default function AddProductPage() {
         } else {
             // Final submit
             console.log('Submitting product:', formData);
-            router.push('/seller');
+            router.push('/seller/inventory');
         }
     };
 
@@ -147,33 +242,48 @@ export default function AddProductPage() {
                         <h2 className={styles.stepTitle}>Select the category your goods belong to (max. 3)</h2>
                         <div className={styles.categoryLayout}>
                             <div className={styles.categorySide}>
-                                {['Electronics', 'Fashion', 'Home and Garden', 'Supermarket', 'Beauty', 'Culture', 'Sports and tourism', 'Automotive', 'Properties'].map(cat => (
-                                    <button key={cat} className={styles.catItem}>
-                                        {cat}
+                                {categoriesData.map(cat => (
+                                    <button
+                                        key={cat.id}
+                                        className={`${styles.catItem} ${activeCategory === cat.id ? styles.activeCatItem : ''}`}
+                                        onClick={() => setActiveCategory(cat.id === activeCategory ? null : cat.id)}
+                                    >
+                                        {cat.name}
                                         <ChevronLeft size={16} style={{ transform: 'rotate(180deg)' }} />
                                     </button>
                                 ))}
                             </div>
-                            <div className={styles.subcategorySide}>
-                                <h3>Phones and...</h3>
-                                {['Smartphones', 'Smartwatches', 'Tablets', 'Accessories', 'Cases'].map(sub => (
-                                    <label key={sub} className={styles.subItem}>
-                                        <input type="checkbox" />
-                                        <span>{sub}</span>
-                                    </label>
-                                ))}
-                                <h3 style={{ marginTop: '2rem' }}>Minor appliances</h3>
-                                {['Kitchen', 'Hygiene', 'For home', 'Vacuum'].map(sub => (
-                                    <label key={sub} className={styles.subItem}>
-                                        <input type="checkbox" />
-                                        <span>{sub}</span>
-                                    </label>
-                                ))}
-                            </div>
+
+                            {activeCategory && (
+                                <div className={styles.subcategoryGrid}>
+                                    {categoriesData.find(c => c.id === activeCategory)?.groups.map((group, idx) => (
+                                        <div key={idx} className={styles.subGroup}>
+                                            <h3>{group.title}</h3>
+                                            {group.items.map(item => (
+                                                <label key={item} className={styles.subItem}>
+                                                    <input
+                                                        type="checkbox"
+                                                        checked={formData.categories.includes(item)}
+                                                        onChange={() => toggleCategory(item)}
+                                                    />
+                                                    <div className={styles.customCheckSmall}>
+                                                        {formData.categories.includes(item) && <div className={styles.checkInnerSmall} />}
+                                                    </div>
+                                                    <span>{item}</span>
+                                                </label>
+                                            ))}
+                                        </div>
+                                    ))}
+                                </div>
+                            )}
                         </div>
                         <div className={styles.selectedCats}>
                             <strong>Selected categories:</strong>
-                            <span className={styles.catBadge}>Laptop components <X size={12} /></span>
+                            {formData.categories.map(cat => (
+                                <span key={cat} className={styles.catBadge}>
+                                    {cat} <X size={12} onClick={() => toggleCategory(cat)} style={{ cursor: 'pointer' }} />
+                                </span>
+                            ))}
                         </div>
                     </div>
                 )}
@@ -284,7 +394,7 @@ export default function AddProductPage() {
                         <button className={styles.backLink} onClick={handleBack}>Back</button>
                     )}
                     <button className={styles.nextBtn} onClick={handleNext}>
-                        {currentStep === steps.length - 1 ? 'Next' : 'Next'}
+                        {currentStep === steps.length - 1 ? 'Add' : 'Next'}
                     </button>
                 </div>
             </div>

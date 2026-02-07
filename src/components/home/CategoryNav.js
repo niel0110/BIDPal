@@ -1,3 +1,4 @@
+import { useState } from 'react';
 import {
     LayoutGrid, Shirt, Footprints, ShoppingBag, Gem,
     Smartphone, Monitor, Armchair, Sprout, Music
@@ -18,15 +19,22 @@ const categories = [
 ];
 
 export default function CategoryNav() {
+    const [activeId, setActiveId] = useState('all');
+
     return (
         <div className={styles.navContainer}>
             <div className={styles.scrollWrapper}>
                 {categories.map((cat) => (
-                    <div key={cat.id} className={styles.categoryItem}>
+                    <div
+                        key={cat.id}
+                        className={`${styles.categoryItem} ${activeId === cat.id ? styles.active : ''}`}
+                        onClick={() => setActiveId(cat.id)}
+                    >
                         <div className={`${styles.iconCircle} ${styles[cat.colorClass]}`}>
                             <cat.icon size={24} />
                         </div>
                         <span className={styles.label}>{cat.label}</span>
+                        {activeId === cat.id && <div className={styles.activeLine} />}
                     </div>
                 ))}
             </div>

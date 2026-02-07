@@ -1,20 +1,19 @@
 .navContainer {
     background: white;
-    padding: 1rem 0;
+    padding: 1.25rem 0 1.75rem 0;
     border-bottom: 1px solid #eee;
 }
 
 .scrollWrapper {
     display: flex;
-    gap: 2rem;
+    gap: 2.5rem;
     overflow-x: auto;
-    padding: 0 2rem;
+    padding: 0 2rem 12px 2rem;
     max-width: 1440px;
     margin: 0 auto;
+    justify-content: center;
     scrollbar-width: none;
-    /* Hide scrollbar Firefox */
     -ms-overflow-style: none;
-    /* Hide scrollbar IE */
 }
 
 .scrollWrapper::-webkit-scrollbar {
@@ -28,7 +27,39 @@
     align-items: center;
     gap: 0.5rem;
     cursor: pointer;
-    min-width: 60px;
+    min-width: 80px;
+    /* Slightly wider for better spacing */
+    position: relative;
+    padding-bottom: 0.5rem;
+    transition: all 0.2s;
+}
+
+.active .label {
+    color: #111;
+    font-weight: 700;
+}
+
+.activeLine {
+    position: absolute;
+    bottom: -10px;
+    left: 15%;
+    right: 15%;
+    height: 6px;
+    background-color: #D32F2F;
+    border-radius: 20px;
+    animation: slideIn 0.3s ease-out;
+}
+
+@keyframes slideIn {
+    from {
+        transform: scaleX(0);
+        opacity: 0;
+    }
+
+    to {
+        transform: scaleX(1);
+        opacity: 1;
+    }
 }
 
 .iconCircle {

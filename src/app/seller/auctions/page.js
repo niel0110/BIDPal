@@ -59,7 +59,7 @@ export default function MyAuctions() {
                     <h1>My Auctions</h1>
                     <p>Manage your live, scheduled, and past auctions.</p>
                 </div>
-                <Link href="/seller/add-product" className={styles.createBtn}>
+                <Link href="/seller/auctions/create" className={styles.createBtn}>
                     <Plus size={20} />
                     Create Auction
                 </Link>

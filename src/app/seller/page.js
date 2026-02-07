@@ -42,6 +42,13 @@ const mockQueue = [
 export default function SellerDashboard() {
     const [isLive, setIsLive] = useState(false);
     const [messageInput, setMessageInput] = useState('');
+    const [queueProgress, setQueueProgress] = useState(0);
+
+    const handleQueueScroll = (e) => {
+        const element = e.target;
+        const progress = element.scrollLeft / (element.scrollWidth - element.clientWidth);
+        setQueueProgress(isNaN(progress) ? 0 : progress);
+    };
 
     const activeItem = {
         title: 'Vintage Leather Satchel',
@@ -148,9 +155,19 @@ export default function SellerDashboard() {
                                 <h2>Auction Queue</h2>
                                 <p>Next items to be showcased</p>
                             </div>
+                            {/* Dynamic Scroll Indicator */}
+                            <div className={styles.scrollIndicator}>
+                                <div
+                                    className={styles.scrollThumb}
+                                    style={{
+                                        left: `${queueProgress * 100}%`,
+                                        transform: `translateX(-${queueProgress * 100}%)`
+                                    }}
+                                />
+                            </div>
                             <Link href="/seller/inventory" className={styles.viewInventoryBtn}>View All</Link>
                         </div>
-                        <div className={styles.queueList}>
+                        <div className={styles.queueList} onScroll={handleQueueScroll}>
                             {mockQueue.map(item => (
                                 <div key={item.id} className={styles.queueItem}>
                                     <img src={item.image} alt={item.title} />

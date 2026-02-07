@@ -1,5 +1,5 @@
 .container {
-    max-width: 900px;
+    max-width: 1200px;
     margin: 0 auto;
     padding-bottom: 5rem;
 }
@@ -15,7 +15,7 @@
     background: none;
     border: none;
     cursor: pointer;
-    font-size: 1.5rem;
+    font-size: 1.25rem;
     font-weight: 700;
     color: var(--color-text);
     padding: 0;
@@ -40,7 +40,9 @@
 .stepLineWrapper {
     display: flex;
     align-items: center;
+    justify-content: center;
     width: 100%;
+    position: relative;
 }
 
 .stepCircle {
@@ -53,7 +55,7 @@
     align-items: center;
     justify-content: center;
     flex-shrink: 0;
-    z-index: 1;
+    z-index: 2;
     border: 2px solid #ddd;
 }
 
@@ -64,15 +66,21 @@
 }
 
 .line {
-    flex: 1;
-    height: 2px;
-    background-color: #eee;
-    margin: 0 -16px;
+    position: absolute;
+    top: 50%;
+    left: 50%;
+    width: 100%;
+    height: 0;
     border-top: 2px dotted #ccc;
+    z-index: 1;
+    transform: translateY(-50%);
 }
 
 .activeLine {
+    border-top-style: solid;
+    /* Make active lines solid for better visibility */
     border-top-color: var(--color-primary);
+    border-top-width: 2px;
 }
 
 .stepName {
@@ -93,9 +101,10 @@
 /* Form Card */
 .formCard {
     background-color: white;
-    border-radius: 20px;
-    padding: 3rem;
-    box-shadow: 0 4px 20px rgba(0, 0, 0, 0.03);
+    border-radius: 28px;
+    padding: 3.5rem 5rem;
+    box-shadow: 0 10px 40px rgba(0, 0, 0, 0.02);
+    border: 1px solid #f8f8f8;
 }
 
 .stepTitle {
@@ -119,18 +128,30 @@
 
 .inputGroup input,
 .inputGroup textarea {
-    padding: 1.25rem;
-    background-color: #F4F4F4;
-    border: none;
-    border-radius: 12px;
+    padding: 1.25rem 1.5rem;
+    background-color: #fafafa;
+    border: 1.5px solid #eee;
+    border-radius: 14px;
     font-size: 1rem;
     outline: none;
+    transition: all 0.2s ease;
+    font-family: inherit;
+    color: #111;
+}
+
+.inputGroup input:focus,
+.inputGroup textarea:focus {
+    border-color: #111;
+    background-color: #fff;
+    box-shadow: 0 4px 12px rgba(0, 0, 0, 0.03);
 }
 
 .charCount {
-    text-align: left;
-    font-size: 0.85rem;
-    color: #999;
+    text-align: right;
+    font-size: 0.75rem;
+    color: #ccc;
+    font-weight: 600;
+    margin-top: 0.5rem;
 }
 
 .dimensionsRow {
@@ -158,11 +179,18 @@
 }
 
 .dimField input {
-    padding: 1rem;
-    background-color: #F4F4F4;
-    border: none;
-    border-radius: 12px;
+    padding: 1.25rem;
+    background-color: #fafafa;
+    border: 1.5px solid #eee;
+    border-radius: 14px;
     text-align: center;
+    font-weight: 700;
+    transition: all 0.2s;
+}
+
+.dimField input:focus {
+    border-color: #111;
+    background-color: #fff;
 }
 
 /* Step 2 Styles */
@@ -176,51 +204,117 @@
     flex: 1;
     display: flex;
     flex-direction: column;
-    gap: 0.5rem;
+    gap: 0.75rem;
+    max-width: 280px;
 }
 
 .catItem {
     display: flex;
     justify-content: space-between;
     align-items: center;
-    padding: 1rem 1.5rem;
-    background: none;
-    border: none;
-    border-radius: 12px;
+    padding: 1.15rem 1.5rem;
+    background: #fff;
+    border: 1px solid #f8f8f8;
+    border-radius: 14px;
     cursor: pointer;
     font-size: 1rem;
-    font-weight: 500;
-    color: #444;
+    font-weight: 700;
+    color: #111;
     text-align: left;
+    transition: all 0.2s cubic-bezier(0.4, 0, 0.2, 1);
+    min-height: 72px;
+    /* Consistency in box size */
+    width: 100%;
 }
 
 .catItem:hover {
-    background-color: #F9F9F9;
+    border-color: #eee;
+    background-color: #fafafa;
 }
 
-.subcategorySide {
-    flex: 1.5;
-    padding-left: 2rem;
-    border-left: 1px solid #eee;
+.activeCatItem {
+    background-color: #fafafa !important;
+    border-color: #eee !important;
+    color: var(--color-primary) !important;
 }
 
-.subcategorySide h3 {
-    font-size: 1.2rem;
-    margin-bottom: 1.5rem;
+.activeCatItem svg {
+    transform: rotate(180deg);
+    transition: transform 0.2s;
+}
+
+.subcategoryGrid {
+    flex: 3;
+    display: grid;
+    grid-template-columns: repeat(4, 1fr);
+    /* 4 columns for wider layout */
+    gap: 3rem;
+    padding-left: 4.5rem;
+    border-left: 1px solid #fdfdfd;
+}
+
+.subGroup {
+    display: flex;
+    flex-direction: column;
+    gap: 0.75rem;
+}
+
+.subGroup h3 {
+    font-size: 0.85rem;
+    font-weight: 850;
+    margin-bottom: 1.25rem;
+    color: #111;
+    text-transform: uppercase;
+    letter-spacing: 0.05em;
 }
 
 .subItem {
     display: flex;
     align-items: center;
     gap: 1rem;
-    margin-bottom: 1.25rem;
+    margin-bottom: 0.5rem;
     cursor: pointer;
+    font-weight: 500;
+    color: #555;
+    transition: color 0.2s;
+}
+
+.subItem:hover {
+    color: #111;
 }
 
 .subItem input {
-    width: 20px;
-    height: 20px;
-    accent-color: var(--color-primary);
+    position: absolute;
+    opacity: 0;
+    width: 0;
+    height: 0;
+}
+
+.customCheckSmall {
+    width: 18px;
+    height: 18px;
+    border: 2px solid #ddd;
+    border-radius: 5px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    background-color: white;
+    flex-shrink: 0;
+    transition: all 0.2s;
+}
+
+.subItem input:checked+.customCheckSmall {
+    border-color: var(--color-primary);
+    background-color: var(--color-primary);
+}
+
+.checkInnerSmall {
+    width: 8px;
+    height: 5px;
+    border-left: 2px solid white;
+    border-bottom: 2px solid white;
+    transform: rotate(-45deg);
+    margin-top: -2px;
 }
 
 .selectedCats {
@@ -246,22 +340,28 @@
 /* Photo Grid Detailed Styles */
 .photoGridDetailed {
     display: grid;
-    grid-template-columns: repeat(auto-fill, minmax(160px, 1fr));
+    grid-template-columns: repeat(auto-fill, minmax(180px, 1fr));
     gap: 1.5rem;
 }
 
 .uploadCard {
     aspect-ratio: 1;
-    border: 1px dashed #00A3FF;
-    border-radius: 12px;
+    border: 2px dashed #D32F2F;
+    border-radius: 18px;
     display: flex;
     flex-direction: column;
     align-items: center;
     justify-content: center;
     cursor: pointer;
-    background-color: #F0F8FF;
-    padding: 1rem;
+    background-color: #fdf2f2;
+    padding: 1.5rem;
     text-align: center;
+    transition: all 0.2s ease;
+}
+
+.uploadCard:hover {
+    background-color: #fbecec;
+    transform: translateY(-2px);
 }
 
 .uploadInner {
@@ -369,7 +469,7 @@
 
 .progressFill {
     height: 100%;
-    background-color: #00A3FF;
+    background-color: #D32F2F;
 }
 
 /* Delivery Options Styles */
@@ -383,15 +483,18 @@
     display: flex;
     align-items: center;
     gap: 1.5rem;
-    padding: 1.25rem 1.5rem;
-    background-color: #F9F9F9;
-    border-radius: 12px;
+    padding: 1.25rem 1.75rem;
+    background-color: #fff;
+    border: 1px solid #f0f0f0;
+    border-radius: 14px;
     cursor: pointer;
-    transition: background 0.2s ease;
+    transition: all 0.2s cubic-bezier(0.4, 0, 0.2, 1);
 }
 
 .deliveryOptionCard:hover {
-    background-color: #f0f0f0;
+    border-color: #ddd;
+    background-color: #fafafa;
+    transform: translateY(-2px);
 }
 
 .hiddenCheck {
@@ -460,7 +563,7 @@
     border: none;
     color: #666;
     font-weight: 700;
-    font-size: 1.1rem;
+    font-size: 0.95rem;
     cursor: pointer;
     text-decoration: underline;
 }
@@ -469,12 +572,13 @@
     background-color: var(--color-primary);
     color: white;
     border: none;
-    padding: 1.25rem 5rem;
-    border-radius: 12px;
-    font-size: 1.1rem;
-    font-weight: 700;
+    padding: 1rem 4rem;
+    border-radius: 14px;
+    font-size: 0.95rem;
+    font-weight: 800;
     cursor: pointer;
-    transition: background 0.2s ease;
+    transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+    box-shadow: 0 8px 20px rgba(211, 47, 47, 0.15);
 }
 
 .nextBtn:hover {

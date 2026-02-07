@@ -30,6 +30,9 @@ export default function InventoryPage() {
                             <strong>{product.name}</strong>
                             <span>{product.size}</span>
                         </div>
+                        <Link href={`/seller/auctions/schedule?id=${product.id}`} className={styles.scheduleBtn}>
+                            Schedule
+                        </Link>
                     </div>
                 ))}
 
