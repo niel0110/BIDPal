@@ -2,7 +2,7 @@
 
 import { useState } from 'react';
 import Link from 'next/link';
-import { Menu, Search, AlignJustify, User, ShoppingCart, Home, Heart, MessageCircle, LogOut, LayoutDashboard, Package, Gavel, BarChart3, Settings } from 'lucide-react';
+import { Menu, Search, AlignJustify, User, ShoppingCart, Home, Heart, MessageCircle, LogOut, LayoutDashboard, Package, Gavel, BarChart3, Settings, ClipboardList } from 'lucide-react';
 import { useAuth } from '@/context/AuthContext';
 import { useRouter, usePathname } from 'next/navigation';
 
@@ -19,9 +19,6 @@ export default function Header() {
     setIsMenuOpen(false);
     router.push('/');
   };
-
-  // Close menu when clicking outside (simple implementation for now)
-  // In a real app, use a click-outside hook
 
   return (
     <div className={styles.headerContainer}>
@@ -45,7 +42,7 @@ export default function Header() {
                     </div>
                     <span>Home</span>
                   </Link>
-                  <Link href="/wishlist" className={styles.dropdownItem} onClick={() => setIsMenuOpen(false)}>
+                  <Link href="/profile?tab=wishlist" className={styles.dropdownItem} onClick={() => setIsMenuOpen(false)}>
                     <div className={`${styles.iconCircle} ${styles.red}`}>
                       <Heart size={18} />
                     </div>
@@ -131,15 +128,28 @@ export default function Header() {
               placeholder="Search essentials, groceries and more..."
               className={styles.searchInput}
             />
-            <AlignJustify size={20} className={styles.filterIcon} style={{ transform: 'rotate(90deg)' }} /> {/* Using explicit rotate for list filter look */}
+            <AlignJustify size={20} className={styles.filterIcon} style={{ transform: 'rotate(90deg)' }} />
           </div>
         </div>
 
         <div className={styles.rightSection}>
+          {user && user.role === 'seller' ? null : (
+            <>
+              <Link href="/orders" className={styles.navItem}>
+                <ClipboardList size={20} className={styles.navIcon} color="#673AB7" />
+                <span>Orders</span>
+              </Link>
+              <Link href="/cart" className={styles.navItem}>
+                <ShoppingCart size={20} className={styles.cartIcon} color="#D32F2F" />
+                <span>Cart</span>
+              </Link>
+            </>
+          )}
+
           {user ? (
-            <Link href="/profile" className={styles.navItem}>
-              <User size={20} className={styles.navIcon} color="#FBC02D" />
-              <span>My Account</span>
+            <Link href="/settings" className={styles.navItem}>
+              <Settings size={20} className={styles.navIcon} color="#FBC02D" />
+              <span>Settings</span>
             </Link>
           ) : (
             <Link href="/" className={styles.navItem}>
@@ -147,21 +157,16 @@ export default function Header() {
               <span>Sign Up/Sign In</span>
             </Link>
           )}
-          {user && user.role === 'seller' ? (
+
+          {user && user.role === 'seller' && (
             <button onClick={handleLogout} className={styles.navItem} style={{ background: 'none', border: 'none', cursor: 'pointer', fontFamily: 'inherit' }}>
               <LogOut size={20} className={styles.navIcon} color="#D32F2F" />
               <span>Logout</span>
             </button>
-          ) : (
-            <Link href="/cart" className={styles.navItem}>
-              <ShoppingCart size={20} className={styles.cartIcon} color="#D32F2F" />
-              <span>Cart</span>
-            </Link>
           )}
-
         </div>
 
-      </header>
-    </div>
+      </header >
+    </div >
   );
 }

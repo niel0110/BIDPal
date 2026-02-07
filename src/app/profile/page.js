@@ -1,6 +1,6 @@
 'use client';
 
-import { useState } from 'react';
+import { useState, Suspense, useEffect } from 'react';
 import {
     User,
     MapPin,
@@ -12,6 +12,7 @@ import {
     HelpCircle,
     UserPlus,
     ChevronRight,
+    ArrowLeft,
     Camera,
     Calendar,
     Mail,
@@ -24,22 +25,35 @@ import {
     Facebook,
     Instagram,
     Globe,
-    Settings
+    Settings,
+    Heart,
+    Truck,
+    Zap,
+    LogOut,
+    X,
 } from 'lucide-react';
 import styles from './page.module.css';
 import { useAuth } from '@/context/AuthContext';
-import { useRouter } from 'next/navigation';
+import { useRouter, useSearchParams } from 'next/navigation';
 
-export default function BuyerAccount() {
+function BuyerAccountContent() {
     const { logout } = useAuth();
     const router = useRouter();
+    const searchParams = useSearchParams();
+    const tabParam = searchParams.get('tab');
+
     const [activeTab, setActiveTab] = useState('profile');
     const [addressState, setAddressState] = useState('list'); // 'list' or 'add'
+
+    useEffect(() => {
+        if (tabParam && ['profile', 'address', 'notifications', 'payment', 'wishlist', 'security', 'privacy', 'help', 'invite'].includes(tabParam)) {
+            setActiveTab(tabParam);
+        }
+    }, [tabParam]);
 
     const menuItems = [
         { id: 'profile', label: 'Edit Profile', icon: <User size={20} /> },
         { id: 'address', label: 'Address', icon: <MapPin size={20} /> },
-        { id: 'orders', label: 'My Orders', icon: <ClipboardList size={20} /> },
         { id: 'notifications', label: 'Notification', icon: <Bell size={20} /> },
         { id: 'payment', label: 'Payment', icon: <CreditCard size={20} /> },
         { id: 'security', label: 'Security', icon: <ShieldCheck size={20} /> },
@@ -51,57 +65,66 @@ export default function BuyerAccount() {
 
     return (
         <div className={styles.container}>
-            {/* Sidebar - Desktop */}
-            <aside className={styles.sidebar}>
-                <div className={styles.userBrief}>
-                    <div className={styles.avatarWrapper}>
-                        <img
-                            src="https://api.dicebear.com/7.x/avataaars/svg?seed=Lilian"
-                            alt="Lilian Grace"
-                            className={styles.avatar}
-                        />
-                        <button className={styles.editAvatar}>
-                            <Pencil size={14} />
-                        </button>
+            {/* Sidebar - Desktop - Hidden for Wishlist */}
+            {activeTab !== 'wishlist' && (
+                <aside className={styles.sidebar}>
+                    <button className={styles.globalBack} onClick={() => router.push('/')}>
+                        <ArrowLeft size={18} />
+                        <span>Back to Marketplace</span>
+                    </button>
+
+                    <div className={styles.userBrief}>
+                        <div className={styles.avatarWrapper}>
+                            <img
+                                src="https://api.dicebear.com/7.x/avataaars/svg?seed=Lilian"
+                                alt="Lilian Grace"
+                                className={styles.avatar}
+                            />
+                            <button className={styles.editAvatar}>
+                                <Pencil size={14} />
+                            </button>
+                        </div>
+                        <h2 className={styles.userName}>Lilian Grace Dawatan</h2>
+                        <p className={styles.userRole}>Buyer Member</p>
                     </div>
-                    <h2 className={styles.userName}>Lilian Grace Dawatan</h2>
-                    <p className={styles.userRole}>Buyer Member</p>
-                </div>
 
-                <nav className={styles.nav}>
-                    {menuItems.map(item => (
-                        <button
-                            key={item.id}
-                            className={`${styles.navItem} ${activeTab === item.id ? styles.activeNav : ''}`}
-                            onClick={() => setActiveTab(item.id)}
-                        >
-                            <div className={styles.navIcon}>{item.icon}</div>
-                            <span>{item.label}</span>
-                            <ChevronRight size={16} className={styles.navArrow} />
-                        </button>
-                    ))}
-
-                </nav>
-            </aside>
+                    <nav className={styles.nav}>
+                        {menuItems.map(item => (
+                            <button
+                                key={item.id}
+                                className={`${styles.navItem} ${activeTab === item.id ? styles.activeNav : ''}`}
+                                onClick={() => setActiveTab(item.id)}
+                            >
+                                <div className={styles.navIcon}>{item.icon}</div>
+                                <span>{item.label}</span>
+                                <ChevronRight size={16} className={styles.navArrow} />
+                            </button>
+                        ))}
+                    </nav>
+                </aside>
+            )}
 
             {/* Main Content Area */}
-            <main className={styles.content}>
+            <main className={`${styles.content} ${activeTab === 'wishlist' ? styles.fullWidth : ''}`}>
                 {activeTab === 'profile' && <ProfileSection />}
                 {activeTab === 'address' && <AddressSection state={addressState} setState={setAddressState} />}
                 {activeTab === 'notifications' && <NotificationSection />}
                 {activeTab === 'payment' && <PaymentSection />}
+                {activeTab === 'wishlist' && <WishlistSection />}
                 {activeTab === 'security' && <SecuritySection />}
                 {activeTab === 'privacy' && <PrivacySection />}
                 {activeTab === 'help' && <HelpCenterSection />}
                 {activeTab === 'invite' && <InviteSection />}
-                {activeTab === 'orders' && (
-                    <div className={styles.placeholderSection}>
-                        <h2>My Orders</h2>
-                        <p>Your order history will appear here.</p>
-                    </div>
-                )}
             </main>
         </div>
+    );
+}
+
+export default function BuyerAccount() {
+    return (
+        <Suspense fallback={<div>Loading...</div>}>
+            <BuyerAccountContent />
+        </Suspense>
     );
 }
 
@@ -584,6 +607,183 @@ function InviteSection() {
                 )}
             </div>
         </div>
+    );
+}
+
+function WishlistSection() {
+    const [wishlistItems, setWishlistItems] = useState([
+        {
+            id: 1,
+            name: 'PixelPast Analog Camera',
+            price: '2,500',
+            wishlistCount: 199,
+            image: 'https://images.unsplash.com/photo-1516035069371-29a1b244cc32?auto=format&fit=crop&q=80&w=300',
+            date: 'December 1, 10:00 am',
+            description: 'Capture timeless moments with the PixelPast Analog Camera. Featuring a classic retro design combined with modern optics, this camera is perfect for photography enthusiasts who love the look and feel of film.'
+        },
+        {
+            id: 2,
+            name: 'Golden Horizon Set',
+            price: '1,500',
+            wishlistCount: 399,
+            image: 'https://images.unsplash.com/photo-1515562141207-7a88fb7ce338?auto=format&fit=crop&q=80&w=300',
+            date: 'December 1, 10:00 am',
+            description: 'Elevate your style with the Golden Horizon Set. This exquisite collection includes premium accessories designed to make a statement, featuring fine craftsmanship and elegant gold finishes.'
+        },
+        {
+            id: 3,
+            name: 'Sunbeam Lounge Sofa',
+            price: '2,500',
+            wishlistCount: 396,
+            image: 'https://images.unsplash.com/photo-1555041469-a586c61ea9bc?auto=format&fit=crop&q=80&w=300',
+            date: 'December 1, 10:00 am',
+            description: 'Experience ultimate comfort with the Sunbeam Lounge Sofa. Its ergonomic design and soft, durable fabric provide the perfect spot for relaxation in any modern living space.'
+        },
+        {
+            id: 4,
+            name: 'Jetsetter Carry-On',
+            price: '500',
+            wishlistCount: 121,
+            image: 'https://images.unsplash.com/photo-1544816155-12df9643f363?auto=format&fit=crop&q=80&w=300',
+            date: 'December 1, 10:00 am',
+            description: 'Travel in style and convenience with the Jetsetter Carry-On. Lightweight, durable, and featuring smooth 360-degree wheels, it’s the ideal companion for your short trips and weekend getaways.'
+        },
+        {
+            id: 5,
+            name: 'ToastMist 2-Slot',
+            price: '700',
+            wishlistCount: 152,
+            image: 'https://images.unsplash.com/photo-1584622650111-993a426fbf0a?auto=format&fit=crop&q=80&w=300',
+            date: 'December 1, 10:00 am',
+            description: 'Start your morning right with the ToastMist 2-Slot Toaster. With multiple browning levels and a sleek stainless steel finish, it combines performance with modern kitchen aesthetics.'
+        },
+        {
+            id: 6,
+            name: 'Versa DuoTone Classic',
+            price: '100',
+            wishlistCount: 121,
+            image: 'https://images.unsplash.com/photo-1542291026-7eec264c27ff?auto=format&fit=crop&q=80&w=300',
+            date: 'December 2, 12:00 am',
+            description: 'The Versa DuoTone Classic is a versatile pair of sneakers that blends comfort with contemporary design. Perfect for everyday wear, it features a dual-tone color scheme and cushioned soles.'
+        }
+    ]);
+
+    const [selectedItem, setSelectedItem] = useState(null);
+    const router = useRouter();
+
+    const handleRemoveFromWishlist = (e, id) => {
+        e.stopPropagation();
+        setWishlistItems(wishlistItems.filter(item => item.id !== id));
+    };
+
+    return (
+        <div className={styles.section}>
+            <button className={styles.globalBack} onClick={() => router.push('/')}>
+                <ArrowLeft size={18} />
+                <span>Back to Marketplace</span>
+            </button>
+
+            <header className={styles.sectionHeader}>
+                <div className={styles.wishlistTitleHeader}>
+                    <div className={styles.wishlistTitle}>
+                        <span className={styles.purpleText}>My</span>
+                        <span className={styles.orangeText}> Wish</span>
+                        <span className={styles.yellowText}>list</span>
+                    </div>
+                </div>
+            </header>
+
+            <div className={styles.wishlistGrid}>
+                {wishlistItems.map((item) => (
+                    <div
+                        key={item.id}
+                        className={styles.wishlistCard}
+                        onClick={() => setSelectedItem(item)}
+                    >
+                        <div className={styles.wishlistImageWrapper}>
+                            <img src={item.image} alt={item.name} className={styles.wishlistImage} />
+                        </div>
+                        <div className={styles.wishlistInfo}>
+                            <div className={styles.wishlistHeader}>
+                                <h3 className={styles.wishlistItemName}>{item.name}</h3>
+                                <button
+                                    className={styles.wishlistHeart}
+                                    onClick={(e) => handleRemoveFromWishlist(e, item.id)}
+                                >
+                                    <Heart size={20} fill="#FF4444" color="#FF4444" />
+                                </button>
+                            </div>
+                            <div className={styles.wishlistPriceRow}>
+                                <span className={styles.wishlistPrice}>₱ {item.price}</span>
+                                <span className={styles.wishlistSeparator}>|</span>
+                                <span className={styles.wishlistCountText}>{item.wishlistCount} users added this to wishlist</span>
+                            </div>
+                            <div className={styles.wishlistBadges}>
+                                <div className={styles.badgeFreeShipping}>
+                                    <Truck size={14} />
+                                    <span>Free Shipping</span>
+                                </div>
+                                <div className={styles.badgeDiscount}>
+                                    <Plus size={14} style={{ transform: 'rotate(45deg)' }} />
+                                    <span>₱20 off</span>
+                                </div>
+                            </div>
+                            <div className={styles.flashBidBanner}>
+                                <Zap size={14} fill="white" />
+                                <span>Flash Bid on {item.date}</span>
+                            </div>
+                        </div>
+                    </div>
+                ))}
+            </div>
+
+            {/* PRODUCT DETAIL MODAL */}
+            {selectedItem && (
+                <div className={styles.modalOverlay} onClick={() => setSelectedItem(null)}>
+                    <div className={styles.detailModalContent} onClick={e => e.stopPropagation()}>
+                        <button className={styles.modalCloseBtn} onClick={() => setSelectedItem(null)}>
+                            <X size={20} />
+                        </button>
+
+                        <div className={styles.modalBody}>
+                            <div className={styles.modalImageWrapper}>
+                                <img src={selectedItem.image} alt={selectedItem.name} className={styles.modalImage} />
+                            </div>
+
+                            <div className={styles.modalInfoArea}>
+                                <div className={styles.modalTitleRow}>
+                                    <h2>{selectedItem.name}</h2>
+                                    <button
+                                        className={styles.modalHeartBtn}
+                                        onClick={(e) => {
+                                            handleRemoveFromWishlist(e, selectedItem.id);
+                                            setSelectedItem(null);
+                                        }}
+                                    >
+                                        <Heart size={24} fill="#FF4444" color="#FF4444" />
+                                    </button>
+                                </div>
+                                <div className={styles.modalPrice}>₱ {selectedItem.price}</div>
+
+                                <div className={styles.modalStats}>
+                                    <Heart size={16} fill="#FF4444" color="#FF4444" />
+                                    <span>{selectedItem.wishlistCount} people love this</span>
+                                </div>
+
+                                <div className={styles.modalDescription}>
+                                    <h3>Description</h3>
+                                    <p>{selectedItem.description}</p>
+                                </div>
+
+                                <div className={styles.modalFooter}>
+                                    <button className={styles.modalActionBtn}>Explore Item</button>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            )}
+        </div >
     );
 }
 

@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, useEffect } from 'react';
+import { useState } from 'react';
 import Link from 'next/link';
 import {
     Plus,
@@ -13,57 +13,43 @@ import {
     Clock,
     TrendingUp,
     ChevronRight,
-    MoreVertical
+    MoreVertical,
+    Send,
+    Eye,
+    Share2,
+    Heart
 } from 'lucide-react';
 import styles from './page.module.css';
 
+const mockComments = [
+    { id: 1, user: 'Sarah J.', text: 'Is the leather genuine?', time: '2m ago' },
+    { id: 2, user: 'Mike R.', text: '₱3,500 for the next one!', time: '1m ago' },
+    { id: 3, user: 'Anna K.', text: 'Love the color!', time: 'Just now' },
+];
+
+const mockBids = [
+    { id: 1, user: 'John Doe', amount: 3200, time: '30s ago' },
+    { id: 2, user: 'Emma Wilson', amount: 3100, time: '1m ago' },
+    { id: 3, user: 'Robert Fox', amount: 2950, time: '3m ago' },
+];
+
+const mockQueue = [
+    { id: 1, title: 'Silver Pocket Watch', price: 1200, image: 'https://images.unsplash.com/photo-1509048191080-d2984bad6ae5?auto=format&fit=crop&q=80&w=100' },
+    { id: 2, title: 'Retro Camera', price: 5400, image: 'https://images.unsplash.com/photo-1516035069371-29a1b244cc32?auto=format&fit=crop&q=80&w=100' },
+    { id: 3, title: 'Designer Sunglasses', price: 8900, image: 'https://images.unsplash.com/photo-1511499767390-a7391e0a9641?auto=format&fit=crop&q=80&w=100' },
+];
+
 export default function SellerDashboard() {
     const [isLive, setIsLive] = useState(false);
-    const [hasProducts] = useState(true); // Assuming they have products for this demo
+    const [messageInput, setMessageInput] = useState('');
 
-    // Mock data for the live session
-    const [activeItem, setActiveItem] = useState({
+    const activeItem = {
         title: 'Vintage Leather Satchel',
         currentBid: 3200,
         bidders: 45,
         timeLeft: '02:45',
-        image: 'https://images.unsplash.com/photo-1548036328-c9fa89d128fa?auto=format&fit=crop&q=80&w=200'
-    });
-
-    const [comments, setComments] = useState([
-        { id: 1, user: 'Sarah J.', text: 'Is the leather genuine?', time: '2m ago' },
-        { id: 2, user: 'Mike R.', text: '₱3,500 for the next one!', time: '1m ago' },
-        { id: 3, user: 'Anna K.', text: 'Love the color!', time: 'Just now' },
-    ]);
-
-    const [bids, setBids] = useState([
-        { id: 1, user: 'John Doe', amount: 3200, time: '30s ago' },
-        { id: 2, user: 'Emma Wilson', amount: 3100, time: '1m ago' },
-        { id: 3, user: 'Robert Fox', amount: 2950, time: '3m ago' },
-    ]);
-
-    const [productQueue, setProductQueue] = useState([
-        { id: 1, title: 'Silver Pocket Watch', price: 1200, image: 'https://images.unsplash.com/photo-1509048191080-d2984bad6ae5?auto=format&fit=crop&q=80&w=100' },
-        { id: 2, title: 'Retro Camera', price: 5400, image: 'https://images.unsplash.com/photo-1516035069371-29a1b244cc32?auto=format&fit=crop&q=80&w=100' },
-        { id: 3, title: 'Designer Sunglasses', price: 8900, image: 'https://images.unsplash.com/photo-1511499767390-a7391e0a9641?auto=format&fit=crop&q=80&w=100' },
-    ]);
-
-    if (!hasProducts) {
-        return (
-            <div className={styles.emptyStateContainer}>
-                <div className={styles.emptyStateCard}>
-                    <h1 className={styles.getStartedTitle}>Get Started</h1>
-                    <Link href="/seller/add-product" className={styles.addFirstLink}>
-                        Add your first product to sell
-                    </Link>
-                    <Link href="/seller/add-product" className={styles.addBtn}>
-                        <Plus size={20} />
-                        Add products
-                    </Link>
-                </div>
-            </div>
-        );
-    }
+        image: 'https://images.unsplash.com/photo-1548036328-c9fa89d128fa?auto=format&fit=crop&q=80&w=400'
+    };
 
     return (
         <div className={styles.dashboardContainer}>
@@ -73,7 +59,7 @@ export default function SellerDashboard() {
                     <h1 className={styles.title}>Seller Hub</h1>
                     <div className={styles.statusBadge}>
                         <div className={`${styles.statusDot} ${isLive ? styles.live : ''}`}></div>
-                        <span>{isLive ? 'Live Now' : 'Offline'}</span>
+                        <span>{isLive ? 'Live Session Active' : 'Offline'}</span>
                     </div>
                 </div>
                 <div className={styles.headerActions}>
@@ -94,73 +80,85 @@ export default function SellerDashboard() {
                 {/* Left Column: Live Controls & Monitoring */}
                 <div className={styles.mainWorkArea}>
                     {/* Active Auction Card */}
-                    <section className={styles.activeAuctionGrid}>
+                    <section className={styles.card}>
                         <div className={styles.cardHeader}>
                             <div className={styles.cardTitleGroup}>
-                                <Radio size={20} color="#D32F2F" />
-                                <h2>Currently Selling</h2>
+                                <div className={styles.iconCircle}>
+                                    <Radio size={18} color="#D32F2F" />
+                                </div>
+                                <div className={styles.cardHeaderText}>
+                                    <h2>Currently Selling</h2>
+                                    <p>Live auction in progress</p>
+                                </div>
                             </div>
-                            <button className={styles.iconBtn}><MoreVertical size={20} /></button>
+                            <button className={styles.moreBtn}><MoreVertical size={20} /></button>
                         </div>
 
-                        <div className={styles.activeItemCard}>
-                            <div className={styles.itemImageWrapper}>
+                        <div className={styles.activeItemContent}>
+                            <div className={styles.itemShowcase}>
                                 <img src={activeItem.image} alt={activeItem.title} className={styles.itemImage} />
-                                {isLive && <div className={styles.liveOverlay}>LIVE VIEW</div>}
+                                {isLive && <div className={styles.liveTag}><div className={styles.tagDot} /> LIVE VIEW</div>}
                             </div>
-                            <div className={styles.itemDetails}>
+                            <div className={styles.itemData}>
                                 <h3 className={styles.itemName}>{activeItem.title}</h3>
                                 <div className={styles.itemStats}>
-                                    <div className={styles.itemStat}>
+                                    <div className={styles.statBox}>
                                         <span className={styles.statLabel}>Current Bid</span>
                                         <span className={styles.statValue}>₱ {activeItem.currentBid.toLocaleString()}</span>
                                     </div>
-                                    <div className={styles.itemStat}>
+                                    <div className={styles.statBox}>
                                         <span className={styles.statLabel}>Time Remaining</span>
-                                        <span className={styles.statValue}>
-                                            <Clock size={16} /> {activeItem.timeLeft}
-                                        </span>
+                                        <div className={styles.timeValue}>
+                                            <Clock size={16} /> <span>{activeItem.timeLeft}</span>
+                                        </div>
                                     </div>
                                 </div>
                             </div>
                         </div>
 
-                        {/* Bid History */}
-                        <div className={styles.sectionHeader}>
-                            <div className={styles.cardTitleGroup}>
-                                <Gavel size={18} />
-                                <h3>Recent Bids</h3>
-                            </div>
-                            <span className={styles.viewerCount}><Users size={14} /> {activeItem.bidders} Bidders</span>
-                        </div>
-                        <div className={styles.bidList}>
-                            {bids.map(bid => (
-                                <div key={bid.id} className={styles.bidItem}>
-                                    <div className={styles.bidInfo}>
-                                        <span className={styles.bidUser}>{bid.user}</span>
-                                        <span className={styles.bidTime}>{bid.time}</span>
-                                    </div>
-                                    <span className={styles.bidAmount}>₱ {bid.amount.toLocaleString()}</span>
+                        {/* Recent Bids */}
+                        <div className={styles.bidsSection}>
+                            <div className={styles.subHeader}>
+                                <div className={styles.subTitle}>
+                                    <Gavel size={16} />
+                                    <span>Recent Bids</span>
                                 </div>
-                            ))}
+                                <div className={styles.biddersCount}>
+                                    <Users size={14} /> {activeItem.bidders} Active Bidders
+                                </div>
+                            </div>
+                            <div className={styles.bidHistory}>
+                                {mockBids.map(bid => (
+                                    <div key={bid.id} className={styles.bidRow}>
+                                        <div className={styles.bidderInfo}>
+                                            <span className={styles.bidderName}>{bid.user}</span>
+                                            <span className={styles.bidTimestamp}>{bid.time}</span>
+                                        </div>
+                                        <span className={styles.bidPrice}>₱ {bid.amount.toLocaleString()}</span>
+                                    </div>
+                                ))}
+                            </div>
                         </div>
                     </section>
 
                     {/* Product Queue */}
-                    <section className={styles.queueSection}>
-                        <div className={styles.sectionHeader}>
-                            <h3>Next Items to Sell</h3>
-                            <Link href="/seller/inventory" className={styles.textLink}>View Inventory</Link>
+                    <section className={styles.card}>
+                        <div className={styles.cardHeader}>
+                            <div className={styles.cardHeaderText}>
+                                <h2>Auction Queue</h2>
+                                <p>Next items to be showcased</p>
+                            </div>
+                            <Link href="/seller/inventory" className={styles.viewInventoryBtn}>View All</Link>
                         </div>
-                        <div className={styles.queueGrid}>
-                            {productQueue.map(item => (
-                                <div key={item.id} className={styles.queueCard}>
+                        <div className={styles.queueList}>
+                            {mockQueue.map(item => (
+                                <div key={item.id} className={styles.queueItem}>
                                     <img src={item.image} alt={item.title} />
-                                    <div className={styles.queueInfo}>
+                                    <div className={styles.queueMeta}>
                                         <h4>{item.title}</h4>
-                                        <span>Start: ₱ {item.price.toLocaleString()}</span>
+                                        <span>Starts at ₱ {item.price.toLocaleString()}</span>
                                     </div>
-                                    <button className={styles.queueBtn}>Set Next</button>
+                                    <button className={styles.setNextBtn}>Set Next</button>
                                 </div>
                             ))}
                         </div>
@@ -169,51 +167,64 @@ export default function SellerDashboard() {
 
                 {/* Right Column: Interaction & Metrics */}
                 <aside className={styles.interactionPanel}>
-                    {/* Real-time Insights */}
-                    <section className={styles.metricsCard}>
+                    {/* Live Insights */}
+                    <section className={styles.card}>
                         <div className={styles.cardHeader}>
                             <div className={styles.cardTitleGroup}>
-                                <TrendingUp size={20} />
-                                <h2>Live Insights</h2>
+                                <TrendingUp size={20} color="#111" />
+                                <h2>Hub Insights</h2>
                             </div>
                         </div>
                         <div className={styles.metricsGrid}>
-                            <div className={styles.metric}>
-                                <span className={styles.mValue}>152</span>
-                                <span className={styles.mLabel}>Viewers</span>
+                            <div className={styles.metricItem}>
+                                <div className={styles.metricIcon}><Eye size={18} /></div>
+                                <span className={styles.metricLabel}>Live Viewers</span>
+                                <span className={styles.metricValue}>152</span>
                             </div>
-                            <div className={styles.metric}>
-                                <span className={styles.mValue}>12</span>
-                                <span className={styles.mLabel}>Shared</span>
+                            <div className={styles.metricItem}>
+                                <div className={styles.metricIcon}><Share2 size={18} /></div>
+                                <span className={styles.metricLabel}>Shares</span>
+                                <span className={styles.metricValue}>12</span>
                             </div>
-                            <div className={styles.metric}>
-                                <span className={styles.mValue}>85</span>
-                                <span className={styles.mLabel}>Likes</span>
+                            <div className={styles.metricItem}>
+                                <div className={styles.metricIcon}><Heart size={18} /></div>
+                                <span className={styles.metricLabel}>Likes</span>
+                                <span className={styles.metricValue}>85</span>
                             </div>
                         </div>
                     </section>
 
-                    {/* Live Chat */}
-                    <section className={styles.chatSection}>
-                        <div className={styles.chatHeader}>
-                            <MessageSquare size={18} />
-                            <h3>Live Engagement</h3>
+                    {/* Live Engagement */}
+                    <section className={`${styles.card} ${styles.chatCard}`}>
+                        <div className={styles.cardHeader}>
+                            <div className={styles.cardTitleGroup}>
+                                <MessageSquare size={18} color="#111" />
+                                <h2>Engagement</h2>
+                            </div>
                         </div>
-                        <div className={styles.chatContainer}>
+                        <div className={styles.chatBox}>
                             <div className={styles.commentList}>
-                                {comments.map(comment => (
-                                    <div key={comment.id} className={styles.commentItem}>
-                                        <div className={styles.commentUserGroup}>
-                                            <span className={styles.cUser}>{comment.user}</span>
-                                            <span className={styles.cTime}>{comment.time}</span>
+                                {mockComments.map(comment => (
+                                    <div key={comment.id} className={styles.comment}>
+                                        <div className={styles.commentHeader}>
+                                            <span className={styles.userName}>{comment.user}</span>
+                                            <span className={styles.commentTime}>{comment.time}</span>
                                         </div>
-                                        <p className={styles.cText}>{comment.text}</p>
+                                        <p className={styles.commentText}>{comment.text}</p>
                                     </div>
                                 ))}
                             </div>
-                            <div className={styles.chatInputWrapper}>
-                                <input type="text" placeholder="Announce something..." className={styles.chatInput} />
-                                <button className={styles.sendBtn}><ChevronRight size={20} /></button>
+                            <div className={styles.chatInputArea}>
+                                <textarea
+                                    placeholder="Type an announcement..."
+                                    className={styles.announcementInput}
+                                    value={messageInput}
+                                    onChange={(e) => setMessageInput(e.target.value)}
+                                    rows={1}
+                                />
+                                <button className={styles.chatSendBtn} disabled={!messageInput.trim()}>
+                                    <Send size={18} />
+                                </button>
                             </div>
                         </div>
                     </section>

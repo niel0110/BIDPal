@@ -1,55 +1,52 @@
 .dashboardContainer {
-    max-width: 1440px;
+    max-width: 1400px;
     margin: 0 auto;
-    padding: 1.5rem;
-    height: calc(100vh - 80px);
-    /* Adjust for header */
-    display: flex;
-    flex-direction: column;
+    padding: 2rem;
+    background-color: #fff;
+    min-height: 100vh;
 }
 
 .header {
     display: flex;
     justify-content: space-between;
     align-items: center;
-    margin-bottom: 2rem;
+    margin-bottom: 2.5rem;
 }
 
 .titleInfo {
     display: flex;
-    align-items: center;
-    gap: 1.5rem;
+    flex-direction: column;
+    gap: 0.5rem;
 }
 
 .title {
-    font-size: 2rem;
-    font-weight: 800;
-    color: #333;
+    font-size: 2.5rem;
+    font-weight: 850;
+    color: #111;
     margin: 0;
+    letter-spacing: -0.03em;
 }
 
 .statusBadge {
     display: flex;
     align-items: center;
-    gap: 0.5rem;
-    background: #f5f5f5;
-    padding: 0.4rem 1rem;
-    border-radius: 20px;
+    gap: 0.6rem;
+    padding: 2px 0;
     font-size: 0.85rem;
     font-weight: 600;
-    color: #666;
+    color: #888;
 }
 
 .statusDot {
     width: 8px;
     height: 8px;
     border-radius: 50%;
-    background-color: #ccc;
+    background-color: #eee;
 }
 
 .statusDot.live {
     background-color: #D32F2F;
-    box-shadow: 0 0 10px rgba(211, 47, 47, 0.5);
+    box-shadow: 0 0 12px rgba(211, 47, 47, 0.4);
     animation: pulse 2s infinite;
 }
 
@@ -60,8 +57,8 @@
     }
 
     50% {
-        transform: scale(1.2);
-        opacity: 0.7;
+        transform: scale(1.3);
+        opacity: 0.6;
     }
 
     100% {
@@ -79,59 +76,78 @@
     display: flex;
     align-items: center;
     gap: 0.75rem;
-    padding: 0.75rem 1.5rem;
-    border-radius: 12px;
-    font-weight: 700;
+    padding: 0.85rem 1.75rem;
+    border-radius: 14px;
+    font-weight: 750;
     border: none;
     cursor: pointer;
-    transition: all 0.2s;
+    transition: all 0.2s cubic-bezier(0.4, 0, 0.2, 1);
+    font-size: 0.95rem;
 }
 
 .liveControlBtn.start {
-    background-color: #D32F2F;
+    background-color: #111;
     color: white;
 }
 
 .liveControlBtn.start:hover {
-    background-color: #B71C1C;
+    background-color: #333;
     transform: translateY(-2px);
+    box-shadow: 0 8px 20px rgba(0, 0, 0, 0.1);
 }
 
 .liveControlBtn.stop {
-    background-color: #333;
-    color: white;
+    background-color: #fafafa;
+    border: 1.5px solid #111;
+    color: #111;
 }
 
-/* Control Room Layout */
+.addBtnSmall {
+    display: flex;
+    align-items: center;
+    gap: 0.5rem;
+    padding: 0.85rem 1.5rem;
+    border-radius: 14px;
+    background: #fafafa;
+    border: 1.5px solid #f0f0f0;
+    color: #111;
+    font-weight: 700;
+    text-decoration: none;
+    transition: all 0.2s;
+    font-size: 0.9rem;
+}
+
+.addBtnSmall:hover {
+    border-color: #111;
+    background: #fff;
+}
+
+/* Logic Containers */
 .controlRoom {
     display: grid;
     grid-template-columns: 1fr 380px;
     gap: 2rem;
-    flex: 1;
-    min-height: 0;
-    /* Important for scrollable children */
 }
 
 .mainWorkArea {
     display: flex;
     flex-direction: column;
     gap: 2rem;
-    min-height: 0;
 }
 
-/* Cards */
-.activeAuctionGrid,
-.metricsCard,
-.chatSection {
+/* Card System */
+.card {
     background: white;
-    border-radius: 24px;
     border: 1px solid #f0f0f0;
+    border-radius: 24px;
+    overflow: hidden;
     display: flex;
     flex-direction: column;
 }
 
 .cardHeader {
-    padding: 1.5rem;
+    padding: 1.5rem 1.75rem;
+    border-bottom: 1px solid #fafafa;
     display: flex;
     justify-content: space-between;
     align-items: center;
@@ -140,28 +156,62 @@
 .cardTitleGroup {
     display: flex;
     align-items: center;
-    gap: 0.75rem;
+    gap: 1rem;
 }
 
-.cardTitleGroup h2 {
-    font-size: 1.25rem;
-    font-weight: 700;
-    margin: 0;
-}
-
-.activeItemCard {
+.iconCircle {
+    width: 40px;
+    height: 40px;
+    background: #fdf2f2;
+    border-radius: 12px;
     display: flex;
-    gap: 2rem;
-    padding: 0 1.5rem 2rem;
+    align-items: center;
+    justify-content: center;
 }
 
-.itemImageWrapper {
-    width: 240px;
-    height: 180px;
+.cardHeaderText h2 {
+    font-size: 1.1rem;
+    font-weight: 850;
+    color: #111;
+    margin: 0;
+    letter-spacing: -0.01em;
+}
+
+.cardHeaderText p {
+    font-size: 0.75rem;
+    color: #aaa;
+    margin: 0;
+    font-weight: 500;
+}
+
+.moreBtn {
+    background: none;
+    border: none;
+    color: #ccc;
+    cursor: pointer;
+    padding: 4px;
+    transition: color 0.2s;
+}
+
+.moreBtn:hover {
+    color: #111;
+}
+
+/* Active Auction Styles */
+.activeItemContent {
+    padding: 2rem 1.75rem;
+    display: flex;
+    gap: 2.5rem;
+    align-items: center;
+}
+
+.itemShowcase {
+    width: 280px;
+    height: 200px;
+    position: relative;
     border-radius: 16px;
     overflow: hidden;
-    position: relative;
-    background: #f9f9f9;
+    background: #fafafa;
 }
 
 .itemImage {
@@ -170,218 +220,258 @@
     object-fit: cover;
 }
 
-.liveOverlay {
+.liveTag {
     position: absolute;
-    top: 12px;
-    left: 12px;
-    background: rgba(211, 47, 47, 0.9);
+    top: 15px;
+    left: 15px;
+    background: rgba(0, 0, 0, 0.85);
     color: white;
-    padding: 4px 8px;
-    border-radius: 4px;
-    font-size: 0.7rem;
+    padding: 6px 12px;
+    border-radius: 8px;
+    font-size: 0.65rem;
     font-weight: 800;
+    display: flex;
+    align-items: center;
+    gap: 6px;
+    backdrop-filter: blur(4px);
 }
 
-.itemDetails {
+.tagDot {
+    width: 6px;
+    height: 6px;
+    background: #ff4d4d;
+    border-radius: 50%;
+}
+
+.itemData {
     flex: 1;
-    display: flex;
-    flex-direction: column;
-    justify-content: center;
 }
 
 .itemName {
     font-size: 1.75rem;
-    font-weight: 800;
+    font-weight: 850;
+    color: #111;
     margin: 0 0 1.5rem;
-    color: #333;
+    letter-spacing: -0.02em;
 }
 
 .itemStats {
     display: flex;
-    gap: 3rem;
+    gap: 3.5rem;
 }
 
-.itemStat {
+.statBox {
     display: flex;
     flex-direction: column;
-    gap: 0.25rem;
+    gap: 0.4rem;
 }
 
 .statLabel {
-    font-size: 0.85rem;
-    color: #999;
+    font-size: 0.75rem;
+    color: #aaa;
+    font-weight: 700;
     text-transform: uppercase;
-    font-weight: 600;
+    letter-spacing: 0.05em;
 }
 
 .statValue {
-    font-size: 1.5rem;
-    font-weight: 800;
-    color: var(--color-primary);
+    font-size: 1.75rem;
+    font-weight: 850;
+    color: #111;
+}
+
+.timeValue {
     display: flex;
     align-items: center;
     gap: 0.5rem;
+    font-size: 1.5rem;
+    font-weight: 800;
+    color: #D32F2F;
 }
 
-/* Bid List */
-.sectionHeader {
-    padding: 1rem 1.5rem;
-    border-top: 1px solid #f5f5f5;
+/* Bids Section */
+.bidsSection {
+    background: #fafafa;
+    border-top: 1px solid #f0f0f0;
+}
+
+.subHeader {
+    padding: 1.25rem 1.75rem;
     display: flex;
     justify-content: space-between;
     align-items: center;
 }
 
-.sectionHeader h3 {
-    margin: 0;
-    font-size: 1rem;
-    font-weight: 700;
-}
-
-.bidList {
-    flex: 1;
-    overflow-y: auto;
-    padding: 0 1.5rem 1.5rem;
-}
-
-.bidItem {
+.subTitle {
     display: flex;
-    justify-content: space-between;
     align-items: center;
-    padding: 1rem;
-    background: #fcfcfc;
-    border-radius: 12px;
-    margin-bottom: 0.75rem;
+    gap: 0.6rem;
+    font-weight: 750;
+    font-size: 0.9rem;
+    color: #111;
 }
 
-.bidInfo {
+.biddersCount {
+    font-size: 0.8rem;
+    color: #888;
+    font-weight: 600;
+    display: flex;
+    align-items: center;
+    gap: 0.4rem;
+}
+
+.bidHistory {
+    padding: 0 1.75rem 1.75rem;
     display: flex;
     flex-direction: column;
+    gap: 0.75rem;
 }
 
-.bidUser {
-    font-weight: 700;
-    color: #333;
-}
-
-.bidTime {
-    font-size: 0.75rem;
-    color: #999;
-}
-
-.bidAmount {
-    font-size: 1.1rem;
-    font-weight: 800;
-    color: #388E3C;
-}
-
-/* Queue Section */
-.queueSection {
-    background: #f8f8fb;
-    padding: 1.5rem;
-    border-radius: 20px;
-}
-
-.queueGrid {
-    display: flex;
-    gap: 1rem;
-    margin-top: 1rem;
-}
-
-.queueCard {
+.bidRow {
     background: white;
-    padding: 0.75rem;
-    border-radius: 12px;
+    border: 1px solid #f0f0f0;
+    padding: 1rem 1.25rem;
+    border-radius: 14px;
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+}
+
+.bidderName {
+    display: block;
+    font-weight: 750;
+    font-size: 0.95rem;
+    color: #111;
+}
+
+.bidTimestamp {
+    font-size: 0.75rem;
+    color: #bbb;
+    font-weight: 500;
+}
+
+.bidPrice {
+    font-size: 1.1rem;
+    font-weight: 850;
+    color: #10b981;
+}
+
+/* Queue Styles */
+.queueList {
+    padding: 1.5rem 1.75rem;
+    display: flex;
+    flex-direction: column;
+    gap: 1rem;
+}
+
+.queueItem {
     display: flex;
     align-items: center;
-    gap: 1rem;
-    flex: 1;
-    border: 1px solid #eee;
+    gap: 1.25rem;
+    padding: 0.75rem;
+    background: #fafafa;
+    border-radius: 16px;
+    border: 1px solid transparent;
+    transition: all 0.2s;
 }
 
-.queueCard img {
-    width: 48px;
-    height: 48px;
-    border-radius: 8px;
+.queueItem:hover {
+    border-color: #f0f0f0;
+    background: #fff;
+}
+
+.queueItem img {
+    width: 54px;
+    height: 54px;
+    border-radius: 12px;
     object-fit: cover;
 }
 
-.queueInfo h4 {
-    font-size: 0.9rem;
-    margin: 0;
-    font-weight: 700;
+.queueMeta h4 {
+    font-size: 0.95rem;
+    font-weight: 750;
+    margin: 0 0 2px;
+    color: #111;
 }
 
-.queueInfo span {
+.queueMeta span {
     font-size: 0.8rem;
-    color: #666;
+    color: #888;
+    font-weight: 500;
 }
 
-.queueBtn {
+.setNextBtn {
     margin-left: auto;
-    background: #f0f0f0;
+    background: #111;
+    color: white;
     border: none;
-    padding: 0.5rem 1rem;
-    border-radius: 8px;
+    padding: 0.6rem 1.2rem;
+    border-radius: 10px;
     font-size: 0.8rem;
-    font-weight: 600;
+    font-weight: 750;
     cursor: pointer;
+    transition: transform 0.2s;
 }
 
-/* Interaction Panel */
-.interactionPanel {
-    display: flex;
-    flex-direction: column;
-    gap: 1.5rem;
+.setNextBtn:hover {
+    transform: scale(1.03);
 }
 
+.viewInventoryBtn {
+    font-size: 0.85rem;
+    color: #111;
+    font-weight: 750;
+    text-decoration: underline;
+}
+
+/* Side Metrics */
 .metricsGrid {
+    padding: 1.5rem 1.75rem;
     display: grid;
-    grid-template-columns: 1fr 1fr 1fr;
-    padding: 0 1.5rem 1.5rem;
+    grid-template-columns: 1fr;
     gap: 1rem;
 }
 
-.metric {
-    text-align: center;
-    background: #F5F5F5;
+.metricItem {
+    display: flex;
+    align-items: center;
+    gap: 1rem;
     padding: 1rem;
-    border-radius: 12px;
+    background: #fafafa;
+    border-radius: 16px;
 }
 
-.mValue {
-    display: block;
-    font-size: 1.25rem;
-    font-weight: 800;
-    color: var(--color-primary);
+.metricIcon {
+    width: 36px;
+    height: 36px;
+    background: #fff;
+    border: 1px solid #f0f0f0;
+    border-radius: 10px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    color: #111;
 }
 
-.mLabel {
-    font-size: 0.7rem;
-    color: #999;
-    text-transform: uppercase;
-    font-weight: 700;
-}
-
-.chatSection {
+.metricLabel {
+    font-size: 0.85rem;
+    font-weight: 600;
+    color: #888;
     flex: 1;
 }
 
-.chatHeader {
-    padding: 1.5rem;
-    display: flex;
-    align-items: center;
-    gap: 0.75rem;
-    border-bottom: 1px solid #f5f5f5;
+.metricValue {
+    font-size: 1.25rem;
+    font-weight: 850;
+    color: #111;
 }
 
-.chatHeader h3 {
-    margin: 0;
-    font-size: 1.1rem;
-    font-weight: 700;
+/* Side Chat */
+.chatCard {
+    flex: 1;
 }
 
-.chatContainer {
+.chatBox {
     flex: 1;
     display: flex;
     flex-direction: column;
@@ -391,71 +481,92 @@
 .commentList {
     flex: 1;
     overflow-y: auto;
-    padding: 1.5rem;
+    padding: 1.5rem 1.75rem;
+    display: flex;
+    flex-direction: column;
+    gap: 1.25rem;
 }
 
-.commentItem {
-    margin-bottom: 1.25rem;
-}
-
-.commentUserGroup {
+.commentHeader {
     display: flex;
     justify-content: space-between;
     margin-bottom: 0.25rem;
 }
 
-.cUser {
-    font-weight: 700;
+.userName {
+    font-weight: 750;
     font-size: 0.85rem;
 }
 
-.cTime {
+.commentTime {
     font-size: 0.7rem;
     color: #ccc;
+    font-weight: 600;
 }
 
-.cText {
+.commentText {
     font-size: 0.9rem;
+    line-height: 1.4;
     color: #555;
     margin: 0;
-    line-height: 1.4;
+    font-weight: 450;
 }
 
-.chatInputWrapper {
-    padding: 1rem 1.5rem;
-    border-top: 1px solid #f5f5f5;
+.chatInputArea {
+    padding: 1.25rem 1.75rem;
+    background: #fff;
+    border-top: 1px solid #f0f0f0;
     display: flex;
     gap: 0.75rem;
+    align-items: flex-end;
 }
 
-.chatInput {
+.announcementInput {
     flex: 1;
-    border: none;
-    background: #f5f5f5;
-    padding: 0.75rem 1rem;
-    border-radius: 12px;
+    background: #fafafa;
+    border: 1.5px solid #eee;
+    padding: 0.85rem 1rem;
+    border-radius: 14px;
+    font-size: 0.9rem;
+    font-family: inherit;
     outline: none;
+    resize: none;
+    min-height: 45px;
+    max-height: 100px;
+    transition: all 0.2s;
 }
 
-.sendBtn {
-    background: var(--color-primary);
+.announcementInput:focus {
+    border-color: #111;
+    background: #fff;
+}
+
+.chatSendBtn {
+    width: 44px;
+    height: 44px;
+    background: #111;
     color: white;
     border: none;
-    width: 40px;
-    height: 40px;
-    border-radius: 10px;
+    border-radius: 12px;
     display: flex;
     align-items: center;
     justify-content: center;
     cursor: pointer;
+    flex-shrink: 0;
+    transition: all 0.2s;
 }
 
-@media (max-width: 1100px) {
+.chatSendBtn:disabled {
+    opacity: 0.2;
+}
+
+.chatSendBtn:not(:disabled):hover {
+    transform: translateY(-2px);
+    box-shadow: 0 4px 12px rgba(0, 0, 0, 0.1);
+}
+
+@media (max-width: 1200px) {
     .controlRoom {
         grid-template-columns: 1fr;
-    }
-
-    .interactionPanel {
-        height: 500px;
     }
 }

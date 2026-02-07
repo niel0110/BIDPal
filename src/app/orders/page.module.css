@@ -1,0 +1,365 @@
+.ordersContainer {
+    min-height: 100vh;
+    background-color: #fcfcfc;
+    padding-top: 2rem;
+    padding-bottom: 5rem;
+}
+
+.ordersContent {
+    max-width: 1000px;
+    margin: 0 auto;
+    padding: 0 24px;
+}
+
+.ordersHeader {
+    margin-bottom: 2rem;
+}
+
+.backBtn {
+    background: none;
+    border: none;
+    display: flex;
+    align-items: center;
+    gap: 0.5rem;
+    color: #666;
+    font-weight: 600;
+    cursor: pointer;
+    padding: 0;
+    margin-bottom: 1.5rem;
+    transition: color 0.2s;
+}
+
+.backBtn:hover {
+    color: #D32F2F;
+}
+
+.titleRow {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    gap: 2rem;
+}
+
+.ordersHeader h1 {
+    font-size: 2.25rem;
+    font-weight: 800;
+    color: #111;
+    margin: 0;
+}
+
+.searchBar {
+    flex: 1;
+    max-width: 400px;
+    position: relative;
+    display: flex;
+    align-items: center;
+}
+
+.searchIcon {
+    position: absolute;
+    left: 1rem;
+    color: #aaa;
+}
+
+.searchBar input {
+    width: 100%;
+    padding: 0.75rem 1rem 0.75rem 3rem;
+    border: 1px solid #eee;
+    border-radius: 12px;
+    background: white;
+    font-family: inherit;
+    font-size: 0.95rem;
+    outline: none;
+    transition: all 0.2s;
+}
+
+.searchBar input:focus {
+    border-color: #D32F2F;
+    box-shadow: 0 0 0 4px rgba(211, 47, 47, 0.05);
+}
+
+.tabsNav {
+    display: flex;
+    background: white;
+    border: 1px solid #eee;
+    border-radius: 16px;
+    padding: 0.5rem;
+    margin-bottom: 2rem;
+    overflow-x: auto;
+    gap: 0.25rem;
+}
+
+.tabItem {
+    flex: 1;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 0.5rem;
+    padding: 0.75rem 1rem;
+    border: none;
+    background: none;
+    color: #666;
+    font-weight: 650;
+    cursor: pointer;
+    border-radius: 12px;
+    transition: all 0.2s;
+    white-space: nowrap;
+}
+
+.tabItem:hover {
+    background: #f8f8f8;
+    color: #111;
+}
+
+.activeTab {
+    background: #111 !important;
+    color: white !important;
+}
+
+.ordersList {
+    display: flex;
+    flex-direction: column;
+    gap: 1.5rem;
+}
+
+.orderCard {
+    background: white;
+    border: 1px solid #eee;
+    border-radius: 20px;
+    padding: 1.5rem;
+    transition: transform 0.2s, box-shadow 0.2s;
+}
+
+.orderCard:hover {
+    transform: translateY(-2px);
+    box-shadow: 0 4px 20px rgba(0, 0, 0, 0.04);
+}
+
+.orderCardHeader {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    padding-bottom: 1.25rem;
+    border-bottom: 1px solid #f8f8f8;
+    margin-bottom: 1.25rem;
+}
+
+.sellerInfo {
+    display: flex;
+    align-items: center;
+    gap: 0.5rem;
+    font-weight: 750;
+    color: #333;
+}
+
+.statusBadge {
+    padding: 0.4rem 1rem;
+    border-radius: 50px;
+    font-size: 0.85rem;
+    font-weight: 800;
+    text-transform: uppercase;
+    letter-spacing: 0.02em;
+}
+
+.completed {
+    background: #E8F5E9;
+    color: #2E7D32;
+}
+
+.ship {
+    background: #FFF3E0;
+    color: #EF6C00;
+}
+
+.pay {
+    background: #FFEBEE;
+    color: #D32F2F;
+}
+
+.receive {
+    background: #E3F2FD;
+    color: #1976D2;
+}
+
+.cancelled {
+    background: #F5F5F5;
+    color: #757575;
+}
+
+.orderItem {
+    display: flex;
+    gap: 1.5rem;
+    align-items: center;
+    margin-bottom: 1.25rem;
+}
+
+.itemImage {
+    width: 80px;
+    height: 80px;
+    background: #f5f5f5;
+    border-radius: 12px;
+    overflow: hidden;
+    flex-shrink: 0;
+}
+
+.itemImage img {
+    width: 100%;
+    height: 100%;
+    object-fit: cover;
+}
+
+.itemMeta {
+    flex: 1;
+}
+
+.itemMeta h3 {
+    font-size: 1.1rem;
+    font-weight: 750;
+    color: #111;
+    margin: 0;
+    margin-bottom: 0.25rem;
+}
+
+.itemMeta p {
+    color: #888;
+    font-size: 0.9rem;
+    font-weight: 600;
+    margin: 0;
+}
+
+.itemPrice {
+    font-weight: 850;
+    color: #111;
+}
+
+.orderCardFooter {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    padding: 1.25rem 0;
+    border-top: 1px solid #f8f8f8;
+}
+
+.orderMeta {
+    display: flex;
+    flex-direction: column;
+    gap: 0.25rem;
+}
+
+.orderId {
+    font-size: 0.85rem;
+    font-weight: 750;
+    color: #111;
+}
+
+.orderDate {
+    font-size: 0.85rem;
+    color: #999;
+    font-weight: 500;
+}
+
+.orderTotal {
+    display: flex;
+    align-items: center;
+    gap: 0.75rem;
+}
+
+.orderTotal span:first-child {
+    color: #666;
+    font-weight: 600;
+}
+
+.totalAmount {
+    font-size: 1.25rem;
+    font-weight: 900;
+    color: #D32F2F;
+}
+
+.orderActions {
+    display: flex;
+    justify-content: flex-end;
+    gap: 1rem;
+}
+
+.primaryBtn {
+    background: #111;
+    color: white;
+    border: none;
+    padding: 0.75rem 1.5rem;
+    border-radius: 10px;
+    font-weight: 750;
+    cursor: pointer;
+    transition: all 0.2s;
+}
+
+.primaryBtn:hover {
+    background: #222;
+    transform: translateY(-2px);
+}
+
+.secondaryBtn {
+    background: white;
+    color: #111;
+    border: 1px solid #eee;
+    padding: 0.75rem 1.5rem;
+    border-radius: 10px;
+    font-weight: 750;
+    cursor: pointer;
+    transition: all 0.2s;
+}
+
+.secondaryBtn:hover {
+    background: #f8f8f8;
+    border-color: #ddd;
+}
+
+.emptyState {
+    text-align: center;
+    padding: 8rem 2rem;
+    background: white;
+    border-radius: 30px;
+    border: 2px dashed #eee;
+}
+
+.emptyState h2 {
+    font-size: 1.75rem;
+    font-weight: 850;
+    margin: 1.5rem 0 0.5rem;
+    color: #111;
+}
+
+.emptyState p {
+    color: #888;
+    font-weight: 500;
+}
+
+@media (max-width: 768px) {
+    .titleRow {
+        flex-direction: column;
+        align-items: flex-start;
+        gap: 1rem;
+    }
+
+    .searchBar {
+        max-width: 100%;
+    }
+
+    .orderCardFooter {
+        flex-direction: column;
+        align-items: flex-start;
+        gap: 1rem;
+    }
+
+    .orderTotal {
+        width: 100%;
+        justify-content: space-between;
+    }
+
+    .orderActions {
+        width: 100%;
+    }
+
+    .orderActions button {
+        flex: 1;
+    }
+}
