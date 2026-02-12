@@ -46,14 +46,15 @@ export default function SignIn() {
 
     return (
         <div className={styles.container}>
-            <div className={styles.leftPanel}>
-                <div className={styles.logoWrapper}>
-                    <Logo />
+            <div className={styles.card}>
+                <div className={styles.leftPanel}>
+                    <div className={styles.logoWrapper}>
+                        <Logo />
+                    </div>
                 </div>
-            </div>
 
-            <div className={styles.rightPanel}>
-                <div className={styles.formWrapper}>
+                <div className={styles.rightPanel}>
+                    <div className={styles.formWrapper}>
                     <div className={styles.titleWrapper}>
                         <h1 className={styles.title}>
                             Sign <span className={styles.highlight}>In</span>
@@ -131,6 +132,7 @@ export default function SignIn() {
                             </div>
                         </div>
                     </form>
+                    </div>
                 </div>
             </div>
         </div>
