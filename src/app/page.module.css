@@ -97,22 +97,34 @@
 .authContainer {
   display: flex;
   min-height: 100vh;
-  background-color: white;
+  background-color: var(--color-bg);
+  align-items: center;
+  justify-content: center;
 }
 
 .authLeft {
   flex: 1;
-  background-color: var(--color-bg);
+  background-color: white;
   display: flex;
   align-items: center;
   justify-content: center;
+  min-height: 100vh;
   position: relative;
 }
 
-.authLogo {
+.authLeft::after {
+  content: '';
   position: absolute;
-  top: 3rem;
-  left: 3rem;
+  right: 0;
+  top: 50%;
+  transform: translateY(-50%);
+  width: 1px;
+  height: 600px;
+  background-color: #000000;
+}
+
+.authLogo {
+  transform: scale(1.5);
 }
 
 .authRight {
@@ -167,6 +179,15 @@
   color: #999;
 }
 
+.forgotPassword {
+  display: block;
+  text-align: right;
+  font-size: 0.875rem;
+  color: var(--color-text);
+  margin-top: 0.5rem;
+  font-weight: 500;
+}
+
 .formFooter {
   margin-top: 2rem;
   display: flex;
@@ -180,6 +201,47 @@
   border: none;
   color: #666;
   font-size: 0.9rem;
-  text-decoration: underline;
   cursor: pointer;
+  display: block;
+  margin: 1.5rem auto 0;
+}
+
+.toggleLink {
+  color: #d02440;
+  font-weight: 700;
+  text-decoration: underline;
+}
+
+.otherOptions {
+  text-align: center;
+  margin-top: 2rem;
+}
+
+.dividerText {
+  color: #777;
+  font-size: 0.875rem;
+  margin-bottom: 1.5rem;
+}
+
+.socialButtons {
+  display: flex;
+  justify-content: center;
+  gap: 1rem;
+}
+
+.socialBtn {
+  width: 50px;
+  height: 50px;
+  border-radius: 50%;
+  border: 1px solid var(--color-border);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: white;
+  cursor: pointer;
+  transition: background-color 0.2s;
+}
+
+.socialBtn:hover {
+  background-color: #f9f9f9;
 }

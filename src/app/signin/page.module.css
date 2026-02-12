@@ -4,12 +4,31 @@
     background-color: var(--color-bg);
 }
 
+.card {
+    display: flex;
+    width: 100%;
+    max-width: 1400px;
+    margin: 0 auto;
+}
+
 .leftPanel {
     flex: 1;
-    display: none;
+    display: flex;
     align-items: center;
     justify-content: center;
-    border-right: 1px solid var(--color-border);
+    background: white;
+    position: relative;
+}
+
+.leftPanel::after {
+    content: '';
+    position: absolute;
+    right: 0;
+    top: 50%;
+    transform: translateY(-50%);
+    width: 1px;
+    height: 400px;
+    background-color: #000000;
 }
 
 .rightPanel {
@@ -128,6 +147,7 @@
 
 .otherOptions {
     text-align: center;
+    margin-bottom: 1.5rem;
 }
 
 .dividerText {
@@ -159,8 +179,30 @@
     background-color: #f9f9f9;
 }
 
-@media (min-width: 768px) {
+.accountSwitch {
+    text-align: center;
+    font-size: 0.9rem;
+    color: var(--color-text);
+}
+
+.switchLink {
+    color: #d02440;
+    text-decoration: underline;
+    font-weight: 700;
+}
+
+@media (max-width: 768px) {
+    .card {
+        flex-direction: column;
+    }
+    
     .leftPanel {
-        display: flex;
+        border-right: none;
+        border-bottom: 1px solid var(--color-border);
+        padding: 2rem;
+    }
+    
+    .logoWrapper {
+        transform: scale(0.8);
     }
 }
