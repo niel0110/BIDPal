@@ -1,37 +1,37 @@
-.container {
+.authContainer {
     display: flex;
     min-height: 100vh;
     background-color: var(--color-bg);
+    align-items: center;
+    justify-content: center;
 }
 
-.card {
-    display: flex;
-    width: 100%;
-    max-width: 1400px;
-    margin: 0 auto;
-}
-
-.leftPanel {
+.authLeft {
     flex: 1;
+    background-color: white;
     display: flex;
     align-items: center;
     justify-content: center;
-    background: white;
+    min-height: 100vh;
     position: relative;
 }
 
-.leftPanel::after {
+.authLeft::after {
     content: '';
     position: absolute;
     right: 0;
     top: 50%;
     transform: translateY(-50%);
     width: 1px;
-    height: 400px;
+    height: 600px;
     background-color: #000000;
 }
 
-.rightPanel {
+.authLogo {
+    transform: scale(1.5);
+}
+
+.authRight {
     flex: 1;
     display: flex;
     align-items: center;
@@ -39,122 +39,76 @@
     padding: 2rem;
 }
 
-.formWrapper {
+.authFormWrapper {
     width: 100%;
-    max-width: 400px;
+    max-width: 420px;
 }
 
-.logoWrapper {
-    transform: scale(1.5);
+.authTitle {
+    font-size: 2.5rem;
+    font-weight: 800;
+    margin-bottom: 2.5rem;
 }
 
-.titleWrapper {
-    margin-bottom: 2rem;
-}
-
-.title {
-    font-size: 2rem;
-    font-weight: 700;
-    color: var(--color-text);
-    margin-bottom: 0.5rem;
-}
-
-.highlight {
+.redText {
     color: var(--color-primary);
 }
 
-.roleSelection {
+.roleGrid {
     display: flex;
     gap: 1rem;
     margin-bottom: 2rem;
 }
 
-.roleCard {
+.roleOption {
     flex: 1;
-    display: flex;
-    flex-direction: column;
-    align-items: center;
     padding: 1.25rem;
     border: 1px solid var(--color-border);
     border-radius: 12px;
     cursor: pointer;
     transition: all 0.2s ease;
     text-align: center;
-    background-color: white;
 }
 
-.roleCard:hover {
+.roleActive {
     border-color: var(--color-primary);
-    background-color: var(--color-bg);
+    background-color: #FFF9F9;
+    box-shadow: 0 4px 12px rgba(211, 47, 47, 0.05);
 }
 
-.activeRole {
-    border-color: var(--color-primary);
-    background-color: var(--color-bg);
-    box-shadow: 0 4px 12px rgba(251, 192, 45, 0.1);
+.roleLabel {
+    font-weight: 700;
+    font-size: 1rem;
+    margin-bottom: 0.25rem;
 }
 
-.roleIcon {
-    width: 48px;
-    height: 48px;
-    background-color: #FFF9E6;
-    border-radius: 50%;
-    display: flex;
-    align-items: center;
-    justify-content: center;
-    margin-bottom: 0.75rem;
-    color: var(--color-primary);
+.roleSub {
+    font-size: 0.75rem;
+    color: #999;
 }
 
-.activeRole .roleIcon {
-    background-color: var(--color-primary);
-    color: white;
-}
-
-.roleMeta {
+.formFooter {
+    margin-top: 2rem;
     display: flex;
     flex-direction: column;
+    gap: 1rem;
+    align-items: center;
 }
 
-.roleMeta strong {
-    font-size: 1rem;
-    color: var(--color-text);
+.toggleAuth {
+    background: none;
+    border: none;
+    color: #666;
+    font-size: 0.9rem;
+    cursor: pointer;
+    display: block;
+    margin: 1.5rem auto 0;
 }
 
-.roleMeta span {
-    font-size: 0.7rem;
-    color: #999;
-    margin-top: 0.25rem;
-}
-
-.formGroup {
-    margin-bottom: 1.5rem;
-}
-
-.buttonWrapper {
-    margin-top: 2rem;
-    margin-bottom: 1.5rem;
-}
-
-.disclaimer {
-    display: flex;
-    align-items: flex-start;
-    gap: 0.75rem;
-    font-size: 0.75rem;
-    color: var(--color-text);
-    line-height: 1.4;
-}
-
-.checkIcon {
-    color: var(--color-primary);
-    flex-shrink: 0;
-    margin-top: 2px;
-}
-
-.link {
-    color: var(--color-text);
+.toggleLink {
+    color: #d02440;
+    font-weight: 700;
     text-decoration: underline;
-    font-weight: 600;
 }
 
 .otherOptions {
@@ -191,31 +145,18 @@
     background-color: #f9f9f9;
 }
 
-.accountSwitch {
-    text-align: center;
-    margin-top: 1.5rem;
-    font-size: 0.9rem;
-    color: var(--color-text);
-}
-
-.switchLink {
-    color: var(--color-primary);
-    text-decoration: underline;
-    font-weight: 600;
-}
-
 @media (max-width: 768px) {
-    .card {
+    .authContainer {
         flex-direction: column;
     }
-    
-    .leftPanel {
+
+    .authLeft {
         border-right: none;
         border-bottom: 1px solid var(--color-border);
         padding: 2rem;
     }
-    
-    .logoWrapper {
+
+    .authLogo {
         transform: scale(0.8);
     }
 }
