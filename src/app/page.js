@@ -124,7 +124,7 @@ export default function Home() {
                   icon={EyeIcon}
                 />
                 {isLogin && (
-                  <Link href="#" className={styles.forgotPassword}>
+                  <Link href="/forgot-password" className={styles.forgotPassword}>
                     Forgot password?
                   </Link>
                 )}

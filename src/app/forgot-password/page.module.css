@@ -1,0 +1,101 @@
+.container {
+    display: flex;
+    min-height: 100vh;
+    background-color: #fff7f7;
+}
+
+.card {
+    display: flex;
+    width: 100%;
+    max-width: 1400px;
+    margin: 0 auto;
+}
+
+.leftPanel {
+    flex: 1;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    background: #fff7f7;
+    position: relative;
+}
+
+.leftPanel::after {
+    content: '';
+    position: absolute;
+    right: 0;
+    top: 50%;
+    transform: translateY(-50%);
+    width: 1px;
+    height: 400px;
+    background-color: #000000;
+}
+
+.rightPanel {
+    flex: 1;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    padding: 2rem;
+}
+
+.formWrapper {
+    width: 100%;
+    max-width: 420px;
+}
+
+.logoWrapper {
+    transform: scale(1.5);
+}
+
+.title {
+    font-size: 1.75rem;
+    font-weight: 700;
+    color: #111;
+    margin-bottom: 0.5rem;
+}
+
+.subtitle {
+    font-size: 0.9rem;
+    color: #666;
+    margin-bottom: 1.75rem;
+}
+
+.form {
+    display: flex;
+    flex-direction: column;
+    gap: 1.25rem;
+}
+
+.formGroup {
+    margin-bottom: 0.5rem;
+}
+
+.footerText {
+    margin-top: 1.5rem;
+    font-size: 0.9rem;
+    color: #666;
+    text-align: center;
+}
+
+.footerLink {
+    color: #d02440;
+    font-weight: 700;
+    text-decoration: underline;
+}
+
+@media (max-width: 768px) {
+    .card {
+        flex-direction: column;
+    }
+
+    .leftPanel {
+        border-right: none;
+        border-bottom: 1px solid #eee;
+        padding: 2rem;
+    }
+
+    .logoWrapper {
+        transform: scale(0.8);
+    }
+}
