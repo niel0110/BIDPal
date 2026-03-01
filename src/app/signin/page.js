@@ -7,25 +7,42 @@ import { useAuth } from '@/context/AuthContext';
 import Button from '@/components/ui/Button';
 import Input from '@/components/ui/Input';
 import AuthLogo from '@/components/AuthLogo';
+import { useSubmitLock } from '@/hooks/useSubmitLock';
 import styles from './page.module.css';
 
 export default function SignIn() {
     const [showPassword, setShowPassword] = useState(false);
     const [selectedRole, setSelectedRole] = useState('buyer'); // 'buyer' or 'seller'
+    const [email, setEmail] = useState('');
+    const [password, setPassword] = useState('');
+    const [error, setError] = useState('');
+    const { isSubmitting, runWithLock } = useSubmitLock();
     const { login } = useAuth();
     const router = useRouter();
 
-    const handleSignIn = (e) => {
+    const handleSignIn = async (e) => {
         e.preventDefault();
-        // Mock successful login logic here
-        console.log("Signing in as", selectedRole);
-        login({ name: 'Bidder User', email: 'user@example.com', role: selectedRole });
-
-        if (selectedRole === 'seller') {
-            router.push('/seller');
-        } else {
-            router.push('/');
-        }
+        await runWithLock(async () => {
+            setError('');
+            console.log('SignIn attempt:', { email, password });
+            if (!email || !password) {
+                setError('Email and password are required.');
+                return;
+            }
+            console.log('Calling login with:', { email, password });
+            const result = await login({ email, password });
+            console.log('Login result:', result);
+            if (!result.success) {
+                setError(result.error);
+                return;
+            }
+            console.log('Login successful, redirecting...');
+            if (selectedRole === 'seller') {
+                router.push('/seller');
+            } else {
+                router.push('/');
+            }
+        });
     };
 
     const EyeIcon = (
@@ -77,22 +94,36 @@ export default function SignIn() {
                     </div>
 
                     <form onSubmit={handleSignIn} className={styles.mainForm}>
-                        <Input type="email" placeholder="Email address" />
+                        <input 
+                            type="email" 
+                            placeholder="Email address" 
+                            value={email} 
+                            onChange={(e) => {
+                                console.log('Email changed:', e.target.value);
+                                setEmail(e.target.value);
+                            }}
+                            style={{ width: '100%', padding: '10px', marginBottom: '1rem', border: '1px solid #ccc', borderRadius: '4px' }}
+                        />
                         <div style={{ marginTop: '1rem' }}>
-                            <Input
+                            <input
                                 type={showPassword ? "text" : "password"}
                                 placeholder="Password"
-                                icon={EyeIcon}
-                                onIconClick={() => setShowPassword(!showPassword)}
+                                value={password}
+                                onChange={(e) => {
+                                    console.log('Password changed:', e.target.value);
+                                    setPassword(e.target.value);
+                                }}
+                                style={{ width: '100%', padding: '10px', border: '1px solid #ccc', borderRadius: '4px' }}
                             />
                             <Link href="/forgot-password" className={styles.forgotPassword}>
                                 Forgot password?
                             </Link>
                         </div>
+                        {error && <div style={{ color: 'red', marginTop: 8 }}>{error}</div>}
 
                         <div className={styles.formFooter}>
-                            <Button type="submit" variant="primary" fullWidth>
-                                Sign In
+                            <Button type="submit" variant="primary" fullWidth disabled={isSubmitting}>
+                                {isSubmitting ? 'Signing In...' : 'Sign In'}
                             </Button>
                         </div>
 

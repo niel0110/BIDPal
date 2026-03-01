@@ -4,12 +4,17 @@ import Link from 'next/link';
 import Button from '@/components/ui/Button';
 import Input from '@/components/ui/Input';
 import AuthLogo from '@/components/AuthLogo';
+import { useSubmitLock } from '@/hooks/useSubmitLock';
 import styles from './page.module.css';
 
 export default function ForgotPassword() {
-    const handleSubmit = (e) => {
+    const { isSubmitting, runWithLock } = useSubmitLock();
+
+    const handleSubmit = async (e) => {
         e.preventDefault();
-        console.log('Send password reset code');
+        await runWithLock(async () => {
+            console.log('Send password reset code');
+        });
     };
 
     return (
@@ -32,7 +37,9 @@ export default function ForgotPassword() {
                             <div className={styles.formGroup}>
                                 <Input type="email" placeholder="Email address" />
                             </div>
-                            <Button type="submit" variant="primary">Send Code</Button>
+                            <Button type="submit" variant="primary" disabled={isSubmitting}>
+                                {isSubmitting ? 'Sending...' : 'Send Code'}
+                            </Button>
                         </form>
 
                         <p className={styles.footerText}>

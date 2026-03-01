@@ -37,7 +37,7 @@ const clearanceSale = [
 ];
 
 export default function Home() {
-  const { user, login } = useAuth();
+  const { user } = useAuth();
   const [isLogin, setIsLogin] = useState(true);
   const [selectedRole, setSelectedRole] = useState('buyer');
   const [showPassword, setShowPassword] = useState(false);
@@ -58,11 +58,7 @@ export default function Home() {
 
   const handleAuth = (e) => {
     e.preventDefault();
-    console.log(`${isLogin ? 'Signing In' : 'Signing Up'} as`, selectedRole);
-    login({ name: 'User', email: 'user@example.com', role: selectedRole });
-    if (selectedRole === 'seller') {
-      router.push('/seller');
-    }
+    router.push(isLogin ? '/signin' : '/signup');
   };
 
   const EyeIcon = (
@@ -137,7 +133,7 @@ export default function Home() {
 
               <div className={styles.formFooter}>
                 <Button type="submit" variant="primary" fullWidth>
-                  {isLogin ? 'Sign In' : 'Create account'}
+                  {isLogin ? 'Go to Sign In' : 'Go to Sign Up'}
                 </Button>
               </div>
               

@@ -6,24 +6,72 @@ import { useAuth } from '@/context/AuthContext';
 import Button from '@/components/ui/Button';
 import Input from '@/components/ui/Input';
 import AuthLogo from '@/components/AuthLogo';
+import { useSubmitLock } from '@/hooks/useSubmitLock';
 import styles from './page.module.css';
 
 export default function SignUp() {
+    console.log('=== RENDERING SIGNUP PAGE ===');
     const [showPassword, setShowPassword] = useState(false);
     const [selectedRole, setSelectedRole] = useState('buyer');
     const router = useRouter();
-    const { login } = useAuth();
+    const { register } = useAuth();
 
-    const handleSignUp = (e) => {
+    const [email, setEmail] = useState('');
+    const [password, setPassword] = useState('');
+    const [confirmPassword, setConfirmPassword] = useState('');
+    const [error, setError] = useState('');
+    const { isSubmitting, runWithLock } = useSubmitLock();
+
+    const handleSignUp = async (e) => {
         e.preventDefault();
-        console.log('Signing up as', selectedRole);
-        login({ name: 'New User', email: 'newuser@example.com', role: selectedRole });
+        await runWithLock(async () => {
+            setError('');
 
-        if (selectedRole === 'seller') {
-            router.push('/seller');
-        } else {
-            router.push('/');
-        }
+            console.log('SIGNUP FORM SUBMITTED');
+            console.log('Email value:', email, 'Type:', typeof email, 'Length:', email?.length);
+            console.log('Password value:', password, 'Type:', typeof password, 'Length:', password?.length);
+            console.log('ConfirmPassword value:', confirmPassword, 'Type:', typeof confirmPassword, 'Length:', confirmPassword?.length);
+            console.log('Which function am I calling?', typeof register);
+
+            if (!email || !password || !confirmPassword) {
+                console.log('VALIDATION FAILED: Missing fields');
+                console.log('email exists?', !!email);
+                console.log('password exists?', !!password);
+                console.log('confirmPassword exists?', !!confirmPassword);
+                setError('All fields are required.');
+                return;
+            }
+
+            if (password !== confirmPassword) {
+                console.log('VALIDATION FAILED: Passwords do not match');
+                setError('Passwords do not match.');
+                return;
+            }
+
+            console.log('Validation passed, calling register function now...');
+            console.log('About to call register with:', { email, password });
+
+            try {
+                const result = await register({ email, password });
+                console.log('Register function returned:', result);
+
+                if (!result.success) {
+                    console.log('Registration failed:', result.error);
+                    setError(result.error);
+                    return;
+                }
+
+                console.log('Registration successful!');
+                if (selectedRole === 'seller') {
+                    router.push('/seller');
+                } else {
+                    router.push('/');
+                }
+            } catch (err) {
+                console.error('ERROR during register:', err);
+                setError(err.message);
+            }
+        });
     };
 
     const EyeIcon = (
@@ -75,21 +123,41 @@ export default function SignUp() {
                     </div>
 
                     <form onSubmit={handleSignUp} className={styles.mainForm}>
-                        <Input type="email" placeholder="Email address" />
-                        <div style={{ marginTop: '1rem' }}>
-                            <Input
-                                type={showPassword ? 'text' : 'password'}
-                                placeholder="Password"
-                                icon={EyeIcon}
-                            />
-                        </div>
-                        <div style={{ marginTop: '1rem' }}>
-                            <Input type="password" placeholder="Confirm password" />
-                        </div>
+                        <input
+                            type="email"
+                            placeholder="Email address"
+                            value={email}
+                            onChange={(e) => {
+                                console.log('Email changed:', e.target.value);
+                                setEmail(e.target.value);
+                            }}
+                            style={{ width: '100%', padding: '10px', marginBottom: '1rem', border: '1px solid #ccc', borderRadius: '4px' }}
+                        />
+                        <input
+                            type={showPassword ? 'text' : 'password'}
+                            placeholder="Password"
+                            value={password}
+                            onChange={(e) => {
+                                console.log('Password changed:', e.target.value);
+                                setPassword(e.target.value);
+                            }}
+                            style={{ width: '100%', padding: '10px', marginBottom: '1rem', border: '1px solid #ccc', borderRadius: '4px' }}
+                        />
+                        <input
+                            type="password"
+                            placeholder="Confirm password"
+                            value={confirmPassword}
+                            onChange={(e) => {
+                                console.log('Confirm password changed:', e.target.value);
+                                setConfirmPassword(e.target.value);
+                            }}
+                            style={{ width: '100%', padding: '10px', marginBottom: '1rem', border: '1px solid #ccc', borderRadius: '4px' }}
+                        />
+                        {error && <div style={{ color: 'red', marginTop: 8 }}>{error}</div>}
 
                         <div className={styles.formFooter}>
-                            <Button type="submit" variant="primary" fullWidth>
-                                Create account
+                            <Button type="submit" variant="primary" fullWidth disabled={isSubmitting}>
+                                {isSubmitting ? 'Creating account...' : 'Create account'}
                             </Button>
                         </div>
 

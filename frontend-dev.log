@@ -1,0 +1,16 @@
+
+> bidpal@0.1.0 dev
+> next dev
+
+▲ Next.js 16.1.6 (Turbopack)
+- Local:         http://localhost:3000
+- Network:       http://172.30.240.1:3000
+- Environments: .env.local
+
+✓ Starting...
+Creating turbopack project { dir: 'c:\\Users\\User\\Documents\\CAPSTONE\\BIDPal', testMode: true }
+✓ Ready in 5.1s
+○ Compiling /seller/auctions ...
+ GET /seller/auctions 200 in 40s (compile: 38.2s, render: 2.1s)
+○ Compiling / ...
+ GET / 200 in 8.6s (compile: 8.0s, render: 582ms)

@@ -3,6 +3,7 @@
 import { useState } from 'react';
 import { useRouter, useSearchParams } from 'next/navigation';
 import { ChevronLeft, Gavel, Tag, Calendar, Clock, Info } from 'lucide-react';
+import { useSubmitLock } from '@/hooks/useSubmitLock';
 import styles from './page.module.css';
 
 export default function ScheduleAuctionPage() {
@@ -19,13 +20,16 @@ export default function ScheduleAuctionPage() {
         endDate: '',
         endTime: '',
     });
+    const { isSubmitting, runWithLock } = useSubmitLock();
 
     const handleBack = () => router.back();
 
-    const handleSubmit = (e) => {
+    const handleSubmit = async (e) => {
         e.preventDefault();
-        console.log('Scheduling product:', { productId, saleType, ...formData });
-        router.push('/seller/auctions');
+        await runWithLock(async () => {
+            console.log('Scheduling product:', { productId, saleType, ...formData });
+            router.push('/seller/auctions');
+        });
     };
 
     return (
@@ -126,8 +130,8 @@ export default function ScheduleAuctionPage() {
                         <p>Your item will automatically go live at the scheduled time.</p>
                     </div>
 
-                    <button type="submit" className={styles.confirmBtn}>
-                        Confirm Schedule
+                    <button type="submit" className={styles.confirmBtn} disabled={isSubmitting}>
+                        {isSubmitting ? 'Scheduling...' : 'Confirm Schedule'}
                     </button>
                 </form>
             </div>
