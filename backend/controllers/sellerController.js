@@ -1,0 +1,164 @@
+import { supabase } from '../config/supabase.js';
+
+// Fetch all sellers
+export const getAllSellers = async (req, res) => {
+  try {
+    const { data, error } = await supabase.from('Seller').select('*');
+    if (error) return res.status(500).json({ error: error.message });
+    res.json(data);
+  } catch (err) {
+    res.status(500).json({ error: err.message });
+  }
+};
+
+// Fetch seller by seller_id
+export const getSellerById = async (req, res) => {
+  try {
+    const { seller_id } = req.params;
+    const { data, error } = await supabase
+      .from('Seller')
+      .select('*')
+      .eq('seller_id', seller_id)
+      .single();
+    if (error) return res.status(404).json({ error: 'Seller not found' });
+    res.json(data);
+  } catch (err) {
+    res.status(500).json({ error: err.message });
+  }
+};
+
+// Fetch seller by user_id (get seller profile for logged-in user)
+export const getSellerByUserId = async (req, res) => {
+  try {
+    const { user_id } = req.params;
+    const { data, error } = await supabase
+      .from('Seller')
+      .select('*')
+      .eq('user_id', user_id)
+      .single();
+    if (error) return res.status(404).json({ error: 'Seller profile not found for this user' });
+    res.json(data);
+  } catch (err) {
+    res.status(500).json({ error: err.message });
+  }
+};
+
+// Create new seller (open a shop)
+export const createSeller = async (req, res) => {
+  try {
+    const { store_name, bio, payout_details, user_id } = req.body;
+
+    // Validation
+    if (!store_name || !user_id) {
+      return res.status(400).json({ error: 'store_name and user_id are required.' });
+    }
+
+    if (!payout_details) {
+      return res.status(400).json({ error: 'payout_details are required.' });
+    }
+
+    // Check if user already has a seller profile
+    const { data: existingSeller, error: checkError } = await supabase
+      .from('Seller')
+      .select('seller_id')
+      .eq('user_id', user_id)
+      .maybeSingle();
+
+    if (checkError) return res.status(500).json({ error: checkError.message });
+    if (existingSeller) {
+      return res.status(409).json({ error: 'This user already has a seller account.' });
+    }
+
+    const { data, error } = await supabase
+      .from('Seller')
+      .insert([
+        {
+          store_name,
+          bio: bio || null,
+          payout_details,
+          user_id,
+          rating: 0
+        }
+      ])
+      .select('*');
+
+    if (error) return res.status(400).json({ error: error.message });
+    res.status(201).json({ message: 'Seller account created successfully', data: data[0] });
+  } catch (err) {
+    res.status(500).json({ error: err.message });
+  }
+};
+
+// Update seller
+export const updateSeller = async (req, res) => {
+  try {
+    const { seller_id } = req.params;
+    const { store_name, bio, payout_details, rating } = req.body;
+
+    const { data, error } = await supabase
+      .from('Seller')
+      .update({
+        ...(store_name && { store_name }),
+        ...(bio !== undefined && { bio }),
+        ...(payout_details && { payout_details }),
+        ...(rating !== undefined && { rating })
+      })
+      .eq('seller_id', seller_id)
+      .select('*');
+
+    if (error) return res.status(400).json({ error: error.message });
+    if (!data || data.length === 0) {
+      return res.status(404).json({ error: 'Seller not found' });
+    }
+    res.json({ message: 'Seller updated successfully', data: data[0] });
+  } catch (err) {
+    res.status(500).json({ error: err.message });
+  }
+};
+
+// Delete seller (hard delete)
+export const deleteSeller = async (req, res) => {
+  try {
+    const { seller_id } = req.params;
+
+    const { data, error } = await supabase
+      .from('Seller')
+      .delete()
+      .eq('seller_id', seller_id)
+      .select('*');
+
+    if (error) return res.status(400).json({ error: error.message });
+    if (!data || data.length === 0) {
+      return res.status(404).json({ error: 'Seller not found' });
+    }
+    res.json({ message: 'Seller account deleted successfully', data: data[0] });
+  } catch (err) {
+    res.status(500).json({ error: err.message });
+  }
+};
+
+// Update seller rating
+export const updateSellerRating = async (req, res) => {
+  try {
+    const { seller_id } = req.params;
+    const { rating } = req.body;
+
+    if (rating === undefined || rating < 0 || rating > 5) {
+      return res.status(400).json({ error: 'Rating must be between 0 and 5.' });
+    }
+
+    const { data, error } = await supabase
+      .from('Seller')
+      .update({ rating })
+      .eq('seller_id', seller_id)
+      .select('*');
+
+    if (error) return res.status(400).json({ error: error.message });
+    if (!data || data.length === 0) {
+      return res.status(404).json({ error: 'Seller not found' });
+    }
+    res.json({ message: 'Seller rating updated successfully', data: data[0] });
+  } catch (err) {
+    res.status(500).json({ error: err.message });
+  }
+};
