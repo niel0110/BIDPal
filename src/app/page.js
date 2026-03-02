@@ -10,8 +10,8 @@ import HeroBanner from '@/components/home/HeroBanner';
 import AuctionCard from '@/components/card/AuctionCard';
 import ProductCard from '@/components/card/ProductCard';
 import Button from '@/components/ui/Button';
-import Input from '@/components/ui/Input';
 import AuthLogo from '@/components/AuthLogo';
+import { useSubmitLock } from '@/hooks/useSubmitLock';
 import { ChevronRight } from 'lucide-react';
 import styles from './page.module.css';
 
@@ -37,11 +37,16 @@ const clearanceSale = [
 ];
 
 export default function Home() {
-  const { user } = useAuth();
+  const { user, login, register } = useAuth();
   const [isLogin, setIsLogin] = useState(true);
   const [selectedRole, setSelectedRole] = useState('buyer');
   const [showPassword, setShowPassword] = useState(false);
   const [scrollProgress, setScrollProgress] = useState(0);
+  const [email, setEmail] = useState('');
+  const [password, setPassword] = useState('');
+  const [confirmPassword, setConfirmPassword] = useState('');
+  const [error, setError] = useState('');
+  const { isSubmitting, runWithLock } = useSubmitLock();
   const router = useRouter();
 
   const handleScroll = (e) => {
@@ -56,28 +61,91 @@ export default function Home() {
     }
   }, [user, router]);
 
-  const handleAuth = (e) => {
+  const handleSignIn = async (e) => {
     e.preventDefault();
-    router.push(isLogin ? '/signin' : '/signup');
+    await runWithLock(async () => {
+      setError('');
+      console.log('SignIn attempt:', { email, password });
+      if (!email || !password) {
+        setError('Email and password are required.');
+        return;
+      }
+      console.log('Calling login with:', { email, password });
+      const result = await login({ email, password });
+      console.log('Login result:', result);
+      if (!result.success) {
+        setError(result.error);
+        return;
+      }
+      console.log('Login successful, redirecting...');
+      if (selectedRole === 'seller') {
+        router.push('/seller');
+      } else {
+        router.push('/');
+      }
+    });
   };
 
-  const EyeIcon = (
-    <div onClick={() => setShowPassword(!showPassword)} style={{ cursor: 'pointer' }}>
-      <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-        {showPassword ? (
-          <>
-            <path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z" />
-            <circle cx="12" cy="12" r="3" />
-          </>
-        ) : (
-          <>
-            <path d="M17.94 17.94A10.07 10.07 0 0 1 12 20c-7 0-11-8-11-8a18.45 18.45 0 0 1 5.06-5.94M9.9 4.24A9.12 9.12 0 0 1 12 4c7 0 11 8 11 8a18.5 18.5 0 0 1-2.16 3.19m-6.72-1.07a3 3 0 1 1-4.24-4.24" />
-            <line x1="1" y1="1" x2="23" y2="23" />
-          </>
-        )}
-      </svg>
-    </div>
-  );
+  const handleSignUp = async (e) => {
+    e.preventDefault();
+    await runWithLock(async () => {
+      setError('');
+
+      console.log('SIGNUP FORM SUBMITTED');
+      console.log('Email value:', email, 'Type:', typeof email, 'Length:', email?.length);
+      console.log('Password value:', password, 'Type:', typeof password, 'Length:', password?.length);
+      console.log('ConfirmPassword value:', confirmPassword, 'Type:', typeof confirmPassword, 'Length:', confirmPassword?.length);
+      console.log('Which function am I calling?', typeof register);
+
+      if (!email || !password || !confirmPassword) {
+        console.log('VALIDATION FAILED: Missing fields');
+        console.log('email exists?', !!email);
+        console.log('password exists?', !!password);
+        console.log('confirmPassword exists?', !!confirmPassword);
+        setError('All fields are required.');
+        return;
+      }
+
+      if (password !== confirmPassword) {
+        console.log('VALIDATION FAILED: Passwords do not match');
+        setError('Passwords do not match.');
+        return;
+      }
+
+      console.log('Validation passed, calling register function now...');
+      console.log('About to call register with:', { email, password });
+
+      try {
+        const result = await register({ email, password });
+        console.log('Register function returned:', result);
+
+        if (!result.success) {
+          console.log('Registration failed:', result.error);
+          setError(result.error);
+          return;
+        }
+
+        console.log('Registration successful!');
+        if (selectedRole === 'seller') {
+          router.push('/seller');
+        } else {
+          router.push('/');
+        }
+      } catch (err) {
+        console.error('ERROR during register:', err);
+        setError(err.message);
+      }
+    });
+  };
+
+  const handleToggleAuth = () => {
+    setIsLogin(!isLogin);
+    setEmail('');
+    setPassword('');
+    setConfirmPassword('');
+    setError('');
+    setShowPassword(false);
+  };
 
   if (!user) {
     return (
@@ -111,13 +179,27 @@ export default function Home() {
               </div>
             </div>
 
-            <form onSubmit={handleAuth} className={styles.mainForm}>
-              <Input type="email" placeholder="Email address" />
+            <form onSubmit={isLogin ? handleSignIn : handleSignUp} className={styles.mainForm}>
+              <input
+                type="email"
+                placeholder="Email address"
+                value={email}
+                onChange={(e) => {
+                  console.log('Email changed:', e.target.value);
+                  setEmail(e.target.value);
+                }}
+                style={{ width: '100%', padding: '10px', marginBottom: '1rem', border: '1px solid #ccc', borderRadius: '4px' }}
+              />
               <div style={{ marginTop: '1rem' }}>
-                <Input
-                  type={showPassword ? "text" : "password"}
+                <input
+                  type={showPassword ? 'text' : 'password'}
                   placeholder="Password"
-                  icon={EyeIcon}
+                  value={password}
+                  onChange={(e) => {
+                    console.log('Password changed:', e.target.value);
+                    setPassword(e.target.value);
+                  }}
+                  style={{ width: '100%', padding: '10px', border: '1px solid #ccc', borderRadius: '4px' }}
                 />
                 {isLogin && (
                   <Link href="/forgot-password" className={styles.forgotPassword}>
@@ -127,16 +209,28 @@ export default function Home() {
               </div>
               {!isLogin && (
                 <div style={{ marginTop: '1rem' }}>
-                  <Input type="password" placeholder="Confirm password" />
+                  <input
+                    type="password"
+                    placeholder="Confirm password"
+                    value={confirmPassword}
+                    onChange={(e) => {
+                      console.log('Confirm password changed:', e.target.value);
+                      setConfirmPassword(e.target.value);
+                    }}
+                    style={{ width: '100%', padding: '10px', marginBottom: '1rem', border: '1px solid #ccc', borderRadius: '4px' }}
+                  />
                 </div>
               )}
+              {error && <div style={{ color: 'red', marginTop: 8, marginBottom: '1rem' }}>{error}</div>}
 
               <div className={styles.formFooter}>
-                <Button type="submit" variant="primary" fullWidth>
-                  {isLogin ? 'Go to Sign In' : 'Go to Sign Up'}
+                <Button type="submit" variant="primary" fullWidth disabled={isSubmitting}>
+                  {isSubmitting
+                    ? (isLogin ? 'Signing In...' : 'Creating account...')
+                    : (isLogin ? 'Sign In' : 'Create account')}
                 </Button>
               </div>
-              
+
               <div className={styles.otherOptions}>
                 <p className={styles.dividerText}>or continue with</p>
                 <div className={styles.socialButtons}>
@@ -163,7 +257,7 @@ export default function Home() {
               <button
                 type="button"
                 className={styles.toggleAuth}
-                onClick={() => setIsLogin(!isLogin)}
+                onClick={handleToggleAuth}
               >
                 {isLogin ? (
                   <>
