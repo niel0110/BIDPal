@@ -49,10 +49,10 @@ export default function SignUp() {
             }
 
             console.log('Validation passed, calling register function now...');
-            console.log('About to call register with:', { email, password });
+            console.log('About to call register with:', { email, password, role: selectedRole });
 
             try {
-                const result = await register({ email, password });
+                const result = await register({ email, password, role: selectedRole });
                 console.log('Register function returned:', result);
 
                 if (!result.success) {

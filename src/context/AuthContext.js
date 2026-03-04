@@ -45,14 +45,14 @@ export function AuthProvider({ children }) {
     };
 
     // Register with backend
-    const register = async ({ email, password }) => {
+    const register = async ({ email, password, role }) => {
         try {
             const apiUrl = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:5000';
-            console.log('Register: Sending to', `${apiUrl}/api/auth/register`, { email, password });
+            console.log('Register: Sending to', `${apiUrl}/api/auth/register`, { email, password, role });
             const res = await fetch(`${apiUrl}/api/auth/register`, {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify({ email, password })
+                body: JSON.stringify({ email, password, role })
             });
             console.log('Register: Response status', res.status);
             const data = await res.json();

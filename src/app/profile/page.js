@@ -53,6 +53,8 @@ function AccountContent() {
 
     const [activeTab, setActiveTab] = useState(isSeller ? 'merchant-insights' : 'profile');
     const [addressState, setAddressState] = useState('list'); // 'list' or 'add'
+    const [avatarLoading, setAvatarLoading] = useState(false);
+    const [avatarMessage, setAvatarMessage] = useState('');
 
     useEffect(() => {
         const validTabs = ['profile', 'address', 'notifications', 'payment', 'wishlist', 'security', 'privacy', 'help', 'invite', 'merchant-insights', 'store-profile'];
@@ -83,6 +85,69 @@ function AccountContent() {
 
     const menuItems = isSeller ? sellerMenuItems : buyerMenuItems;
 
+    const handleAvatarUpload = async (e) => {
+        const file = e.target.files?.[0];
+        if (!file || !user) return;
+
+        setAvatarLoading(true);
+        setAvatarMessage('');
+
+        try {
+            const formData = new FormData();
+            formData.append('avatar', file);
+
+            const apiUrl = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:5000';
+            const res = await fetch(`${apiUrl}/api/users/${user.user_id}/avatar`, {
+                method: 'POST',
+                body: formData
+            });
+
+            const data = await res.json();
+
+            if (!res.ok) {
+                setAvatarMessage({ type: 'error', text: 'Error uploading avatar. Please try again.' });
+                return;
+            }
+
+            // Update local storage with new avatar
+            const updatedUser = { ...user, Avatar: data.avatarUrl };
+            localStorage.setItem('bidpal_user', JSON.stringify(updatedUser));
+            
+            setAvatarMessage({ type: 'success', text: '✓ Avatar updated successfully!' });
+            setTimeout(() => setAvatarMessage(''), 3000);
+
+            // Refresh the page to show updated avatar
+            window.location.reload();
+        } catch (err) {
+            setAvatarMessage({ type: 'error', text: 'Error uploading avatar. Please try again.' });
+            console.error('Error:', err);
+        } finally {
+            setAvatarLoading(false);
+        }
+    };
+
+    const getUserDisplayName = () => {
+        if (!user) return '';
+        const firstName = user.Fname || '';
+        const middleName = user.Mname || '';
+        const lastName = user.Lname || '';
+        return [firstName, middleName, lastName].filter(Boolean).join(' ');
+    };
+
+    const getUserRole = () => {
+        if (!user) return '';
+        return user.role === 'seller' ? 'Seller' : 'Buyer';
+    };
+
+    const getAvatarImage = () => {
+        if (user?.Avatar) {
+            return user.Avatar;
+        }
+        // Fallback to a placeholder based on role and name
+        const seed = user?.Fname || 'user';
+        return `https://api.dicebear.com/7.x/avataaars/svg?seed=${seed}`;
+    };
+
     return (
         <div className={styles.container}>
             {/* Sidebar - Desktop */}
@@ -94,18 +159,39 @@ function AccountContent() {
                     </button>
 
                     <div className={styles.userBrief}>
+                        {avatarMessage && (
+                            <div className={`${styles.avatarMessage} ${avatarMessage.type === 'error' ? styles.errorMessage : styles.successMessage}`}>
+                                {avatarMessage.text}
+                            </div>
+                        )}
+                        
                         <div className={styles.avatarWrapper}>
                             <img
-                                src={isSeller ? "https://api.dicebear.com/7.x/avataaars/svg?seed=Merchant" : "https://api.dicebear.com/7.x/avataaars/svg?seed=Lilian"}
-                                alt={isSeller ? "Store Owner" : "Lilian Grace"}
+                                src={getAvatarImage()}
+                                alt={getUserDisplayName()}
                                 className={styles.avatar}
                             />
-                            <button className={styles.editAvatar}>
-                                <Pencil size={14} />
-                            </button>
+                            <input
+                                type="file"
+                                id="avatarInput"
+                                className={styles.avatarFileInput}
+                                accept="image/*"
+                                onChange={handleAvatarUpload}
+                                disabled={avatarLoading}
+                            />
+                            <label htmlFor="avatarInput" className={styles.editAvatarLabel}>
+                                <button 
+                                    className={styles.editAvatar}
+                                    type="button"
+                                    title="Upload profile picture"
+                                    disabled={avatarLoading}
+                                >
+                                    <Camera size={14} />
+                                </button>
+                            </label>
                         </div>
-                        <h2 className={styles.userName}>{isSeller ? "Retro Vault Admin" : "Lilian Grace Dawatan"}</h2>
-                        <p className={styles.userRole}>{isSeller ? "Premium Merchant" : "Buyer Member"}</p>
+                        <h2 className={styles.userName}>{getUserDisplayName()}</h2>
+                        <p className={styles.userRole}>{getUserRole()} Member</p>
                     </div>
 
                     <nav className={styles.nav}>
@@ -266,6 +352,66 @@ function StoreProfileSection() {
 }
 
 function ProfileSection() {
+    const { user } = useAuth();
+    const [firstName, setFirstName] = useState('');
+    const [middleName, setMiddleName] = useState('');
+    const [lastName, setLastName] = useState('');
+    const [email, setEmail] = useState('');
+    const [phone, setPhone] = useState('');
+    const [loading, setLoading] = useState(false);
+    const [message, setMessage] = useState('');
+
+    useEffect(() => {
+        if (user) {
+            setFirstName(user.Fname || '');
+            setMiddleName(user.Mname || '');
+            setLastName(user.Lname || '');
+            setEmail(user.email || '');
+            setPhone(user.contact_num || '');
+        }
+    }, [user]);
+
+    const handleSaveProfile = async () => {
+        if (!user) return;
+
+        setLoading(true);
+        setMessage('');
+
+        try {
+            const apiUrl = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:5000';
+            const res = await fetch(`${apiUrl}/api/users/${user.user_id}`, {
+                method: 'PUT',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({
+                    Fname: firstName,
+                    Mname: middleName,
+                    Lname: lastName,
+                    contact_num: phone
+                })
+            });
+
+            const data = await res.json();
+
+            if (!res.ok) {
+                setMessage({ type: 'error', text: 'Error updating profile. Please try again.' });
+                return;
+            }
+
+            // Update local storage and auth context
+            const updatedUser = { ...user, Fname: firstName, Mname: middleName, Lname: lastName, contact_num: phone };
+            localStorage.setItem('bidpal_user', JSON.stringify(updatedUser));
+            
+            setMessage({ type: 'success', text: '✓ Your profile has been updated successfully!' });
+
+            setTimeout(() => setMessage(''), 5000);
+        } catch (err) {
+            setMessage({ type: 'error', text: 'Error updating profile. Please try again.' });
+            console.error('Error:', err);
+        } finally {
+            setLoading(false);
+        }
+    };
+
     return (
         <div className={styles.section}>
             <header className={styles.sectionHeader}>
@@ -273,23 +419,108 @@ function ProfileSection() {
                 <p>Update your personal information to keep your account secure.</p>
             </header>
 
+            {message && (
+                <div className={`${styles.messageBox} ${message.type === 'error' ? styles.errorMessage : styles.successMessage}`}>
+                    {message.text}
+                </div>
+            )}
+
             <div className={styles.profileForm}>
                 <div className={styles.formGroup}>
-                    <label>Full Name</label>
-                    <input type="text" defaultValue="Lilian Grace Dawatan" />
-                </div>
-                <div className={styles.formGroup}>
-                    <label>Email</label>
+                    <label>First Name</label>
                     <div className={styles.inputWithIcon}>
-                        <input type="email" defaultValue="lgdawatan@usep.edu.ph" />
-                        <Mail size={18} color="#999" />
+                        <input 
+                            type="text" 
+                            value={firstName}
+                            onChange={(e) => setFirstName(e.target.value)}
+                        />
+                        <button 
+                            className={styles.editIconBtn}
+                            type="button"
+                            title="Edit first name"
+                        >
+                            <Pencil size={18} />
+                        </button>
                     </div>
                 </div>
+
+                <div className={styles.formGroup}>
+                    <label>Middle Name</label>
+                    <div className={styles.inputWithIcon}>
+                        <input 
+                            type="text" 
+                            value={middleName}
+                            onChange={(e) => setMiddleName(e.target.value)}
+                        />
+                        <button 
+                            className={styles.editIconBtn}
+                            type="button"
+                            title="Edit middle name"
+                        >
+                            <Pencil size={18} />
+                        </button>
+                    </div>
+                </div>
+
+                <div className={styles.formGroup}>
+                    <label>Last Name</label>
+                    <div className={styles.inputWithIcon}>
+                        <input 
+                            type="text" 
+                            value={lastName}
+                            onChange={(e) => setLastName(e.target.value)}
+                        />
+                        <button 
+                            className={styles.editIconBtn}
+                            type="button"
+                            title="Edit last name"
+                        >
+                            <Pencil size={18} />
+                        </button>
+                    </div>
+                </div>
+
+                <div className={styles.formGroup}>
+                    <label>Email</label>
+                    <div className={styles.readOnlyInputWrapper}>
+                        <input 
+                            type="email" 
+                            value={email}
+                            disabled
+                            title="Email cannot be changed"
+                        />
+                        <div className={styles.lockedIconWrapper}>
+                            <Lock size={18} color="#999" />
+                        </div>
+                    </div>
+                    <p className={styles.helperText}>Email is used for sign-in and cannot be changed</p>
+                </div>
+
                 <div className={styles.formGroup}>
                     <label>Phone Number</label>
-                    <input type="tel" defaultValue="09091234567" />
+                    <div className={styles.inputWithIcon}>
+                        <input 
+                            type="tel" 
+                            value={phone}
+                            onChange={(e) => setPhone(e.target.value)}
+                        />
+                        <button 
+                            className={styles.editIconBtn}
+                            type="button"
+                            title="Edit phone number"
+                        >
+                            <Pencil size={18} />
+                        </button>
+                    </div>
                 </div>
-                <button className={styles.primaryBtn}>Update Profile</button>
+
+                <button 
+                    className={styles.primaryBtn}
+                    onClick={handleSaveProfile}
+                    disabled={loading}
+                >
+                    {loading ? 'Updating...' : 'Update Profile'}
+                </button>
             </div>
         </div>
     );
