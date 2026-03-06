@@ -546,47 +546,174 @@ function AddressSection({ state, setState }) {
         Line1: '',
         Line2: '',
         region: '',
+        province: '',
         city: '',
         barangay: '',
         isDefault: false
     });
     const [regions, setRegions] = useState([]);
+    const [provinces, setProvinces] = useState([]);
     const [cities, setCities] = useState([]);
     const [barangays, setBarangays] = useState([]);
     const [loading, setLoading] = useState(false);
     const [message, setMessage] = useState('');
+    const [addresses, setAddresses] = useState([]);
+    const [fetchingAddresses, setFetchingAddresses] = useState(false);
+    const [loadingLocations, setLoadingLocations] = useState(false);
     const { getCurrentLocation, location: geoLocation, error: geoError, loading: geoLoading } = useGeolocation();
 
-    // Fetch regions on component mount
+    // Fetch regions and addresses on component mount
     useEffect(() => {
         fetchRegions();
-    }, []);
+        if (state === 'list' && user?.user_id) {
+            fetchUserAddresses();
+        }
+    }, [state, user?.user_id]);
 
-    const fetchRegions = async () => {
+    // Fetch regions when entering manual entry mode
+    useEffect(() => {
+        if (inputMode === 'manual' && regions.length === 0) {
+            fetchRegions();
+        }
+    }, [inputMode]);
+
+    const fetchUserAddresses = async () => {
+        if (!user?.user_id) return;
+
+        setFetchingAddresses(true);
         try {
             const apiUrl = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:5000';
-            const res = await fetch(`${apiUrl}/api/addresses/locations/regions`);
+            const res = await fetch(`${apiUrl}/api/addresses/user/${user.user_id}`);
+            
+            if (!res.ok) {
+                console.error('API Response Status:', res.status);
+                setAddresses([]);
+                return;
+            }
+            
+            const contentType = res.headers.get('content-type');
+            if (!contentType || !contentType.includes('application/json')) {
+                console.error('Invalid content type:', contentType);
+                setAddresses([]);
+                return;
+            }
+            
             const data = await res.json();
-            setRegions(data);
+            
+            if (Array.isArray(data)) {
+                setAddresses(data);
+            } else {
+                setAddresses([]);
+            }
         } catch (err) {
-            console.error('Error fetching regions:', err);
+            console.error('Error fetching addresses:', err);
+            setAddresses([]);
+        } finally {
+            setFetchingAddresses(false);
         }
     };
 
-    const fetchCities = async (region) => {
+    const fetchRegions = async () => {
+        setLoadingLocations(true);
+        try {
+            const apiUrl = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:5000';
+            const res = await fetch(`${apiUrl}/api/addresses/locations/regions`);
+            
+            if (!res.ok) {
+                console.error('Error fetching regions - Status:', res.status);
+                setRegions([]);
+                setLoadingLocations(false);
+                return;
+            }
+            
+            const contentType = res.headers.get('content-type');
+            if (!contentType || !contentType.includes('application/json')) {
+                console.error('Invalid content type for regions:', contentType);
+                setRegions([]);
+                setLoadingLocations(false);
+                return;
+            }
+            
+            const data = await res.json();
+            console.log('Regions fetched:', data);
+            const regionsData = Array.isArray(data) ? data : [];
+            setRegions(regionsData);
+        } catch (err) {
+            console.error('Error fetching regions:', err);
+            setRegions([]);
+        } finally {
+            setLoadingLocations(false);
+        }
+    };
+
+    const fetchProvinces = async (region) => {
         if (!region) {
+            setProvinces([]);
+            setCities([]);
+            setBarangays([]);
+            return;
+        }
+        try {
+            const apiUrl = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:5000';
+            const res = await fetch(`${apiUrl}/api/addresses/locations/provinces/${region}`);
+            
+            if (!res.ok) {
+                console.error('Error fetching provinces - Status:', res.status);
+                setProvinces([]);
+                return;
+            }
+            
+            const contentType = res.headers.get('content-type');
+            if (!contentType || !contentType.includes('application/json')) {
+                console.error('Invalid content type for provinces:', contentType);
+                setProvinces([]);
+                return;
+            }
+            
+            const data = await res.json();
+            console.log('Provinces fetched for region', region, ':', data);
+            const provincesData = Array.isArray(data) ? data : [];
+            setProvinces(provincesData);
+            setFormData(prev => ({ ...prev, province: '', city: '', barangay: '' }));
+            setCities([]);
+            setBarangays([]);
+        } catch (err) {
+            console.error('Error fetching provinces:', err);
+            setProvinces([]);
+        }
+    };
+
+    const fetchCities = async (region, province) => {
+        if (!region || !province) {
             setCities([]);
             return;
         }
         try {
             const apiUrl = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:5000';
-            const res = await fetch(`${apiUrl}/api/addresses/locations/cities/${region}`);
+            const res = await fetch(`${apiUrl}/api/addresses/locations/cities/${region}/${province}`);
+            
+            if (!res.ok) {
+                console.error('Error fetching cities - Status:', res.status);
+                setCities([]);
+                return;
+            }
+            
+            const contentType = res.headers.get('content-type');
+            if (!contentType || !contentType.includes('application/json')) {
+                console.error('Invalid content type for cities:', contentType);
+                setCities([]);
+                return;
+            }
+            
             const data = await res.json();
-            setCities(data);
+            console.log('Cities fetched for province', province, ':', data);
+            const citiesData = Array.isArray(data) ? data : [];
+            setCities(citiesData);
             setFormData(prev => ({ ...prev, city: '', barangay: '' }));
             setBarangays([]);
         } catch (err) {
             console.error('Error fetching cities:', err);
+            setCities([]);
         }
     };
 
@@ -598,18 +725,41 @@ function AddressSection({ state, setState }) {
         try {
             const apiUrl = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:5000';
             const res = await fetch(`${apiUrl}/api/addresses/locations/barangays/${city}`);
+            
+            if (!res.ok) {
+                console.error('Error fetching barangays - Status:', res.status);
+                setBarangays([]);
+                return;
+            }
+            
+            const contentType = res.headers.get('content-type');
+            if (!contentType || !contentType.includes('application/json')) {
+                console.error('Invalid content type for barangays:', contentType);
+                setBarangays([]);
+                return;
+            }
+            
             const data = await res.json();
-            setBarangays(data);
+            console.log('Barangays fetched for city', city, ':', data);
+            const barangaysData = Array.isArray(data) ? data : [];
+            setBarangays(barangaysData);
             setFormData(prev => ({ ...prev, barangay: '' }));
         } catch (err) {
             console.error('Error fetching barangays:', err);
+            setBarangays([]);
         }
     };
 
     const handleRegionChange = (e) => {
         const region = e.target.value;
         setFormData(prev => ({ ...prev, region }));
-        fetchCities(region);
+        fetchProvinces(region);
+    };
+
+    const handleProvinceChange = (e) => {
+        const province = e.target.value;
+        setFormData(prev => ({ ...prev, province }));
+        fetchCities(formData.region, province);
     };
 
     const handleCityChange = (e) => {
@@ -655,6 +805,7 @@ function AddressSection({ state, setState }) {
                     Barangay: formData.barangay,
                     municipality_city: formData.city,
                     region: formData.region,
+                    province: formData.province || null,
                     Country: 'Philippines',
                     address_type: formData.addressType,
                     is_default: formData.isDefault,
@@ -673,7 +824,7 @@ function AddressSection({ state, setState }) {
             setTimeout(() => {
                 setState('list');
                 // Refresh addresses list
-                window.location.reload();
+                fetchUserAddresses();
             }, 2000);
         } catch (err) {
             setMessage({ type: 'error', text: 'Error saving address. Please try again.' });
@@ -811,58 +962,102 @@ function AddressSection({ state, setState }) {
                 ) : (
                     // Manual entry mode
                     <div className={styles.addressForm}>
+                        {loadingLocations && (
+                            <div className={styles.loadingMessage}>
+                                <p>Loading location data...</p>
+                            </div>
+                        )}
+
                         <div className={styles.formGroup}>
                             <label>Address Name</label>
-                            <select 
-                                value={formData.addressType}
-                                onChange={(e) => setFormData(prev => ({ ...prev, addressType: e.target.value }))}
-                            >
-                                <option>Home</option>
-                                <option>Office</option>
-                                <option>Apartment</option>
-                                <option>Other</option>
-                            </select>
+                            <div className={styles.selectWrapper}>
+                                <select 
+                                    value={formData.addressType}
+                                    onChange={(e) => setFormData(prev => ({ ...prev, addressType: e.target.value }))}
+                                >
+                                    <option>Home</option>
+                                    <option>Office</option>
+                                    <option>Apartment</option>
+                                    <option>Other</option>
+                                </select>
+                                <ChevronDown size={18} color="#999" />
+                            </div>
                         </div>
 
                         <div className={styles.formGroup}>
-                            <label>Region</label>
-                            <select 
-                                value={formData.region}
-                                onChange={handleRegionChange}
-                            >
-                                <option value="">Select Region</option>
-                                {regions.map(r => (
-                                    <option key={r.region} value={r.region}>{r.name}</option>
-                                ))}
-                            </select>
+                            <label>Region ({regions.length} available)</label>
+                            <div className={styles.selectWrapper}>
+                                <select 
+                                    value={formData.region}
+                                    onChange={handleRegionChange}
+                                    disabled={loadingLocations || regions.length === 0}
+                                >
+                                    <option value="">
+                                        {loadingLocations ? 'Loading regions...' : (regions.length === 0 ? 'No regions available' : 'Select Region')}
+                                    </option>
+                                    {regions.map(r => (
+                                        <option key={r.region} value={r.region}>{r.name}</option>
+                                    ))}
+                                </select>
+                                <ChevronDown size={18} color="#999" />
+                            </div>
                         </div>
 
                         <div className={styles.formGroup}>
-                            <label>City/Municipality</label>
-                            <select 
-                                value={formData.city}
-                                onChange={handleCityChange}
-                                disabled={!formData.region}
-                            >
-                                <option value="">Select City</option>
-                                {cities.map(c => (
-                                    <option key={c} value={c}>{c}</option>
-                                ))}
-                            </select>
+                            <label>Province ({provinces.length} available)</label>
+                            <div className={styles.selectWrapper}>
+                                <select 
+                                    value={formData.province}
+                                    onChange={handleProvinceChange}
+                                    disabled={!formData.region || provinces.length === 0}
+                                >
+                                    <option value="">
+                                        {!formData.region ? 'Select a region first' : (provinces.length === 0 ? 'No provinces available' : 'Select Province')}
+                                    </option>
+                                    {provinces.map(p => (
+                                        <option key={p} value={p}>{p}</option>
+                                    ))}
+                                </select>
+                                <ChevronDown size={18} color="#999" />
+                            </div>
                         </div>
 
                         <div className={styles.formGroup}>
-                            <label>Barangay</label>
-                            <select 
-                                value={formData.barangay}
-                                onChange={(e) => setFormData(prev => ({ ...prev, barangay: e.target.value }))}
-                                disabled={!formData.city}
-                            >
-                                <option value="">Select Barangay</option>
-                                {barangays.map(b => (
-                                    <option key={b} value={b}>{b}</option>
-                                ))}
-                            </select>
+                            <label>City/Municipality ({cities.length} available)</label>
+                            <div className={styles.selectWrapper}>
+                                <select 
+                                    value={formData.city}
+                                    onChange={handleCityChange}
+                                    disabled={!formData.province || cities.length === 0}
+                                >
+                                    <option value="">
+                                        {!formData.province ? 'Select a province first' : (cities.length === 0 ? 'No cities available' : 'Select City')}
+                                    </option>
+                                    {cities.map(c => (
+                                        <option key={c} value={c}>{c}</option>
+                                    ))}
+                                </select>
+                                <ChevronDown size={18} color="#999" />
+                            </div>
+                        </div>
+
+                        <div className={styles.formGroup}>
+                            <label>Barangay ({barangays.length} available)</label>
+                            <div className={styles.selectWrapper}>
+                                <select 
+                                    value={formData.barangay}
+                                    onChange={(e) => setFormData(prev => ({ ...prev, barangay: e.target.value }))}
+                                    disabled={!formData.city || barangays.length === 0}
+                                >
+                                    <option value="">
+                                        {!formData.city ? 'Select a city first' : (barangays.length === 0 ? 'No barangays available' : 'Select Barangay')}
+                                    </option>
+                                    {barangays.map(b => (
+                                        <option key={b} value={b}>{b}</option>
+                                    ))}
+                                </select>
+                                <ChevronDown size={18} color="#999" />
+                            </div>
                         </div>
 
                         <div className={styles.formGroup}>
@@ -915,11 +1110,6 @@ function AddressSection({ state, setState }) {
         );
     }
 
-    const addresses = [
-        { type: 'Home', detail: 'Matina Crossing, Davao City', isDefault: true },
-        { type: 'School', detail: 'University of Southeastern Philippines' }
-    ];
-
     return (
         <div className={styles.section}>
             <header className={styles.sectionHeader}>
@@ -927,23 +1117,38 @@ function AddressSection({ state, setState }) {
                 <p>Manage your delivery locations for faster checkout.</p>
             </header>
 
-            <div className={styles.addressList}>
-                {addresses.map((addr, i) => (
-                    <div key={i} className={styles.addressCard}>
-                        <div className={styles.addressIcon}>
-                            <MapPin size={24} color="white" />
-                        </div>
-                        <div className={styles.addressInfo}>
-                            <div className={styles.addressTypeLine}>
-                                <h3>{addr.type}</h3>
-                                {addr.isDefault && <span className={styles.defaultBadge}>Default</span>}
+            {fetchingAddresses ? (
+                <div className={styles.loadingPlaceholder}>
+                    <p>Loading your addresses...</p>
+                </div>
+            ) : addresses.length === 0 ? (
+                <div className={styles.noResults}>
+                    <p>No addresses saved yet.</p>
+                </div>
+            ) : (
+                <div className={styles.addressList}>
+                    {addresses.map((addr, i) => (
+                        <div key={i} className={styles.addressCard}>
+                            <div className={styles.addressIcon}>
+                                <MapPin size={24} color="white" />
                             </div>
-                            <p>{addr.detail}</p>
+                            <div className={styles.addressInfo}>
+                                <div className={styles.addressTypeLine}>
+                                    <h3>{addr.address_type || 'Address'}</h3>
+                                    {addr.is_default && <span className={styles.defaultBadge}>Default</span>}
+                                </div>
+                                <p>{addr.Line1}</p>
+                                {(addr.Barangay || addr.municipality_city) && (
+                                    <p className={styles.addressSubtext}>
+                                        {addr.Barangay && `${addr.Barangay}, `}{addr.municipality_city}
+                                    </p>
+                                )}
+                            </div>
+                            <button className={styles.editBtn}><Pencil size={18} /></button>
                         </div>
-                        <button className={styles.editBtn}><Pencil size={18} /></button>
-                    </div>
-                ))}
-            </div>
+                    ))}
+                </div>
+            )}
 
             <button className={styles.addFullBtn} onClick={() => setState('add')}>
                 <Plus size={20} /> Add New Address

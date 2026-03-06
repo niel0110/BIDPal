@@ -91,6 +91,7 @@ export const createAddress = async (req, res) => {
       latitude,
       longitude,
       region,
+      province,
       address_type 
     } = req.body;
 
@@ -136,6 +137,7 @@ export const createAddress = async (req, res) => {
           latitude: latitude || null,
           longitude: longitude || null,
           region: region || null,
+          province: province || null,
           address_type: address_type || null
         }
       ])
@@ -152,7 +154,7 @@ export const createAddress = async (req, res) => {
 export const updateAddress = async (req, res) => {
   try {
     const { address_id } = req.params;
-    const { Line1, Line2, household_blk_st, Barangay, municipality_city, zip_code, Country, is_default } = req.body;
+    const { Line1, Line2, household_blk_st, Barangay, municipality_city, zip_code, Country, is_default, region, province } = req.body;
 
     // Get current address to find user_id
     const { data: currentAddress, error: fetchError } = await supabase
@@ -182,6 +184,8 @@ export const updateAddress = async (req, res) => {
     if (zip_code !== undefined) updateData['zip code'] = zip_code;
     if (Country !== undefined) updateData.Country = Country;
     if (is_default !== undefined) updateData.is_default = is_default;
+    if (region !== undefined) updateData.region = region;
+    if (province !== undefined) updateData.province = province;
 
     const { data, error } = await supabase
       .from('Addresses')
@@ -315,7 +319,48 @@ export const getRegions = async (req, res) => {
   }
 };
 
-// Get cities by region
+// Get provinces by region
+export const getProvincesByRegion = async (req, res) => {
+  try {
+    const { region } = req.params;
+    const locations = loadLocations();
+    
+    const regionData = locations.regions.find(r => r.region.toLowerCase() === region.toLowerCase());
+    if (!regionData) {
+      return res.status(404).json({ error: 'Region not found' });
+    }
+    
+    const provinces = regionData.provinces.map(p => p.name);
+    res.json(provinces);
+  } catch (err) {
+    res.status(500).json({ error: err.message });
+  }
+};
+
+// Get cities by province
+export const getCitiesByProvince = async (req, res) => {
+  try {
+    const { region, province } = req.params;
+    const locations = loadLocations();
+    
+    const regionData = locations.regions.find(r => r.region.toLowerCase() === region.toLowerCase());
+    if (!regionData) {
+      return res.status(404).json({ error: 'Region not found' });
+    }
+    
+    const provinceData = regionData.provinces.find(p => p.name.toLowerCase() === province.toLowerCase());
+    if (!provinceData) {
+      return res.status(404).json({ error: 'Province not found' });
+    }
+    
+    const cities = provinceData.cities.map(c => c.name);
+    res.json(cities);
+  } catch (err) {
+    res.status(500).json({ error: err.message });
+  }
+};
+
+// Get cities by region (legacy - returns all cities in region)
 export const getCitiesByRegion = async (req, res) => {
   try {
     const { region } = req.params;
@@ -326,7 +371,13 @@ export const getCitiesByRegion = async (req, res) => {
       return res.status(404).json({ error: 'Region not found' });
     }
     
-    const cities = regionData.cities.map(c => c.name);
+    const cities = [];
+    regionData.provinces.forEach(p => {
+      p.cities.forEach(c => {
+        cities.push(c.name);
+      });
+    });
+    
     res.json(cities);
   } catch (err) {
     res.status(500).json({ error: err.message });
@@ -342,11 +393,14 @@ export const getBarangaysByCity = async (req, res) => {
     let barangays = [];
     
     for (const region of locations.regions) {
-      const cityData = region.cities.find(c => c.name.toLowerCase() === city.toLowerCase());
-      if (cityData) {
-        barangays = cityData.barangays;
-        break;
+      for (const province of region.provinces) {
+        const cityData = province.cities.find(c => c.name.toLowerCase() === city.toLowerCase());
+        if (cityData) {
+          barangays = cityData.barangays;
+          break;
+        }
       }
+      if (barangays.length > 0) break;
     }
     
     if (barangays.length === 0) {

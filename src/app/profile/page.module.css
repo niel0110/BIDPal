@@ -369,6 +369,14 @@
     width: 100%;
     appearance: none;
     cursor: pointer;
+    padding-right: 2.5rem;
+}
+
+.selectWrapper select:disabled {
+    background-color: #f5f5f5;
+    color: #999;
+    cursor: not-allowed;
+    opacity: 0.7;
 }
 
 .selectWrapper svg {
@@ -377,6 +385,10 @@
     top: 50%;
     transform: translateY(-50%);
     pointer-events: none;
+}
+
+.selectWrapper select:disabled ~ svg {
+    color: #ccc !important;
 }
 
 .primaryBtn {
@@ -907,6 +919,19 @@ input:checked+.slider:before {
     padding: 3rem;
     color: #999;
     font-weight: 600;
+}
+
+.loadingPlaceholder {
+    text-align: center;
+    padding: 3rem;
+    color: #999;
+    font-weight: 600;
+}
+
+.addressSubtext {
+    margin: 0.25rem 0 0 0 !important;
+    color: #ccc;
+    font-size: 0.85rem !important;
 }
 
 .datesLine p {
@@ -1968,4 +1993,19 @@ input:checked+.slider:before {
     border-radius: 14px;
     color: #666;
     font-weight: 600;
+}
+
+.loadingMessage {
+    padding: 1rem;
+    background: #e3f2fd;
+    border-left: 4px solid var(--color-primary);
+    border-radius: 8px;
+    margin-bottom: 1.5rem;
+}
+
+.loadingMessage p {
+    margin: 0;
+    color: #1976d2;
+    font-weight: 600;
+    font-size: 0.9rem;
 }

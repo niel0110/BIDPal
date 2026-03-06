@@ -23,7 +23,7 @@ export default function MapComponent({ onSelectLocation, onClose }) {
 
     // Dynamically import Leaflet
     import('leaflet').then((L) => {
-      if (mapContainer.current && !map) {
+      if (mapContainer.current && !map && !mapContainer.current._leaflet_id) {
         // Default center (Davao City)
         const defaultCenter = [7.0731, 125.6263];
 
@@ -61,7 +61,9 @@ export default function MapComponent({ onSelectLocation, onClose }) {
 
     return () => {
       if (map) {
+        map.off();
         map.remove();
+        setMap(null);
       }
     };
   }, []);

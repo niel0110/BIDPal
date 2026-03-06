@@ -9,6 +9,8 @@ import {
   setDefaultAddress,
   countUserAddresses,
   getRegions,
+  getProvincesByRegion,
+  getCitiesByProvince,
   getCitiesByRegion,
   getBarangaysByCity
 } from '../controllers/addressesController.js';
@@ -26,6 +28,8 @@ router.get('/user/:user_id/count', countUserAddresses);
 
 // Location endpoints - GET before /:address_id to avoid conflicts
 router.get('/locations/regions', getRegions);
+router.get('/locations/provinces/:region', getProvincesByRegion);
+router.get('/locations/cities/:region/:province', getCitiesByProvince);
 router.get('/locations/cities/:region', getCitiesByRegion);
 router.get('/locations/barangays/:city', getBarangaysByCity);
 
