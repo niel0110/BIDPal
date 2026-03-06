@@ -1,6 +1,7 @@
 'use client';
 
 import { useState, Suspense, useEffect } from 'react';
+import dynamic from 'next/dynamic';
 import {
     User,
     MapPin,
@@ -38,11 +39,18 @@ import {
     ArrowDownRight,
     ShoppingBag,
     Users,
-    DollarSign
+    DollarSign,
+    Navigation
 } from 'lucide-react';
 import styles from './page.module.css';
 import { useAuth } from '@/context/AuthContext';
 import { useRouter, useSearchParams } from 'next/navigation';
+import { useGeolocation } from '@/hooks/useGeolocation';
+
+const MapComponent = dynamic(() => import('@/components/map/MapComponent'), {
+  ssr: false,
+  loading: () => <div className={styles.loadingFallback}>Loading map...</div>
+});
 
 function AccountContent() {
     const { user, logout } = useAuth();
@@ -208,7 +216,10 @@ function AccountContent() {
                         ))}
                     </nav>
 
-                    <button className={styles.logoutNavBtn} onClick={logout}>
+                    <button className={styles.logoutNavBtn} onClick={() => {
+                        logout();
+                        router.push('/signin');
+                    }}>
                         <div className={styles.navIcon}><LogOut size={20} /></div>
                         <span>Logout</span>
                     </button>
@@ -527,39 +538,379 @@ function ProfileSection() {
 }
 
 function AddressSection({ state, setState }) {
+    const { user } = useAuth();
+    const [showMap, setShowMap] = useState(false);
+    const [inputMode, setInputMode] = useState(null); // 'geolocation' or 'manual'
+    const [formData, setFormData] = useState({
+        addressType: 'Home',
+        Line1: '',
+        Line2: '',
+        region: '',
+        city: '',
+        barangay: '',
+        isDefault: false
+    });
+    const [regions, setRegions] = useState([]);
+    const [cities, setCities] = useState([]);
+    const [barangays, setBarangays] = useState([]);
+    const [loading, setLoading] = useState(false);
+    const [message, setMessage] = useState('');
+    const { getCurrentLocation, location: geoLocation, error: geoError, loading: geoLoading } = useGeolocation();
+
+    // Fetch regions on component mount
+    useEffect(() => {
+        fetchRegions();
+    }, []);
+
+    const fetchRegions = async () => {
+        try {
+            const apiUrl = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:5000';
+            const res = await fetch(`${apiUrl}/api/addresses/locations/regions`);
+            const data = await res.json();
+            setRegions(data);
+        } catch (err) {
+            console.error('Error fetching regions:', err);
+        }
+    };
+
+    const fetchCities = async (region) => {
+        if (!region) {
+            setCities([]);
+            return;
+        }
+        try {
+            const apiUrl = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:5000';
+            const res = await fetch(`${apiUrl}/api/addresses/locations/cities/${region}`);
+            const data = await res.json();
+            setCities(data);
+            setFormData(prev => ({ ...prev, city: '', barangay: '' }));
+            setBarangays([]);
+        } catch (err) {
+            console.error('Error fetching cities:', err);
+        }
+    };
+
+    const fetchBarangays = async (city) => {
+        if (!city) {
+            setBarangays([]);
+            return;
+        }
+        try {
+            const apiUrl = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:5000';
+            const res = await fetch(`${apiUrl}/api/addresses/locations/barangays/${city}`);
+            const data = await res.json();
+            setBarangays(data);
+            setFormData(prev => ({ ...prev, barangay: '' }));
+        } catch (err) {
+            console.error('Error fetching barangays:', err);
+        }
+    };
+
+    const handleRegionChange = (e) => {
+        const region = e.target.value;
+        setFormData(prev => ({ ...prev, region }));
+        fetchCities(region);
+    };
+
+    const handleCityChange = (e) => {
+        const city = e.target.value;
+        setFormData(prev => ({ ...prev, city }));
+        fetchBarangays(city);
+    };
+
+    const handleMapSelect = (locationData) => {
+        setFormData(prev => ({
+            ...prev,
+            Line1: locationData.address,
+            city: locationData.city || '',
+            barangay: locationData.barangay || '',
+            region: locationData.region || ''
+        }));
+        setShowMap(false);
+        setInputMode(null);
+        setMessage({ type: 'success', text: '✓ Location selected from map!' });
+        setTimeout(() => setMessage(''), 3000);
+    };
+
+    const handleSaveAddress = async () => {
+        if (!user) return;
+
+        if (!formData.Line1 || !formData.city || !formData.barangay) {
+            setMessage({ type: 'error', text: 'Please fill in all required fields' });
+            return;
+        }
+
+        setLoading(true);
+        setMessage('');
+
+        try {
+            const apiUrl = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:5000';
+            const res = await fetch(`${apiUrl}/api/addresses`, {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({
+                    user_id: user.user_id,
+                    Line1: formData.Line1,
+                    Line2: formData.Line2 || null,
+                    Barangay: formData.barangay,
+                    municipality_city: formData.city,
+                    region: formData.region,
+                    Country: 'Philippines',
+                    address_type: formData.addressType,
+                    is_default: formData.isDefault,
+                    zip_code: null
+                })
+            });
+
+            const data = await res.json();
+
+            if (!res.ok) {
+                setMessage({ type: 'error', text: 'Error saving address. Please try again.' });
+                return;
+            }
+
+            setMessage({ type: 'success', text: '✓ Address saved successfully!' });
+            setTimeout(() => {
+                setState('list');
+                // Refresh addresses list
+                window.location.reload();
+            }, 2000);
+        } catch (err) {
+            setMessage({ type: 'error', text: 'Error saving address. Please try again.' });
+            console.error('Error:', err);
+        } finally {
+            setLoading(false);
+        }
+    };
+
     if (state === 'add') {
         return (
             <div className={styles.section}>
+                {showMap && (
+                    <MapComponent 
+                        onSelectLocation={handleMapSelect}
+                        onClose={() => setShowMap(false)}
+                    />
+                )}
+
                 <header className={styles.sectionHeader}>
-                    <button className={styles.backBtn} onClick={() => setState('list')}>
+                    <button className={styles.backBtn} onClick={() => {
+                        setState('list');
+                        setInputMode(null);
+                    }}>
                         <ChevronRight size={18} style={{ transform: 'rotate(180deg)' }} /> Back
                     </button>
                     <h1>Add New Address</h1>
                 </header>
 
-                <div className={styles.mapPlaceholder}>
-                    <MapPin size={48} color="var(--color-primary)" />
-                    <p>Interactive Map Integration</p>
-                </div>
-
-                <div className={styles.addressForm}>
-                    <div className={styles.formGroup}>
-                        <label>Address Name</label>
-                        <input type="text" placeholder="e.g. Home, Office, Apartment" />
+                {message && (
+                    <div className={`${styles.messageBox} ${message.type === 'error' ? styles.errorMessage : styles.successMessage}`}>
+                        {message.text}
                     </div>
-                    <div className={styles.formGroup}>
-                        <label>Full Address Details</label>
-                        <div className={styles.inputWithIcon}>
-                            <input type="text" placeholder="Street, Building, Barangay, City" />
-                            <MapPin size={18} color="#999" />
+                )}
+
+                {inputMode === null ? (
+                    // Mode selection screen
+                    <div className={styles.modeSelection}>
+                        <p className={styles.modeLabel}>Choose how you want to add an address:</p>
+                        <div className={styles.modeButtons}>
+                            <button 
+                                className={styles.modeButton}
+                                onClick={() => setInputMode('geolocation')}
+                            >
+                                <Navigation size={32} />
+                                <span>Use My Location</span>
+                                <p>Open map to pinpoint your address</p>
+                            </button>
+                            <button 
+                                className={styles.modeButton}
+                                onClick={() => setInputMode('manual')}
+                            >
+                                <MapPin size={32} />
+                                <span>Manual Entry</span>
+                                <p>Select from dropdowns</p>
+                            </button>
                         </div>
                     </div>
-                    <div className={styles.checkboxGroup}>
-                        <input type="checkbox" id="defaultAddr" />
-                        <label htmlFor="defaultAddr">Make this as the default address</label>
+                ) : inputMode === 'geolocation' ? (
+                    // Geolocation mode
+                    <div className={styles.addressForm}>
+                        <div className={styles.formGroup}>
+                            <label>Address Name</label>
+                            <select 
+                                value={formData.addressType}
+                                onChange={(e) => setFormData(prev => ({ ...prev, addressType: e.target.value }))}
+                                className={styles.selectInput}
+                            >
+                                <option>Home</option>
+                                <option>Office</option>
+                                <option>Apartment</option>
+                                <option>Other</option>
+                            </select>
+                        </div>
+
+                        <button 
+                            className={styles.geolocationBtn}
+                            onClick={() => setShowMap(true)}
+                        >
+                            <MapPin size={20} />
+                            Open Map to Select Location
+                        </button>
+
+                        {formData.Line1 && (
+                            <>
+                                <div className={styles.formGroup}>
+                                    <label>Location Selected</label>
+                                    <div className={styles.selectedLocation}>
+                                        <MapPin size={18} />
+                                        <div>
+                                            <p className={styles.locationMain}>{formData.Line1}</p>
+                                            {formData.city && <p className={styles.locationSub}>{formData.barangay}, {formData.city}</p>}
+                                        </div>
+                                    </div>
+                                </div>
+
+                                <div className={styles.formGroup}>
+                                    <label>Additional Details (Optional)</label>
+                                    <textarea
+                                        placeholder="Apt number, building name, etc."
+                                        value={formData.Line2}
+                                        onChange={(e) => setFormData(prev => ({ ...prev, Line2: e.target.value }))}
+                                        rows={3}
+                                        className={styles.textarea}
+                                    />
+                                </div>
+
+                                <div className={styles.checkboxGroup}>
+                                    <input 
+                                        type="checkbox" 
+                                        id="defaultAddr" 
+                                        checked={formData.isDefault}
+                                        onChange={(e) => setFormData(prev => ({ ...prev, isDefault: e.target.checked }))}
+                                    />
+                                    <label htmlFor="defaultAddr">Make this your default address</label>
+                                </div>
+
+                                <button 
+                                    className={styles.primaryBtn}
+                                    onClick={handleSaveAddress}
+                                    disabled={loading}
+                                >
+                                    {loading ? 'Saving...' : 'Save Address'}
+                                </button>
+                            </>
+                        )}
+
+                        <button
+                            className={styles.secondaryBtn}
+                            onClick={() => setInputMode(null)}
+                        >
+                            Switch to Manual Entry
+                        </button>
                     </div>
-                    <button className={styles.primaryBtn}>Add Address</button>
-                </div>
+                ) : (
+                    // Manual entry mode
+                    <div className={styles.addressForm}>
+                        <div className={styles.formGroup}>
+                            <label>Address Name</label>
+                            <select 
+                                value={formData.addressType}
+                                onChange={(e) => setFormData(prev => ({ ...prev, addressType: e.target.value }))}
+                            >
+                                <option>Home</option>
+                                <option>Office</option>
+                                <option>Apartment</option>
+                                <option>Other</option>
+                            </select>
+                        </div>
+
+                        <div className={styles.formGroup}>
+                            <label>Region</label>
+                            <select 
+                                value={formData.region}
+                                onChange={handleRegionChange}
+                            >
+                                <option value="">Select Region</option>
+                                {regions.map(r => (
+                                    <option key={r.region} value={r.region}>{r.name}</option>
+                                ))}
+                            </select>
+                        </div>
+
+                        <div className={styles.formGroup}>
+                            <label>City/Municipality</label>
+                            <select 
+                                value={formData.city}
+                                onChange={handleCityChange}
+                                disabled={!formData.region}
+                            >
+                                <option value="">Select City</option>
+                                {cities.map(c => (
+                                    <option key={c} value={c}>{c}</option>
+                                ))}
+                            </select>
+                        </div>
+
+                        <div className={styles.formGroup}>
+                            <label>Barangay</label>
+                            <select 
+                                value={formData.barangay}
+                                onChange={(e) => setFormData(prev => ({ ...prev, barangay: e.target.value }))}
+                                disabled={!formData.city}
+                            >
+                                <option value="">Select Barangay</option>
+                                {barangays.map(b => (
+                                    <option key={b} value={b}>{b}</option>
+                                ))}
+                            </select>
+                        </div>
+
+                        <div className={styles.formGroup}>
+                            <label>Street Address / Location Details (Line 1)</label>
+                            <input 
+                                type="text" 
+                                placeholder="Street, Building, House number"
+                                value={formData.Line1}
+                                onChange={(e) => setFormData(prev => ({ ...prev, Line1: e.target.value }))}
+                            />
+                        </div>
+
+                        <div className={styles.formGroup}>
+                            <label>Additional Details (Optional - Line 2)</label>
+                            <textarea
+                                placeholder="Apt number, building name, landmarks, etc."
+                                value={formData.Line2}
+                                onChange={(e) => setFormData(prev => ({ ...prev, Line2: e.target.value }))}
+                                rows={3}
+                            />
+                        </div>
+
+                        <div className={styles.checkboxGroup}>
+                            <input 
+                                type="checkbox" 
+                                id="defaultAddr" 
+                                checked={formData.isDefault}
+                                onChange={(e) => setFormData(prev => ({ ...prev, isDefault: e.target.checked }))}
+                            />
+                            <label htmlFor="defaultAddr">Make this your default address</label>
+                        </div>
+
+                        <button 
+                            className={styles.primaryBtn}
+                            onClick={handleSaveAddress}
+                            disabled={loading}
+                        >
+                            {loading ? 'Saving...' : 'Save Address'}
+                        </button>
+
+                        <button
+                            className={styles.secondaryBtn}
+                            onClick={() => setInputMode(null)}
+                        >
+                            Switch to Location Map
+                        </button>
+                    </div>
+                )}
             </div>
         );
     }
