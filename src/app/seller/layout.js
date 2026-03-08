@@ -1,10 +1,18 @@
 'use client';
 
-import Sidebar from '@/components/seller/Sidebar';
+import { usePathname } from 'next/navigation';
 import Header from '@/components/layout/Header';
 import styles from './layout.module.css';
 
 export default function SellerLayout({ children }) {
+    const pathname = usePathname();
+    const isHeaderless = pathname?.startsWith('/seller/setup') || pathname?.startsWith('/seller/add-product');
+
+    if (isHeaderless) {
+        // Render setup pages with no header — standalone onboarding experience
+        return <>{children}</>;
+    }
+
     return (
         <div className={styles.sellerContainer}>
             <Header />

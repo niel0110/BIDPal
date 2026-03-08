@@ -126,9 +126,9 @@ export default function AddProductPage() {
         if (currentStep < steps.length - 1) {
             setCurrentStep(currentStep + 1);
         } else {
-            // Final submit
+            // Product added — proceed to seller dashboard
             console.log('Submitting product:', formData);
-            router.push('/seller/inventory');
+            router.push('/seller');
         }
     };
 
@@ -136,7 +136,8 @@ export default function AddProductPage() {
         if (currentStep > 0) {
             setCurrentStep(currentStep - 1);
         } else {
-            router.back();
+            // First step — go back to Get Started page
+            router.push('/seller/setup?done=1');
         }
     };
 
@@ -145,7 +146,7 @@ export default function AddProductPage() {
             <div className={styles.header}>
                 <button className={styles.backBtn} onClick={handleBack}>
                     <ChevronLeft size={24} />
-                    <span>Add Product</span>
+                    <span>{currentStep === 0 ? 'Get Started' : 'Add Product'}</span>
                 </button>
             </div>
 

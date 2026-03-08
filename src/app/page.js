@@ -57,7 +57,7 @@ export default function Home() {
 
   useEffect(() => {
     if (user?.role === 'seller') {
-      router.push('/seller');
+      router.push('/seller/setup');
     }
   }, [user, router]);
 
@@ -79,7 +79,7 @@ export default function Home() {
       }
       console.log('Login successful, redirecting...');
       if (selectedRole === 'seller') {
-        router.push('/seller');
+        router.push('/seller/setup');
       } else {
         router.push('/');
       }
@@ -127,7 +127,7 @@ export default function Home() {
 
         console.log('Registration successful!');
         if (selectedRole === 'seller') {
-          router.push('/seller');
+          router.push('/seller/setup');
         } else {
           router.push('/');
         }

@@ -4,10 +4,7 @@ import Link from 'next/link';
 import { ChevronLeft, Plus } from 'lucide-react';
 import styles from './page.module.css';
 
-const mockProducts = [
-    { id: 1, name: 'XYZ name.jpg', size: '24 Mb', image: 'https://images.unsplash.com/photo-1516035069371-29a1b244cc32?q=80&w=200&auto=format&fit=crop' },
-    { id: 2, name: 'XYZ name.jpg', size: '24 Mb', image: 'https://images.unsplash.com/photo-1516035069371-29a1b244cc32?q=80&w=200&auto=format&fit=crop' },
-];
+const mockProducts = [];
 
 export default function InventoryPage() {
     return (

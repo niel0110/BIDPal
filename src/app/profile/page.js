@@ -48,8 +48,8 @@ import { useRouter, useSearchParams } from 'next/navigation';
 import { useGeolocation } from '@/hooks/useGeolocation';
 
 const MapComponent = dynamic(() => import('@/components/map/MapComponent'), {
-  ssr: false,
-  loading: () => <div className={styles.loadingFallback}>Loading map...</div>
+    ssr: false,
+    loading: () => <div className={styles.loadingFallback}>Loading map...</div>
 });
 
 function AccountContent() {
@@ -120,7 +120,7 @@ function AccountContent() {
             // Update local storage with new avatar
             const updatedUser = { ...user, Avatar: data.avatarUrl };
             localStorage.setItem('bidpal_user', JSON.stringify(updatedUser));
-            
+
             setAvatarMessage({ type: 'success', text: '✓ Avatar updated successfully!' });
             setTimeout(() => setAvatarMessage(''), 3000);
 
@@ -172,7 +172,7 @@ function AccountContent() {
                                 {avatarMessage.text}
                             </div>
                         )}
-                        
+
                         <div className={styles.avatarWrapper}>
                             <img
                                 src={getAvatarImage()}
@@ -188,7 +188,7 @@ function AccountContent() {
                                 disabled={avatarLoading}
                             />
                             <label htmlFor="avatarInput" className={styles.editAvatarLabel}>
-                                <button 
+                                <button
                                     className={styles.editAvatar}
                                     type="button"
                                     title="Upload profile picture"
@@ -256,9 +256,9 @@ export default function AccountPage() {
 
 function MerchantInsightsSection() {
     const kpis = [
-        { label: 'Total Revenue', value: '₱ 452,100', change: '+12.5%', isPositive: true, icon: <DollarSign size={24} />, color: 'purple' },
-        { label: 'Items Sold', value: '1,280', change: '+8.2%', isPositive: true, icon: <ShoppingBag size={24} />, color: 'blue' },
-        { label: 'Followers', value: '842', change: '+15.1%', isPositive: true, icon: <Users size={24} />, color: 'orange' },
+        { label: 'Total Revenue', value: '₱ 0', change: '0%', isPositive: true, icon: <DollarSign size={24} />, color: 'purple' },
+        { label: 'Items Sold', value: '0', change: '0%', isPositive: true, icon: <ShoppingBag size={24} />, color: 'blue' },
+        { label: 'Followers', value: '0', change: '0%', isPositive: true, icon: <Users size={24} />, color: 'orange' },
     ];
 
     return (
@@ -289,9 +289,9 @@ function MerchantInsightsSection() {
             <div className={styles.chartMock}>
                 <h3>Revenue Growth</h3>
                 <div className={styles.barChart}>
-                    {[40, 65, 80, 50, 95, 70, 85].map((h, i) => (
+                    {[0, 0, 0, 0, 0, 0, 0].map((h, i) => (
                         <div key={i} className={styles.barWrapper}>
-                            <div className={styles.bar} style={{ height: `${h}%` }}></div>
+                            <div className={styles.bar} style={{ height: `10%` }}></div>
                             <span className={styles.barLabel}>{['M', 'T', 'W', 'T', 'F', 'S', 'S'][i]}</span>
                         </div>
                     ))}
@@ -317,21 +317,21 @@ function StoreProfileSection() {
             <div className={styles.profileForm}>
                 <div className={styles.bannerUpload}>
                     <div className={styles.bannerPreview}>
-                        <img src="https://images.unsplash.com/photo-1441986300917-64674bd600d8?auto=format&fit=crop&q=80&w=1000" alt="Banner" />
+                        <div className={styles.emptyBanner}>No Banner Uploaded</div>
                         <button className={styles.changeBannerBtn}><Camera size={18} /> Edit Banner</button>
                     </div>
                 </div>
 
                 <div className={styles.formGroup}>
                     <label>Store Name</label>
-                    <input type="text" defaultValue="Retro Vault" />
+                    <input type="text" placeholder="Enter store name" />
                 </div>
 
                 <div className={styles.formGroup}>
                     <label>Store Handle</label>
                     <div className={styles.inputWithPrefix}>
                         <span className={styles.prefix}>bidpal.com/</span>
-                        <input type="text" defaultValue="retrovault" />
+                        <input type="text" placeholder="storehandle" />
                     </div>
                 </div>
 
@@ -339,14 +339,15 @@ function StoreProfileSection() {
                     <label>Store Description</label>
                     <textarea
                         rows={4}
-                        defaultValue="Premium curator of vintage electronics and analog rarities. Based in Davao City, serving collectors nationwide."
+                        placeholder="Tell buyers about your store..."
                     />
                 </div>
 
                 <div className={styles.formGroup}>
                     <label>Business Category</label>
                     <div className={styles.selectWrapper}>
-                        <select defaultValue="Gadgets">
+                        <select defaultValue="">
+                            <option value="" disabled>Select Category</option>
                             <option>Gadgets</option>
                             <option>Fashion</option>
                             <option>Collectibles</option>
@@ -411,7 +412,7 @@ function ProfileSection() {
             // Update local storage and auth context
             const updatedUser = { ...user, Fname: firstName, Mname: middleName, Lname: lastName, contact_num: phone };
             localStorage.setItem('bidpal_user', JSON.stringify(updatedUser));
-            
+
             setMessage({ type: 'success', text: '✓ Your profile has been updated successfully!' });
 
             setTimeout(() => setMessage(''), 5000);
@@ -440,12 +441,12 @@ function ProfileSection() {
                 <div className={styles.formGroup}>
                     <label>First Name</label>
                     <div className={styles.inputWithIcon}>
-                        <input 
-                            type="text" 
+                        <input
+                            type="text"
                             value={firstName}
                             onChange={(e) => setFirstName(e.target.value)}
                         />
-                        <button 
+                        <button
                             className={styles.editIconBtn}
                             type="button"
                             title="Edit first name"
@@ -458,12 +459,12 @@ function ProfileSection() {
                 <div className={styles.formGroup}>
                     <label>Middle Name</label>
                     <div className={styles.inputWithIcon}>
-                        <input 
-                            type="text" 
+                        <input
+                            type="text"
                             value={middleName}
                             onChange={(e) => setMiddleName(e.target.value)}
                         />
-                        <button 
+                        <button
                             className={styles.editIconBtn}
                             type="button"
                             title="Edit middle name"
@@ -476,12 +477,12 @@ function ProfileSection() {
                 <div className={styles.formGroup}>
                     <label>Last Name</label>
                     <div className={styles.inputWithIcon}>
-                        <input 
-                            type="text" 
+                        <input
+                            type="text"
                             value={lastName}
                             onChange={(e) => setLastName(e.target.value)}
                         />
-                        <button 
+                        <button
                             className={styles.editIconBtn}
                             type="button"
                             title="Edit last name"
@@ -494,8 +495,8 @@ function ProfileSection() {
                 <div className={styles.formGroup}>
                     <label>Email</label>
                     <div className={styles.readOnlyInputWrapper}>
-                        <input 
-                            type="email" 
+                        <input
+                            type="email"
                             value={email}
                             disabled
                             title="Email cannot be changed"
@@ -510,12 +511,12 @@ function ProfileSection() {
                 <div className={styles.formGroup}>
                     <label>Phone Number</label>
                     <div className={styles.inputWithIcon}>
-                        <input 
-                            type="tel" 
+                        <input
+                            type="tel"
                             value={phone}
                             onChange={(e) => setPhone(e.target.value)}
                         />
-                        <button 
+                        <button
                             className={styles.editIconBtn}
                             type="button"
                             title="Edit phone number"
@@ -525,7 +526,7 @@ function ProfileSection() {
                     </div>
                 </div>
 
-                <button 
+                <button
                     className={styles.primaryBtn}
                     onClick={handleSaveProfile}
                     disabled={loading}
@@ -584,22 +585,22 @@ function AddressSection({ state, setState }) {
         try {
             const apiUrl = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:5000';
             const res = await fetch(`${apiUrl}/api/addresses/user/${user.user_id}`);
-            
+
             if (!res.ok) {
                 console.error('API Response Status:', res.status);
                 setAddresses([]);
                 return;
             }
-            
+
             const contentType = res.headers.get('content-type');
             if (!contentType || !contentType.includes('application/json')) {
                 console.error('Invalid content type:', contentType);
                 setAddresses([]);
                 return;
             }
-            
+
             const data = await res.json();
-            
+
             if (Array.isArray(data)) {
                 setAddresses(data);
             } else {
@@ -618,14 +619,14 @@ function AddressSection({ state, setState }) {
         try {
             const apiUrl = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:5000';
             const res = await fetch(`${apiUrl}/api/addresses/locations/regions`);
-            
+
             if (!res.ok) {
                 console.error('Error fetching regions - Status:', res.status);
                 setRegions([]);
                 setLoadingLocations(false);
                 return;
             }
-            
+
             const contentType = res.headers.get('content-type');
             if (!contentType || !contentType.includes('application/json')) {
                 console.error('Invalid content type for regions:', contentType);
@@ -633,7 +634,7 @@ function AddressSection({ state, setState }) {
                 setLoadingLocations(false);
                 return;
             }
-            
+
             const data = await res.json();
             console.log('Regions fetched:', data);
             const regionsData = Array.isArray(data) ? data : [];
@@ -656,20 +657,20 @@ function AddressSection({ state, setState }) {
         try {
             const apiUrl = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:5000';
             const res = await fetch(`${apiUrl}/api/addresses/locations/provinces/${region}`);
-            
+
             if (!res.ok) {
                 console.error('Error fetching provinces - Status:', res.status);
                 setProvinces([]);
                 return;
             }
-            
+
             const contentType = res.headers.get('content-type');
             if (!contentType || !contentType.includes('application/json')) {
                 console.error('Invalid content type for provinces:', contentType);
                 setProvinces([]);
                 return;
             }
-            
+
             const data = await res.json();
             console.log('Provinces fetched for region', region, ':', data);
             const provincesData = Array.isArray(data) ? data : [];
@@ -691,20 +692,20 @@ function AddressSection({ state, setState }) {
         try {
             const apiUrl = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:5000';
             const res = await fetch(`${apiUrl}/api/addresses/locations/cities/${region}/${province}`);
-            
+
             if (!res.ok) {
                 console.error('Error fetching cities - Status:', res.status);
                 setCities([]);
                 return;
             }
-            
+
             const contentType = res.headers.get('content-type');
             if (!contentType || !contentType.includes('application/json')) {
                 console.error('Invalid content type for cities:', contentType);
                 setCities([]);
                 return;
             }
-            
+
             const data = await res.json();
             console.log('Cities fetched for province', province, ':', data);
             const citiesData = Array.isArray(data) ? data : [];
@@ -725,20 +726,20 @@ function AddressSection({ state, setState }) {
         try {
             const apiUrl = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:5000';
             const res = await fetch(`${apiUrl}/api/addresses/locations/barangays/${city}`);
-            
+
             if (!res.ok) {
                 console.error('Error fetching barangays - Status:', res.status);
                 setBarangays([]);
                 return;
             }
-            
+
             const contentType = res.headers.get('content-type');
             if (!contentType || !contentType.includes('application/json')) {
                 console.error('Invalid content type for barangays:', contentType);
                 setBarangays([]);
                 return;
             }
-            
+
             const data = await res.json();
             console.log('Barangays fetched for city', city, ':', data);
             const barangaysData = Array.isArray(data) ? data : [];
@@ -838,7 +839,7 @@ function AddressSection({ state, setState }) {
         return (
             <div className={styles.section}>
                 {showMap && (
-                    <MapComponent 
+                    <MapComponent
                         onSelectLocation={handleMapSelect}
                         onClose={() => setShowMap(false)}
                     />
@@ -865,7 +866,7 @@ function AddressSection({ state, setState }) {
                     <div className={styles.modeSelection}>
                         <p className={styles.modeLabel}>Choose how you want to add an address:</p>
                         <div className={styles.modeButtons}>
-                            <button 
+                            <button
                                 className={styles.modeButton}
                                 onClick={() => setInputMode('geolocation')}
                             >
@@ -873,7 +874,7 @@ function AddressSection({ state, setState }) {
                                 <span>Use My Location</span>
                                 <p>Open map to pinpoint your address</p>
                             </button>
-                            <button 
+                            <button
                                 className={styles.modeButton}
                                 onClick={() => setInputMode('manual')}
                             >
@@ -888,7 +889,7 @@ function AddressSection({ state, setState }) {
                     <div className={styles.addressForm}>
                         <div className={styles.formGroup}>
                             <label>Address Name</label>
-                            <select 
+                            <select
                                 value={formData.addressType}
                                 onChange={(e) => setFormData(prev => ({ ...prev, addressType: e.target.value }))}
                                 className={styles.selectInput}
@@ -900,7 +901,7 @@ function AddressSection({ state, setState }) {
                             </select>
                         </div>
 
-                        <button 
+                        <button
                             className={styles.geolocationBtn}
                             onClick={() => setShowMap(true)}
                         >
@@ -933,16 +934,16 @@ function AddressSection({ state, setState }) {
                                 </div>
 
                                 <div className={styles.checkboxGroup}>
-                                    <input 
-                                        type="checkbox" 
-                                        id="defaultAddr" 
+                                    <input
+                                        type="checkbox"
+                                        id="defaultAddr"
                                         checked={formData.isDefault}
                                         onChange={(e) => setFormData(prev => ({ ...prev, isDefault: e.target.checked }))}
                                     />
                                     <label htmlFor="defaultAddr">Make this your default address</label>
                                 </div>
 
-                                <button 
+                                <button
                                     className={styles.primaryBtn}
                                     onClick={handleSaveAddress}
                                     disabled={loading}
@@ -971,7 +972,7 @@ function AddressSection({ state, setState }) {
                         <div className={styles.formGroup}>
                             <label>Address Name</label>
                             <div className={styles.selectWrapper}>
-                                <select 
+                                <select
                                     value={formData.addressType}
                                     onChange={(e) => setFormData(prev => ({ ...prev, addressType: e.target.value }))}
                                 >
@@ -987,7 +988,7 @@ function AddressSection({ state, setState }) {
                         <div className={styles.formGroup}>
                             <label>Region ({regions.length} available)</label>
                             <div className={styles.selectWrapper}>
-                                <select 
+                                <select
                                     value={formData.region}
                                     onChange={handleRegionChange}
                                     disabled={loadingLocations || regions.length === 0}
@@ -1006,7 +1007,7 @@ function AddressSection({ state, setState }) {
                         <div className={styles.formGroup}>
                             <label>Province ({provinces.length} available)</label>
                             <div className={styles.selectWrapper}>
-                                <select 
+                                <select
                                     value={formData.province}
                                     onChange={handleProvinceChange}
                                     disabled={!formData.region || provinces.length === 0}
@@ -1025,7 +1026,7 @@ function AddressSection({ state, setState }) {
                         <div className={styles.formGroup}>
                             <label>City/Municipality ({cities.length} available)</label>
                             <div className={styles.selectWrapper}>
-                                <select 
+                                <select
                                     value={formData.city}
                                     onChange={handleCityChange}
                                     disabled={!formData.province || cities.length === 0}
@@ -1044,7 +1045,7 @@ function AddressSection({ state, setState }) {
                         <div className={styles.formGroup}>
                             <label>Barangay ({barangays.length} available)</label>
                             <div className={styles.selectWrapper}>
-                                <select 
+                                <select
                                     value={formData.barangay}
                                     onChange={(e) => setFormData(prev => ({ ...prev, barangay: e.target.value }))}
                                     disabled={!formData.city || barangays.length === 0}
@@ -1062,8 +1063,8 @@ function AddressSection({ state, setState }) {
 
                         <div className={styles.formGroup}>
                             <label>Street Address / Location Details (Line 1)</label>
-                            <input 
-                                type="text" 
+                            <input
+                                type="text"
                                 placeholder="Street, Building, House number"
                                 value={formData.Line1}
                                 onChange={(e) => setFormData(prev => ({ ...prev, Line1: e.target.value }))}
@@ -1081,16 +1082,16 @@ function AddressSection({ state, setState }) {
                         </div>
 
                         <div className={styles.checkboxGroup}>
-                            <input 
-                                type="checkbox" 
-                                id="defaultAddr" 
+                            <input
+                                type="checkbox"
+                                id="defaultAddr"
                                 checked={formData.isDefault}
                                 onChange={(e) => setFormData(prev => ({ ...prev, isDefault: e.target.checked }))}
                             />
                             <label htmlFor="defaultAddr">Make this your default address</label>
                         </div>
 
-                        <button 
+                        <button
                             className={styles.primaryBtn}
                             onClick={handleSaveAddress}
                             disabled={loading}

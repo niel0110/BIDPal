@@ -14,17 +14,13 @@ import styles from './page.module.css';
 
 export default function Analytics() {
     const kpis = [
-        { label: 'Total Revenue', value: '₱ 452,100', change: '+12.5%', isPositive: true, icon: <DollarSign size={24} />, color: 'purple' },
-        { label: 'Items Sold', value: '1,280', change: '+8.2%', isPositive: true, icon: <ShoppingBag size={24} />, color: 'blue' },
-        { label: 'Avg. Bid Increase', value: '34%', change: '-2.4%', isPositive: false, icon: <TrendingUp size={24} />, color: 'red' },
-        { label: 'New Followers', value: '842', change: '+15.1%', isPositive: true, icon: <Users size={24} />, color: 'orange' },
+        { label: 'Total Revenue', value: '₱ 0', change: '0%', isPositive: true, icon: <DollarSign size={24} />, color: 'purple' },
+        { label: 'Items Sold', value: '0', change: '0%', isPositive: true, icon: <ShoppingBag size={24} />, color: 'blue' },
+        { label: 'Avg. Bid Increase', value: '0%', change: '0%', isPositive: true, icon: <TrendingUp size={24} />, color: 'red' },
+        { label: 'New Followers', value: '0', change: '0%', isPositive: true, icon: <Users size={24} />, color: 'orange' },
     ];
 
-    const topProducts = [
-        { name: 'Vintage Leather Satchel', category: 'Bags', sales: 45, revenue: '₱ 144,000' },
-        { name: 'Silver Pocket Watch', category: 'Jewelry', sales: 32, revenue: '₱ 38,400' },
-        { name: 'Retro Camera Kit', category: 'Gadgets', sales: 28, revenue: '₱ 347,200' },
-    ];
+    const topProducts = [];
 
     return (
         <div className={styles.container}>
@@ -68,10 +64,10 @@ export default function Analytics() {
                     <div className={styles.chartContainer}>
                         {/* Visual simulation of a bar chart */}
                         <div className={styles.barChart}>
-                            {[65, 40, 80, 50, 95, 70, 85, 45, 60, 75, 55, 90].map((h, i) => (
+                            {[0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0].map((h, i) => (
                                 <div key={i} className={styles.barWrapper}>
-                                    <div className={styles.bar} style={{ height: `${h}%` }}>
-                                        <div className={styles.barTooltip}>₱ {(h * 1000).toLocaleString()}</div>
+                                    <div className={styles.bar} style={{ height: `10%` }}>
+                                        <div className={styles.barTooltip}>₱ 0</div>
                                     </div>
                                     <span className={styles.barLabel}>{['J', 'F', 'M', 'A', 'M', 'J', 'J', 'A', 'S', 'O', 'N', 'D'][i]}</span>
                                 </div>
@@ -96,7 +92,7 @@ export default function Analytics() {
                                 </tr>
                             </thead>
                             <tbody>
-                                {topProducts.map((p, idx) => (
+                                {topProducts.length > 0 ? topProducts.map((p, idx) => (
                                     <tr key={idx}>
                                         <td>
                                             <div className={styles.productCell}>
@@ -107,7 +103,13 @@ export default function Analytics() {
                                         <td>{p.sales}</td>
                                         <td className={styles.revenueCell}>{p.revenue}</td>
                                     </tr>
-                                ))}
+                                )) : (
+                                    <tr>
+                                        <td colSpan="3" style={{ textAlign: 'center', padding: '2rem', color: '#666' }}>
+                                            No data available for the selected period.
+                                        </td>
+                                    </tr>
+                                )}
                             </tbody>
                         </table>
                     </div>

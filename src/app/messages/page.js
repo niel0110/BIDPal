@@ -37,26 +37,7 @@ const buyerChats = [
     }
 ];
 
-const sellerChats = [
-    {
-        id: 101,
-        name: 'John Smith (Bidder)',
-        lastMessage: 'Is the leather genuine on the satchel?',
-        time: '2m ago',
-        unread: 1,
-        online: true,
-        avatar: 'https://api.dicebear.com/7.x/avataaars/svg?seed=John'
-    },
-    {
-        id: 102,
-        name: 'Maria Garcia',
-        lastMessage: 'I would like to offer ₱3,400.',
-        time: '15m ago',
-        unread: 0,
-        online: false,
-        avatar: 'https://api.dicebear.com/7.x/avataaars/svg?seed=Maria'
-    }
-];
+const sellerChats = [];
 
 const buyerMessages = [
     { id: 1, text: 'Hi! I saw your post about the analog camera.', sender: 'me', time: '10:15 AM' },
@@ -65,11 +46,7 @@ const buyerMessages = [
     { id: 4, text: 'The camera is in perfect condition! And yes, the lens cap is included.', sender: 'them', time: '10:24 AM' },
 ];
 
-const sellerMessages = [
-    { id: 1, text: 'Hello, I saw your Vintage Leather Satchel.', sender: 'them', time: '2:15 PM' },
-    { id: 2, text: 'Is the leather genuine?', sender: 'them', time: '2:16 PM' },
-    { id: 3, text: 'Hi John! Yes, it is 100% genuine top-grain leather.', sender: 'me', time: '2:20 PM' },
-];
+const sellerMessages = [];
 
 export default function MessagesPage() {
     const router = useRouter();

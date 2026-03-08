@@ -63,7 +63,7 @@ export default function SignUp() {
 
                 console.log('Registration successful!');
                 if (selectedRole === 'seller') {
-                    router.push('/seller');
+                    router.push('/seller/setup');
                 } else {
                     router.push('/');
                 }
