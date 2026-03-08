@@ -95,10 +95,13 @@ export const createAddress = async (req, res) => {
       address_type 
     } = req.body;
 
-    // Validation - Line1 is required (geofence result), household_blk_st is optional
-    if (!user_id || !Line1 || !Barangay || !municipality_city || !Country) {
+    console.log('CreateAddress received:', req.body);
+
+    // Validation - Line1 is required (geofence result or manual entry)
+    if (!user_id || !Line1 || !Country) {
+      console.error('Validation failed - missing required fields');
       return res.status(400).json({ 
-        error: 'Required fields: user_id, Line1, Barangay, municipality_city, Country' 
+        error: 'Required fields: user_id, Line1, Country' 
       });
     }
 
@@ -110,15 +113,20 @@ export const createAddress = async (req, res) => {
       .single();
 
     if (userError || !userCheck) {
+      console.error('User not found:', user_id, userError);
       return res.status(404).json({ error: 'User not found' });
     }
 
     // If setting as default, unset other defaults for this user
     if (is_default) {
-      await supabase
+      const { error: updateError } = await supabase
         .from('Addresses')
         .update({ is_default: false })
         .eq('user_id', user_id);
+      
+      if (updateError) {
+        console.error('Error unsetting defaults:', updateError);
+      }
     }
 
     const { data, error } = await supabase
@@ -129,8 +137,8 @@ export const createAddress = async (req, res) => {
           Line1,
           Line2: Line2 || null,
           'Household/blk st.': household_blk_st || null,
-          Barangay,
-          'Municipality/City': municipality_city,
+          Barangay: Barangay || null,
+          'Municipality/City': municipality_city || null,
           'zip code': zip_code || null,
           Country,
           is_default: is_default || false,
@@ -143,9 +151,15 @@ export const createAddress = async (req, res) => {
       ])
       .select('*');
 
-    if (error) return res.status(400).json({ error: error.message });
+    if (error) {
+      console.error('Database insert error:', error);
+      return res.status(400).json({ error: error.message });
+    }
+
+    console.log('Address created successfully:', data);
     res.status(201).json({ message: 'Address created successfully', data: data[0] });
   } catch (err) {
+    console.error('CreateAddress exception:', err);
     res.status(500).json({ error: err.message });
   }
 };

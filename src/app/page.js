@@ -116,7 +116,7 @@ export default function Home() {
       console.log('About to call register with:', { email, password });
 
       try {
-        const result = await register({ email, password });
+        const result = await register({ email, password, role: selectedRole });
         console.log('Register function returned:', result);
 
         if (!result.success) {
