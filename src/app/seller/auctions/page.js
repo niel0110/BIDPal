@@ -18,35 +18,8 @@ import styles from './page.module.css';
 export default function MyAuctions() {
     const [activeTab, setActiveTab] = useState('active');
 
-    const auctions = [
-        {
-            id: 'AUC-1024',
-            title: 'Vintage Leather Satchel',
-            status: 'active',
-            startTime: 'Started 2h ago',
-            bidders: 45,
-            currentBid: 3200,
-            image: 'https://images.unsplash.com/photo-1548036328-c9fa89d128fa?auto=format&fit=crop&q=80&w=200'
-        },
-        {
-            id: 'AUC-1025',
-            title: 'Silver Pocket Watch',
-            status: 'scheduled',
-            startTime: 'Today, 6:00 PM',
-            bidders: 0,
-            currentBid: 1200,
-            image: 'https://images.unsplash.com/photo-1509048191080-d2984bad6ae5?auto=format&fit=crop&q=80&w=200'
-        },
-        {
-            id: 'AUC-1022',
-            title: 'Retro Camera Kit',
-            status: 'completed',
-            startTime: 'Ended Yesterday',
-            bidders: 82,
-            currentBid: 12400,
-            image: 'https://images.unsplash.com/photo-1516035069371-29a1b244cc32?auto=format&fit=crop&q=80&w=200'
-        }
-    ];
+
+    const auctions = [];
 
     const filteredAuctions = activeTab === 'all'
         ? auctions
@@ -84,7 +57,7 @@ export default function MyAuctions() {
             </div>
 
             <div className={styles.auctionGrid}>
-                {filteredAuctions.map(auction => (
+                {filteredAuctions.length > 0 ? filteredAuctions.map(auction => (
                     <div key={auction.id} className={styles.auctionCard}>
                         <div className={styles.cardHeader}>
                             <span className={`${styles.statusBadge} ${styles[auction.status]}`}>
@@ -130,7 +103,13 @@ export default function MyAuctions() {
                             {auction.status === 'completed' && <button className={styles.primaryBtn}>Settlement</button>}
                         </div>
                     </div>
-                ))}
+                )) : (
+                    <div style={{ gridColumn: '1 / -1', textAlign: 'center', padding: '4rem 2rem', color: '#888' }}>
+                        <Calendar size={48} style={{ marginBottom: '1rem', opacity: 0.3 }} />
+                        <p style={{ fontSize: '1.1rem', fontWeight: 600, marginBottom: '0.5rem' }}>No auctions yet</p>
+                        <p style={{ fontSize: '0.9rem' }}>Create your first auction to start selling.</p>
+                    </div>
+                )}
             </div>
         </div>
     );

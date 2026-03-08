@@ -21,23 +21,11 @@ import {
 } from 'lucide-react';
 import styles from './page.module.css';
 
-const mockComments = [
-    { id: 1, user: 'Sarah J.', text: 'Is the leather genuine?', time: '2m ago' },
-    { id: 2, user: 'Mike R.', text: '₱3,500 for the next one!', time: '1m ago' },
-    { id: 3, user: 'Anna K.', text: 'Love the color!', time: 'Just now' },
-];
+const mockComments = [];
 
-const mockBids = [
-    { id: 1, user: 'John Doe', amount: 3200, time: '30s ago' },
-    { id: 2, user: 'Emma Wilson', amount: 3100, time: '1m ago' },
-    { id: 3, user: 'Robert Fox', amount: 2950, time: '3m ago' },
-];
+const mockBids = [];
 
-const mockQueue = [
-    { id: 1, title: 'Silver Pocket Watch', price: 1200, image: 'https://images.unsplash.com/photo-1509048191080-d2984bad6ae5?auto=format&fit=crop&q=80&w=100' },
-    { id: 2, title: 'Retro Camera', price: 5400, image: 'https://images.unsplash.com/photo-1516035069371-29a1b244cc32?auto=format&fit=crop&q=80&w=100' },
-    { id: 3, title: 'Designer Sunglasses', price: 8900, image: 'https://images.unsplash.com/photo-1511499767390-a7391e0a9641?auto=format&fit=crop&q=80&w=100' },
-];
+const mockQueue = [];
 
 export default function SellerDashboard() {
     const [isLive, setIsLive] = useState(false);
@@ -50,13 +38,7 @@ export default function SellerDashboard() {
         setQueueProgress(isNaN(progress) ? 0 : progress);
     };
 
-    const activeItem = {
-        title: 'Vintage Leather Satchel',
-        currentBid: 3200,
-        bidders: 45,
-        timeLeft: '02:45',
-        image: 'https://images.unsplash.com/photo-1548036328-c9fa89d128fa?auto=format&fit=crop&q=80&w=400'
-    };
+    const activeItem = null;
 
     return (
         <div className={styles.dashboardContainer}>
@@ -101,27 +83,36 @@ export default function SellerDashboard() {
                             <button className={styles.moreBtn}><MoreVertical size={20} /></button>
                         </div>
 
-                        <div className={styles.activeItemContent}>
-                            <div className={styles.itemShowcase}>
-                                <img src={activeItem.image} alt={activeItem.title} className={styles.itemImage} />
-                                {isLive && <div className={styles.liveTag}><div className={styles.tagDot} /> LIVE VIEW</div>}
-                            </div>
-                            <div className={styles.itemData}>
-                                <h3 className={styles.itemName}>{activeItem.title}</h3>
-                                <div className={styles.itemStats}>
-                                    <div className={styles.statBox}>
-                                        <span className={styles.statLabel}>Current Bid</span>
-                                        <span className={styles.statValue}>₱ {activeItem.currentBid.toLocaleString()}</span>
-                                    </div>
-                                    <div className={styles.statBox}>
-                                        <span className={styles.statLabel}>Time Remaining</span>
-                                        <div className={styles.timeValue}>
-                                            <Clock size={16} /> <span>{activeItem.timeLeft}</span>
+                        {activeItem ? (
+                            <div className={styles.activeItemContent}>
+                                <div className={styles.itemShowcase}>
+                                    <img src={activeItem.image} alt={activeItem.title} className={styles.itemImage} />
+                                    {isLive && <div className={styles.liveTag}><div className={styles.tagDot} /> LIVE VIEW</div>}
+                                </div>
+                                <div className={styles.itemData}>
+                                    <h3 className={styles.itemName}>{activeItem.title}</h3>
+                                    <div className={styles.itemStats}>
+                                        <div className={styles.statBox}>
+                                            <span className={styles.statLabel}>Current Bid</span>
+                                            <span className={styles.statValue}>₱ {activeItem.currentBid.toLocaleString()}</span>
+                                        </div>
+                                        <div className={styles.statBox}>
+                                            <span className={styles.statLabel}>Time Remaining</span>
+                                            <div className={styles.timeValue}>
+                                                <Clock size={16} /> <span>{activeItem.timeLeft}</span>
+                                            </div>
                                         </div>
                                     </div>
                                 </div>
                             </div>
-                        </div>
+                        ) : (
+                            <div className={styles.emptyActiveItem}>
+                                <p>No active auction</p>
+                                <Link href="/seller/add-product" className={styles.startBtnSmall}>
+                                    Start your first auction
+                                </Link>
+                            </div>
+                        )}
 
                         {/* Recent Bids */}
                         <div className={styles.bidsSection}>
@@ -130,12 +121,14 @@ export default function SellerDashboard() {
                                     <Gavel size={16} />
                                     <span>Recent Bids</span>
                                 </div>
-                                <div className={styles.biddersCount}>
-                                    <Users size={14} /> {activeItem.bidders} Active Bidders
-                                </div>
+                                {activeItem && (
+                                    <div className={styles.biddersCount}>
+                                        <Users size={14} /> {activeItem.bidders} Active Bidders
+                                    </div>
+                                )}
                             </div>
                             <div className={styles.bidHistory}>
-                                {mockBids.map(bid => (
+                                {mockBids.length > 0 ? mockBids.map(bid => (
                                     <div key={bid.id} className={styles.bidRow}>
                                         <div className={styles.bidderInfo}>
                                             <span className={styles.bidderName}>{bid.user}</span>
@@ -143,7 +136,9 @@ export default function SellerDashboard() {
                                         </div>
                                         <span className={styles.bidPrice}>₱ {bid.amount.toLocaleString()}</span>
                                     </div>
-                                ))}
+                                )) : (
+                                    <p className={styles.emptyText}>No bids received yet</p>
+                                )}
                             </div>
                         </div>
                     </section>
@@ -168,7 +163,7 @@ export default function SellerDashboard() {
                             <Link href="/seller/inventory" className={styles.viewInventoryBtn}>View All</Link>
                         </div>
                         <div className={styles.queueList} onScroll={handleQueueScroll}>
-                            {mockQueue.map(item => (
+                            {mockQueue.length > 0 ? mockQueue.map(item => (
                                 <div key={item.id} className={styles.queueItem}>
                                     <img src={item.image} alt={item.title} />
                                     <div className={styles.queueMeta}>
@@ -177,7 +172,12 @@ export default function SellerDashboard() {
                                     </div>
                                     <button className={styles.setNextBtn}>Set Next</button>
                                 </div>
-                            ))}
+                            )) : (
+                                <div className={styles.emptyQueue}>
+                                    <p>Your auction queue is empty.</p>
+                                    <Link href="/seller/inventory">Add products to queue</Link>
+                                </div>
+                            )}
                         </div>
                     </section>
                 </div>
@@ -196,17 +196,17 @@ export default function SellerDashboard() {
                             <div className={styles.metricItem}>
                                 <div className={styles.metricIcon}><Eye size={18} /></div>
                                 <span className={styles.metricLabel}>Live Viewers</span>
-                                <span className={styles.metricValue}>152</span>
+                                <span className={styles.metricValue}>0</span>
                             </div>
                             <div className={styles.metricItem}>
                                 <div className={styles.metricIcon}><Share2 size={18} /></div>
                                 <span className={styles.metricLabel}>Shares</span>
-                                <span className={styles.metricValue}>12</span>
+                                <span className={styles.metricValue}>0</span>
                             </div>
                             <div className={styles.metricItem}>
                                 <div className={styles.metricIcon}><Heart size={18} /></div>
                                 <span className={styles.metricLabel}>Likes</span>
-                                <span className={styles.metricValue}>85</span>
+                                <span className={styles.metricValue}>0</span>
                             </div>
                         </div>
                     </section>
@@ -221,7 +221,7 @@ export default function SellerDashboard() {
                         </div>
                         <div className={styles.chatBox}>
                             <div className={styles.commentList}>
-                                {mockComments.map(comment => (
+                                {mockComments.length > 0 ? mockComments.map(comment => (
                                     <div key={comment.id} className={styles.comment}>
                                         <div className={styles.commentHeader}>
                                             <span className={styles.userName}>{comment.user}</span>
@@ -229,7 +229,9 @@ export default function SellerDashboard() {
                                         </div>
                                         <p className={styles.commentText}>{comment.text}</p>
                                     </div>
-                                ))}
+                                )) : (
+                                    <p className={styles.emptyChat}>No messages yet</p>
+                                )}
                             </div>
                             <div className={styles.chatInputArea}>
                                 <textarea

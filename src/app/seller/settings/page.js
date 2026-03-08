@@ -83,7 +83,7 @@ export default function SellerSettings() {
                             <div className={styles.formGrid}>
                                 <div className={styles.formGroup}>
                                     <label>Store Name</label>
-                                    <input type="text" defaultValue="The Vintage Collective" />
+                                    <input type="text" placeholder="Enter store name" />
                                 </div>
                                 <div className={styles.formGroup}>
                                     <label>Bio / Description</label>
@@ -113,12 +113,12 @@ export default function SellerSettings() {
                             <div className={styles.formGrid}>
                                 <div className={styles.formGroup}>
                                     <label>Full Legal Name</label>
-                                    <input type="text" defaultValue="John Dominic Dela Cruz" />
+                                    <input type="text" placeholder="Your full legal name" />
                                 </div>
                                 <div className={styles.formGroup}>
                                     <label>Phone Number</label>
                                     <div className={styles.verifiedInput}>
-                                        <input type="tel" defaultValue="+63 917 123 4567" />
+                                        <input type="tel" placeholder="+63 9XX XXX XXXX" />
                                         <CheckCircle size={18} color="#388E3C" />
                                     </div>
                                 </div>
@@ -142,15 +142,8 @@ export default function SellerSettings() {
                             </div>
 
                             <div className={styles.payoutOptions}>
-                                <div className={`${styles.payoutCard} ${styles.activePayout}`}>
-                                    <div className={styles.payoutHeader}>
-                                        <div className={styles.payoutIcon}><Globe size={24} color="#4A148C" /></div>
-                                        <div className={styles.payoutMeta}>
-                                            <span className={styles.payoutTitle}>GCash</span>
-                                            <span className={styles.payoutStatus}>Primary</span>
-                                        </div>
-                                    </div>
-                                    <span className={styles.payoutAccount}>0917 **** 567</span>
+                                <div className={styles.emptyPayout}>
+                                    <p>No payout methods added yet.</p>
                                 </div>
 
                                 <button className={styles.addPayoutBtn}>
