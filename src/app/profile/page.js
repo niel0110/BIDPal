@@ -56,7 +56,7 @@ function AccountContent() {
     const router = useRouter();
     const searchParams = useSearchParams();
     const tabParam = searchParams.get('tab');
-    const isSeller = user?.role === 'seller';
+    const isSeller = user?.role?.toLowerCase() === 'seller';
 
     const [activeTab, setActiveTab] = useState(isSeller ? 'merchant-insights' : 'profile');
     const [addressState, setAddressState] = useState('list'); // 'list' or 'add'
@@ -143,7 +143,7 @@ function AccountContent() {
 
     const getUserRole = () => {
         if (!user) return '';
-        return user.role === 'seller' ? 'Seller' : 'Buyer';
+        return user.role?.toLowerCase() === 'seller' ? 'Seller' : 'Buyer';
     };
 
     const getAvatarImage = () => {

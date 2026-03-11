@@ -34,7 +34,7 @@ export default function Header() {
 
           {isMenuOpen && (
             <div className={styles.dropdownMenu}>
-              {(!user || user.role !== 'seller') && (
+              {(!user || user.role?.toLowerCase() !== 'seller') && (
                 <>
                   <Link href="/" className={styles.dropdownItem} onClick={() => setIsMenuOpen(false)}>
                     <div className={`${styles.iconCircle} ${styles.purple}`}>
@@ -64,7 +64,7 @@ export default function Header() {
               )}
 
 
-              {user && user.role === 'seller' && (
+              {user && user.role?.toLowerCase() === 'seller' && (
                 <>
                   <Link href="/seller" className={styles.dropdownItem} onClick={() => setIsMenuOpen(false)}>
                     <div className={`${styles.iconCircle} ${styles.purple}`}>
@@ -126,7 +126,7 @@ export default function Header() {
         </div>
 
         <div className={styles.rightSection}>
-          {user && user.role === 'seller' ? null : (
+          {user && user.role?.toLowerCase() === 'seller' ? null : (
             <>
               <Link href="/orders" className={styles.navItem}>
                 <ClipboardList size={20} className={styles.navIcon} color="#673AB7" />

@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useRef } from 'react';
 import Link from 'next/link';
 import { useAuth } from '@/context/AuthContext';
 import { useRouter } from 'next/navigation';
@@ -48,10 +48,13 @@ export default function Home() {
   const [error, setError] = useState('');
   const { isSubmitting, runWithLock } = useSubmitLock();
   const router = useRouter();
+  const redirectAfterAuth = useRef(null);
 
   useEffect(() => {
-    if (!loading && user?.role === 'seller') {
-      router.replace('/seller');
+    if (!loading && user?.role?.toLowerCase() === 'seller') {
+      const target = redirectAfterAuth.current || '/seller';
+      redirectAfterAuth.current = null;
+      router.replace(target);
     }
   }, [user, loading, router]);
 
@@ -79,7 +82,7 @@ export default function Home() {
         return;
       }
       console.log('Login successful, redirecting...');
-      if (result.user?.role === 'seller') {
+      if (result.user?.role?.toLowerCase() === 'seller') {
         router.push('/seller');
       } else {
         router.push('/');
@@ -116,20 +119,25 @@ export default function Home() {
       console.log('Validation passed, calling register function now...');
       console.log('About to call register with:', { email, password });
 
+      // Set redirect target before register so useEffect picks it up
+      if (selectedRole === 'seller') {
+        redirectAfterAuth.current = '/seller/setup';
+      }
+
       try {
         const result = await register({ email, password, role: selectedRole });
         console.log('Register function returned:', result);
 
         if (!result.success) {
           console.log('Registration failed:', result.error);
+          redirectAfterAuth.current = null;
           setError(result.error);
           return;
         }
 
         console.log('Registration successful!');
-        if (selectedRole === 'seller') {
-          router.push('/seller/setup');
-        } else {
+        // Sellers are redirected by the useEffect via redirectAfterAuth ref
+        if (selectedRole !== 'seller') {
           router.push('/');
         }
       } catch (err) {
