@@ -2,15 +2,13 @@
 
 import { useState } from 'react';
 import { useRouter } from 'next/navigation';
-import { ChevronLeft, Info, Grid, Camera, Truck, Plus, X, Trash2, Upload } from 'lucide-react';
+import { Info, Grid, Camera, X, Trash2, Upload, ChevronLeft } from 'lucide-react';
 import styles from './page.module.css';
-import Button from '@/components/ui/Button';
 
 const steps = [
     { id: 'description', name: 'Description', icon: <Info size={18} /> },
     { id: 'categories', name: 'Categories', icon: <Grid size={18} /> },
     { id: 'photos', name: 'Photos', icon: <Camera size={18} /> },
-    { id: 'delivery', name: 'Delivery', icon: <Truck size={18} /> },
 ];
 
 const categoriesData = [
@@ -136,18 +134,19 @@ export default function AddProductPage() {
         if (currentStep > 0) {
             setCurrentStep(currentStep - 1);
         } else {
-            // First step — go back to Get Started page
-            router.push('/seller/setup?done=1');
+            // First step — go back to dashboard
+            router.push('/seller');
         }
     };
 
     return (
         <div className={styles.container}>
-            <div className={styles.header}>
-                <button className={styles.backBtn} onClick={handleBack}>
-                    <ChevronLeft size={24} />
-                    <span>{currentStep === 0 ? 'Get Started' : 'Add Product'}</span>
+            {/* Page Title with Back Button */}
+            <div className={styles.pageHeader}>
+                <button className={styles.backBtn} onClick={handleBack} aria-label="Go back">
+                    <ChevronLeft size={20} />
                 </button>
+                <h1 className={styles.pageTitle}>Add New Product</h1>
             </div>
 
             {/* Stepper */}
@@ -343,49 +342,6 @@ export default function AddProductPage() {
                                     </div>
                                 </div>
                             </div>
-                        </div>
-                    </div>
-                )}
-
-                {currentStep === 3 && (
-                    <div className={styles.stepContent}>
-                        <h2 className={styles.stepTitle}>Select delivery options</h2>
-
-                        <div className={styles.deliveryOptionsList}>
-                            <label className={styles.deliveryOptionCard}>
-                                <input type="checkbox" className={styles.hiddenCheck} />
-                                <div className={styles.customCheck}>
-                                    <div className={styles.checkInner} />
-                                </div>
-                                <span>Self pickup</span>
-                            </label>
-
-                            <label className={styles.deliveryOptionCard}>
-                                <input type="checkbox" className={styles.hiddenCheck} defaultChecked />
-                                <div className={styles.customCheck}>
-                                    <div className={styles.checkInner} />
-                                </div>
-                                <span>Online payment</span>
-                            </label>
-
-                            <label className={styles.deliveryOptionCard}>
-                                <input type="checkbox" className={styles.hiddenCheck} defaultChecked />
-                                <div className={styles.customCheck}>
-                                    <div className={styles.checkInner} />
-                                </div>
-                                <span>Courier cash on delivery</span>
-                            </label>
-                        </div>
-
-                        <div className={styles.inputGroup} style={{ marginTop: '2.5rem' }}>
-                            <label className={styles.shippingTimeLabel}>Shipping time</label>
-                            <input
-                                type="text"
-                                placeholder="Specify a date"
-                                value={formData.shippingTime || ''}
-                                onChange={(e) => setFormData({ ...formData, shippingTime: e.target.value })}
-                                className={styles.dateInput}
-                            />
                         </div>
                     </div>
                 )}

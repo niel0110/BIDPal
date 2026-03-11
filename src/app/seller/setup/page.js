@@ -238,11 +238,11 @@ function GetStartedPage() {
                         Get<br /><span>Started</span>
                     </h1>
                     <p className={styles.successSubtitle}>
-                        Your store is all set! Add your first product and
-                        start your first auction on BIDPal today.
+                        Your store is all set! Head to your dashboard to add products
+                        and start your first auction on BIDPal today.
                     </p>
-                    <Link href="/seller/add-product" className={styles.successBtn}>
-                        <Package size={20} /> Add your first product <ArrowRight size={18} />
+                    <Link href="/seller" className={styles.successBtn}>
+                        <Package size={20} /> Go to Dashboard <ArrowRight size={18} />
                     </Link>
                 </div>
             </div>
