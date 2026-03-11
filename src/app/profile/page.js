@@ -39,8 +39,7 @@ import {
     ArrowDownRight,
     ShoppingBag,
     Users,
-    DollarSign,
-    Navigation
+    DollarSign
 } from 'lucide-react';
 import styles from './page.module.css';
 import { useAuth } from '@/context/AuthContext';
@@ -541,7 +540,6 @@ function ProfileSection() {
 function AddressSection({ state, setState }) {
     const { user } = useAuth();
     const [showMap, setShowMap] = useState(false);
-    const [inputMode, setInputMode] = useState(null); // 'geolocation' or 'manual'
     const [formData, setFormData] = useState({
         addressType: 'Home',
         Line1: '',
@@ -571,12 +569,7 @@ function AddressSection({ state, setState }) {
         }
     }, [state, user?.user_id]);
 
-    // Fetch regions when entering manual entry mode
-    useEffect(() => {
-        if (inputMode === 'manual' && regions.length === 0) {
-            fetchRegions();
-        }
-    }, [inputMode]);
+
 
     const fetchUserAddresses = async () => {
         if (!user?.user_id) return;
@@ -770,15 +763,18 @@ function AddressSection({ state, setState }) {
     };
 
     const handleMapSelect = (locationData) => {
+        console.log('Map location selected:', locationData);
+        
         setFormData(prev => ({
             ...prev,
-            Line1: locationData.address,
+            Line1: locationData.address || '',
             city: locationData.city || '',
             barangay: locationData.barangay || '',
-            region: locationData.region || ''
+            region: locationData.region || '',
+            province: locationData.province || ''
         }));
+        
         setShowMap(false);
-        setInputMode(null);
         setMessage({ type: 'success', text: '✓ Location selected from map!' });
         setTimeout(() => setMessage(''), 3000);
     };
@@ -786,8 +782,14 @@ function AddressSection({ state, setState }) {
     const handleSaveAddress = async () => {
         if (!user) return;
 
-        if (!formData.Line1 || !formData.city || !formData.barangay) {
-            setMessage({ type: 'error', text: 'Please fill in all required fields' });
+        // More lenient validation - allow manual entry for missing fields from map
+        if (!formData.Line1) {
+            setMessage({ type: 'error', text: 'Street address is required' });
+            return;
+        }
+
+        if (!formData.city && !formData.barangay) {
+            setMessage({ type: 'error', text: 'Please select a city/municipality or barangay' });
             return;
         }
 
@@ -796,40 +798,57 @@ function AddressSection({ state, setState }) {
 
         try {
             const apiUrl = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:5000';
+            
+            const payload = {
+                user_id: user.user_id,
+                Line1: formData.Line1,
+                Line2: formData.Line2 || null,
+                Barangay: formData.barangay || null,
+                municipality_city: formData.city || null,
+                region: formData.region || null,
+                province: formData.province || null,
+                Country: 'Philippines',
+                address_type: formData.addressType,
+                is_default: formData.isDefault,
+                zip_code: null
+            };
+
+            console.log('Sending address payload:', payload);
+
             const res = await fetch(`${apiUrl}/api/addresses`, {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify({
-                    user_id: user.user_id,
-                    Line1: formData.Line1,
-                    Line2: formData.Line2 || null,
-                    Barangay: formData.barangay,
-                    municipality_city: formData.city,
-                    region: formData.region,
-                    province: formData.province || null,
-                    Country: 'Philippines',
-                    address_type: formData.addressType,
-                    is_default: formData.isDefault,
-                    zip_code: null
-                })
+                body: JSON.stringify(payload)
             });
 
             const data = await res.json();
 
             if (!res.ok) {
-                setMessage({ type: 'error', text: 'Error saving address. Please try again.' });
+                console.error('Backend error response:', data);
+                const errorMsg = data.error || 'Error saving address. Please try again.';
+                setMessage({ type: 'error', text: errorMsg });
                 return;
             }
 
+            console.log('Address saved successfully:', data);
             setMessage({ type: 'success', text: '✓ Address saved successfully!' });
             setTimeout(() => {
                 setState('list');
-                // Refresh addresses list
+                setFormData({
+                    addressType: 'Home',
+                    Line1: '',
+                    Line2: '',
+                    region: '',
+                    province: '',
+                    city: '',
+                    barangay: '',
+                    isDefault: false
+                });
                 fetchUserAddresses();
-            }, 2000);
+            }, 1500);
         } catch (err) {
-            setMessage({ type: 'error', text: 'Error saving address. Please try again.' });
-            console.error('Error:', err);
+            console.error('Network error:', err);
+            setMessage({ type: 'error', text: `Error: ${err.message}` });
         } finally {
             setLoading(false);
         }
@@ -846,10 +865,7 @@ function AddressSection({ state, setState }) {
                 )}
 
                 <header className={styles.sectionHeader}>
-                    <button className={styles.backBtn} onClick={() => {
-                        setState('list');
-                        setInputMode(null);
-                    }}>
+                    <button className={styles.backBtn} onClick={() => setState('list')}>
                         <ChevronRight size={18} style={{ transform: 'rotate(180deg)' }} /> Back
                     </button>
                     <h1>Add New Address</h1>
@@ -861,32 +877,7 @@ function AddressSection({ state, setState }) {
                     </div>
                 )}
 
-                {inputMode === null ? (
-                    // Mode selection screen
-                    <div className={styles.modeSelection}>
-                        <p className={styles.modeLabel}>Choose how you want to add an address:</p>
-                        <div className={styles.modeButtons}>
-                            <button
-                                className={styles.modeButton}
-                                onClick={() => setInputMode('geolocation')}
-                            >
-                                <Navigation size={32} />
-                                <span>Use My Location</span>
-                                <p>Open map to pinpoint your address</p>
-                            </button>
-                            <button
-                                className={styles.modeButton}
-                                onClick={() => setInputMode('manual')}
-                            >
-                                <MapPin size={32} />
-                                <span>Manual Entry</span>
-                                <p>Select from dropdowns</p>
-                            </button>
-                        </div>
-                    </div>
-                ) : inputMode === 'geolocation' ? (
-                    // Geolocation mode
-                    <div className={styles.addressForm}>
+                <div className={styles.addressForm}>
                         <div className={styles.formGroup}>
                             <label>Address Name</label>
                             <select
@@ -943,170 +934,26 @@ function AddressSection({ state, setState }) {
                                     <label htmlFor="defaultAddr">Make this your default address</label>
                                 </div>
 
-                                <button
-                                    className={styles.primaryBtn}
-                                    onClick={handleSaveAddress}
-                                    disabled={loading}
-                                >
-                                    {loading ? 'Saving...' : 'Save Address'}
-                                </button>
+                                <div className={styles.buttonGroup}>
+                                    <button 
+                                        className={styles.primaryBtn}
+                                        onClick={handleSaveAddress}
+                                        disabled={loading}
+                                    >
+                                        {loading ? 'Saving...' : 'Save Address'}
+                                    </button>
+                                    <button 
+                                        className={styles.secondaryBtn}
+                                        onClick={() => setState('list')}
+                                        disabled={loading}
+                                    >
+                                        Cancel
+                                    </button>
+                                </div>
                             </>
                         )}
 
-                        <button
-                            className={styles.secondaryBtn}
-                            onClick={() => setInputMode(null)}
-                        >
-                            Switch to Manual Entry
-                        </button>
-                    </div>
-                ) : (
-                    // Manual entry mode
-                    <div className={styles.addressForm}>
-                        {loadingLocations && (
-                            <div className={styles.loadingMessage}>
-                                <p>Loading location data...</p>
-                            </div>
-                        )}
-
-                        <div className={styles.formGroup}>
-                            <label>Address Name</label>
-                            <div className={styles.selectWrapper}>
-                                <select
-                                    value={formData.addressType}
-                                    onChange={(e) => setFormData(prev => ({ ...prev, addressType: e.target.value }))}
-                                >
-                                    <option>Home</option>
-                                    <option>Office</option>
-                                    <option>Apartment</option>
-                                    <option>Other</option>
-                                </select>
-                                <ChevronDown size={18} color="#999" />
-                            </div>
-                        </div>
-
-                        <div className={styles.formGroup}>
-                            <label>Region ({regions.length} available)</label>
-                            <div className={styles.selectWrapper}>
-                                <select
-                                    value={formData.region}
-                                    onChange={handleRegionChange}
-                                    disabled={loadingLocations || regions.length === 0}
-                                >
-                                    <option value="">
-                                        {loadingLocations ? 'Loading regions...' : (regions.length === 0 ? 'No regions available' : 'Select Region')}
-                                    </option>
-                                    {regions.map(r => (
-                                        <option key={r.region} value={r.region}>{r.name}</option>
-                                    ))}
-                                </select>
-                                <ChevronDown size={18} color="#999" />
-                            </div>
-                        </div>
-
-                        <div className={styles.formGroup}>
-                            <label>Province ({provinces.length} available)</label>
-                            <div className={styles.selectWrapper}>
-                                <select
-                                    value={formData.province}
-                                    onChange={handleProvinceChange}
-                                    disabled={!formData.region || provinces.length === 0}
-                                >
-                                    <option value="">
-                                        {!formData.region ? 'Select a region first' : (provinces.length === 0 ? 'No provinces available' : 'Select Province')}
-                                    </option>
-                                    {provinces.map(p => (
-                                        <option key={p} value={p}>{p}</option>
-                                    ))}
-                                </select>
-                                <ChevronDown size={18} color="#999" />
-                            </div>
-                        </div>
-
-                        <div className={styles.formGroup}>
-                            <label>City/Municipality ({cities.length} available)</label>
-                            <div className={styles.selectWrapper}>
-                                <select
-                                    value={formData.city}
-                                    onChange={handleCityChange}
-                                    disabled={!formData.province || cities.length === 0}
-                                >
-                                    <option value="">
-                                        {!formData.province ? 'Select a province first' : (cities.length === 0 ? 'No cities available' : 'Select City')}
-                                    </option>
-                                    {cities.map(c => (
-                                        <option key={c} value={c}>{c}</option>
-                                    ))}
-                                </select>
-                                <ChevronDown size={18} color="#999" />
-                            </div>
-                        </div>
-
-                        <div className={styles.formGroup}>
-                            <label>Barangay ({barangays.length} available)</label>
-                            <div className={styles.selectWrapper}>
-                                <select
-                                    value={formData.barangay}
-                                    onChange={(e) => setFormData(prev => ({ ...prev, barangay: e.target.value }))}
-                                    disabled={!formData.city || barangays.length === 0}
-                                >
-                                    <option value="">
-                                        {!formData.city ? 'Select a city first' : (barangays.length === 0 ? 'No barangays available' : 'Select Barangay')}
-                                    </option>
-                                    {barangays.map(b => (
-                                        <option key={b} value={b}>{b}</option>
-                                    ))}
-                                </select>
-                                <ChevronDown size={18} color="#999" />
-                            </div>
-                        </div>
-
-                        <div className={styles.formGroup}>
-                            <label>Street Address / Location Details (Line 1)</label>
-                            <input
-                                type="text"
-                                placeholder="Street, Building, House number"
-                                value={formData.Line1}
-                                onChange={(e) => setFormData(prev => ({ ...prev, Line1: e.target.value }))}
-                            />
-                        </div>
-
-                        <div className={styles.formGroup}>
-                            <label>Additional Details (Optional - Line 2)</label>
-                            <textarea
-                                placeholder="Apt number, building name, landmarks, etc."
-                                value={formData.Line2}
-                                onChange={(e) => setFormData(prev => ({ ...prev, Line2: e.target.value }))}
-                                rows={3}
-                            />
-                        </div>
-
-                        <div className={styles.checkboxGroup}>
-                            <input
-                                type="checkbox"
-                                id="defaultAddr"
-                                checked={formData.isDefault}
-                                onChange={(e) => setFormData(prev => ({ ...prev, isDefault: e.target.checked }))}
-                            />
-                            <label htmlFor="defaultAddr">Make this your default address</label>
-                        </div>
-
-                        <button
-                            className={styles.primaryBtn}
-                            onClick={handleSaveAddress}
-                            disabled={loading}
-                        >
-                            {loading ? 'Saving...' : 'Save Address'}
-                        </button>
-
-                        <button
-                            className={styles.secondaryBtn}
-                            onClick={() => setInputMode(null)}
-                        >
-                            Switch to Location Map
-                        </button>
-                    </div>
-                )}
+                </div>
             </div>
         );
     }
@@ -1139,9 +986,10 @@ function AddressSection({ state, setState }) {
                                     {addr.is_default && <span className={styles.defaultBadge}>Default</span>}
                                 </div>
                                 <p>{addr.Line1}</p>
-                                {(addr.Barangay || addr.municipality_city) && (
+                                {(addr.Barangay || addr['Municipality/City']) && (
                                     <p className={styles.addressSubtext}>
-                                        {addr.Barangay && `${addr.Barangay}, `}{addr.municipality_city}
+                                        {addr.Barangay && `${addr.Barangay}, `}{addr['Municipality/City']}
+                                        {addr.province && `, ${addr.province}`}
                                     </p>
                                 )}
                             </div>
