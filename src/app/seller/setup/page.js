@@ -5,6 +5,7 @@ import { useSearchParams } from 'next/navigation';
 import Link from 'next/link';
 import { ChevronRight, Check, Package, ArrowRight } from 'lucide-react';
 import PhilippineIDVerification from '@/components/PhilippineIDVerification';
+import { useAuth } from '@/context/AuthContext';
 import styles from './page.module.css';
 
 const STEPS = [
@@ -274,15 +275,48 @@ function GetStartedPage() {
 function SetupPageInner() {
     const searchParams = useSearchParams();
     const isDone = searchParams.get('done') === '1';
+    const { user } = useAuth();
 
     const [step, setStep] = useState(1);
     const [setupComplete, setSetupComplete] = useState(false);
+    const [submitError, setSubmitError] = useState('');
 
     const [personal, setPersonal] = useState({ firstName: '', lastName: '', middleName: '', birthday: '', gender: '', contactNumber: '', bio: '' });
     const [store, setStore] = useState({ storeName: '', category: '', handle: '', description: '' });
     const [address, setAddress] = useState({ region: '', province: '', city: '', barangay: '', street: '', zipCode: '', landmark: '' });
 
     const merge = (setter) => (patch) => setter(prev => ({ ...prev, ...patch }));
+
+    const handleSetupComplete = async () => {
+        if (!user?.user_id) return;
+        setSubmitError('');
+        try {
+            const apiUrl = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:5000';
+            const token = localStorage.getItem('bidpal_token');
+            const res = await fetch(`${apiUrl}/api/users/${user.user_id}`, {
+                method: 'PUT',
+                headers: {
+                    'Content-Type': 'application/json',
+                    ...(token && { Authorization: `Bearer ${token}` }),
+                },
+                body: JSON.stringify({
+                    Fname: personal.firstName,
+                    Lname: personal.lastName,
+                    Mname: personal.middleName || null,
+                    Birthday: personal.birthday || null,
+                    Gender: personal.gender,
+                    contact_num: personal.contactNumber,
+                    Bio: personal.bio || null,
+                    role: 'Seller',
+                }),
+            });
+            const data = await res.json();
+            if (!res.ok) throw new Error(data.error || 'Failed to save profile.');
+            setSetupComplete(true);
+        } catch (err) {
+            setSubmitError(err.message);
+        }
+    };
 
     if (isDone || setupComplete) return <GetStartedPage />;
 
@@ -293,7 +327,12 @@ function SetupPageInner() {
                 {step === 1 && <PersonalInfoStep data={personal} onChange={merge(setPersonal)} onNext={() => setStep(2)} />}
                 {step === 2 && <StoreInfoStep data={store} onChange={merge(setStore)} onNext={() => setStep(3)} onBack={() => setStep(1)} />}
                 {step === 3 && <AddressStep data={address} onChange={merge(setAddress)} onNext={() => setStep(4)} onBack={() => setStep(2)} />}
-                {step === 4 && <VerificationStep onVerify={() => setTimeout(() => setSetupComplete(true), 1500)} onBack={() => setStep(3)} />}
+                {step === 4 && (
+                    <>
+                        {submitError && <p style={{ color: 'red', padding: '0 2rem' }}>{submitError}</p>}
+                        <VerificationStep onVerify={handleSetupComplete} onBack={() => setStep(3)} />
+                    </>
+                )}
             </div>
         </div>
     );

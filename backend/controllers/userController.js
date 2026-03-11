@@ -17,9 +17,9 @@ export const getUserById = async (req, res) => {
 
 // Create new user
 export const createUser = async (req, res) => {
-  const { Fname, Mname, Lname, role, email, contact_num, password, Avatar } = req.body;
+  const { Fname, Mname, Lname, role, email, contact_num, password, Avatar, Birthday, Gender, Bio } = req.body;
   const { data, error } = await supabase.from('User').insert([
-    { Fname, Mname, Lname, role, email, contact_num, password, Avatar }
+    { Fname, Mname, Lname, role, email, contact_num, password, Avatar, Birthday, Gender, Bio }
   ]).select('*');
   if (error) return res.status(400).json({ error: error.message });
   res.status(201).json(data[0]);
@@ -28,8 +28,8 @@ export const createUser = async (req, res) => {
 // Update user
 export const updateUser = async (req, res) => {
   const { user_id } = req.params;
-  const { Fname, Mname, Lname, role, email, contact_num, password, is_verified, last_login, deleted_at, Avatar } = req.body;
-  const { data, error } = await supabase.from('User').update({ Fname, Mname, Lname, role, email, contact_num, password, is_verified, last_login, deleted_at, Avatar }).eq('user_id', user_id).select('*');
+  const { Fname, Mname, Lname, role, email, contact_num, password, is_verified, last_login, deleted_at, Avatar, Birthday, Gender, Bio } = req.body;
+  const { data, error } = await supabase.from('User').update({ Fname, Mname, Lname, role, email, contact_num, password, is_verified, last_login, deleted_at, Avatar, Birthday, Gender, Bio }).eq('user_id', user_id).select('*');
   if (error) return res.status(400).json({ error: error.message });
   res.json(data[0]);
 };
