@@ -37,7 +37,7 @@ const clearanceSale = [
 ];
 
 export default function Home() {
-  const { user, login, register } = useAuth();
+  const { user, loading, login, register } = useAuth();
   const [isLogin, setIsLogin] = useState(true);
   const [selectedRole, setSelectedRole] = useState('buyer');
   const [showPassword, setShowPassword] = useState(false);
@@ -49,17 +49,18 @@ export default function Home() {
   const { isSubmitting, runWithLock } = useSubmitLock();
   const router = useRouter();
 
+  useEffect(() => {
+    if (!loading && user?.role === 'seller') {
+      router.replace('/seller');
+    }
+  }, [user, loading, router]);
+
   const handleScroll = (e) => {
     const element = e.target;
     const progress = element.scrollLeft / (element.scrollWidth - element.clientWidth);
     setScrollProgress(progress);
   };
 
-  useEffect(() => {
-    if (user?.role === 'seller') {
-      router.push('/seller/setup');
-    }
-  }, [user, router]);
 
   const handleSignIn = async (e) => {
     e.preventDefault();
@@ -78,8 +79,8 @@ export default function Home() {
         return;
       }
       console.log('Login successful, redirecting...');
-      if (selectedRole === 'seller') {
-        router.push('/seller/setup');
+      if (result.user?.role === 'seller') {
+        router.push('/seller');
       } else {
         router.push('/');
       }
@@ -146,6 +147,8 @@ export default function Home() {
     setError('');
     setShowPassword(false);
   };
+
+  if (loading) return null;
 
   if (!user) {
     return (

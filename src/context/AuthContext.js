@@ -6,6 +6,7 @@ const AuthContext = createContext();
 
 export function AuthProvider({ children }) {
     const [user, setUser] = useState(null);
+    const [loading, setLoading] = useState(true);
 
     // Check storage on mount to persist login across refreshes
     useEffect(() => {
@@ -17,29 +18,25 @@ export function AuthProvider({ children }) {
                 console.error("Failed to parse user data", e);
             }
         }
+        setLoading(false);
     }, []);
-
 
     // Login with backend
     const login = async ({ email, password }) => {
         try {
             const apiUrl = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:5000';
-            console.log('Login: Sending to', `${apiUrl}/api/auth/login`, { email, password });
             const res = await fetch(`${apiUrl}/api/auth/login`, {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
                 body: JSON.stringify({ email, password })
             });
-            console.log('Login: Response status', res.status);
             const data = await res.json();
-            console.log('Login: Response data', data);
             if (!res.ok) throw new Error(data.error || 'Login failed');
             setUser(data.user);
             localStorage.setItem('bidpal_user', JSON.stringify(data.user));
             localStorage.setItem('bidpal_token', data.token);
-            return { success: true };
+            return { success: true, user: data.user };
         } catch (err) {
-            console.error('Login: Error', err.message);
             return { success: false, error: err.message };
         }
     };
@@ -48,22 +45,18 @@ export function AuthProvider({ children }) {
     const register = async ({ email, password, role }) => {
         try {
             const apiUrl = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:5000';
-            console.log('Register: Sending to', `${apiUrl}/api/auth/register`, { email, password, role });
             const res = await fetch(`${apiUrl}/api/auth/register`, {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
                 body: JSON.stringify({ email, password, role })
             });
-            console.log('Register: Response status', res.status);
             const data = await res.json();
-            console.log('Register: Response data', data);
             if (!res.ok) throw new Error(data.error || 'Registration failed');
             setUser(data.user);
             localStorage.setItem('bidpal_user', JSON.stringify(data.user));
             localStorage.setItem('bidpal_token', data.token);
-            return { success: true };
+            return { success: true, user: data.user };
         } catch (err) {
-            console.error('Register: Error', err.message);
             return { success: false, error: err.message };
         }
     };
@@ -74,7 +67,7 @@ export function AuthProvider({ children }) {
     };
 
     return (
-        <AuthContext.Provider value={{ user, login, register, logout }}>
+        <AuthContext.Provider value={{ user, loading, login, register, logout }}>
             {children}
         </AuthContext.Provider>
     );
