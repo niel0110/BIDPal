@@ -32,10 +32,11 @@ export function AuthProvider({ children }) {
             });
             const data = await res.json();
             if (!res.ok) throw new Error(data.error || 'Login failed');
-            setUser(data.user);
-            localStorage.setItem('bidpal_user', JSON.stringify(data.user));
+            const normalizedUser = { ...data.user, role: data.user?.role?.toLowerCase() };
+            setUser(normalizedUser);
+            localStorage.setItem('bidpal_user', JSON.stringify(normalizedUser));
             localStorage.setItem('bidpal_token', data.token);
-            return { success: true, user: data.user };
+            return { success: true, user: normalizedUser };
         } catch (err) {
             return { success: false, error: err.message };
         }
@@ -52,10 +53,11 @@ export function AuthProvider({ children }) {
             });
             const data = await res.json();
             if (!res.ok) throw new Error(data.error || 'Registration failed');
-            setUser(data.user);
-            localStorage.setItem('bidpal_user', JSON.stringify(data.user));
+            const normalizedUser = { ...data.user, role: data.user?.role?.toLowerCase() };
+            setUser(normalizedUser);
+            localStorage.setItem('bidpal_user', JSON.stringify(normalizedUser));
             localStorage.setItem('bidpal_token', data.token);
-            return { success: true, user: data.user };
+            return { success: true, user: normalizedUser };
         } catch (err) {
             return { success: false, error: err.message };
         }

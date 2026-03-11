@@ -51,7 +51,7 @@ export default function Home() {
   const redirectAfterAuth = useRef(null);
 
   useEffect(() => {
-    if (!loading && user?.role === 'seller') {
+    if (!loading && user?.role?.toLowerCase() === 'seller') {
       const target = redirectAfterAuth.current || '/seller';
       redirectAfterAuth.current = null;
       router.replace(target);
@@ -82,7 +82,7 @@ export default function Home() {
         return;
       }
       console.log('Login successful, redirecting...');
-      if (result.user?.role === 'seller') {
+      if (result.user?.role?.toLowerCase() === 'seller') {
         router.push('/seller');
       } else {
         router.push('/');

@@ -51,7 +51,7 @@ const sellerMessages = [];
 export default function MessagesPage() {
     const router = useRouter();
     const { user } = useAuth();
-    const isSeller = user?.role === 'seller';
+    const isSeller = user?.role?.toLowerCase() === 'seller';
 
     const chats = isSeller ? sellerChats : buyerChats;
     const [selectedChat, setSelectedChat] = useState(chats[0]?.id);
