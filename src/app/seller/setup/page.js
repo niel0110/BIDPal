@@ -45,7 +45,7 @@ function Sidebar({ currentStep }) {
 
 // ─── Step 1: Personal Information ──────────────────────────────────────────
 function PersonalInfoStep({ data, onChange, onNext }) {
-    const isValid = data.firstName && data.lastName && data.age && data.gender && data.contactNumber;
+    const isValid = data.firstName && data.lastName && data.birthday && data.gender && data.contactNumber;
     return (
         <div className={styles.formArea}>
             <h2 className={styles.formTitle}>Personal <span className={styles.redText}>Information</span></h2>
@@ -65,8 +65,8 @@ function PersonalInfoStep({ data, onChange, onNext }) {
                     <input className={styles.input} placeholder="Santos" value={data.middleName} onChange={e => onChange({ middleName: e.target.value })} />
                 </div>
                 <div className={styles.formGroup}>
-                    <label>Age</label>
-                    <input className={styles.input} type="number" min="18" max="99" placeholder="25" value={data.age} onChange={e => onChange({ age: e.target.value })} />
+                    <label>Birthday</label>
+                    <input className={styles.input} type="date" max={new Date().toISOString().split('T')[0]} value={data.birthday} onChange={e => onChange({ birthday: e.target.value })} />
                 </div>
                 <div className={styles.formGroup}>
                     <label>Gender</label>
@@ -278,7 +278,7 @@ function SetupPageInner() {
     const [step, setStep] = useState(1);
     const [setupComplete, setSetupComplete] = useState(false);
 
-    const [personal, setPersonal] = useState({ firstName: '', lastName: '', middleName: '', age: '', gender: '', contactNumber: '', bio: '' });
+    const [personal, setPersonal] = useState({ firstName: '', lastName: '', middleName: '', birthday: '', gender: '', contactNumber: '', bio: '' });
     const [store, setStore] = useState({ storeName: '', category: '', handle: '', description: '' });
     const [address, setAddress] = useState({ region: '', province: '', city: '', barangay: '', street: '', zipCode: '', landmark: '' });
 
