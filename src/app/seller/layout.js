@@ -6,7 +6,7 @@ import styles from './layout.module.css';
 
 export default function SellerLayout({ children }) {
     const pathname = usePathname();
-    const isHeaderless = pathname?.startsWith('/seller/setup') || pathname?.startsWith('/seller/add-product');
+    const isHeaderless = pathname?.startsWith('/seller/setup');
 
     if (isHeaderless) {
         // Render setup pages with no header — standalone onboarding experience

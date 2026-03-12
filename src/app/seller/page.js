@@ -12,7 +12,6 @@ import {
     Square,
     Clock,
     TrendingUp,
-    ChevronRight,
     MoreVertical,
     Send,
     Eye,
@@ -40,6 +39,17 @@ export default function SellerDashboard() {
 
     const activeItem = null;
 
+    // Check if there are products available (queue + active)
+    const hasProducts = mockQueue.length > 0 || activeItem !== null;
+
+    const handleGoLive = () => {
+        if (!hasProducts) {
+            alert('You need to add products before starting a live auction. Please add products to your inventory first.');
+            return;
+        }
+        setIsLive(!isLive);
+    };
+
     return (
         <div className={styles.dashboardContainer}>
             {/* Header Section */}
@@ -53,8 +63,10 @@ export default function SellerDashboard() {
                 </div>
                 <div className={styles.headerActions}>
                     <button
-                        className={`${styles.liveControlBtn} ${isLive ? styles.stop : styles.start}`}
-                        onClick={() => setIsLive(!isLive)}
+                        className={`${styles.liveControlBtn} ${isLive ? styles.stop : styles.start} ${!hasProducts && !isLive ? styles.disabled : ''}`}
+                        onClick={handleGoLive}
+                        disabled={!hasProducts && !isLive}
+                        title={!hasProducts ? 'Add products to start live auction' : ''}
                     >
                         {isLive ? <Square size={18} fill="currentColor" /> : <Play size={18} fill="currentColor" />}
                         {isLive ? 'End Stream' : 'Go Live'}
@@ -108,8 +120,9 @@ export default function SellerDashboard() {
                         ) : (
                             <div className={styles.emptyActiveItem}>
                                 <p>No active auction</p>
+                                <p className={styles.emptyHint}>Add products to your inventory to start selling</p>
                                 <Link href="/seller/add-product" className={styles.startBtnSmall}>
-                                    Start your first auction
+                                    <Plus size={16} /> Add Product
                                 </Link>
                             </div>
                         )}
