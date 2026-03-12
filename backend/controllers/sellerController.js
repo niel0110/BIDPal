@@ -46,15 +46,11 @@ export const getSellerByUserId = async (req, res) => {
 // Create new seller (open a shop)
 export const createSeller = async (req, res) => {
   try {
-    const { store_name, bio, payout_details, user_id } = req.body;
+    const { store_name, business_category, store_handle, store_description, user_id } = req.body;
 
     // Validation
     if (!store_name || !user_id) {
       return res.status(400).json({ error: 'store_name and user_id are required.' });
-    }
-
-    if (!payout_details) {
-      return res.status(400).json({ error: 'payout_details are required.' });
     }
 
     // Check if user already has a seller profile
@@ -74,10 +70,10 @@ export const createSeller = async (req, res) => {
       .insert([
         {
           store_name,
-          bio: bio || null,
-          payout_details,
+          business_category: business_category || null,
+          store_handle: store_handle || null,
+          store_description: store_description || null,
           user_id,
-          rating: 0
         }
       ])
       .select('*');
@@ -93,15 +89,15 @@ export const createSeller = async (req, res) => {
 export const updateSeller = async (req, res) => {
   try {
     const { seller_id } = req.params;
-    const { store_name, bio, payout_details, rating } = req.body;
+    const { store_name, business_category, store_handle, store_description } = req.body;
 
     const { data, error } = await supabase
       .from('Seller')
       .update({
         ...(store_name && { store_name }),
-        ...(bio !== undefined && { bio }),
-        ...(payout_details && { payout_details }),
-        ...(rating !== undefined && { rating })
+        ...(business_category !== undefined && { business_category }),
+        ...(store_handle !== undefined && { store_handle }),
+        ...(store_description !== undefined && { store_description }),
       })
       .eq('seller_id', seller_id)
       .select('*');
@@ -129,35 +125,9 @@ export const deleteSeller = async (req, res) => {
 
     if (error) return res.status(400).json({ error: error.message });
     if (!data || data.length === 0) {
-      return res.status(404).json({ error: 'Seller not found' });
+      return res.status(404).json({ error: 'Seller not found' });;
     }
     res.json({ message: 'Seller account deleted successfully', data: data[0] });
-  } catch (err) {
-    res.status(500).json({ error: err.message });
-  }
-};
-
-// Update seller rating
-export const updateSellerRating = async (req, res) => {
-  try {
-    const { seller_id } = req.params;
-    const { rating } = req.body;
-
-    if (rating === undefined || rating < 0 || rating > 5) {
-      return res.status(400).json({ error: 'Rating must be between 0 and 5.' });
-    }
-
-    const { data, error } = await supabase
-      .from('Seller')
-      .update({ rating })
-      .eq('seller_id', seller_id)
-      .select('*');
-
-    if (error) return res.status(400).json({ error: error.message });
-    if (!data || data.length === 0) {
-      return res.status(404).json({ error: 'Seller not found' });
-    }
-    res.json({ message: 'Seller rating updated successfully', data: data[0] });
   } catch (err) {
     res.status(500).json({ error: err.message });
   }
