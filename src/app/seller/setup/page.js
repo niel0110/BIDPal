@@ -1,9 +1,9 @@
 'use client';
 
-import { useState, Suspense } from 'react';
-import { useSearchParams } from 'next/navigation';
+import { useState, useEffect, Suspense } from 'react';
+import { useSearchParams, useRouter } from 'next/navigation';
 import Link from 'next/link';
-import { ChevronRight, Check, Package, ArrowRight } from 'lucide-react';
+import { ChevronRight, Check, Package, ArrowRight, Loader2 } from 'lucide-react';
 import PhilippineIDVerification from '@/components/PhilippineIDVerification';
 import { useAuth } from '@/context/AuthContext';
 import styles from './page.module.css';
@@ -148,59 +148,167 @@ function StoreInfoStep({ data, onChange, onNext, onBack }) {
 
 // ─── Step 3: Address ───────────────────────────────────────────────────────
 function AddressStep({ data, onChange, onNext, onBack }) {
-    const isValid = data.street && data.barangay && data.city && data.province && data.region && data.zipCode;
+    const apiUrl = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:5000';
+
+    const [regions,    setRegions]    = useState([]);
+    const [provinces,  setProvinces]  = useState([]);
+    const [cities,     setCities]     = useState([]);
+    const [barangays,  setBarangays]  = useState([]);
+
+    const [loadingRegions,   setLoadingRegions]   = useState(true);
+    const [loadingProvinces, setLoadingProvinces] = useState(false);
+    const [loadingCities,    setLoadingCities]    = useState(false);
+    const [loadingBarangays, setLoadingBarangays] = useState(false);
+
+    // Load regions on mount
+    useEffect(() => {
+        setLoadingRegions(true);
+        fetch(`${apiUrl}/api/addresses/locations/regions`)
+            .then(r => r.json())
+            .then(d => setRegions(Array.isArray(d) ? d : []))
+            .catch(() => setRegions([]))
+            .finally(() => setLoadingRegions(false));
+    }, [apiUrl]);
+
+    // When region changes → load provinces
+    useEffect(() => {
+        if (!data.region) { setProvinces([]); setCities([]); setBarangays([]); return; }
+        setLoadingProvinces(true);
+        setProvinces([]); setCities([]); setBarangays([]);
+        fetch(`${apiUrl}/api/addresses/locations/provinces/${encodeURIComponent(data.region)}`)
+            .then(r => r.json())
+            .then(d => setProvinces(Array.isArray(d) ? d : []))
+            .catch(() => setProvinces([]))
+            .finally(() => setLoadingProvinces(false));
+    }, [data.region, apiUrl]);
+
+    // When province changes → load cities
+    useEffect(() => {
+        if (!data.region || !data.province) { setCities([]); setBarangays([]); return; }
+        setLoadingCities(true);
+        setCities([]); setBarangays([]);
+        fetch(`${apiUrl}/api/addresses/locations/cities/${encodeURIComponent(data.region)}/${encodeURIComponent(data.province)}`)
+            .then(r => r.json())
+            .then(d => setCities(Array.isArray(d) ? d : []))
+            .catch(() => setCities([]))
+            .finally(() => setLoadingCities(false));
+    }, [data.province, data.region, apiUrl]);
+
+    // When city changes → load barangays
+    useEffect(() => {
+        if (!data.municipality_city) { setBarangays([]); return; }
+        setLoadingBarangays(true);
+        setBarangays([]);
+        fetch(`${apiUrl}/api/addresses/locations/barangays/${encodeURIComponent(data.municipality_city)}`)
+            .then(r => r.json())
+            .then(d => setBarangays(Array.isArray(d) ? d : []))
+            .catch(() => setBarangays([]))
+            .finally(() => setLoadingBarangays(false));
+    }, [data.municipality_city, apiUrl]);
+
+    const isValid = data.Line1 && data.Barangay && data.municipality_city && data.province && data.region && data.zip_code;
+
+    const SelectWithLoader = ({ loading, children, ...props }) => (
+        <div style={{ position: 'relative' }}>
+            <select className={styles.select} disabled={loading} {...props}>
+                {children}
+            </select>
+            {loading && (
+                <span style={{ position: 'absolute', right: 36, top: '50%', transform: 'translateY(-50%)', color: '#D32F2F', display: 'flex' }}>
+                    <Loader2 size={15} style={{ animation: 'spin 1s linear infinite' }} />
+                </span>
+            )}
+        </div>
+    );
+
     return (
         <div className={styles.formArea}>
             <h2 className={styles.formTitle}>Pick-up <span className={styles.redText}>Address</span></h2>
             <p className={styles.formSubtitle}>This is where buyers' shipments will originate. Use your store or home address.</p>
 
+            <style>{`@keyframes spin { from { transform: translateY(-50%) rotate(0deg); } to { transform: translateY(-50%) rotate(360deg); } }`}</style>
+
             <div className={styles.formGrid}>
+                {/* Region */}
                 <div className={styles.formGroup}>
                     <label>Region</label>
-                    <select className={styles.select} value={data.region} onChange={e => onChange({ region: e.target.value })}>
-                        <option value="">Select Region</option>
-                        <option>NCR – Metro Manila</option>
-                        <option>Region I – Ilocos</option>
-                        <option>Region II – Cagayan Valley</option>
-                        <option>Region III – Central Luzon</option>
-                        <option>Region IV-A – CALABARZON</option>
-                        <option>Region IV-B – MIMAROPA</option>
-                        <option>Region V – Bicol</option>
-                        <option>Region VI – Western Visayas</option>
-                        <option>Region VII – Central Visayas</option>
-                        <option>Region VIII – Eastern Visayas</option>
-                        <option>Region IX – Zamboanga Peninsula</option>
-                        <option>Region X – Northern Mindanao</option>
-                        <option>Region XI – Davao</option>
-                        <option>Region XII – SOCCSKSARGEN</option>
-                        <option>Region XIII – Caraga</option>
-                        <option>BARMM</option>
-                        <option>CAR – Cordillera</option>
-                    </select>
+                    <SelectWithLoader loading={loadingRegions} value={data.region} onChange={e => onChange({ region: e.target.value, province: '', municipality_city: '', Barangay: '' })}>
+                        <option value="">{loadingRegions ? 'Loading…' : 'Select Region'}</option>
+                        {regions.map(r => <option key={r.region} value={r.region}>{r.name}</option>)}
+                    </SelectWithLoader>
                 </div>
+
+                {/* Province */}
                 <div className={styles.formGroup}>
                     <label>Province</label>
-                    <input className={styles.input} placeholder="e.g. Davao del Sur" value={data.province} onChange={e => onChange({ province: e.target.value })} />
+                    <SelectWithLoader loading={loadingProvinces} value={data.province} onChange={e => onChange({ province: e.target.value, municipality_city: '', Barangay: '' })}>
+                        <option value="">{!data.region ? 'Select a region first' : loadingProvinces ? 'Loading…' : 'Select Province'}</option>
+                        {provinces.map(p => <option key={p} value={p}>{p}</option>)}
+                    </SelectWithLoader>
                 </div>
+
+                {/* City / Municipality */}
                 <div className={styles.formGroup}>
                     <label>City / Municipality</label>
-                    <input className={styles.input} placeholder="e.g. Davao City" value={data.city} onChange={e => onChange({ city: e.target.value })} />
+                    <SelectWithLoader loading={loadingCities} value={data.municipality_city} onChange={e => onChange({ municipality_city: e.target.value, Barangay: '' })}>
+                        <option value="">{!data.province ? 'Select a province first' : loadingCities ? 'Loading…' : 'Select City / Municipality'}</option>
+                        {cities.map(c => <option key={c} value={c}>{c}</option>)}
+                    </SelectWithLoader>
                 </div>
+
+                {/* Barangay */}
                 <div className={styles.formGroup}>
                     <label>Barangay</label>
-                    <input className={styles.input} placeholder="e.g. Talomo" value={data.barangay} onChange={e => onChange({ barangay: e.target.value })} />
+                    <SelectWithLoader loading={loadingBarangays} value={data.Barangay} onChange={e => onChange({ Barangay: e.target.value })}>
+                        <option value="">{!data.municipality_city ? 'Select a city first' : loadingBarangays ? 'Loading…' : 'Select Barangay'}</option>
+                        {barangays.map(b => <option key={b} value={b}>{b}</option>)}
+                    </SelectWithLoader>
                 </div>
+
+                {/* Street / House No. */}
                 <div className={`${styles.formGroup} ${styles.formGridFull}`}>
                     <label>Street Address / Building / House No.</label>
-                    <input className={styles.input} placeholder="e.g. 123 Rizal St., Unit 4B, Sunrise Bldg." value={data.street} onChange={e => onChange({ street: e.target.value })} />
+                    <input
+                        className={styles.input}
+                        placeholder="e.g. 123 Rizal St., Unit 4B, Sunrise Bldg."
+                        value={data.Line1}
+                        onChange={e => onChange({ Line1: e.target.value })}
+                    />
                 </div>
+
+                {/* Unit / Floor (Line2) */}
+                <div className={styles.formGroup}>
+                    <label>Unit / Floor / Bldg Name <span style={{ fontWeight: 400, color: '#aaa' }}>(Optional)</span></label>
+                    <input
+                        className={styles.input}
+                        placeholder="e.g. Unit 4B, Sunrise Tower"
+                        value={data.Line2}
+                        onChange={e => onChange({ Line2: e.target.value })}
+                    />
+                </div>
+
+                {/* Zip Code */}
                 <div className={styles.formGroup}>
                     <label>Zip Code</label>
-                    <input className={styles.input} type="text" maxLength={4} placeholder="e.g. 8000" value={data.zipCode} onChange={e => onChange({ zipCode: e.target.value })} />
+                    <input
+                        className={styles.input}
+                        type="text"
+                        maxLength={5}
+                        placeholder="e.g. 8000"
+                        value={data.zip_code}
+                        onChange={e => onChange({ zip_code: e.target.value })}
+                    />
                 </div>
-                <div className={styles.formGroup}>
-                    <label>Landmark (Optional)</label>
-                    <input className={styles.input} placeholder="e.g. Near SM Mindpro" value={data.landmark} onChange={e => onChange({ landmark: e.target.value })} />
+
+                {/* Landmark */}
+                <div className={`${styles.formGroup} ${styles.formGridFull}`}>
+                    <label>Landmark / Directions <span style={{ fontWeight: 400, color: '#aaa' }}>(Optional)</span></label>
+                    <input
+                        className={styles.input}
+                        placeholder="e.g. Near SM Mindpro, beside the Petron station"
+                        value={data.household_blk_st}
+                        onChange={e => onChange({ household_blk_st: e.target.value })}
+                    />
                 </div>
             </div>
 
@@ -277,13 +385,46 @@ function SetupPageInner() {
     const isDone = searchParams.get('done') === '1';
     const { user } = useAuth();
 
+    const router = useRouter();
     const [step, setStep] = useState(1);
     const [setupComplete, setSetupComplete] = useState(false);
     const [submitError, setSubmitError] = useState('');
+    const [checkingSetup, setCheckingSetup] = useState(true);
 
+    // All form state must be declared here (above any early returns) to follow Rules of Hooks
     const [personal, setPersonal] = useState({ firstName: '', lastName: '', middleName: '', birthday: '', gender: '', contactNumber: '', bio: '' });
     const [store, setStore] = useState({ storeName: '', category: '', handle: '', description: '' });
-    const [address, setAddress] = useState({ region: '', province: '', city: '', barangay: '', street: '', zipCode: '', landmark: '' });
+    const [address, setAddress] = useState({ region: '', province: '', municipality_city: '', Barangay: '', Line1: '', Line2: '', zip_code: '', household_blk_st: '' });
+
+    // If user already has a seller account, redirect to dashboard immediately
+    useEffect(() => {
+        if (!user?.user_id) {
+            setCheckingSetup(false);
+            return;
+        }
+        const apiUrl = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:5000';
+        const token = localStorage.getItem('bidpal_token');
+        fetch(`${apiUrl}/api/sellers/user/${user.user_id}`, {
+            headers: { ...(token && { Authorization: `Bearer ${token}` }) },
+        })
+            .then(res => {
+                if (res.ok) {
+                    // Already has a seller account — kick them to the dashboard
+                    router.replace('/seller');
+                } else {
+                    setCheckingSetup(false);
+                }
+            })
+            .catch(() => setCheckingSetup(false));
+    }, [user?.user_id]);
+
+    if (checkingSetup) {
+        return (
+            <div style={{ minHeight: '100vh', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+                Loading...
+            </div>
+        );
+    }
 
     const merge = (setter) => (patch) => setter(prev => ({ ...prev, ...patch }));
 
@@ -293,7 +434,9 @@ function SetupPageInner() {
         try {
             const apiUrl = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:5000';
             const token = localStorage.getItem('bidpal_token');
-            const res = await fetch(`${apiUrl}/api/users/${user.user_id}`, {
+
+            // Step 1: Update personal info & set role to Seller
+            const userRes = await fetch(`${apiUrl}/api/users/${user.user_id}`, {
                 method: 'PUT',
                 headers: {
                     'Content-Type': 'application/json',
@@ -310,8 +453,52 @@ function SetupPageInner() {
                     role: 'Seller',
                 }),
             });
-            const data = await res.json();
-            if (!res.ok) throw new Error(data.error || 'Failed to save profile.');
+            const userData = await userRes.json();
+            if (!userRes.ok) throw new Error(userData.error || 'Failed to save profile.');
+
+            // Step 2: Create seller profile with store details
+            const sellerRes = await fetch(`${apiUrl}/api/sellers`, {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json',
+                    ...(token && { Authorization: `Bearer ${token}` }),
+                },
+                body: JSON.stringify({
+                    store_name:        store.storeName,
+                    business_category: store.category    || null,
+                    store_handle:      store.handle      || null,
+                    store_description: store.description || null,
+                    user_id:           user.user_id,
+                }),
+            });
+            const sellerData = await sellerRes.json();
+            if (!sellerRes.ok) throw new Error(sellerData.error || 'Failed to create seller profile.');
+
+            // Step 3: Save pick-up address
+            const addressRes = await fetch(`${apiUrl}/api/addresses`, {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json',
+                    ...(token && { Authorization: `Bearer ${token}` }),
+                },
+                body: JSON.stringify({
+                    user_id:           user.user_id,
+                    Line1:             address.Line1,
+                    Line2:             address.Line2             || null,
+                    household_blk_st:  address.household_blk_st || null,
+                    Barangay:          address.Barangay          || null,
+                    municipality_city: address.municipality_city || null,
+                    zip_code:          address.zip_code          || null,
+                    region:            address.region            || null,
+                    province:          address.province          || null,
+                    address_type:      'pickup',
+                    is_default:        true,
+                    Country:           'Philippines',
+                }),
+            });
+            const addressData = await addressRes.json();
+            if (!addressRes.ok) throw new Error(addressData.error || 'Failed to save address.');
+
             setSetupComplete(true);
         } catch (err) {
             setSubmitError(err.message);

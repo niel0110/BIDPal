@@ -6,7 +6,6 @@ import {
   createSeller,
   updateSeller,
   deleteSeller,
-  updateSellerRating
 } from '../controllers/sellerController.js';
 
 const router = express.Router();
@@ -28,8 +27,5 @@ router.put('/:seller_id', updateSeller);
 
 // Delete seller
 router.delete('/:seller_id', deleteSeller);
-
-// Update seller rating
-router.patch('/:seller_id/rating', updateSellerRating);
 
 export default router;
