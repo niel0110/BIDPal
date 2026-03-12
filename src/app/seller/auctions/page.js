@@ -125,11 +125,11 @@ export default function MyAuctions() {
                     return (
                     <div key={auction.auction_id} className={styles.auctionCard}>
                         <div className={styles.cardHeader}>
-                            <span className={`${styles.statusBadge} ${styles[auction.status]}`}>
+                            <span className={`${styles.statusBadge} ${styles[auction.status === 'ended' ? 'completed' : auction.status]}`}>
                                 {auction.status === 'active' && <TrendingUp size={12} />}
                                 {auction.status === 'scheduled' && <Calendar size={12} />}
-                                {auction.status === 'completed' && <CheckCircle2 size={12} />}
-                                {auction.status.toUpperCase()}
+                                {(auction.status === 'completed' || auction.status === 'ended') && <CheckCircle2 size={12} />}
+                                {(auction.status === 'ended' ? 'completed' : auction.status).toUpperCase()}
                             </span>
                             <span className={styles.auctionId}>#{auction.auction_id.slice(0, 8)}</span>
                             <button className={styles.moreBtn}><MoreHorizontal size={18} /></button>

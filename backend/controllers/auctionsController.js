@@ -28,7 +28,8 @@ export const getSellerAuctions = async (req, res) => {
 
     // Filter by status if provided
     if (status && status !== 'all') {
-      query = query.eq('status', status);
+      const dbStatus = status === 'completed' ? 'ended' : status;
+      query = query.eq('status', dbStatus);
     }
 
     // Add pagination
@@ -221,6 +222,59 @@ export const scheduleAuction = async (req, res) => {
     res.status(201).json({ message: 'Auction scheduled successfully', auction_id: auctionData.auction_id });
   } catch (err) {
     console.error('Unexpected error scheduling auction:', err);
+    res.status(500).json({ error: err.message });
+  }
+};
+// Start a scheduled auction
+export const startAuction = async (req, res) => {
+  try {
+    const { id } = req.params;
+
+    // 1. Update Auction status to 'active'
+    const { data: auction, error: auctionError } = await supabase
+      .from('Auctions')
+      .update({ status: 'active' })
+      .eq('auction_id', id)
+      .select()
+      .single();
+
+    if (auctionError) throw auctionError;
+
+    // 2. Update Product status to 'active'
+    await supabase
+      .from('Products')
+      .update({ status: 'active' })
+      .eq('products_id', auction.products_id);
+
+    res.json({ message: 'Auction started', data: auction });
+  } catch (err) {
+    res.status(500).json({ error: err.message });
+  }
+};
+
+// End an active auction
+export const endAuction = async (req, res) => {
+  try {
+    const { id } = req.params;
+
+    // 1. Update Auction status to 'ended'
+    const { data: auction, error: auctionError } = await supabase
+      .from('Auctions')
+      .update({ status: 'ended' })
+      .eq('auction_id', id)
+      .select()
+      .single();
+
+    if (auctionError) throw auctionError;
+
+    // 2. Update Product status to 'sold' (or 'inactive' if no winner)
+    await supabase
+      .from('Products')
+      .update({ status: 'inactive' })
+      .eq('products_id', auction.products_id);
+
+    res.json({ message: 'Auction ended', data: auction });
+  } catch (err) {
     res.status(500).json({ error: err.message });
   }
 };

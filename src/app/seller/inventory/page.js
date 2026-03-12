@@ -95,15 +95,10 @@ export default function InventoryPage() {
                             </div>
                             {isScheduledOrActive ? (
                                 <button
-                                    className={styles.scheduleBtn}
+                                    className={styles.scheduledBtn}
                                     disabled
-                                    style={{
-                                        opacity: 0.5,
-                                        cursor: 'not-allowed',
-                                        background: '#ccc'
-                                    }}
                                 >
-                                    {product.status === 'scheduled' ? 'Already Scheduled' : 'In Auction'}
+                                    {product.status === 'scheduled' ? 'Scheduled' : 'In Auction'}
                                 </button>
                             ) : (
                                 <Link href={`/seller/auctions/schedule?id=${product.products_id}`} className={styles.scheduleBtn}>

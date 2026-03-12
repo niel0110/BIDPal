@@ -110,6 +110,22 @@
     box-shadow: 0 10px 20px rgba(211, 47, 47, 0.05);
 }
 
+.scheduledBtn {
+    margin-top: 1.25rem;
+    display: block;
+    width: 100%;
+    padding: 0.85rem;
+    background-color: #f8fcf8;
+    border: 1.5px solid #e8f5e9;
+    border-radius: 12px;
+    color: #4CAF50;
+    font-size: 0.9rem;
+    font-weight: 700;
+    text-align: center;
+    text-decoration: none;
+    cursor: default;
+}
+
 .plusCircle {
     width: 80px;
     height: 80px;

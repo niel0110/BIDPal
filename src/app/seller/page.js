@@ -1,7 +1,8 @@
 'use client';
 
-import { useState } from 'react';
+import { useState, useEffect, useCallback } from 'react';
 import Link from 'next/link';
+import { useAuth } from '@/context/AuthContext';
 import {
     Plus,
     Radio,
@@ -27,9 +28,64 @@ const mockBids = [];
 const mockQueue = [];
 
 export default function SellerDashboard() {
+    const { user } = useAuth();
     const [isLive, setIsLive] = useState(false);
     const [messageInput, setMessageInput] = useState('');
     const [queueProgress, setQueueProgress] = useState(0);
+    const [dashboardData, setDashboardData] = useState({
+        activeAuction: null,
+        queue: [],
+        completed: [],
+        stats: { viewers: 0, shares: 0, likes: 0 }
+    });
+    const [recentBids, setRecentBids] = useState([]);
+    const [loading, setLoading] = useState(true);
+
+    const fetchDashboardData = useCallback(async () => {
+        if (!user) return;
+        try {
+            const apiUrl = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:5000';
+            const token = localStorage.getItem('bidpal_token');
+            const seller_id = user.seller_id;
+            const user_id = user.user_id || user.id;
+
+            const res = await fetch(`${apiUrl}/api/dashboard/summary?${seller_id ? `seller_id=${seller_id}` : `user_id=${user_id}`}`, {
+                headers: {
+                    ...(token ? { 'Authorization': `Bearer ${token}` } : {})
+                }
+            });
+
+            if (res.ok) {
+                const data = await res.json();
+                setDashboardData(data);
+                setIsLive(data.activeAuction !== null);
+                
+                // If there's an active auction, fetch bids
+                if (data.activeAuction) {
+                    const bidsRes = await fetch(`${apiUrl}/api/dashboard/auction/${data.activeAuction.auction_id}/bids`, {
+                        headers: {
+                            ...(token ? { 'Authorization': `Bearer ${token}` } : {})
+                        }
+                    });
+                    if (bidsRes.ok) {
+                        const bidsData = await bidsRes.json();
+                        setRecentBids(bidsData);
+                    }
+                }
+            }
+        } catch (err) {
+            console.error('Failed to fetch dashboard data:', err);
+        } finally {
+            setLoading(false);
+        }
+    }, [user]);
+
+    useEffect(() => {
+        fetchDashboardData();
+        // Polling for updates every 10 seconds
+        const interval = setInterval(fetchDashboardData, 10000);
+        return () => clearInterval(interval);
+    }, [fetchDashboardData]);
 
     const handleQueueScroll = (e) => {
         const element = e.target;
@@ -37,17 +93,61 @@ export default function SellerDashboard() {
         setQueueProgress(isNaN(progress) ? 0 : progress);
     };
 
-    const activeItem = null;
+    const activeItem = dashboardData.activeAuction ? {
+        id: dashboardData.activeAuction.auction_id,
+        title: dashboardData.activeAuction.products?.name,
+        image: dashboardData.activeAuction.products?.images?.[0]?.image_url || "https://placehold.co/400x400?text=No+Image",
+        currentBid: dashboardData.activeAuction.current_price || dashboardData.activeAuction.reserve_price || 0,
+        timeLeft: '---', // Needs timer logic
+        bidders: dashboardData.activeAuction.bids?.[0]?.count || 0
+    } : null;
 
     // Check if there are products available (queue + active)
-    const hasProducts = mockQueue.length > 0 || activeItem !== null;
+    const hasProducts = dashboardData.queue.length > 0 || activeItem !== null;
 
-    const handleGoLive = () => {
-        if (!hasProducts) {
-            alert('You need to add products before starting a live auction. Please add products to your inventory first.');
-            return;
+    const handleGoLive = async () => {
+        if (!isLive) {
+            if (dashboardData.queue.length === 0) {
+                alert('You need to schedule products before starting a live auction.');
+                return;
+            }
+            const nextAuction = dashboardData.queue[0];
+            try {
+                const apiUrl = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:5000';
+                const token = localStorage.getItem('bidpal_token');
+                const res = await fetch(`${apiUrl}/api/auctions/${nextAuction.auction_id}/start`, {
+                    method: 'POST',
+                    headers: {
+                        ...(token ? { 'Authorization': `Bearer ${token}` } : {})
+                    }
+                });
+                if (res.ok) {
+                    fetchDashboardData();
+                } else {
+                    const error = await res.json();
+                    alert(error.error || 'Failed to start auction');
+                }
+            } catch (err) {
+                console.error(err);
+            }
+        } else {
+            // End Stream
+            try {
+                const apiUrl = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:5000';
+                const token = localStorage.getItem('bidpal_token');
+                const res = await fetch(`${apiUrl}/api/auctions/${activeItem.id}/end`, {
+                    method: 'POST',
+                    headers: {
+                        ...(token ? { 'Authorization': `Bearer ${token}` } : {})
+                    }
+                });
+                if (res.ok) {
+                    fetchDashboardData();
+                }
+            } catch (err) {
+                console.error(err);
+            }
         }
-        setIsLive(!isLive);
     };
 
     return (
@@ -143,11 +243,11 @@ export default function SellerDashboard() {
                             )}
                         </div>
                         <div className={styles.bidsList}>
-                            {mockBids.length > 0 ? mockBids.map(bid => (
-                                <div key={bid.id} className={styles.bidRow}>
+                            {recentBids.length > 0 ? recentBids.map(bid => (
+                                <div key={bid.bid_id} className={styles.bidRow}>
                                     <div>
-                                        <div className={styles.bidderName}>{bid.user}</div>
-                                        <div className={styles.bidTimestamp}>{bid.time}</div>
+                                        <div className={styles.bidderName}>{bid.bidder?.Fname} {bid.bidder?.Lname}</div>
+                                        <div className={styles.bidTimestamp}>{new Date(bid.placed_at).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}</div>
                                     </div>
                                     <span className={styles.bidPrice}>₱{bid.amount.toLocaleString()}</span>
                                 </div>
@@ -180,12 +280,12 @@ export default function SellerDashboard() {
                             <Link href="/seller/inventory" className={styles.viewInventoryBtn}>View All</Link>
                         </div>
                         <div className={styles.queueList} onScroll={handleQueueScroll}>
-                            {mockQueue.length > 0 ? mockQueue.map(item => (
-                                <div key={item.id} className={styles.queueItem}>
-                                    <img src={item.image} alt={item.title} />
+                            {dashboardData.queue.length > 0 ? dashboardData.queue.map(item => (
+                                <div key={item.auction_id} className={styles.queueItem}>
+                                    <img src={item.products?.images?.[0]?.image_url || "https://placehold.co/100x100?text=No+Image"} alt={item.products?.name} />
                                     <div className={styles.queueMeta}>
-                                        <h4>{item.title}</h4>
-                                        <span>Starts at ₱ {item.price.toLocaleString()}</span>
+                                        <h4>{item.products?.name}</h4>
+                                        <span>Starts at ₱ {item.reserve_price?.toLocaleString() || item.buy_now_price?.toLocaleString()}</span>
                                     </div>
                                     <button className={styles.setNextBtn}>Set Next</button>
                                 </div>
@@ -193,6 +293,41 @@ export default function SellerDashboard() {
                                 <div className={styles.emptyQueue}>
                                     <p>Your auction queue is empty.</p>
                                     <Link href="/seller/inventory">Add products to queue</Link>
+                                </div>
+                            )}
+                        </div>
+                    </section>
+
+                    {/* Completed Auctions */}
+                    <section className={styles.card}>
+                        <div className={styles.cardHeader}>
+                            <div className={styles.cardHeaderText}>
+                                <h2>Completed Auctions</h2>
+                                <p>Recently finished sales</p>
+                            </div>
+                        </div>
+                        <div className={styles.completedList}>
+                            {dashboardData.completed && dashboardData.completed.length > 0 ? (
+                                <div className={styles.completedGrid}>
+                                    {dashboardData.completed.map(item => (
+                                        <div key={item.auction_id} className={styles.completedItem}>
+                                            <div className={styles.completedImage}>
+                                                <img src={item.products?.images?.[0]?.image_url || "https://placehold.co/80x80?text=No+Image"} alt={item.products?.name} />
+                                                <div className={styles.completedBadge}>ENDED</div>
+                                            </div>
+                                            <div className={styles.completedInfo}>
+                                                <h4>{item.products?.name}</h4>
+                                                <div className={styles.completedStats}>
+                                                    <span className={styles.finalPrice}>₱{item.current_price?.toLocaleString() || '0'}</span>
+                                                    <span className={styles.bidCount}>{item.bids?.[0]?.count || 0} bids</span>
+                                                </div>
+                                            </div>
+                                        </div>
+                                    ))}
+                                </div>
+                            ) : (
+                                <div className={styles.emptyCompleted}>
+                                    <p>No completed auctions yet.</p>
                                 </div>
                             )}
                         </div>
@@ -213,17 +348,17 @@ export default function SellerDashboard() {
                             <div className={styles.metricItem}>
                                 <div className={styles.metricIcon}><Eye size={18} /></div>
                                 <span className={styles.metricLabel}>Live Viewers</span>
-                                <span className={styles.metricValue}>0</span>
+                                <span className={styles.metricValue}>{dashboardData.stats.viewers}</span>
                             </div>
                             <div className={styles.metricItem}>
                                 <div className={styles.metricIcon}><Share2 size={18} /></div>
                                 <span className={styles.metricLabel}>Shares</span>
-                                <span className={styles.metricValue}>0</span>
+                                <span className={styles.metricValue}>{dashboardData.stats.shares}</span>
                             </div>
                             <div className={styles.metricItem}>
                                 <div className={styles.metricIcon}><Heart size={18} /></div>
                                 <span className={styles.metricLabel}>Likes</span>
-                                <span className={styles.metricValue}>0</span>
+                                <span className={styles.metricValue}>{dashboardData.stats.likes}</span>
                             </div>
                         </div>
                     </section>

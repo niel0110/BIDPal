@@ -246,3 +246,51 @@
     transform: translateY(-2px);
     box-shadow: 0 12px 24px rgba(211, 47, 47, 0.25);
 }
+
+.alreadyScheduledInfo {
+    text-align: center;
+    padding: 3rem 2rem;
+    background: #fffafa;
+    border-radius: 20px;
+    border: 1px dashed #ffcdd2;
+    margin-top: 2rem;
+}
+
+.errorIcon {
+    margin-bottom: 1.5rem;
+    display: flex;
+    justify-content: center;
+}
+
+.alreadyScheduledInfo h3 {
+    font-size: 1.5rem;
+    font-weight: 800;
+    color: #111;
+    margin-bottom: 1rem;
+}
+
+.alreadyScheduledInfo p {
+    color: #666;
+    font-size: 1rem;
+    line-height: 1.6;
+    margin-bottom: 2rem;
+    max-width: 400px;
+    margin-left: auto;
+    margin-right: auto;
+}
+
+.backToInventoryBtn {
+    padding: 1rem 2rem;
+    background: #111;
+    color: white;
+    border: none;
+    border-radius: 12px;
+    font-weight: 700;
+    cursor: pointer;
+    transition: all 0.2s;
+}
+
+.backToInventoryBtn:hover {
+    background: #333;
+    transform: translateY(-1px);
+}
