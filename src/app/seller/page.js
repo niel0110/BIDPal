@@ -51,7 +51,7 @@ export default function SellerDashboard() {
     };
 
     return (
-        <div className={styles.dashboardContainer}>
+        <>
             {/* Header Section */}
             <header className={styles.header}>
                 <div className={styles.titleInfo}>
@@ -80,79 +80,83 @@ export default function SellerDashboard() {
             <div className={styles.controlRoom}>
                 {/* Left Column: Live Controls & Monitoring */}
                 <div className={styles.mainWorkArea}>
-                    {/* Active Auction Card */}
-                    <section className={styles.card}>
-                        <div className={styles.cardHeader}>
-                            <div className={styles.cardTitleGroup}>
-                                <div className={styles.iconCircle}>
-                                    <Radio size={18} color="#D32F2F" />
+                    {/* Live Auction Display - No Card Container */}
+                    {activeItem ? (
+                        <div className={styles.liveAuctionArea}>
+                            <div className={styles.liveHeader}>
+                                <div className={styles.liveIndicator}>
+                                    <Radio size={20} color="#D32F2F" />
+                                    <div>
+                                        <h2>Currently Selling</h2>
+                                        <p>Live auction in progress</p>
+                                    </div>
                                 </div>
-                                <div className={styles.cardHeaderText}>
-                                    <h2>Currently Selling</h2>
-                                    <p>Live auction in progress</p>
-                                </div>
+                                {isLive && <div className={styles.livePulse}>LIVE</div>}
                             </div>
-                            <button className={styles.moreBtn}><MoreVertical size={20} /></button>
-                        </div>
 
-                        {activeItem ? (
-                            <div className={styles.activeItemContent}>
-                                <div className={styles.itemShowcase}>
-                                    <img src={activeItem.image} alt={activeItem.title} className={styles.itemImage} />
-                                    {isLive && <div className={styles.liveTag}><div className={styles.tagDot} /> LIVE VIEW</div>}
+                            <div className={styles.auctionShowcase}>
+                                <div className={styles.showcaseImage}>
+                                    <img src={activeItem.image} alt={activeItem.title} />
                                 </div>
-                                <div className={styles.itemData}>
-                                    <h3 className={styles.itemName}>{activeItem.title}</h3>
-                                    <div className={styles.itemStats}>
-                                        <div className={styles.statBox}>
-                                            <span className={styles.statLabel}>Current Bid</span>
-                                            <span className={styles.statValue}>₱ {activeItem.currentBid.toLocaleString()}</span>
+                                <div className={styles.showcaseDetails}>
+                                    <h1 className={styles.showcaseTitle}>{activeItem.title}</h1>
+                                    <div className={styles.showcaseStats}>
+                                        <div className={styles.bigStat}>
+                                            <span className={styles.bigStatLabel}>Current Bid</span>
+                                            <span className={styles.bigStatValue}>₱{activeItem.currentBid.toLocaleString()}</span>
                                         </div>
-                                        <div className={styles.statBox}>
-                                            <span className={styles.statLabel}>Time Remaining</span>
-                                            <div className={styles.timeValue}>
-                                                <Clock size={16} /> <span>{activeItem.timeLeft}</span>
+                                        <div className={styles.bigStat}>
+                                            <span className={styles.bigStatLabel}>Time Left</span>
+                                            <div className={styles.bigStatValue}>
+                                                <Clock size={24} /> {activeItem.timeLeft}
                                             </div>
                                         </div>
                                     </div>
                                 </div>
                             </div>
-                        ) : (
-                            <div className={styles.emptyActiveItem}>
-                                <p>No active auction</p>
-                                <p className={styles.emptyHint}>Add products to your inventory to start selling</p>
-                                <Link href="/seller/add-product" className={styles.startBtnSmall}>
-                                    <Plus size={16} /> Add Product
-                                </Link>
-                            </div>
-                        )}
+                        </div>
+                    ) : (
+                        <div className={styles.emptyState}>
+                            <Radio size={64} color="#ddd" strokeWidth={1.5} />
+                            <h2>No Active Auction</h2>
+                            <p>Start selling by adding products to your inventory</p>
+                            <Link href="/seller/add-product" className={styles.emptyStateBtn}>
+                                <Plus size={20} /> Add Your First Product
+                            </Link>
+                        </div>
+                    )}
 
-                        {/* Recent Bids */}
-                        <div className={styles.bidsSection}>
-                            <div className={styles.subHeader}>
-                                <div className={styles.subTitle}>
-                                    <Gavel size={16} />
-                                    <span>Recent Bids</span>
+                    {/* Recent Bids Card */}
+                    <section className={styles.card}>
+                        <div className={styles.cardHeader}>
+                            <div className={styles.cardTitleGroup}>
+                                <Gavel size={20} />
+                                <div>
+                                    <h2>Recent Bids</h2>
+                                    <p>Live bidding activity</p>
                                 </div>
-                                {activeItem && (
-                                    <div className={styles.biddersCount}>
-                                        <Users size={14} /> {activeItem.bidders} Active Bidders
-                                    </div>
-                                )}
                             </div>
-                            <div className={styles.bidHistory}>
-                                {mockBids.length > 0 ? mockBids.map(bid => (
-                                    <div key={bid.id} className={styles.bidRow}>
-                                        <div className={styles.bidderInfo}>
-                                            <span className={styles.bidderName}>{bid.user}</span>
-                                            <span className={styles.bidTimestamp}>{bid.time}</span>
-                                        </div>
-                                        <span className={styles.bidPrice}>₱ {bid.amount.toLocaleString()}</span>
+                            {activeItem && (
+                                <div className={styles.biddersCount}>
+                                    <Users size={16} /> {activeItem.bidders} Bidders
+                                </div>
+                            )}
+                        </div>
+                        <div className={styles.bidsList}>
+                            {mockBids.length > 0 ? mockBids.map(bid => (
+                                <div key={bid.id} className={styles.bidRow}>
+                                    <div>
+                                        <div className={styles.bidderName}>{bid.user}</div>
+                                        <div className={styles.bidTimestamp}>{bid.time}</div>
                                     </div>
-                                )) : (
-                                    <p className={styles.emptyText}>No bids received yet</p>
-                                )}
-                            </div>
+                                    <span className={styles.bidPrice}>₱{bid.amount.toLocaleString()}</span>
+                                </div>
+                            )) : (
+                                <div className={styles.emptyBids}>
+                                    <Gavel size={48} color="#eee" strokeWidth={1.5} />
+                                    <p>No bids yet</p>
+                                </div>
+                            )}
                         </div>
                     </section>
 
@@ -262,6 +266,6 @@ export default function SellerDashboard() {
                     </section>
                 </aside>
             </div>
-        </div>
+        </>
     );
 }

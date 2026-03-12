@@ -4,6 +4,7 @@ import { useState } from 'react';
 import { useRouter } from 'next/navigation';
 import { Info, Grid, Camera, X, Trash2, Upload, ChevronLeft } from 'lucide-react';
 import styles from './page.module.css';
+import { useAuth } from '@/context/AuthContext';
 
 const steps = [
     { id: 'description', name: 'Description', icon: <Info size={18} /> },
@@ -96,17 +97,21 @@ const categoriesData = [
 
 export default function AddProductPage() {
     const router = useRouter();
+    const { user } = useAuth();
     const [currentStep, setCurrentStep] = useState(0);
     const [activeCategory, setActiveCategory] = useState(null);
+    const [isSubmitting, setIsSubmitting] = useState(false);
+    const [images, setImages] = useState([]);
+    const [previewUrls, setPreviewUrls] = useState([]);
     const [formData, setFormData] = useState({
-        name: 'Graphic card GIGABYTE GeForce',
-        description: 'The NVIDIA RTX 3050 graphics card is a design equipped with 8GB of GDDR6 memory, supports PCI-E 4.0 and offers a number of unique technologies from NVIDIA to enhance the smoothness and high quality of generated graphics. At the same time, it provides support for Ray Tracing, allowing you to enjoy photorealistic graphics.',
+        name: '',
+        description: '',
         availability: '',
-        length: '0',
-        width: '0',
-        height: '0',
+        length: '',
+        width: '',
+        height: '',
         price: '',
-        categories: ['Laptop components', 'Desktop Computers']
+        categories: []
     });
 
     const toggleCategory = (catName) => {
@@ -120,13 +125,85 @@ export default function AddProductPage() {
         });
     };
 
-    const handleNext = () => {
+    const handleFileSelect = (e) => {
+        const files = Array.from(e.target.files);
+        if (files.length + images.length > 10) {
+            alert('Max 10 images allowed');
+            return;
+        }
+        
+        setImages(prev => [...prev, ...files]);
+        
+        const newPreviews = files.map(file => URL.createObjectURL(file));
+        setPreviewUrls(prev => [...prev, ...newPreviews]);
+        e.target.value = null;
+    };
+
+    const removeImage = (index) => {
+        setImages(prev => prev.filter((_, i) => i !== index));
+        setPreviewUrls(prev => {
+            const newPreviews = [...prev];
+            URL.revokeObjectURL(newPreviews[index]); // Free memory
+            newPreviews.splice(index, 1);
+            return newPreviews;
+        });
+    };
+
+    const handleNext = async () => {
         if (currentStep < steps.length - 1) {
             setCurrentStep(currentStep + 1);
         } else {
             // Product added — proceed to seller dashboard
-            console.log('Submitting product:', formData);
-            router.push('/seller');
+            if (!user) {
+                alert("You must be logged in to add a product.");
+                return;
+            }
+            if (!formData.name) {
+                alert("Please enter a product name.");
+                setCurrentStep(0);
+                return;
+            }
+            
+            setIsSubmitting(true);
+            try {
+                const submitData = new FormData();
+                if (user.user_id) submitData.append('user_id', user.user_id);
+                if (user.seller_id) submitData.append('seller_id', user.seller_id);
+                submitData.append('name', formData.name);
+                submitData.append('description', formData.description);
+                if (formData.availability) submitData.append('availability', formData.availability);
+                if (formData.length) submitData.append('length_mm', formData.length);
+                if (formData.width) submitData.append('width_mm', formData.width);
+                if (formData.height) submitData.append('height_mm', formData.height);
+                if (formData.price) submitData.append('price', formData.price);
+                submitData.append('categories', JSON.stringify(formData.categories));
+                
+                images.forEach(img => {
+                    submitData.append('images', img);
+                });
+                
+                const apiUrl = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:5000';
+                const token = localStorage.getItem('bidpal_token');
+                
+                const res = await fetch(`${apiUrl}/api/products`, {
+                    method: 'POST',
+                    headers: {
+                        ...(token ? { 'Authorization': `Bearer ${token}` } : {})
+                    },
+                    body: submitData
+                });
+                
+                const data = await res.json();
+                if (!res.ok) throw new Error(data.error || 'Failed to add product');
+                
+                console.log('Product added!', data);
+                router.push('/seller/inventory');
+            } catch (error) {
+                alert(error.message);
+                console.error(error);
+            } finally {
+                setIsSubmitting(false);
+            }
         }
     };
 
@@ -292,7 +369,14 @@ export default function AddProductPage() {
                     <div className={styles.stepContent}>
                         <h2 className={styles.stepTitle}>Add product photos (max 10)</h2>
                         <div className={styles.photoGridDetailed}>
-                            <div className={styles.uploadCard}>
+                            <label className={styles.uploadCard} style={{cursor: 'pointer'}}>
+                                <input 
+                                    type="file" 
+                                    hidden 
+                                    multiple 
+                                    accept="image/jpeg, image/png, image/gif, image/webp" 
+                                    onChange={handleFileSelect}
+                                />
                                 <div className={styles.uploadInner}>
                                     <Upload size={32} color="#00A3FF" strokeWidth={1.5} />
                                     <span>Upload a photo</span>
@@ -301,47 +385,24 @@ export default function AddProductPage() {
                                     <span>Max size - 25Mb.</span>
                                     <span>Jpg, Png, Gif</span>
                                 </div>
-                            </div>
+                            </label>
 
-                            <div className={styles.photoCard}>
-                                <div className={styles.photoPreview}>
-                                    <img src="https://images.unsplash.com/photo-1526170315870-efeca63c5d53?q=80&w=200&auto=format&fit=crop" alt="preview" />
-                                </div>
-                                <div className={styles.photoInfoDetailed}>
-                                    <strong>XYZ name.jpg</strong>
-                                    <span>24 Mb</span>
-                                </div>
-                            </div>
-
-                            <div className={styles.photoCard}>
-                                <div className={styles.photoPreview}>
-                                    <img src="https://images.unsplash.com/photo-1585314062340-f1a5a7c9328d?q=80&w=200&auto=format&fit=crop" alt="preview" />
-                                    <div className={styles.deleteOverlay}>
-                                        <div className={styles.trashCircle}>
-                                            <Trash2 size={24} color="white" fill="white" />
-                                        </div>
-                                    </div>
-                                </div>
-                                <div className={styles.photoInfoDetailed}>
-                                    <strong>XYZ name.jpg</strong>
-                                    <span>24 Mb</span>
-                                </div>
-                            </div>
-
-                            <div className={styles.photoCard}>
-                                <div className={styles.photoPreview}>
-                                    <img src="https://images.unsplash.com/photo-1572635196237-14b3f281503f?q=80&w=200&auto=format&fit=crop" alt="preview" />
-                                </div>
-                                <div className={styles.photoInfoDetailed}>
-                                    <div className={styles.progressRow}>
-                                        <strong>87%</strong>
-                                        <span>20/24 Mb</span>
-                                    </div>
-                                    <div className={styles.progressBar}>
-                                        <div className={styles.progressFill} style={{ width: '87%' }} />
-                                    </div>
-                                </div>
-                            </div>
+                            {previewUrls.map((url, idx) => (
+                              <div key={idx} className={styles.photoCard}>
+                                  <div className={styles.photoPreview}>
+                                      <img src={url} alt={`preview ${idx}`} />
+                                      <div className={styles.deleteOverlay} onClick={() => removeImage(idx)}>
+                                          <div className={styles.trashCircle}>
+                                              <Trash2 size={24} color="white" fill="white" />
+                                          </div>
+                                      </div>
+                                  </div>
+                                  <div className={styles.photoInfoDetailed}>
+                                      <strong style={{overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap', maxWidth: '100px', display: 'inline-block'}} title={images[idx]?.name}>{images[idx]?.name || `Image ${idx + 1}`}</strong>
+                                      <span>{images[idx]?.size ? (images[idx].size / (1024 * 1024)).toFixed(2) : 0} Mb</span>
+                                  </div>
+                              </div>
+                            ))}
                         </div>
                     </div>
                 )}
@@ -350,8 +411,8 @@ export default function AddProductPage() {
                     {currentStep > 0 && (
                         <button className={styles.backLink} onClick={handleBack}>Back</button>
                     )}
-                    <button className={styles.nextBtn} onClick={handleNext}>
-                        {currentStep === steps.length - 1 ? 'Add' : 'Next'}
+                    <button className={styles.nextBtn} onClick={handleNext} disabled={isSubmitting}>
+                        {isSubmitting ? 'Submitting...' : (currentStep === steps.length - 1 ? 'Add' : 'Next')}
                     </button>
                 </div>
             </div>

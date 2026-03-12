@@ -1,4 +1,5 @@
 import express from 'express';
+import multer from 'multer';
 import {
   getAllProducts,
   getProductById,
@@ -12,6 +13,7 @@ import {
 } from '../controllers/productsController.js';
 
 const router = express.Router();
+const upload = multer({ storage: multer.memoryStorage() });
 
 // Get all products with filters
 router.get('/', getAllProducts);
@@ -25,8 +27,8 @@ router.get('/seller/:seller_id', getProductsBySeller);
 // Get product by ID
 router.get('/:products_id', getProductById);
 
-// Create new product
-router.post('/', createProduct);
+// Create new product (now supporting image uploads)
+router.post('/', upload.array('images', 10), createProduct);
 
 // Update product details
 router.put('/:products_id', updateProduct);
