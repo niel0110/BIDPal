@@ -2,7 +2,7 @@
 
 import { useState, useEffect } from 'react';
 import Link from 'next/link';
-import { ChevronLeft, Plus } from 'lucide-react';
+import { ChevronLeft, Plus, Trash2 } from 'lucide-react';
 import styles from './page.module.css';
 import { useAuth } from '@/context/AuthContext';
 
@@ -10,40 +10,74 @@ export default function InventoryPage() {
     const { user } = useAuth();
     const [products, setProducts] = useState([]);
     const [loading, setLoading] = useState(true);
+    const [deletingId, setDeletingId] = useState(null);
+
+    const fetchProducts = async () => {
+        if (!user) return;
+        try {
+            const userId = user.user_id || user.id;
+            const apiUrl = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:5000';
+            const token = localStorage.getItem('bidpal_token');
+
+            const res = await fetch(`${apiUrl}/api/products/seller/${userId}`, {
+                headers: {
+                    ...(token ? { 'Authorization': `Bearer ${token}` } : {})
+                }
+            });
+
+            const responseData = await res.json();
+            if (res.ok) {
+                setProducts(responseData.data || []);
+            } else {
+                console.error('Failed to fetch products:', responseData.error);
+            }
+        } catch (error) {
+            console.error('Error fetching inventory:', error);
+        } finally {
+            setLoading(false);
+        }
+    };
 
     useEffect(() => {
-        const fetchProducts = async () => {
-            if (!user) return;
-            try {
-                const userId = user.user_id || user.id;
-                const apiUrl = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:5000';
-                const token = localStorage.getItem('bidpal_token');
-                
-                const res = await fetch(`${apiUrl}/api/products/seller/${userId}`, {
-                    headers: {
-                        ...(token ? { 'Authorization': `Bearer ${token}` } : {})
-                    }
-                });
-                
-                const responseData = await res.json();
-                if (res.ok) {
-                    setProducts(responseData.data || []);
-                } else {
-                    console.error('Failed to fetch products:', responseData.error);
-                }
-            } catch (error) {
-                console.error('Error fetching inventory:', error);
-            } finally {
-                setLoading(false);
-            }
-        };
-
         if (user) {
             fetchProducts();
         } else {
             setLoading(false);
         }
     }, [user]);
+
+    const handleDelete = async (productId, productName) => {
+        if (!confirm(`Are you sure you want to delete "${productName}"?`)) {
+            return;
+        }
+
+        setDeletingId(productId);
+        try {
+            const apiUrl = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:5000';
+            const token = localStorage.getItem('bidpal_token');
+
+            const res = await fetch(`${apiUrl}/api/products/${productId}`, {
+                method: 'DELETE',
+                headers: {
+                    ...(token ? { 'Authorization': `Bearer ${token}` } : {})
+                }
+            });
+
+            if (res.ok) {
+                // Remove the product from the list
+                setProducts(products.filter(p => p.products_id !== productId));
+                alert('Product deleted successfully');
+            } else {
+                const errorData = await res.json();
+                alert(`Failed to delete product: ${errorData.error || 'Unknown error'}`);
+            }
+        } catch (error) {
+            console.error('Error deleting product:', error);
+            alert('Error deleting product. Please try again.');
+        } finally {
+            setDeletingId(null);
+        }
+    };
 
     return (
         <div className={styles.container}>
@@ -61,6 +95,7 @@ export default function InventoryPage() {
                 <div className={styles.productGrid}>
                     {products.map((product) => {
                         const isScheduledOrActive = product.status === 'scheduled' || product.status === 'active';
+                        const isDeleting = deletingId === product.products_id;
 
                         return (
                         <div key={product.products_id} className={styles.productCard}>
@@ -85,6 +120,30 @@ export default function InventoryPage() {
                                     }}>
                                         {product.status}
                                     </div>
+                                )}
+                                {!isScheduledOrActive && (
+                                    <button
+                                        onClick={() => handleDelete(product.products_id, product.name)}
+                                        disabled={isDeleting}
+                                        style={{
+                                            position: 'absolute',
+                                            top: '8px',
+                                            right: '8px',
+                                            background: 'rgba(220, 38, 38, 0.9)',
+                                            color: 'white',
+                                            border: 'none',
+                                            borderRadius: '4px',
+                                            padding: '6px',
+                                            cursor: isDeleting ? 'not-allowed' : 'pointer',
+                                            display: 'flex',
+                                            alignItems: 'center',
+                                            justifyContent: 'center',
+                                            opacity: isDeleting ? 0.5 : 1
+                                        }}
+                                        title="Delete product"
+                                    >
+                                        <Trash2 size={16} />
+                                    </button>
                                 )}
                             </div>
                             <div className={styles.productInfo}>

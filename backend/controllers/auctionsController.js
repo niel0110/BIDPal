@@ -4,7 +4,7 @@ import { supabase } from '../config/supabase.js';
 export const getSellerAuctions = async (req, res) => {
   try {
     const { seller_id } = req.params;
-    const { status, limit = 50, offset = 0 } = req.query;
+    const { status, search, limit = 50, offset = 0 } = req.query;
 
     let final_seller_id = seller_id;
 
@@ -32,7 +32,7 @@ export const getSellerAuctions = async (req, res) => {
       query = query.eq('status', dbStatus);
     }
 
-    // Add pagination
+    // Add pagination (we'll apply it after search filtering for now)
     query = query.range(offset, offset + parseInt(limit) - 1);
 
     const { data: auctionsData, error: auctionsError } = await query;
@@ -42,8 +42,24 @@ export const getSellerAuctions = async (req, res) => {
       return res.status(500).json({ error: auctionsError.message });
     }
 
+    // If search query is provided, first get matching product IDs
+    let searchProductIds = null;
+    if (search && search.trim()) {
+      const searchLower = `%${search.toLowerCase().trim()}%`;
+
+      // Query products using ILIKE for case-insensitive search
+      const { data: matchingProducts } = await supabase
+        .from('Products')
+        .select('products_id')
+        .or(`name.ilike.${searchLower},description.ilike.${searchLower}`);
+
+      if (matchingProducts) {
+        searchProductIds = new Set(matchingProducts.map(p => p.products_id));
+      }
+    }
+
     // Fetch product details for each auction
-    const transformedData = await Promise.all(
+    let transformedData = await Promise.all(
       auctionsData.map(async (auction) => {
         // Fetch product details from the view
         const { data: productData } = await supabase
@@ -71,6 +87,13 @@ export const getSellerAuctions = async (req, res) => {
         };
       })
     );
+
+    // Apply search filter if provided (filter by product IDs that matched search)
+    if (searchProductIds !== null) {
+      transformedData = transformedData.filter(auction =>
+        searchProductIds.has(auction.product_id)
+      );
+    }
 
     res.json({ count: transformedData.length, data: transformedData });
   } catch (err) {

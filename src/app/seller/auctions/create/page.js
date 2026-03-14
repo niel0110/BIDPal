@@ -1,18 +1,59 @@
 'use client';
 
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import Link from 'next/link';
 import { ChevronLeft, Search, Filter, Plus } from 'lucide-react';
 import styles from './page.module.css';
-
-const mockProducts = [
-    { id: 1, name: 'XYZ name.jpg', size: '24 Mb', image: 'https://images.unsplash.com/photo-1516035069371-29a1b244cc32?q=80&w=200&auto=format&fit=crop' },
-    { id: 2, name: 'XYZ name.jpg', size: '24 Mb', image: 'https://images.unsplash.com/photo-1516035069371-29a1b244cc32?q=80&w=200&auto=format&fit=crop' },
-    { id: 3, name: 'Retro Camera Kit', size: '48 Mb', image: 'https://images.unsplash.com/photo-1516035069371-29a1b244cc32?auto=format&fit=crop&q=80&w=200' },
-];
+import { useAuth } from '@/context/AuthContext';
 
 export default function SelectProductPage() {
+    const { user } = useAuth();
     const [searchQuery, setSearchQuery] = useState('');
+    const [products, setProducts] = useState([]);
+    const [loading, setLoading] = useState(true);
+
+    useEffect(() => {
+        const fetchProducts = async () => {
+            if (!user) return;
+            try {
+                const userId = user.user_id || user.id;
+                const apiUrl = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:5000';
+                const token = localStorage.getItem('bidpal_token');
+
+                // Only fetch products that are NOT scheduled or active (available for auction)
+                const res = await fetch(`${apiUrl}/api/products/seller/${userId}`, {
+                    headers: {
+                        ...(token ? { 'Authorization': `Bearer ${token}` } : {})
+                    }
+                });
+
+                const responseData = await res.json();
+                if (res.ok) {
+                    // Filter out scheduled and active products
+                    const availableProducts = (responseData.data || []).filter(
+                        p => p.status !== 'scheduled' && p.status !== 'active'
+                    );
+                    setProducts(availableProducts);
+                } else {
+                    console.error('Failed to fetch products:', responseData.error);
+                }
+            } catch (error) {
+                console.error('Error fetching inventory:', error);
+            } finally {
+                setLoading(false);
+            }
+        };
+
+        if (user) {
+            fetchProducts();
+        } else {
+            setLoading(false);
+        }
+    }, [user]);
+
+    const filteredProducts = products.filter(product =>
+        product.name.toLowerCase().includes(searchQuery.toLowerCase())
+    );
 
     return (
         <div className={styles.container}>
@@ -43,29 +84,43 @@ export default function SelectProductPage() {
                 </button>
             </div>
 
-            <div className={styles.productGrid}>
-                {mockProducts.map((product) => (
-                    <div key={product.id} className={styles.productCard}>
-                        <div className={styles.imageWrapper}>
-                            <img src={product.image} alt={product.name} />
+            {loading ? (
+                <div style={{ textAlign: 'center', padding: '2rem' }}>Loading products...</div>
+            ) : (
+                <div className={styles.productGrid}>
+                    {filteredProducts.length === 0 && !loading ? (
+                        <div style={{ gridColumn: '1 / -1', textAlign: 'center', padding: '2rem', color: '#666' }}>
+                            {searchQuery ? 'No products found matching your search.' : 'No products available for auction. Add products first.'}
                         </div>
-                        <div className={styles.productInfo}>
-                            <strong>{product.name}</strong>
-                            <span>{product.size}</span>
-                        </div>
-                        <Link href={`/seller/auctions/schedule?id=${product.id}`} className={styles.selectBtn}>
-                            Select for Auction
-                        </Link>
-                    </div>
-                ))}
+                    ) : (
+                        filteredProducts.map((product) => (
+                            <div key={product.products_id} className={styles.productCard}>
+                                <div className={styles.imageWrapper}>
+                                    <img
+                                        src={product.images && product.images.length > 0 ? product.images[0].image_url : 'https://placehold.co/200x200?text=No+Image'}
+                                        alt={product.name}
+                                        style={{ objectFit: 'cover', width: '100%', height: '100%' }}
+                                    />
+                                </div>
+                                <div className={styles.productInfo}>
+                                    <strong>{product.name}</strong>
+                                    <span style={{ textTransform: 'capitalize' }}>Status: {product.status}</span>
+                                </div>
+                                <Link href={`/seller/auctions/schedule?id=${product.products_id}`} className={styles.selectBtn}>
+                                    Select for Auction
+                                </Link>
+                            </div>
+                        ))
+                    )}
 
-                <Link href="/seller/add-product" className={styles.addCard}>
-                    <div className={styles.plusCircle}>
-                        <Plus size={32} color="var(--color-primary)" />
-                    </div>
-                    <span>Add New Product</span>
-                </Link>
-            </div>
+                    <Link href="/seller/add-product" className={styles.addCard}>
+                        <div className={styles.plusCircle}>
+                            <Plus size={32} color="var(--color-primary)" />
+                        </div>
+                        <span>Add New Product</span>
+                    </Link>
+                </div>
+            )}
         </div>
     );
 }
