@@ -113,17 +113,20 @@ export default function Header() {
           <Logo />
         </div>
 
-        <div className={styles.searchSection}>
-          <div className={styles.searchWrapper}>
-            <Search size={20} className={styles.searchIcon} color="#333" />
-            <input
-              type="text"
-              placeholder="Search essentials, groceries and more..."
-              className={styles.searchInput}
-            />
-            <AlignJustify size={20} className={styles.filterIcon} style={{ transform: 'rotate(90deg)' }} />
+        {/* Only show search bar for buyers, not sellers */}
+        {user && user.role?.toLowerCase() === 'seller' ? null : (
+          <div className={styles.searchSection}>
+            <div className={styles.searchWrapper}>
+              <Search size={20} className={styles.searchIcon} color="#333" />
+              <input
+                type="text"
+                placeholder="Search essentials, groceries and more..."
+                className={styles.searchInput}
+              />
+              <AlignJustify size={20} className={styles.filterIcon} style={{ transform: 'rotate(90deg)' }} />
+            </div>
           </div>
-        </div>
+        )}
 
         <div className={styles.rightSection}>
           {user && user.role?.toLowerCase() === 'seller' ? null : (
