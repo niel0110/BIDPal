@@ -16,27 +16,34 @@ const STEPS = [
 ];
 
 // ─── Sidebar ───────────────────────────────────────────────────────────────
-function Sidebar({ currentStep }) {
+function Sidebar({ currentStep, onStepClick }) {
     return (
         <aside className={styles.sidebar}>
             <div className={styles.sidebarLogo}><span>BID</span>Pal</div>
             <p className={styles.sidebarTagline}>Seller Onboarding</p>
 
             <div className={styles.stepsList}>
-                {STEPS.map(s => (
-                    <div
-                        key={s.id}
-                        className={`${styles.sidebarStep} ${currentStep === s.id ? styles.active : ''} ${currentStep > s.id ? styles.completed : ''}`}
-                    >
-                        <div className={styles.sidebarStepNum}>
-                            {currentStep > s.id ? <Check size={14} /> : s.id}
+                {STEPS.map(s => {
+                    const isCompleted = currentStep > s.id;
+                    const isActive = currentStep === s.id;
+                    return (
+                        <div
+                            key={s.id}
+                            className={`${styles.sidebarStep} ${isActive ? styles.active : ''} ${isCompleted ? styles.completed : ''} ${isCompleted ? styles.clickable : ''}`}
+                            onClick={() => isCompleted && onStepClick(s.id)}
+                            title={isCompleted ? `Go back to ${s.title}` : undefined}
+                            style={isCompleted ? { cursor: 'pointer' } : undefined}
+                        >
+                            <div className={styles.sidebarStepNum}>
+                                {isCompleted ? <Check size={14} /> : s.id}
+                            </div>
+                            <div className={styles.sidebarStepText}>
+                                <span className={styles.sidebarStepTitle}>{s.title}</span>
+                                <span className={styles.sidebarStepSub}>{s.sub}</span>
+                            </div>
                         </div>
-                        <div className={styles.sidebarStepText}>
-                            <span className={styles.sidebarStepTitle}>{s.title}</span>
-                            <span className={styles.sidebarStepSub}>{s.sub}</span>
-                        </div>
-                    </div>
-                ))}
+                    );
+                })}
             </div>
 
             <div className={styles.sidebarFooter}>© 2026 BIDPal · All rights reserved</div>
@@ -509,7 +516,7 @@ function SetupPageInner() {
 
     return (
         <div className={styles.setupPage}>
-            <Sidebar currentStep={step} />
+            <Sidebar currentStep={step} onStepClick={setStep} />
             <div className={styles.main}>
                 {step === 1 && <PersonalInfoStep data={personal} onChange={merge(setPersonal)} onNext={() => setStep(2)} />}
                 {step === 2 && <StoreInfoStep data={store} onChange={merge(setStore)} onNext={() => setStep(3)} onBack={() => setStep(1)} />}
