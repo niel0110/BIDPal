@@ -1951,3 +1951,173 @@ input:checked+.slider:before {
     font-weight: 600;
     font-size: 0.9rem;
 }
+
+/* ── Loading placeholder ── */
+.loadingPlaceholder {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    min-height: 200px;
+    color: #999;
+    font-weight: 600;
+    font-size: 0.95rem;
+}
+
+/* ── Store Hero Banner ── */
+.storeHero {
+    position: relative;
+    border-radius: 20px;
+    overflow: hidden;
+    margin-bottom: 0.5rem;
+}
+
+.storeHeroBg {
+    height: 110px;
+    background: linear-gradient(135deg, #1a1a2e 0%, #16213e 50%, #0f3460 100%);
+    border-radius: 20px;
+}
+
+.storeHeroContent {
+    display: flex;
+    align-items: flex-end;
+    gap: 1.25rem;
+    padding: 0 1.5rem 1.25rem;
+    margin-top: -40px;
+    position: relative;
+}
+
+.storeAvatar {
+    width: 80px;
+    height: 80px;
+    border-radius: 18px;
+    background: linear-gradient(135deg, #D32F2F, #ff6b6b);
+    color: white;
+    font-size: 1.8rem;
+    font-weight: 800;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    border: 4px solid white;
+    box-shadow: 0 4px 20px rgba(211, 47, 47, 0.3);
+    flex-shrink: 0;
+    letter-spacing: -2px;
+}
+
+.storeHeroInfo {
+    display: flex;
+    flex-direction: column;
+    gap: 0.3rem;
+    padding-bottom: 0.25rem;
+}
+
+.storeHeroName {
+    font-size: 1.3rem;
+    font-weight: 800;
+    color: #111;
+    margin: 0;
+}
+
+.storeHeroHandle {
+    font-size: 0.8rem;
+    color: #999;
+    font-weight: 500;
+}
+
+.storeHeroBadge {
+    display: inline-block;
+    background: #fff0f0;
+    color: var(--color-primary);
+    font-size: 0.72rem;
+    font-weight: 700;
+    padding: 0.2rem 0.75rem;
+    border-radius: 50px;
+    width: fit-content;
+}
+
+/* ── Form Grids ── */
+.formGrid2 {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 1.25rem;
+}
+
+.formGrid3 {
+    display: grid;
+    grid-template-columns: 1fr 1fr 1fr;
+    gap: 1.25rem;
+}
+
+@media (max-width: 700px) {
+    .formGrid2,
+    .formGrid3 {
+        grid-template-columns: 1fr;
+    }
+}
+
+/* ── Prefix input (bidpal.com/handle) ── */
+.inputWithPrefix {
+    display: flex;
+    align-items: stretch;
+    border: 1px solid #eee;
+    border-radius: 14px;
+    overflow: hidden;
+    background: #fafafa;
+    transition: border-color 0.2s, box-shadow 0.2s;
+}
+
+.inputWithPrefix:focus-within {
+    border-color: var(--color-primary);
+    background: white;
+    box-shadow: 0 4px 12px rgba(211, 47, 47, 0.05);
+}
+
+.prefix {
+    padding: 1.1rem 0.9rem;
+    background: #f3f3f3;
+    color: #999;
+    font-size: 0.85rem;
+    font-weight: 600;
+    border-right: 1px solid #eee;
+    white-space: nowrap;
+    display: flex;
+    align-items: center;
+}
+
+.inputWithPrefix input {
+    flex: 1;
+    border: none;
+    background: transparent;
+    padding: 1.1rem;
+    font-size: 0.95rem;
+    font-family: inherit;
+    outline: none;
+}
+
+/* ── Styled textarea ── */
+.storeTextarea {
+    width: 100%;
+    padding: 1.1rem;
+    border-radius: 14px;
+    border: 1px solid #eee;
+    background: #fafafa;
+    font-size: 0.95rem;
+    font-family: inherit;
+    resize: vertical;
+    outline: none;
+    transition: border-color 0.2s, box-shadow 0.2s;
+    box-sizing: border-box;
+}
+
+.storeTextarea:focus {
+    border-color: var(--color-primary);
+    background: white;
+    box-shadow: 0 4px 12px rgba(211, 47, 47, 0.05);
+}
+
+/* ── Optional tag ── */
+.optionalTag {
+    font-size: 0.78rem;
+    font-weight: 400;
+    color: #aaa;
+    margin-left: 4px;
+}
