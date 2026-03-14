@@ -129,12 +129,43 @@ export default function ScheduleAuctionPage() {
                         />
                     </div>
                     <div className={styles.briefInfo}>
-                        <h2>{productDetails?.name || "Unknown Product"}</h2>
+                        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                            <h2>{productDetails?.name || "Unknown Product"}</h2>
+                            {productDetails?.status && (
+                                <span style={{ 
+                                    padding: '4px 8px', 
+                                    borderRadius: '4px', 
+                                    fontSize: '0.7rem', 
+                                    fontWeight: 'bold',
+                                    background: (productDetails.status === 'scheduled' || productDetails.status === 'active') ? '#ffebee' : '#f5f5f5',
+                                    color: (productDetails.status === 'scheduled' || productDetails.status === 'active') ? '#d32f2f' : '#757575',
+                                    border: `1px solid ${(productDetails.status === 'scheduled' || productDetails.status === 'active') ? '#ffcdd2' : '#e0e0e0'}`
+                                }}>
+                                    {productDetails.status.toUpperCase()}
+                                </span>
+                            )}
+                        </div>
                         <p style={{ "wordWrap": "break-word" }}>ID: {productId || '---'}</p>
                     </div>
                 </div>
                 )}
 
+                {(productDetails?.status === 'scheduled' || productDetails?.status === 'active') ? (
+                    <div className={styles.alreadyScheduledInfo}>
+                        <div className={styles.errorIcon}>
+                            <Info size={32} color="#d32f2f" />
+                        </div>
+                        <h3>Product Already Scheduled</h3>
+                        <p>This item is currently {productDetails.status === 'scheduled' ? 'scheduled for an upcoming auction' : 'in an active auction'}. You cannot schedule it again until the current auction ends.</p>
+                        <button 
+                            type="button" 
+                            className={styles.backToInventoryBtn}
+                            onClick={() => router.push('/seller/auctions')}
+                        >
+                            View Active Auctions
+                        </button>
+                    </div>
+                ) : (
                 <form onSubmit={handleSubmit}>
                     <div className={styles.section}>
                         <label className={styles.sectionLabel}>Select Sale Type</label>
@@ -227,6 +258,7 @@ export default function ScheduleAuctionPage() {
                         {isSubmitting ? 'Scheduling...' : 'Confirm Schedule'}
                     </button>
                 </form>
+                )}
             </div>
         </div>
     );

@@ -164,9 +164,9 @@ export const createProduct = async (req, res) => {
       p_description: description || null,
       p_availability: availability !== undefined ? parseInt(availability) : 1,
       p_price: price ? parseFloat(price) : null,
-      p_length_mm: length_mm ? parseInt(length_mm) : 0,
-      p_width_mm: width_mm ? parseInt(width_mm) : 0,
-      p_height_mm: height_mm ? parseInt(height_mm) : 0,
+      p_length_mm: length_mm ? Math.max(0, parseInt(length_mm)) : 0,
+      p_width_mm: width_mm ? Math.max(0, parseInt(width_mm)) : 0,
+      p_height_mm: height_mm ? Math.max(0, parseInt(height_mm)) : 0,
       p_starting_price: starting_price ? parseFloat(starting_price) : null,
       p_reserve_price: reserve_price ? parseFloat(reserve_price) : null,
       p_condition: condition || 'new',
@@ -277,7 +277,7 @@ export const updateProductStatus = async (req, res) => {
       return res.status(400).json({ error: 'Status is required.' });
     }
 
-    const validStatuses = ['active', 'inactive', 'archived', 'sold', 'delisted'];
+    const validStatuses = ['active', 'inactive', 'archived', 'sold', 'delisted', 'scheduled'];
     if (!validStatuses.includes(status)) {
       return res.status(400).json({ error: `Status must be one of: ${validStatuses.join(', ')}` });
     }

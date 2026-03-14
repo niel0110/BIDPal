@@ -290,15 +290,15 @@ export default function AddProductPage() {
                             <label className={styles.fullWidth}>Dimensions (optional)</label>
                             <div className={styles.dimField}>
                                 <span>Length [mm]</span>
-                                <input type="number" value={formData.length} onChange={(e) => setFormData({ ...formData, length: e.target.value })} />
+                                <input type="number" min="0" value={formData.length} onChange={(e) => setFormData({ ...formData, length: e.target.value })} />
                             </div>
                             <div className={styles.dimField}>
                                 <span>Width [mm]</span>
-                                <input type="number" value={formData.width} onChange={(e) => setFormData({ ...formData, width: e.target.value })} />
+                                <input type="number" min="0" value={formData.width} onChange={(e) => setFormData({ ...formData, width: e.target.value })} />
                             </div>
                             <div className={styles.dimField}>
                                 <span>Height [mm]</span>
-                                <input type="number" value={formData.height} onChange={(e) => setFormData({ ...formData, height: e.target.value })} />
+                                <input type="number" min="0" value={formData.height} onChange={(e) => setFormData({ ...formData, height: e.target.value })} />
                             </div>
                         </div>
 
