@@ -102,6 +102,73 @@ export const getSellerAuctions = async (req, res) => {
   }
 };
 
+// Get all active/scheduled auctions for discovery
+export const getAllAuctions = async (req, res) => {
+  try {
+    const { status, limit = 50, offset = 0 } = req.query;
+
+    let query = supabase
+      .from('Auctions')
+      .select(`
+        *,
+        Seller (
+          store_name,
+          logo_url,
+          banner_url,
+          User (
+            Avatar
+          )
+        )
+      `)
+      .order('start_time', { ascending: true });
+
+    if (status) {
+      query = query.eq('status', status);
+    } else {
+      query = query.in('status', ['active', 'scheduled']);
+    }
+
+    query = query.range(offset, offset + parseInt(limit) - 1);
+
+    const { data: auctionsData, error: auctionsError } = await query;
+
+    if (auctionsError) throw auctionsError;
+
+    // Fetch product details for each auction
+    const transformedData = await Promise.all(
+      auctionsData.map(async (auction) => {
+        const { data: productData } = await supabase
+          .from('vw_product_details')
+          .select('*')
+          .eq('products_id', auction.products_id)
+          .maybeSingle();
+
+        const images = productData?.images || [];
+        const primaryImage = images.find(img => img.is_primary) || images[0];
+
+        return {
+          id: auction.auction_id,
+          seller_id: auction.seller_id,
+          title: productData?.name || 'Unknown Product',
+          price: auction.buy_now_price || auction.reserve_price || 0,
+          currentBid: auction.current_price || auction.reserve_price || 0,
+          seller: auction.Seller?.store_name || 'Unknown Seller',
+          seller_avatar: auction.Seller?.logo_url || auction.Seller?.User?.Avatar,
+          seller_banner: auction.Seller?.banner_url,
+          viewers: Math.floor(Math.random() * 100), // Random placeholder for now
+          timeLeft: auction.status === 'active' ? 'Active Now' : new Date(auction.start_time).toLocaleString(),
+          image: primaryImage?.image_url || null,
+          status: auction.status
+        };
+      })
+    );
+
+    res.json({ count: transformedData.length, data: transformedData });
+  } catch (err) {
+    res.status(500).json({ error: err.message });
+  }
+};
+
 // Schedule a new live auction
 export const scheduleAuction = async (req, res) => {
   try {
@@ -297,6 +364,58 @@ export const endAuction = async (req, res) => {
       .eq('products_id', auction.products_id);
 
     res.json({ message: 'Auction ended', data: auction });
+  } catch (err) {
+    res.status(500).json({ error: err.message });
+  }
+};
+
+// Get single auction details
+export const getAuctionById = async (req, res) => {
+  try {
+    const { id } = req.params;
+
+    const { data: auction, error } = await supabase
+      .from('Auctions')
+      .select(`
+        *,
+        Seller (
+          seller_id,
+          store_name,
+          logo_url,
+          banner_url,
+          User (
+            Avatar,
+            Fname,
+            Lname
+          )
+        )
+      `)
+      .eq('auction_id', id)
+      .maybeSingle();
+
+    if (error) throw error;
+    if (!auction) return res.status(404).json({ error: 'Auction not found' });
+
+    // Get product details
+    const { data: productData } = await supabase
+      .from('vw_product_details')
+      .select('*')
+      .eq('products_id', auction.products_id)
+      .maybeSingle();
+
+    const result = {
+      ...auction,
+      product: productData,
+      seller_info: {
+          seller_id: auction.Seller?.seller_id,
+          store_name: auction.Seller?.store_name || 'Unknown Seller',
+          avatar: auction.Seller?.logo_url || auction.Seller?.User?.Avatar,
+          banner: auction.Seller?.banner_url,
+          full_name: auction.Seller?.User ? `${auction.Seller.User.Fname} ${auction.Seller.User.Lname}` : 'Unknown'
+      }
+    };
+
+    res.json(result);
   } catch (err) {
     res.status(500).json({ error: err.message });
   }

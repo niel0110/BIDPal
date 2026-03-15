@@ -28,8 +28,11 @@ export default function ProductCard({ data }) {
             <div className={styles.content}>
                 <h3 className={styles.title}>{data.title}</h3>
                 <div className={styles.priceRow}>
-                    <span className={styles.price}>₱ {data.price}</span>
-                    <span>| {data.wishlistCount} users added this to wishlist</span>
+                    <div className={styles.price}>₱{data.price}</div>
+                    <div className={styles.wishlistInfo}>
+                        <span className={styles.separator}>|</span>
+                        <span>{data.wishlistCount} users added this to wishlist</span>
+                    </div>
                 </div>
 
                 <div className={styles.tags}>

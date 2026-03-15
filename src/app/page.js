@@ -46,6 +46,12 @@ export default function Home() {
   const [password, setPassword] = useState('');
   const [confirmPassword, setConfirmPassword] = useState('');
   const [error, setError] = useState('');
+  
+  const [auctions, setAuctions] = useState([]);
+  const [deals, setDeals] = useState([]);
+  const [clearance, setClearance] = useState([]);
+  const [loadingContent, setLoadingContent] = useState(true);
+
   const { isSubmitting, runWithLock } = useSubmitLock();
   const router = useRouter();
   const redirectAfterAuth = useRef(null);
@@ -57,6 +63,35 @@ export default function Home() {
       router.replace(target);
     }
   }, [user, loading, router]);
+
+  useEffect(() => {
+    const fetchData = async () => {
+      try {
+        const apiUrl = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:5000';
+        
+        // Fetch auctions
+        const auctionRes = await fetch(`${apiUrl}/api/auctions?limit=10`);
+        const auctionJson = await auctionRes.json();
+        setAuctions(auctionJson.data || []);
+
+        // Fetch weekly deals (just get some products for now)
+        const productsRes = await fetch(`${apiUrl}/api/products?limit=8`);
+        const productsJson = await productsRes.json();
+        const allProducts = productsJson.data || [];
+        
+        // Split them for variety in the UI
+        setDeals(allProducts.slice(0, 4));
+        setClearance(allProducts.slice(4, 7));
+
+      } catch (err) {
+        console.error('Failed to fetch home content:', err);
+      } finally {
+        setLoadingContent(false);
+      }
+    };
+
+    fetchData();
+  }, []);
 
   const handleScroll = (e) => {
     const element = e.target;
@@ -309,9 +344,13 @@ export default function Home() {
           </div>
         </div>
         <div className={styles.horizontalScroll} onScroll={handleScroll}>
-          {auctionData.map(item => (
-            <AuctionCard key={item.id} data={item} />
-          ))}
+          {auctions.length > 0 ? (
+            auctions.map(item => (
+              <AuctionCard key={item.id} data={item} />
+            ))
+          ) : (
+            <div className={styles.emptyState}>No ongoing auctions at the moment.</div>
+          )}
         </div>
       </section>
 
@@ -321,9 +360,18 @@ export default function Home() {
           <div className={styles.viewAll}>View all <ChevronRight size={16} /></div>
         </div>
         <div className={styles.grid}>
-          {weeklyDeals.map(item => (
-            <ProductCard key={item.id} data={item} />
-          ))}
+          {deals.length > 0 ? (
+            deals.map(item => (
+              <ProductCard key={item.products_id} data={{
+                ...item,
+                title: item.name,
+                image: item.images?.[0]?.image_url,
+                wishlistCount: Math.floor(Math.random() * 200)
+              }} />
+            ))
+          ) : (
+            <div className={styles.emptyState}>Coming soon!</div>
+          )}
         </div>
       </section>
 
@@ -333,9 +381,19 @@ export default function Home() {
           <div className={styles.viewAll}>View all <ChevronRight size={16} /></div>
         </div>
         <div className={styles.grid}>
-          {clearanceSale.map(item => (
-            <ProductCard key={item.id} data={item} />
-          ))}
+          {clearance.length > 0 ? (
+            clearance.map(item => (
+              <ProductCard key={item.products_id} data={{
+                ...item,
+                title: item.name,
+                image: item.images?.[0]?.image_url,
+                wishlistCount: Math.floor(Math.random() * 200),
+                badges: [{ text: '50% off', color: 'yellow' }]
+              }} />
+            ))
+          ) : (
+            <div className={styles.emptyState}>Coming soon!</div>
+          )}
         </div>
       </section>
     </main>

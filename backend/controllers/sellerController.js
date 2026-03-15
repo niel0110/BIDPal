@@ -17,10 +17,19 @@ export const getSellerById = async (req, res) => {
     const { seller_id } = req.params;
     const { data, error } = await supabase
       .from('Seller')
-      .select('*')
+      .select(`
+        *,
+        User (
+          create_at,
+          Avatar
+        )
+      `)
       .eq('seller_id', seller_id)
       .single();
-    if (error) return res.status(404).json({ error: 'Seller not found' });
+    if (error) {
+      console.error('Supabase error fetching seller:', error);
+      return res.status(404).json({ error: 'Seller not found', details: error.message });
+    }
     res.json(data);
   } catch (err) {
     res.status(500).json({ error: err.message });
@@ -128,6 +137,112 @@ export const deleteSeller = async (req, res) => {
       return res.status(404).json({ error: 'Seller not found' });;
     }
     res.json({ message: 'Seller account deleted successfully', data: data[0] });
+  } catch (err) {
+    res.status(500).json({ error: err.message });
+  }
+};
+
+// Upload seller store logo
+export const uploadStoreLogo = async (req, res) => {
+  try {
+    const { seller_id } = req.params;
+    
+    if (!req.file) {
+      return res.status(400).json({ error: 'No file uploaded' });
+    }
+
+    // Generate a unique filename
+    const timestamp = Date.now();
+    const fileName = `${seller_id}-${timestamp}-${req.file.originalname}`;
+    const filePath = `logos/${fileName}`;
+
+    // Upload file to Supabase Storage
+    const { data, error: uploadError } = await supabase.storage
+      .from('seller-assets')
+      .upload(filePath, req.file.buffer, {
+        contentType: req.file.mimetype,
+      });
+
+    if (uploadError) {
+      return res.status(400).json({ error: uploadError.message });
+    }
+
+    // Get the public URL
+    const { data: urlData } = supabase.storage
+      .from('seller-assets')
+      .getPublicUrl(filePath);
+
+    const logoUrl = urlData.publicUrl;
+
+    // Update seller with logo URL
+    const { data: updatedSeller, error: updateError } = await supabase
+      .from('Seller')
+      .update({ logo_url: logoUrl })
+      .eq('seller_id', seller_id)
+      .select('*');
+
+    if (updateError) {
+      return res.status(400).json({ error: updateError.message });
+    }
+
+    res.json({
+      success: true,
+      logoUrl,
+      seller: updatedSeller[0]
+    });
+  } catch (err) {
+    res.status(500).json({ error: err.message });
+  }
+};
+
+// Upload seller store banner
+export const uploadStoreBanner = async (req, res) => {
+  try {
+    const { seller_id } = req.params;
+    
+    if (!req.file) {
+      return res.status(400).json({ error: 'No file uploaded' });
+    }
+
+    // Generate a unique filename
+    const timestamp = Date.now();
+    const fileName = `${seller_id}-${timestamp}-${req.file.originalname}`;
+    const filePath = `banners/${fileName}`;
+
+    // Upload file to Supabase Storage
+    const { data, error: uploadError } = await supabase.storage
+      .from('seller-assets')
+      .upload(filePath, req.file.buffer, {
+        contentType: req.file.mimetype,
+      });
+
+    if (uploadError) {
+      return res.status(400).json({ error: uploadError.message });
+    }
+
+    // Get the public URL
+    const { data: urlData } = supabase.storage
+      .from('seller-assets')
+      .getPublicUrl(filePath);
+
+    const bannerUrl = urlData.publicUrl;
+
+    // Update seller with banner URL
+    const { data: updatedSeller, error: updateError } = await supabase
+      .from('Seller')
+      .update({ banner_url: bannerUrl })
+      .eq('seller_id', seller_id)
+      .select('*');
+
+    if (updateError) {
+      return res.status(400).json({ error: updateError.message });
+    }
+
+    res.json({
+      success: true,
+      bannerUrl,
+      seller: updatedSeller[0]
+    });
   } catch (err) {
     res.status(500).json({ error: err.message });
   }

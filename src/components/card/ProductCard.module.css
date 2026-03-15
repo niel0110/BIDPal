@@ -87,16 +87,30 @@
 
 .priceRow {
     display: flex;
-    align-items: baseline;
-    gap: 0.5rem;
-    font-size: 0.8rem;
-    color: #666;
+    flex-direction: column;
+    gap: 0.25rem;
+    margin-top: 0.25rem;
 }
 
 .price {
-    font-size: 1rem;
-    font-weight: 700;
+    font-size: 1.25rem;
+    font-weight: 800;
     color: #333;
+    white-space: nowrap;
+}
+
+.wishlistInfo {
+    display: flex;
+    align-items: center;
+    gap: 0.5rem;
+    font-size: 0.85rem;
+    color: #666;
+    line-height: 1.2;
+}
+
+.separator {
+    color: #ddd;
+    font-weight: 300;
 }
 
 .tags {

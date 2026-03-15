@@ -4,7 +4,7 @@ import { supabase } from '../config/supabase.js';
 export const getAllProducts = async (req, res) => {
   try {
     const { status, seller_id, condition, limit = 50, offset = 0 } = req.query;
-    let query = supabase.from('Products').select('*').is('deleted_at', null);
+    let query = supabase.from('vw_product_details').select('*');
 
     // Apply filters
     if (status) query = query.eq('status', status);

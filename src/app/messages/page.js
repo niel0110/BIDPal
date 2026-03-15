@@ -16,49 +16,92 @@ import {
 import { useAuth } from '@/context/AuthContext';
 import styles from './page.module.css';
 
-const buyerChats = [
-    {
-        id: 1,
-        name: 'RetroVault',
-        lastMessage: 'The camera is in perfect condition!',
-        time: '10:24 AM',
-        unread: 2,
-        online: true,
-        avatar: 'https://api.dicebear.com/7.x/avataaars/svg?seed=Retro'
-    },
-    {
-        id: 2,
-        name: 'EleganceCo',
-        lastMessage: 'Sure, I can ship it today.',
-        time: 'Yesterday',
-        unread: 0,
-        online: false,
-        avatar: 'https://api.dicebear.com/7.x/avataaars/svg?seed=Elegance'
-    }
-];
-
-const sellerChats = [];
-
-const buyerMessages = [
-    { id: 1, text: 'Hi! I saw your post about the analog camera.', sender: 'me', time: '10:15 AM' },
-    { id: 2, text: 'Hello! Yes, it is still available.', sender: 'them', time: '10:17 AM' },
-    { id: 3, text: 'Does it come with the original lens cap?', sender: 'me', time: '10:18 AM' },
-    { id: 4, text: 'The camera is in perfect condition! And yes, the lens cap is included.', sender: 'them', time: '10:24 AM' },
-];
-
-const sellerMessages = [];
-
 export default function MessagesPage() {
     const router = useRouter();
-    const { user } = useAuth();
+    const { user, loading: authLoading } = useAuth();
     const isSeller = user?.role?.toLowerCase() === 'seller';
 
-    const chats = isSeller ? sellerChats : buyerChats;
-    const [selectedChat, setSelectedChat] = useState(chats[0]?.id);
+    const [chats, setChats] = useState([]);
+    const [selectedChat, setSelectedChat] = useState(null);
+    const [messages, setMessages] = useState([]);
     const [messageInput, setMessageInput] = useState('');
+    const [loading, setLoading] = useState(true);
+    const [messagesLoading, setMessagesLoading] = useState(false);
+
+    const fetchConversations = async () => {
+        try {
+            const apiUrl = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:5000';
+            const token = localStorage.getItem('bidpal_token');
+            const res = await fetch(`${apiUrl}/api/messages`, {
+                headers: { 'Authorization': `Bearer ${token}` }
+            });
+            const data = await res.json();
+            setChats(Array.isArray(data) ? data : []);
+            if (data.length > 0 && !selectedChat) {
+                // Keep existing selection if possible, otherwise first one
+                setSelectedChat(data[0].id);
+            }
+        } catch (err) {
+            console.error('Fetch chats error:', err);
+        } finally {
+            setLoading(false);
+        }
+    };
+
+    const fetchMessages = async (convId) => {
+        if (!convId) return;
+        setMessagesLoading(true);
+        try {
+            const apiUrl = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:5000';
+            const token = localStorage.getItem('bidpal_token');
+            const res = await fetch(`${apiUrl}/api/messages/${convId}`, {
+                headers: { 'Authorization': `Bearer ${token}` }
+            });
+            const data = await res.json();
+            setMessages(Array.isArray(data) ? data : []);
+        } catch (err) {
+            console.error('Fetch messages error:', err);
+        } finally {
+            setMessagesLoading(false);
+        }
+    };
+
+    const handleSendMessage = async () => {
+        if (!messageInput.trim() || !selectedChat) return;
+        const msg = messageInput;
+        setMessageInput('');
+        try {
+            const apiUrl = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:5000';
+            const token = localStorage.getItem('bidpal_token');
+            const res = await fetch(`${apiUrl}/api/messages/send`, {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json',
+                    'Authorization': `Bearer ${token}`
+                },
+                body: JSON.stringify({
+                    conversationId: selectedChat,
+                    message: msg
+                })
+            });
+            if (res.ok) {
+                fetchMessages(selectedChat);
+                fetchConversations();
+            }
+        } catch (err) {
+            console.error('Send message error:', err);
+        }
+    };
+
+    useEffect(() => {
+        if (user) fetchConversations();
+    }, [user]);
+
+    useEffect(() => {
+        if (selectedChat) fetchMessages(selectedChat);
+    }, [selectedChat]);
 
     const currentChat = chats.find(c => c.id === selectedChat);
-    const messages = isSeller ? sellerMessages : buyerMessages;
 
     return (
         <div className={styles.messagesContainer}>
@@ -123,15 +166,21 @@ export default function MessagesPage() {
                                 </header>
 
                                 <div className={styles.messageArea}>
-                                    <div className={styles.dateDivider}>Today</div>
-                                    {messages.map(msg => (
-                                        <div key={msg.id} className={`${styles.messageBubble} ${msg.sender === 'me' ? styles.sent : styles.received}`}>
-                                            <div className={styles.bubbleContent}>
-                                                <p>{msg.text}</p>
-                                                <span className={styles.msgTime}>{msg.time}</span>
-                                            </div>
-                                        </div>
-                                    ))}
+                                    {messagesLoading ? (
+                                        <div style={{ padding: '2rem', textAlign: 'center' }}>Loading messages...</div>
+                                    ) : (
+                                        <>
+                                            <div className={styles.dateDivider}>Today</div>
+                                            {messages.map(msg => (
+                                                <div key={msg.message_id} className={`${styles.messageBubble} ${msg.sender_id === user?.user_id ? styles.sent : styles.received}`}>
+                                                    <div className={styles.bubbleContent}>
+                                                        <p>{msg.content}</p>
+                                                        <span className={styles.msgTime}>{new Date(msg.created_at).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}</span>
+                                                    </div>
+                                                </div>
+                                            ))}
+                                        </>
+                                    )}
                                 </div>
 
                                 <footer className={styles.inputBar}>
@@ -147,7 +196,7 @@ export default function MessagesPage() {
                                         onChange={(e) => setMessageInput(e.target.value)}
                                         rows={1}
                                     />
-                                    <button className={styles.sendBtn} disabled={!messageInput.trim()}>
+                                    <button className={styles.sendBtn} disabled={!messageInput.trim()} onClick={handleSendMessage}>
                                         <Send size={18} />
                                     </button>
                                 </footer>

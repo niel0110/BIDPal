@@ -1,26 +1,20 @@
 'use client';
 
 import { useState, useEffect } from 'react';
+import { useSearchParams } from 'next/navigation';
 import Header from '@/components/layout/Header';
-import { Clock, Eye, Heart, Video, Send, X, Star, Truck, Pencil, CheckCircle } from 'lucide-react';
+import { Clock, Eye, Heart, Video, Send, X, Star, Truck, Pencil, CheckCircle, Loader2 } from 'lucide-react';
 import styles from './page.module.css';
 
-// Mock Data
-const initialBids = [
-    { id: 1, user: 'FerreroChoco123', amount: '1,700', time: '3 seconds ago' },
-    { id: 2, user: 'FerreroChoco123', amount: '1,500', time: '3 seconds ago' },
-    { id: 3, user: 'FerreroChoco123', amount: '1,300', time: '3 seconds ago' },
-    { id: 4, user: 'FerreroChoco123', amount: '1,000', time: '3 seconds ago' },
-];
-
-const initialComments = [
-    { id: 1, user: 'FerreroChoco123', text: 'OMG SANA MAMINE' },
-    { id: 2, user: 'ParuButterfly22', text: 'huhu sana sumakto' },
-];
-
 export default function LivePage() {
-    const [bids, setBids] = useState(initialBids);
-    const [comments, setComments] = useState(initialComments);
+    const searchParams = useSearchParams();
+    const auctionId = searchParams.get('id');
+
+    const [auction, setAuction] = useState(null);
+    const [loading, setLoading] = useState(true);
+    const [error, setError] = useState(null);
+    const [bids, setBids] = useState([]);
+    const [comments, setComments] = useState([]);
     const [inputValue, setInputValue] = useState('');
     const [showModal, setShowModal] = useState(false);
     const [showProductModal, setShowProductModal] = useState(false);
@@ -33,8 +27,63 @@ export default function LivePage() {
         show: false,
         title: "You won the auction!",
         subtitle: "You're the highest bidder",
-        amount: "1700"
+        amount: "0"
     });
+
+    useEffect(() => {
+        const fetchAuctionDetails = async () => {
+            if (!auctionId) {
+                setLoading(false);
+                return;
+            }
+
+            try {
+                const apiUrl = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:5000';
+                
+                // Fetch auction details
+                const res = await fetch(`${apiUrl}/api/auctions/${auctionId}`);
+                const data = await res.json();
+
+                if (res.ok) {
+                    setAuction(data);
+                    // Update bids from existing data if possible, or fetch separately
+                    // For now let's fetch bids separately to match the ticker
+                    fetchBids();
+                } else {
+                    setError(data.error || 'Failed to fetch auction details');
+                }
+            } catch (err) {
+                setError('An error occurred while fetching auction details');
+            } finally {
+                setLoading(false);
+            }
+        };
+
+        const fetchBids = async () => {
+            try {
+                const apiUrl = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:5000';
+                const res = await fetch(`${apiUrl}/api/dashboard/auction/${auctionId}/bids`);
+                const data = await res.json();
+                if (res.ok) {
+                    // map to view format
+                    const formattedBids = data.map(bid => ({
+                        id: bid.bid_id,
+                        user: bid.bidder ? `${bid.bidder.Fname} ${bid.bidder.Lname[0]}.` : 'Unknown',
+                        amount: bid.amount.toLocaleString(),
+                        time: new Date(bid.placed_at).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })
+                    }));
+                    setBids(formattedBids);
+                }
+            } catch (err) {
+                console.error('Failed to fetch bids:', err);
+            }
+        };
+
+        fetchAuctionDetails();
+        // Set up interval for bids
+        const interval = setInterval(fetchBids, 5000);
+        return () => clearInterval(interval);
+    }, [auctionId]);
 
     const handleSendMessage = () => {
         if (!inputValue.trim()) return;
@@ -85,6 +134,34 @@ export default function LivePage() {
         setShowPaymentModal(true);
     };
 
+    if (loading) {
+        return (
+            <main>
+                <Header />
+                <div className={styles.loaderContainer}>
+                    <Loader2 className={styles.spinner} size={48} />
+                    <p>Loading live stream...</p>
+                </div>
+            </main>
+        );
+    }
+
+    if (error || !auction) {
+        return (
+            <main>
+                <Header />
+                <div className={styles.errorContainer}>
+                    <h2>{error || 'Auction not found'}</h2>
+                    <button onClick={() => window.location.href = '/'} className={styles.backBtn}>
+                        Go Back Home
+                    </button>
+                </div>
+            </main>
+        );
+    }
+
+    const { product, seller_info } = auction;
+
     return (
         <main>
             <Header />
@@ -101,34 +178,38 @@ export default function LivePage() {
                 {/* VIDEO SECTION */}
                 <section className={styles.videoWrapper}>
                     <div className={styles.videoPlaceholder}>
-                        {/* Using a gradient background instead of actual video for demo */}
                         <div style={{
                             position: 'absolute',
                             inset: 0,
-                            background: 'linear-gradient(rgba(224, 195, 252, 0.5), rgba(142, 197, 252, 0.5)), url(https://placehold.co/1280x720/png?text=FLASH+SALE+LIVE) center/cover',
-                            opacity: 0.8
+                            background: `linear-gradient(rgba(0,0,0,0.3), rgba(0,0,0,0.3)), url(${product?.images?.[0]?.image_url || 'https://placehold.co/1280x720'}) center/cover`,
+                            opacity: 0.8,
+                            filter: 'blur(10px)'
                         }} />
-                        <Video size={64} fill="black" stroke="none" style={{ zIndex: 1 }} />
-                        <h2 style={{ zIndex: 1, marginTop: '1rem', fontWeight: 800, fontSize: '1.5rem' }}>Live Stream Video</h2>
+                        <Video size={64} fill="white" stroke="none" style={{ zIndex: 1, opacity: 0.5 }} />
+                        <h2 style={{ zIndex: 1, marginTop: '1rem', fontWeight: 800, fontSize: '1.5rem', color: 'white' }}>LIVE STREAM</h2>
                     </div>
 
                     <div className={styles.overlayTop}>
                         <div className={styles.timerBadge}>
                             <Clock size={16} />
-                            <span>10:01</span>
+                            <span>{auction.status === 'active' ? 'LIVE' : 'Scheduled'}</span>
                         </div>
                         <div className={styles.viewerBadge}>
                             <Eye size={16} />
-                            <span>98</span>
+                            <span>{Math.floor(Math.random() * 50) + 50}</span>
                         </div>
                     </div>
 
                     <div className={styles.sellerOverlay}>
-                        <div className={styles.sellerAvatar} style={{ backgroundImage: 'url(https://placehold.co/100x100)' }} />
+                        <div className={styles.sellerAvatar} style={{ 
+                            backgroundImage: seller_info.avatar ? `url(${seller_info.avatar})` : 'none',
+                            backgroundColor: '#ccc',
+                            backgroundSize: 'cover'
+                        }} />
                         <div className={styles.sellerInfo}>
-                            <div className={styles.sellerName}>@seller321</div>
+                            <div className={styles.sellerName}>{seller_info.store_name}</div>
                             <div className={styles.sellerStats}>
-                                <Heart size={10} fill="white" /> 7.8k
+                                <Heart size={10} fill="white" /> {Math.floor(Math.random() * 5000) + 1000}
                             </div>
                         </div>
                         <button className={styles.followBtn}>+ Follow</button>
@@ -142,8 +223,8 @@ export default function LivePage() {
                     <div className={styles.auctionControl}>
                         <div className={styles.productRow}>
                             <img
-                                src="https://placehold.co/150x150"
-                                alt="Product"
+                                src={product?.images?.[0]?.image_url || "https://placehold.co/150x150"}
+                                alt={product?.name}
                                 className={styles.productThumb}
                                 onClick={() => setShowProductModal(true)}
                                 style={{ cursor: 'pointer' }}
@@ -154,16 +235,18 @@ export default function LivePage() {
                                     onClick={() => setShowProductModal(true)}
                                     style={{ cursor: 'pointer' }}
                                 >
-                                    Blackstride Classics
+                                    {product?.name}
                                 </h3>
-                                <div className={styles.currentBidLabel}>Current Bid (5 Bids)</div>
+                                <div className={styles.currentBidLabel}>Current Bid ({bids.length} Bids)</div>
                                 <div className={styles.bidInfo}>
                                     <div>
-                                        <div className={styles.countDown}>00h: 25m: 37s</div>
+                                        <div className={styles.countDown}>
+                                            {auction.status === 'active' ? 'Ends soon' : new Date(auction.start_time).toLocaleDateString()}
+                                        </div>
                                     </div>
                                     <div style={{ textAlign: 'right' }}>
-                                        <div style={{ textDecoration: 'line-through', color: '#999', fontSize: '0.9rem' }}>₱ 1200</div>
-                                        <div className={styles.price}>₱ 1700</div>
+                                        <div style={{ textDecoration: 'line-through', color: '#999', fontSize: '0.9rem' }}>₱ {auction.reserve_price}</div>
+                                        <div className={styles.price}>₱ {auction.current_price || auction.reserve_price}</div>
                                     </div>
                                 </div>
                             </div>
@@ -171,7 +254,7 @@ export default function LivePage() {
                         </div>
 
                         <div className={styles.bidTicker}>
-                            {bids.map(bid => (
+                            {bids.length > 0 ? bids.map(bid => (
                                 <div key={bid.id} className={styles.bidItem}>
                                     <div className={styles.bidderInfo}>
                                         <div className={styles.bidderAvatar} />
@@ -182,7 +265,9 @@ export default function LivePage() {
                                         <span className={styles.bidAmount}>₱ {bid.amount}</span>
                                     </div>
                                 </div>
-                            ))}
+                            )) : (
+                                <div className={styles.emptyBids}>No bids yet. Be the first!</div>
+                            )}
                         </div>
                     </div>
 
@@ -199,6 +284,11 @@ export default function LivePage() {
                                     </div>
                                 </div>
                             ))}
+                            {comments.length === 0 && (
+                                <div style={{ padding: '20px', color: '#999', textAlign: 'center' }}>
+                                    Welcome to the live stream!
+                                </div>
+                            )}
                         </div>
                         <div className={styles.inputArea}>
                             <input
@@ -230,18 +320,21 @@ export default function LivePage() {
                         </div>
 
                         <div className={styles.bidInfoRow}>
-                            <span className={styles.bidLabel}>Current Bid ( 5 Bids)</span>
-                            <span className={styles.bidValue}>₱ 1700</span>
+                            <span className={styles.bidLabel}>Current Bid ({bids.length} Bids)</span>
+                            <span className={styles.bidValue}>₱ {auction.current_price || auction.reserve_price}</span>
                         </div>
 
                         <div className={styles.inputGroup}>
-                            <label className={styles.inputLabel}>Increase each bid by Php 100</label>
+                            <label className={styles.inputLabel}>
+                                Minimum increment: Php {auction.incremental_bid_step || 100}
+                            </label>
                             <div className={styles.currencyInputWrapper}>
                                 <span className={styles.currencySymbol}>₱</span>
                                 <input
                                     type="number"
                                     className={styles.bidInput}
                                     value={bidAmount}
+                                    placeholder={(auction.current_price || auction.reserve_price) + (auction.incremental_bid_step || 100)}
                                     onChange={(e) => setBidAmount(e.target.value)}
                                     autoFocus
                                 />
@@ -267,30 +360,29 @@ export default function LivePage() {
 
                         {/* Left Side */}
                         <div className={styles.detailLeft}>
-                            <img src="https://placehold.co/400x400" alt="Product" className={styles.mainProductImg} />
+                            <img src={product?.images?.[0]?.image_url || "https://placehold.co/400x400"} alt={product?.name} className={styles.mainProductImg} />
                             <div className={styles.thumbnailRow}>
-                                <img src="https://placehold.co/100x100" className={styles.thumbImg} alt="thumb" />
-                                <img src="https://placehold.co/100x100" className={styles.thumbImg} alt="thumb" />
-                                <img src="https://placehold.co/100x100" className={styles.thumbImg} alt="thumb" />
-                                <img src="https://placehold.co/100x100" className={styles.thumbImg} alt="thumb" />
+                                {product?.images?.map((img, idx) => (
+                                    <img key={idx} src={img.image_url} className={styles.thumbImg} alt={`thumb ${idx}`} />
+                                ))}
                             </div>
 
                             <div className={styles.productBasics}>
                                 <div>
-                                    <h2>Blackstride Classics</h2>
+                                    <h2>{product?.name}</h2>
                                     <div className={styles.bidSummary}>
-                                        <p>Current Bid (5 bids)</p>
-                                        <p style={{ color: '#D32F2F' }}>06h: 25m: 37s</p>
+                                        <p>Current Bid ({bids.length} bids)</p>
+                                        <p style={{ color: '#D32F2F' }}>{auction.status === 'active' ? 'LIVE' : 'Starts Soon'}</p>
                                     </div>
                                 </div>
                                 <div style={{ textAlign: 'right' }}>
-                                    <div style={{ fontSize: '1.25rem', fontWeight: 700 }}>₱ 1200</div>
-                                    <div style={{ fontSize: '1.25rem', fontWeight: 700 }}>₱ 1700</div>
+                                    <div style={{ fontSize: '0.9rem', color: '#999', textDecoration: 'line-through' }}>₱ {auction.reserve_price}</div>
+                                    <div style={{ fontSize: '1.25rem', fontWeight: 700 }}>₱ {auction.current_price || auction.reserve_price}</div>
                                 </div>
                             </div>
 
                             <p className={styles.shortDesc}>
-                                Lorem ipsum dolor sit amet, consectetur adipiscing elit. Nunc vulputate libero et velit interdum, ac aliquet odio mattis. Class aptent taciti sociosqu ad litora torquent per conubia nostra, per inceptos himenaeos.
+                                {product?.description}
                             </p>
                         </div>
 
@@ -299,7 +391,7 @@ export default function LivePage() {
                             <div className={styles.shippingInfo}>
                                 <Truck size={24} color="#666" />
                                 <div className={styles.shippingText}>
-                                    <strong>Estimated between May 6 - 10</strong>
+                                    <strong>Estimated Shipping</strong>
                                     Shipping fee: ₱ 125.00
                                 </div>
                             </div>
@@ -307,25 +399,30 @@ export default function LivePage() {
                             <div className={styles.specSection}>
                                 <h3>Item Specifications</h3>
                                 <div className={styles.specText}>
-                                    Vorem ipsum dolor sit amet, consectetur adipiscing elit. Etiam eu turpis molestie, dictum est a, mattis tellus. Sed dignissim, metus nec fringilla accumsan, risus sem sollicitudin lacus, ut interdum tellus elit sed risus. Maecenas eget condimentum velit, sit amet feugiat lectus. Class aptent taciti sociosqu ad litora torquent per conubia nostra, per inceptos himenaeos. Praesent auctor purus luctus enim egestas, ac scelerisque ante pulvinar. Donec ut rhoncus ex. Suspendisse ac rhoncus nisl, eu tempor urna. Curabitur vel bibendum lorem. Morbi convallis diam sit amet lacinia. Aliquam in elementum tellus. Curabitur tempor quis eros tempus lacinia. Nam bibendum pellentesque quam a convallis. Sed ut vulputate nisl. Integer in felis sed leo vestibulum venenatis.
+                                    {product?.specifications || 'No detailed specifications provided for this product.'}
                                 </div>
                             </div>
 
                             <div className={styles.sellerCard}>
                                 <div className={styles.sellerHead}>
-                                    <div className={styles.sellerAvatarLarge} />
+                                    <div className={styles.sellerAvatarLarge} style={{ 
+                                        backgroundImage: seller_info.avatar ? `url(${seller_info.avatar})` : 'none',
+                                        backgroundColor: '#ccc',
+                                        backgroundSize: 'cover'
+                                    }} />
                                     <div className={styles.sellerMeta}>
-                                        <div className={styles.sellerNameBold}>USER SELLER</div>
+                                        <div className={styles.sellerNameBold}>{seller_info.store_name}</div>
                                         <div className={styles.ratingBadge}>
-                                            <Star size={14} fill="#FBC02D" stroke="none" />
-                                            <span>4.4</span>
+                                            <span style={{ color: '#666', fontSize: '0.8rem' }}>{seller_info.full_name}</span>
                                         </div>
                                     </div>
-                                    <button className={styles.visitBtn}>Visit</button>
+                                    <button className={styles.visitBtn} onClick={() => window.location.href = `/store/${seller_info.seller_id}`}>
+                                        Visit
+                                    </button>
                                 </div>
                                 <div className={styles.sellerStatsRow}>
-                                    <span>151 products</span>
-                                    <span>97% 24h response rate</span>
+                                    <span>Verified Seller</span>
+                                    <span>High Response Rate</span>
                                 </div>
                             </div>
 
@@ -391,30 +488,28 @@ export default function LivePage() {
                         <div className={styles.paymentLeft}>
                             <div style={{ position: 'relative' }}>
                                 <img
-                                    src="https://placehold.co/400x400"
-                                    alt="Product"
+                                    src={product?.images?.[0]?.image_url || "https://placehold.co/400x400"}
+                                    alt={product?.name}
                                     className={styles.mainProductImg}
                                     style={{ border: '2px solid #00A3FF' }}
                                 />
                                 <div className={styles.thumbnailRow} style={{ marginTop: '1rem' }}>
-                                    <img src="https://placehold.co/80x80" className={styles.thumbImg} alt="thumb" />
-                                    <img src="https://placehold.co/80x80" className={styles.thumbImg} alt="thumb" />
-                                    <img src="https://placehold.co/80x80" className={styles.thumbImg} alt="thumb" />
+                                    {product?.images?.slice(0, 3).map((img, idx) => (
+                                        <img key={idx} src={img.image_url} className={styles.thumbImg} alt="thumb" />
+                                    ))}
                                 </div>
                             </div>
 
                             <div>
                                 <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start' }}>
-                                    <h3 style={{ fontSize: '1.5rem', fontWeight: 700 }}>Blackstride Classics</h3>
+                                    <h3 style={{ fontSize: '1.5rem', fontWeight: 700 }}>{product?.name}</h3>
                                     <div style={{ textAlign: 'right' }}>
-                                        <div style={{ fontWeight: 700 }}>₱ 1200</div>
-                                        <div style={{ fontWeight: 700 }}>₱ 1700</div>
+                                        <div style={{ fontWeight: 700 }}>₱ {auction.current_price || auction.reserve_price}</div>
                                     </div>
                                 </div>
-                                <div style={{ fontWeight: 600, marginTop: '0.5rem' }}>Currrent Bid (5 bids)</div>
-                                <div style={{ color: '#666', fontSize: '0.9rem', marginTop: '0.5rem' }}>06h: 25m: 37s</div>
+                                <div style={{ fontWeight: 600, marginTop: '0.5rem' }}>Winning Bid</div>
                                 <p style={{ fontSize: '0.85rem', color: '#666', marginTop: '1rem', lineHeight: 1.5 }}>
-                                    Lorem ipsum dolor sit amet, consectetur adipiscing elit. Nunc vulputate libero et velit interdum, ac aliquet odio mattis. Class aptent taciti sociosqu ad litora torquent per conubia nostra, per inceptos himenaeos.
+                                    {product?.description}
                                 </p>
                             </div>
                         </div>
@@ -426,7 +521,7 @@ export default function LivePage() {
                             <div className={styles.infoBlock}>
                                 <div className={styles.infoContent}>
                                     <h4>Shipping Address</h4>
-                                    <p>Corem ipsum dolor sit amet, consectetur adipiscing elit. Nunc vulputate libero et velit.</p>
+                                    <p>Select your preferred shipping address in checkout.</p>
                                 </div>
                                 <button className={styles.editBtn}><Pencil size={14} /></button>
                             </div>
@@ -434,8 +529,7 @@ export default function LivePage() {
                             <div className={styles.infoBlock}>
                                 <div className={styles.infoContent}>
                                     <h4>Contact Information</h4>
-                                    <p>+91987654321</p>
-                                    <p>gmail@example.com</p>
+                                    <p>Your verified account contact info will be used.</p>
                                 </div>
                                 <button className={styles.editBtn}><Pencil size={14} /></button>
                             </div>
@@ -443,10 +537,6 @@ export default function LivePage() {
                             <div>
                                 <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '1rem' }}>
                                     <h3 style={{ fontWeight: 700 }}>Shipping Options</h3>
-                                    <div className={styles.discountBadge}>
-                                        <span>5% Discount</span>
-                                        <X size={14} style={{ marginLeft: '10px', cursor: 'pointer' }} />
-                                    </div>
                                 </div>
 
                                 <div className={styles.shippingOptions}>
@@ -474,15 +564,14 @@ export default function LivePage() {
                                         <span className={styles.optionPrice}>₱ 125</span>
                                     </div>
                                 </div>
-                                <p className={styles.deliveryNote}>Delivered on or before Thursday, 23 April 2020</p>
                             </div>
 
                             <div className={styles.paymentFooter}>
                                 <div>
                                     <span className={styles.totalLabel}>Total</span>
-                                    <span className={styles.totalAmount}>₱ 1700</span>
+                                    <span className={styles.totalAmount}>₱ {auction.current_price || auction.reserve_price}</span>
                                 </div>
-                                <button className={styles.finalPayBtn}>Pay</button>
+                                <button className={styles.finalPayBtn}>Pay Now</button>
                             </div>
                         </div>
                     </div>
