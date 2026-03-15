@@ -363,3 +363,43 @@
         flex: 1;
     }
 }
+
+.loadingContainer {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    min-height: 50vh;
+    padding: 10rem 0;
+    color: #888;
+    font-weight: 500;
+}
+
+.spinner {
+    animation: spin 1s linear infinite;
+    margin-bottom: 1rem;
+    color: #D32F2F;
+}
+
+.exploreBtn {
+    margin-top: 1.5rem;
+    background: #D32F2F;
+    color: white;
+    text-decoration: none;
+    padding: 0.75rem 2rem;
+    border-radius: 50px;
+    font-weight: 750;
+    transition: all 0.2s;
+    display: inline-block;
+}
+
+.exploreBtn:hover {
+    background: #b71c1c;
+    transform: translateY(-2px);
+    box-shadow: 0 10px 20px rgba(211, 47, 47, 0.2);
+}
+
+@keyframes spin {
+    from { transform: rotate(0deg); }
+    to { transform: rotate(360deg); }
+}

@@ -30,7 +30,7 @@ export default function MessagesPage() {
 
     const fetchConversations = async () => {
         try {
-            const apiUrl = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:5000';
+            const apiUrl = process.env.NEXT_PUBLIC_API_URL || 'http://127.0.0.1:5000';
             const token = localStorage.getItem('bidpal_token');
             const res = await fetch(`${apiUrl}/api/messages`, {
                 headers: { 'Authorization': `Bearer ${token}` }
@@ -52,7 +52,7 @@ export default function MessagesPage() {
         if (!convId) return;
         setMessagesLoading(true);
         try {
-            const apiUrl = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:5000';
+            const apiUrl = process.env.NEXT_PUBLIC_API_URL || 'http://127.0.0.1:5000';
             const token = localStorage.getItem('bidpal_token');
             const res = await fetch(`${apiUrl}/api/messages/${convId}`, {
                 headers: { 'Authorization': `Bearer ${token}` }
@@ -71,7 +71,7 @@ export default function MessagesPage() {
         const msg = messageInput;
         setMessageInput('');
         try {
-            const apiUrl = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:5000';
+            const apiUrl = process.env.NEXT_PUBLIC_API_URL || 'http://127.0.0.1:5000';
             const token = localStorage.getItem('bidpal_token');
             const res = await fetch(`${apiUrl}/api/messages/send`, {
                 method: 'POST',

@@ -155,7 +155,7 @@ function StoreInfoStep({ data, onChange, onNext, onBack }) {
 
 // ─── Step 3: Address ───────────────────────────────────────────────────────
 function AddressStep({ data, onChange, onNext, onBack }) {
-    const apiUrl = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:5000';
+    const apiUrl = process.env.NEXT_PUBLIC_API_URL || 'http://127.0.0.1:5000';
 
     const [regions,    setRegions]    = useState([]);
     const [provinces,  setProvinces]  = useState([]);
@@ -409,7 +409,7 @@ function SetupPageInner() {
             setCheckingSetup(false);
             return;
         }
-        const apiUrl = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:5000';
+        const apiUrl = process.env.NEXT_PUBLIC_API_URL || 'http://127.0.0.1:5000';
         const token = localStorage.getItem('bidpal_token');
         fetch(`${apiUrl}/api/sellers/user/${user.user_id}`, {
             headers: { ...(token && { Authorization: `Bearer ${token}` }) },
@@ -439,7 +439,7 @@ function SetupPageInner() {
         if (!user?.user_id) return;
         setSubmitError('');
         try {
-            const apiUrl = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:5000';
+            const apiUrl = process.env.NEXT_PUBLIC_API_URL || 'http://127.0.0.1:5000';
             const token = localStorage.getItem('bidpal_token');
 
             // Step 1: Update personal info & set role to Seller

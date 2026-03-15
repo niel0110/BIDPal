@@ -39,7 +39,7 @@ export default function MyAuctions() {
 
             try {
                 const userId = user.user_id || user.id;
-                const apiUrl = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:5000';
+                const apiUrl = process.env.NEXT_PUBLIC_API_URL || 'http://127.0.0.1:5000';
                 const token = localStorage.getItem('bidpal_token');
 
                 // If drafts tab is selected, fetch draft products

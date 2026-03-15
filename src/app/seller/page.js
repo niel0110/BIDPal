@@ -44,7 +44,7 @@ export default function SellerDashboard() {
     const fetchDashboardData = useCallback(async () => {
         if (!user) return;
         try {
-            const apiUrl = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:5000';
+            const apiUrl = process.env.NEXT_PUBLIC_API_URL || 'http://127.0.0.1:5000';
             const token = localStorage.getItem('bidpal_token');
             const seller_id = user.seller_id;
             const user_id = user.user_id || user.id;
@@ -113,7 +113,7 @@ export default function SellerDashboard() {
             }
             const nextAuction = dashboardData.queue[0];
             try {
-                const apiUrl = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:5000';
+                const apiUrl = process.env.NEXT_PUBLIC_API_URL || 'http://127.0.0.1:5000';
                 const token = localStorage.getItem('bidpal_token');
                 const res = await fetch(`${apiUrl}/api/auctions/${nextAuction.auction_id}/start`, {
                     method: 'POST',
@@ -133,7 +133,7 @@ export default function SellerDashboard() {
         } else {
             // End Stream
             try {
-                const apiUrl = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:5000';
+                const apiUrl = process.env.NEXT_PUBLIC_API_URL || 'http://127.0.0.1:5000';
                 const token = localStorage.getItem('bidpal_token');
                 const res = await fetch(`${apiUrl}/api/auctions/${activeItem.id}/end`, {
                     method: 'POST',

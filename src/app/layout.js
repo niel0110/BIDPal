@@ -1,5 +1,6 @@
 import { Poppins } from "next/font/google";
 import { AuthProvider } from "@/context/AuthContext";
+import { CartProvider } from "@/context/CartContext";
 import "./globals.css";
 
 const poppins = Poppins({
@@ -18,7 +19,9 @@ export default function RootLayout({ children }) {
     <html lang="en" suppressHydrationWarning className={poppins.variable}>
       <body suppressHydrationWarning>
         <AuthProvider>
-          {children}
+          <CartProvider>
+            {children}
+          </CartProvider>
         </AuthProvider>
       </body>
     </html>

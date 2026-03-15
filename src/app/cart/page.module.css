@@ -111,6 +111,18 @@
     font-weight: 600;
 }
 
+.itemCondition {
+    display: inline-block;
+    padding: 0.25rem 0.75rem;
+    background: #f0f0f0;
+    color: #555;
+    border-radius: 50px;
+    font-size: 0.75rem;
+    font-weight: 700;
+    text-transform: uppercase;
+    margin-top: 0.5rem;
+}
+
 .itemActions {
     display: flex;
     justify-content: space-between;
@@ -331,4 +343,30 @@
     .cartHeader h1 {
         font-size: 1.75rem;
     }
+}
+
+.loadingContainer {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    min-height: 50vh;
+    padding: 10rem 0;
+    color: #888;
+    font-weight: 500;
+}
+
+.spinner {
+    animation: spin 1s linear infinite;
+    margin-bottom: 1rem;
+    color: #D32F2F;
+}
+
+.spin {
+    animation: spin 1s linear infinite;
+}
+
+@keyframes spin {
+    from { transform: rotate(0deg); }
+    to { transform: rotate(360deg); }
 }

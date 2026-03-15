@@ -1,13 +1,17 @@
 'use client';
 
-import { useState } from 'react';
+import { useState, useEffect, useCallback } from 'react';
 import Link from 'next/link';
 import { useRouter } from 'next/navigation';
-import { ChevronLeft, Search, Package, Truck, CreditCard, Clock, CheckCircle2, XCircle } from 'lucide-react';
+import { ChevronLeft, Search, Package, Truck, CreditCard, Clock, CheckCircle2, XCircle, Loader2 } from 'lucide-react';
+import { useAuth } from '@/context/AuthContext';
 import styles from './page.module.css';
 
 export default function OrdersPage() {
     const router = useRouter();
+    const { user } = useAuth();
+    const [orders, setOrders] = useState([]);
+    const [loading, setLoading] = useState(true);
     const [activeTab, setActiveTab] = useState('all');
     const [searchQuery, setSearchQuery] = useState('');
 
@@ -20,43 +24,37 @@ export default function OrdersPage() {
         { id: 'cancelled', label: 'Cancelled', icon: <XCircle size={18} /> },
     ];
 
-    const mockOrders = [
-        {
-            id: 'ORD-7721',
-            date: 'Feb 05, 2026',
-            status: 'completed',
-            total: 2650,
-            items: [
-                {
-                    name: 'PixelPast Analog Camera',
-                    qty: 1,
-                    price: 2500,
-                    image: 'https://images.unsplash.com/photo-1516035069371-29a1b244cc32?auto=format&fit=crop&q=80&w=200'
-                }
-            ],
-            seller: 'RetroVault'
-        },
-        {
-            id: 'ORD-8812',
-            date: 'Feb 06, 2026',
-            status: 'ship',
-            total: 3150,
-            items: [
-                {
-                    name: 'Golden Horizon Set',
-                    qty: 2,
-                    price: 1500,
-                    image: 'https://images.unsplash.com/photo-1515562141207-7a88fb7ce338?auto=format&fit=crop&q=80&w=200'
-                }
-            ],
-            seller: 'EleganceCo'
+    const fetchOrders = useCallback(async () => {
+        if (!user) return;
+        try {
+            const apiUrl = process.env.NEXT_PUBLIC_API_URL || 'http://127.0.0.1:5000';
+            const res = await fetch(`${apiUrl}/api/orders/user/${user.user_id}`);
+            if (!res.ok) throw new Error('Failed to fetch orders');
+            const data = await res.json();
+            setOrders(data);
+        } catch (err) {
+            console.error(err);
+        } finally {
+            setLoading(false);
         }
-    ];
+    }, [user]);
 
-    const filteredOrders = mockOrders.filter(order => {
+    useEffect(() => {
+        if (user) {
+            fetchOrders();
+        } else {
+            setLoading(false);
+        }
+    }, [user, fetchOrders]);
+
+    const filteredOrders = orders.filter(order => {
         if (activeTab !== 'all' && order.status !== activeTab) return false;
-        if (searchQuery && !order.id.toLowerCase().includes(searchQuery.toLowerCase()) &&
-            !order.items[0].name.toLowerCase().includes(searchQuery.toLowerCase())) return false;
+        if (searchQuery) {
+            const query = searchQuery.toLowerCase();
+            const idMatch = order.id.toLowerCase().includes(query);
+            const itemMatch = order.items.some(item => item.name.toLowerCase().includes(query));
+            if (!idMatch && !itemMatch) return false;
+        }
         return true;
     });
 
@@ -70,6 +68,23 @@ export default function OrdersPage() {
             default: return 'Processing';
         }
     };
+
+    if (loading) return (
+        <div className={styles.loadingContainer}>
+            <Loader2 className={styles.spinner} size={40} />
+            <p>Loading your orders...</p>
+        </div>
+    );
+
+    if (!user) return (
+        <div className={styles.ordersContainer}>
+            <div className={styles.emptyState}>
+                <h2>Please sign in</h2>
+                <p>You need to be logged in to view your orders.</p>
+                <Link href="/" className={styles.exploreBtn}>Go to Login</Link>
+            </div>
+        </div>
+    );
 
     return (
         <div className={styles.ordersContainer}>
@@ -124,7 +139,7 @@ export default function OrdersPage() {
                                     {order.items.map((item, idx) => (
                                         <div key={idx} className={styles.orderItem}>
                                             <div className={styles.itemImage}>
-                                                <img src={item.image} alt={item.name} />
+                                                <img src={item.image || 'https://placehold.co/200x200?text=No+Image'} alt={item.name} />
                                             </div>
                                             <div className={styles.itemMeta}>
                                                 <h3>{item.name}</h3>
@@ -139,7 +154,7 @@ export default function OrdersPage() {
 
                                 <div className={styles.orderCardFooter}>
                                     <div className={styles.orderMeta}>
-                                        <span className={styles.orderId}>ID: {order.id}</span>
+                                        <span className={styles.orderId}>ID: {order.id.slice(0, 8)}...</span>
                                         <span className={styles.orderDate}>{order.date}</span>
                                     </div>
                                     <div className={styles.orderTotal}>

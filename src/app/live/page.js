@@ -38,7 +38,7 @@ export default function LivePage() {
             }
 
             try {
-                const apiUrl = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:5000';
+                const apiUrl = process.env.NEXT_PUBLIC_API_URL || 'http://127.0.0.1:5000';
                 
                 // Fetch auction details
                 const res = await fetch(`${apiUrl}/api/auctions/${auctionId}`);
@@ -61,7 +61,7 @@ export default function LivePage() {
 
         const fetchBids = async () => {
             try {
-                const apiUrl = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:5000';
+                const apiUrl = process.env.NEXT_PUBLIC_API_URL || 'http://127.0.0.1:5000';
                 const res = await fetch(`${apiUrl}/api/dashboard/auction/${auctionId}/bids`);
                 const data = await res.json();
                 if (res.ok) {

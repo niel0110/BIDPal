@@ -49,7 +49,7 @@ export default function SellerSettings() {
 
         const fetchData = async () => {
             try {
-                const apiUrl = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:5000';
+                const apiUrl = process.env.NEXT_PUBLIC_API_URL || 'http://127.0.0.1:5000';
                 const token = localStorage.getItem('bidpal_token');
                 
                 // Fetch seller profile
@@ -83,7 +83,7 @@ export default function SellerSettings() {
         setSaving(true);
         setSaveStatus('');
         try {
-            const apiUrl = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:5000';
+            const apiUrl = process.env.NEXT_PUBLIC_API_URL || 'http://127.0.0.1:5000';
             const token = localStorage.getItem('bidpal_token');
             const res = await fetch(`${apiUrl}/api/sellers/${profile.seller_id}`, {
                 method: 'PUT',
@@ -123,7 +123,7 @@ export default function SellerSettings() {
         formData.append(type, file);
 
         try {
-            const apiUrl = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:5000';
+            const apiUrl = process.env.NEXT_PUBLIC_API_URL || 'http://127.0.0.1:5000';
             const token = localStorage.getItem('bidpal_token');
             
             const endpoint = type === 'logo' ? `/api/sellers/${profile.seller_id}/logo` : `/api/sellers/${profile.seller_id}/banner`;
