@@ -3,7 +3,7 @@
 import { useState, useEffect, Suspense } from 'react';
 import { useSearchParams, useRouter } from 'next/navigation';
 import Link from 'next/link';
-import { ChevronRight, Check, Package, ArrowRight, Loader2 } from 'lucide-react';
+import { ChevronRight, Check, Package, ArrowRight, Loader2, Calendar } from 'lucide-react';
 import PhilippineIDVerification from '@/components/PhilippineIDVerification';
 import { useAuth } from '@/context/AuthContext';
 import styles from './page.module.css';
@@ -53,7 +53,7 @@ function Sidebar({ currentStep, onStepClick }) {
 
 // ─── Step 1: Personal Information ──────────────────────────────────────────
 function PersonalInfoStep({ data, onChange, onNext }) {
-    const isValid = data.firstName && data.lastName && data.birthday && data.gender && data.contactNumber;
+    const isValid = data.firstName && data.lastName && data.birthday && data.birthday.length === 10 && data.gender && data.contactNumber && data.contactNumber.length === 11;
     return (
         <div className={styles.formArea}>
             <h2 className={styles.formTitle}>Personal <span className={styles.redText}>Information</span></h2>
@@ -62,24 +62,28 @@ function PersonalInfoStep({ data, onChange, onNext }) {
             <div className={styles.formGrid}>
                 <div className={styles.formGroup}>
                     <label>First Name<span style={{ color: 'red' }}>*</span></label>
-                    <input className={styles.input} type="text" placeholder="Juan" value={data.firstName} onChange={e => onChange({ firstName: e.target.value })} />
+                    <input className={styles.input} type="text" placeholder="Juan" value={data.firstName} onChange={e => onChange({ firstName: e.target.value.replace(/[^a-zA-ZÀ-ÖØ-öø-ÿ\s\-]/g, '') })} />
                 </div>
                 <div className={styles.formGroup}>
                     <label>Last Name<span style={{ color: 'red' }}>*</span></label>
-                    <input className={styles.input} type="text" placeholder="Dela Cruz" value={data.lastName} onChange={e => onChange({ lastName: e.target.value })} />
+                    <input className={styles.input} type="text" placeholder="Dela Cruz" value={data.lastName} onChange={e => onChange({ lastName: e.target.value.replace(/[^a-zA-ZÀ-ÖØ-öø-ÿ\s\-]/g, '') })} />
                 </div>
                 <div className={styles.formGroup}>
                     <label>Middle Name (Optional)</label>
-                    <input className={styles.input} placeholder="Santos" value={data.middleName} onChange={e => onChange({ middleName: e.target.value })} />
+                    <input className={styles.input} placeholder="Santos" value={data.middleName} onChange={e => onChange({ middleName: e.target.value.replace(/[^a-zA-ZÀ-ÖØ-öø-ÿ\s\-]/g, '') })} />
                 </div>
                 <div className={styles.formGroup}>
                     <label>Birthday<span style={{ color: 'red' }}>*</span></label>
-                    <input className={styles.input} type="date" max={new Date().toISOString().split('T')[0]} value={data.birthday} onChange={e => onChange({ birthday: e.target.value })} />
+                    <div style={{ position: 'relative', display: 'flex', alignItems: 'center' }}>
+                        <input className={styles.input} type="text" placeholder="MM/DD/YYYY" maxLength={10} value={data.birthday} style={{ paddingRight: '2.5rem' }} onChange={e => { const digits = e.target.value.replace(/\D/g, '').slice(0, 8); let formatted = digits; if (digits.length > 4) formatted = digits.slice(0, 2) + '/' + digits.slice(2, 4) + '/' + digits.slice(4); else if (digits.length > 2) formatted = digits.slice(0, 2) + '/' + digits.slice(2); onChange({ birthday: formatted }); }} />
+                        <input type="date" max={new Date().toISOString().split('T')[0]} style={{ position: 'absolute', right: 0, opacity: 0, width: '2rem', height: '100%', cursor: 'pointer' }} onChange={e => { const [y, m, d] = e.target.value.split('-'); if (y && m && d) onChange({ birthday: `${m}/${d}/${y}` }); }} />
+                        <Calendar size={16} style={{ position: 'absolute', right: '0.6rem', pointerEvents: 'none', color: '#888' }} />
+                    </div>
                 </div>
                 <div className={styles.formGroup}>
                     <label>Gender<span style={{ color: 'red' }}>*</span></label>
                     <select className={styles.select} value={data.gender} onChange={e => onChange({ gender: e.target.value })}>
-                        <option value="">Select Gender</option>
+                        <option value="" disabled hidden>Select Gender</option>
                         <option>Male</option>
                         <option>Female</option>
                         <option>Non-binary</option>
@@ -88,7 +92,7 @@ function PersonalInfoStep({ data, onChange, onNext }) {
                 </div>
                 <div className={styles.formGroup}>
                     <label>Contact Number<span style={{ color: 'red' }}>*</span></label>
-                    <input className={styles.input} type="tel" placeholder="+63 917 123 4567" value={data.contactNumber} onChange={e => onChange({ contactNumber: e.target.value })} />
+                    <input className={styles.input} type="tel" placeholder="09171234567" maxLength={11} value={data.contactNumber} onChange={e => onChange({ contactNumber: e.target.value.replace(/[^0-9]/g, '').slice(0, 11) })} />
                 </div>
                 <div className={`${styles.formGroup} ${styles.formGridFull}`}>
                     <label>Bio / Short Introduction (Optional)</label>
@@ -121,7 +125,7 @@ function StoreInfoStep({ data, onChange, onNext, onBack }) {
                 <div className={styles.formGroup}>
                     <label>Business Category<span style={{ color: 'red' }}>*</span></label>
                     <select className={styles.select} value={data.category} onChange={e => onChange({ category: e.target.value })}>
-                        <option value="">Select Category</option>
+                        <option value="" disabled hidden>Select Category</option>
                         <option>Fashion & Accessories</option>
                         <option>Gadgets & Electronics</option>
                         <option>Collectibles & Antiques</option>
@@ -453,7 +457,7 @@ function SetupPageInner() {
                     Fname: personal.firstName,
                     Lname: personal.lastName,
                     Mname: personal.middleName || null,
-                    Birthday: personal.birthday || null,
+                    Birthday: personal.birthday && personal.birthday.length === 10 ? `${personal.birthday.slice(6)}-${personal.birthday.slice(0, 2)}-${personal.birthday.slice(3, 5)}` : null,
                     Gender: personal.gender,
                     contact_num: personal.contactNumber,
                     Bio: personal.bio || null,
