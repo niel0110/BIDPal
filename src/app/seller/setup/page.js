@@ -217,7 +217,7 @@ function AddressStep({ data, onChange, onNext, onBack }) {
             .finally(() => setLoadingBarangays(false));
     }, [data.municipality_city, apiUrl]);
 
-    const isValid = data.Line1 && data.Barangay && data.municipality_city && data.province && data.region && data.zip_code;
+    const isValid = data.Line1 && data.Barangay && data.municipality_city && data.province && data.region && data.zip_code && data.zip_code.length === 4;
 
     const SelectWithLoader = ({ loading, children, ...props }) => (
         <div style={{ position: 'relative' }}>
@@ -244,7 +244,7 @@ function AddressStep({ data, onChange, onNext, onBack }) {
                 <div className={styles.formGroup}>
                     <label>Region<span style={{ color: 'red' }}>*</span></label>
                     <SelectWithLoader loading={loadingRegions} value={data.region} onChange={e => onChange({ region: e.target.value, province: '', municipality_city: '', Barangay: '' })}>
-                        <option value="">{loadingRegions ? 'Loading…' : 'Select Region'}</option>
+                        <option value="" disabled hidden>{loadingRegions ? 'Loading…' : 'Select Region'}</option>
                         {regions.map(r => <option key={r.region} value={r.region}>{r.name}</option>)}
                     </SelectWithLoader>
                 </div>
@@ -253,7 +253,7 @@ function AddressStep({ data, onChange, onNext, onBack }) {
                 <div className={styles.formGroup}>
                     <label>Province<span style={{ color: 'red' }}>*</span></label>
                     <SelectWithLoader loading={loadingProvinces} value={data.province} onChange={e => onChange({ province: e.target.value, municipality_city: '', Barangay: '' })}>
-                        <option value="">{!data.region ? 'Select a region first' : loadingProvinces ? 'Loading…' : 'Select Province'}</option>
+                        <option value="" disabled hidden>{!data.region ? 'Select a region first' : loadingProvinces ? 'Loading…' : 'Select Province'}</option>
                         {provinces.map(p => <option key={p} value={p}>{p}</option>)}
                     </SelectWithLoader>
                 </div>
@@ -262,7 +262,7 @@ function AddressStep({ data, onChange, onNext, onBack }) {
                 <div className={styles.formGroup}>
                     <label>City / Municipality<span style={{ color: 'red' }}>*</span></label>
                     <SelectWithLoader loading={loadingCities} value={data.municipality_city} onChange={e => onChange({ municipality_city: e.target.value, Barangay: '' })}>
-                        <option value="">{!data.province ? 'Select a province first' : loadingCities ? 'Loading…' : 'Select City / Municipality'}</option>
+                        <option value="" disabled hidden>{!data.province ? 'Select a province first' : loadingCities ? 'Loading…' : 'Select City / Municipality'}</option>
                         {cities.map(c => <option key={c} value={c}>{c}</option>)}
                     </SelectWithLoader>
                 </div>
@@ -271,7 +271,7 @@ function AddressStep({ data, onChange, onNext, onBack }) {
                 <div className={styles.formGroup}>
                     <label>Barangay<span style={{ color: 'red' }}>*</span></label>
                     <SelectWithLoader loading={loadingBarangays} value={data.Barangay} onChange={e => onChange({ Barangay: e.target.value })}>
-                        <option value="">{!data.municipality_city ? 'Select a city first' : loadingBarangays ? 'Loading…' : 'Select Barangay'}</option>
+                        <option value="" disabled hidden>{!data.municipality_city ? 'Select a city first' : loadingBarangays ? 'Loading…' : 'Select Barangay'}</option>
                         {barangays.map(b => <option key={b} value={b}>{b}</option>)}
                     </SelectWithLoader>
                 </div>
@@ -304,10 +304,10 @@ function AddressStep({ data, onChange, onNext, onBack }) {
                     <input
                         className={styles.input}
                         type="text"
-                        maxLength={5}
+                        maxLength={4}
                         placeholder="e.g. 8000"
                         value={data.zip_code}
-                        onChange={e => onChange({ zip_code: e.target.value })}
+                        onChange={e => onChange({ zip_code: e.target.value.replace(/[^0-9]/g, '').slice(0, 4) })}
                     />
                 </div>
 
