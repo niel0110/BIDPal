@@ -92,7 +92,21 @@ function PersonalInfoStep({ data, onChange, onNext }) {
                 </div>
                 <div className={styles.formGroup}>
                     <label>Contact Number<span style={{ color: 'red' }}>*</span></label>
-                    <input className={styles.input} type="tel" placeholder="09171234567" maxLength={11} value={data.contactNumber} onChange={e => onChange({ contactNumber: e.target.value.replace(/[^0-9]/g, '').slice(0, 11) })} />
+                    <div style={{ display: 'flex', alignItems: 'center', border: '1px solid #ccc', borderRadius: '6px', overflow: 'hidden' }}>
+                        <span style={{ padding: '0 10px', background: '#f5f5f5', color: '#555', fontWeight: 600, borderRight: '1px solid #ccc', height: '100%', display: 'flex', alignItems: 'center', whiteSpace: 'nowrap' }}>09</span>
+                        <input
+                            className={styles.input}
+                            type="tel"
+                            placeholder="171234567"
+                            maxLength={9}
+                            value={data.contactNumber ? data.contactNumber.slice(2) : ''}
+                            onChange={e => {
+                                const digits = e.target.value.replace(/[^0-9]/g, '').slice(0, 9);
+                                onChange({ contactNumber: '09' + digits });
+                            }}
+                            style={{ border: 'none', borderRadius: 0, outline: 'none', flex: 1 }}
+                        />
+                    </div>
                 </div>
                 <div className={`${styles.formGroup} ${styles.formGridFull}`}>
                     <label>Bio / Short Introduction (Optional)</label>
