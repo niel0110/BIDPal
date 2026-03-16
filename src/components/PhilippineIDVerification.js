@@ -53,7 +53,7 @@ export default function PhilippineIDVerification({ onVerify }) {
             {!verified ? (
                 <div className={styles.form}>
                     <div className={styles.inputGroup}>
-                        <label>ID Type</label>
+                        <label>ID Type<span style={{ color: 'red' }}>*</span></label>
                         <select
                             value={selectedIdType}
                             onChange={(e) => setSelectedIdType(e.target.value)}
@@ -67,7 +67,7 @@ export default function PhilippineIDVerification({ onVerify }) {
                     </div>
 
                     <div className={styles.inputGroup}>
-                        <label>ID Number</label>
+                        <label>ID Number<span style={{ color: 'red' }}>*</span></label>
                         <input
                             type="text"
                             placeholder="Enter ID Number"
@@ -78,7 +78,7 @@ export default function PhilippineIDVerification({ onVerify }) {
                     </div>
 
                     <div className={styles.uploadGroup}>
-                        <label>Upload ID Photo</label>
+                        <label>Upload ID Photo<span style={{ color: 'red' }}>*</span></label>
                         <div className={styles.uploadBox}>
                             {idImage ? (
                                 <div className={styles.previewWrapper}>

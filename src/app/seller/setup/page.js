@@ -61,23 +61,23 @@ function PersonalInfoStep({ data, onChange, onNext }) {
 
             <div className={styles.formGrid}>
                 <div className={styles.formGroup}>
-                    <label>First Name</label>
-                    <input className={styles.input} placeholder="Juan" value={data.firstName} onChange={e => onChange({ firstName: e.target.value })} />
+                    <label>First Name<span style={{ color: 'red' }}>*</span></label>
+                    <input className={styles.input} type="text" placeholder="Juan" value={data.firstName} onChange={e => onChange({ firstName: e.target.value })} />
                 </div>
                 <div className={styles.formGroup}>
-                    <label>Last Name</label>
-                    <input className={styles.input} placeholder="Dela Cruz" value={data.lastName} onChange={e => onChange({ lastName: e.target.value })} />
+                    <label>Last Name<span style={{ color: 'red' }}>*</span></label>
+                    <input className={styles.input} type="text" placeholder="Dela Cruz" value={data.lastName} onChange={e => onChange({ lastName: e.target.value })} />
                 </div>
                 <div className={styles.formGroup}>
                     <label>Middle Name (Optional)</label>
                     <input className={styles.input} placeholder="Santos" value={data.middleName} onChange={e => onChange({ middleName: e.target.value })} />
                 </div>
                 <div className={styles.formGroup}>
-                    <label>Birthday</label>
+                    <label>Birthday<span style={{ color: 'red' }}>*</span></label>
                     <input className={styles.input} type="date" max={new Date().toISOString().split('T')[0]} value={data.birthday} onChange={e => onChange({ birthday: e.target.value })} />
                 </div>
                 <div className={styles.formGroup}>
-                    <label>Gender</label>
+                    <label>Gender<span style={{ color: 'red' }}>*</span></label>
                     <select className={styles.select} value={data.gender} onChange={e => onChange({ gender: e.target.value })}>
                         <option value="">Select Gender</option>
                         <option>Male</option>
@@ -87,7 +87,7 @@ function PersonalInfoStep({ data, onChange, onNext }) {
                     </select>
                 </div>
                 <div className={styles.formGroup}>
-                    <label>Contact Number</label>
+                    <label>Contact Number<span style={{ color: 'red' }}>*</span></label>
                     <input className={styles.input} type="tel" placeholder="+63 917 123 4567" value={data.contactNumber} onChange={e => onChange({ contactNumber: e.target.value })} />
                 </div>
                 <div className={`${styles.formGroup} ${styles.formGridFull}`}>
@@ -115,11 +115,11 @@ function StoreInfoStep({ data, onChange, onNext, onBack }) {
 
             <div className={styles.formGrid}>
                 <div className={`${styles.formGroup} ${styles.formGridFull}`}>
-                    <label>Store Name</label>
+                    <label>Store Name<span style={{ color: 'red' }}>*</span></label>
                     <input className={styles.input} placeholder="e.g. Juan's Vintage Corner" value={data.storeName} onChange={e => onChange({ storeName: e.target.value })} />
                 </div>
                 <div className={styles.formGroup}>
-                    <label>Business Category</label>
+                    <label>Business Category<span style={{ color: 'red' }}>*</span></label>
                     <select className={styles.select} value={data.category} onChange={e => onChange({ category: e.target.value })}>
                         <option value="">Select Category</option>
                         <option>Fashion & Accessories</option>
@@ -134,11 +134,11 @@ function StoreInfoStep({ data, onChange, onNext, onBack }) {
                     </select>
                 </div>
                 <div className={styles.formGroup}>
-                    <label>Store Handle</label>
+                    <label>Store Handle<span style={{ color: 'red' }}>*</span></label>
                     <input className={styles.input} placeholder="juansvintage" value={data.handle} onChange={e => onChange({ handle: e.target.value })} />
                 </div>
                 <div className={`${styles.formGroup} ${styles.formGridFull}`}>
-                    <label>Store Description</label>
+                    <label>Store Description<span style={{ color: 'red' }}>*</span></label>
                     <textarea className={styles.textarea} rows={4} placeholder="Tell buyers what makes your store unique..." value={data.description} onChange={e => onChange({ description: e.target.value })} />
                 </div>
             </div>
@@ -157,14 +157,14 @@ function StoreInfoStep({ data, onChange, onNext, onBack }) {
 function AddressStep({ data, onChange, onNext, onBack }) {
     const apiUrl = process.env.NEXT_PUBLIC_API_URL || 'http://127.0.0.1:5000';
 
-    const [regions,    setRegions]    = useState([]);
-    const [provinces,  setProvinces]  = useState([]);
-    const [cities,     setCities]     = useState([]);
-    const [barangays,  setBarangays]  = useState([]);
+    const [regions, setRegions] = useState([]);
+    const [provinces, setProvinces] = useState([]);
+    const [cities, setCities] = useState([]);
+    const [barangays, setBarangays] = useState([]);
 
-    const [loadingRegions,   setLoadingRegions]   = useState(true);
+    const [loadingRegions, setLoadingRegions] = useState(true);
     const [loadingProvinces, setLoadingProvinces] = useState(false);
-    const [loadingCities,    setLoadingCities]    = useState(false);
+    const [loadingCities, setLoadingCities] = useState(false);
     const [loadingBarangays, setLoadingBarangays] = useState(false);
 
     // Load regions on mount
@@ -238,7 +238,7 @@ function AddressStep({ data, onChange, onNext, onBack }) {
             <div className={styles.formGrid}>
                 {/* Region */}
                 <div className={styles.formGroup}>
-                    <label>Region</label>
+                    <label>Region<span style={{ color: 'red' }}>*</span></label>
                     <SelectWithLoader loading={loadingRegions} value={data.region} onChange={e => onChange({ region: e.target.value, province: '', municipality_city: '', Barangay: '' })}>
                         <option value="">{loadingRegions ? 'Loading…' : 'Select Region'}</option>
                         {regions.map(r => <option key={r.region} value={r.region}>{r.name}</option>)}
@@ -247,7 +247,7 @@ function AddressStep({ data, onChange, onNext, onBack }) {
 
                 {/* Province */}
                 <div className={styles.formGroup}>
-                    <label>Province</label>
+                    <label>Province<span style={{ color: 'red' }}>*</span></label>
                     <SelectWithLoader loading={loadingProvinces} value={data.province} onChange={e => onChange({ province: e.target.value, municipality_city: '', Barangay: '' })}>
                         <option value="">{!data.region ? 'Select a region first' : loadingProvinces ? 'Loading…' : 'Select Province'}</option>
                         {provinces.map(p => <option key={p} value={p}>{p}</option>)}
@@ -256,7 +256,7 @@ function AddressStep({ data, onChange, onNext, onBack }) {
 
                 {/* City / Municipality */}
                 <div className={styles.formGroup}>
-                    <label>City / Municipality</label>
+                    <label>City / Municipality<span style={{ color: 'red' }}>*</span></label>
                     <SelectWithLoader loading={loadingCities} value={data.municipality_city} onChange={e => onChange({ municipality_city: e.target.value, Barangay: '' })}>
                         <option value="">{!data.province ? 'Select a province first' : loadingCities ? 'Loading…' : 'Select City / Municipality'}</option>
                         {cities.map(c => <option key={c} value={c}>{c}</option>)}
@@ -265,7 +265,7 @@ function AddressStep({ data, onChange, onNext, onBack }) {
 
                 {/* Barangay */}
                 <div className={styles.formGroup}>
-                    <label>Barangay</label>
+                    <label>Barangay<span style={{ color: 'red' }}>*</span></label>
                     <SelectWithLoader loading={loadingBarangays} value={data.Barangay} onChange={e => onChange({ Barangay: e.target.value })}>
                         <option value="">{!data.municipality_city ? 'Select a city first' : loadingBarangays ? 'Loading…' : 'Select Barangay'}</option>
                         {barangays.map(b => <option key={b} value={b}>{b}</option>)}
@@ -274,7 +274,7 @@ function AddressStep({ data, onChange, onNext, onBack }) {
 
                 {/* Street / House No. */}
                 <div className={`${styles.formGroup} ${styles.formGridFull}`}>
-                    <label>Street Address / Building / House No.</label>
+                    <label>Street Address / Building / House No.<span style={{ color: 'red' }}>*</span></label>
                     <input
                         className={styles.input}
                         placeholder="e.g. 123 Rizal St., Unit 4B, Sunrise Bldg."
@@ -296,7 +296,7 @@ function AddressStep({ data, onChange, onNext, onBack }) {
 
                 {/* Zip Code */}
                 <div className={styles.formGroup}>
-                    <label>Zip Code</label>
+                    <label>Zip Code<span style={{ color: 'red' }}>*</span></label>
                     <input
                         className={styles.input}
                         type="text"
@@ -471,11 +471,11 @@ function SetupPageInner() {
                     ...(token && { Authorization: `Bearer ${token}` }),
                 },
                 body: JSON.stringify({
-                    store_name:        store.storeName,
-                    business_category: store.category    || null,
-                    store_handle:      store.handle      || null,
+                    store_name: store.storeName,
+                    business_category: store.category || null,
+                    store_handle: store.handle || null,
                     store_description: store.description || null,
-                    user_id:           user.user_id,
+                    user_id: user.user_id,
                 }),
             });
             const sellerData = await sellerRes.json();
@@ -489,18 +489,18 @@ function SetupPageInner() {
                     ...(token && { Authorization: `Bearer ${token}` }),
                 },
                 body: JSON.stringify({
-                    user_id:           user.user_id,
-                    Line1:             address.Line1,
-                    Line2:             address.Line2             || null,
-                    household_blk_st:  address.household_blk_st || null,
-                    Barangay:          address.Barangay          || null,
+                    user_id: user.user_id,
+                    Line1: address.Line1,
+                    Line2: address.Line2 || null,
+                    household_blk_st: address.household_blk_st || null,
+                    Barangay: address.Barangay || null,
                     municipality_city: address.municipality_city || null,
-                    zip_code:          address.zip_code          || null,
-                    region:            address.region            || null,
-                    province:          address.province          || null,
-                    address_type:      'pickup',
-                    is_default:        true,
-                    Country:           'Philippines',
+                    zip_code: address.zip_code || null,
+                    region: address.region || null,
+                    province: address.province || null,
+                    address_type: 'pickup',
+                    is_default: true,
+                    Country: 'Philippines',
                 }),
             });
             const addressData = await addressRes.json();
