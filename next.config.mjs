@@ -1,6 +1,6 @@
 /** @type {import('next').NextConfig} */
 const nextConfig = {
-  /* config options here */
+  serverExternalPackages: ['agora-rtc-sdk-ng'],
 };
 
 export default nextConfig;
