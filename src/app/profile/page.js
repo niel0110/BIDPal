@@ -386,8 +386,6 @@ function StoreProfileSection() {
         }
     };
 
-    const initials = storeName ? storeName.split(' ').map(w => w[0]).slice(0, 2).join('').toUpperCase() : '?';
-
     if (loading) {
         return (
             <div className={styles.section}>
@@ -398,24 +396,7 @@ function StoreProfileSection() {
 
     return (
         <div className={styles.section}>
-            {/* Store Hero Header */}
-            <div className={styles.storeHero}>
-                <div className={styles.storeHeroBg} />
-                <div className={styles.storeHeroContent}>
-                    <div className={styles.storeAvatar}>
-                        {initials}
-                    </div>
-                    <div className={styles.storeHeroInfo}>
-                        <h2 className={styles.storeHeroName}>{storeName || 'Your Store'}</h2>
-                        {storeHandle && (
-                            <span className={styles.storeHeroHandle}>bidpal.com/{storeHandle}</span>
-                        )}
-                        <span className={styles.storeHeroBadge}>{businessCategory || 'No category set'}</span>
-                    </div>
-                </div>
-            </div>
-
-            <header className={styles.sectionHeader} style={{ marginTop: '2rem' }}>
+            <header className={styles.sectionHeader}>
                 <h1>Store Profile</h1>
                 <p>Public information visible to buyers on your store page.</p>
             </header>
@@ -459,7 +440,7 @@ function StoreProfileSection() {
                     <label>Business Category</label>
                     <div className={styles.selectWrapper}>
                         <select value={businessCategory} onChange={e => setBusinessCategory(e.target.value)}>
-                            <option value="">Select Category</option>
+                            <option value="" disabled hidden>Select Category</option>
                             <option>Fashion &amp; Accessories</option>
                             <option>Gadgets &amp; Electronics</option>
                             <option>Collectibles &amp; Antiques</option>
