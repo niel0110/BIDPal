@@ -1,14 +1,20 @@
 'use client';
 
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useRef, useContext } from 'react';
 import { useSearchParams } from 'next/navigation';
 import Header from '@/components/layout/Header';
-import { Clock, Eye, Heart, Video, Send, X, Star, Truck, Pencil, CheckCircle, Loader2 } from 'lucide-react';
+import { Clock, Eye, Heart, Send, X, Star, Truck, Pencil, CheckCircle, Loader2, Mic, MicOff, Video, VideoOff } from 'lucide-react';
 import styles from './page.module.css';
+import { io } from 'socket.io-client';
+import { AuthContext } from '@/context/AuthContext';
+
+// Dynamically import Agora to avoid SSR issues
+let AgoraRTC = null;
 
 export default function LivePage() {
     const searchParams = useSearchParams();
     const auctionId = searchParams.get('id');
+    const { user } = useContext(AuthContext);
 
     const [auction, setAuction] = useState(null);
     const [loading, setLoading] = useState(true);
@@ -21,6 +27,10 @@ export default function LivePage() {
     const [showPaymentModal, setShowPaymentModal] = useState(false);
     const [shippingOption, setShippingOption] = useState('standard');
     const [bidAmount, setBidAmount] = useState('');
+    const [viewerCount, setViewerCount] = useState(0);
+    const [streamReady, setStreamReady] = useState(false);
+    const [isMuted, setIsMuted] = useState(false);
+    const [isVideoOff, setIsVideoOff] = useState(false);
 
     // Winner Modal State
     const [winnerModal, setWinnerModal] = useState({
@@ -30,42 +40,52 @@ export default function LivePage() {
         amount: "0"
     });
 
+    // Refs for Agora
+    const agoraClientRef = useRef(null);
+    const localTracksRef = useRef({ audio: null, video: null });
+    const socketRef = useRef(null);
+
+    const apiUrl = process.env.NEXT_PUBLIC_API_URL || 'http://127.0.0.1:5000';
+
+    // Determine if the current user is the seller (host)
+    const isHost = auction && user && String(auction.seller_info?.seller_id) === String(user.seller_id || user.id);
+
+    // ── Socket.IO setup ──────────────────────────────────────────────────────
     useEffect(() => {
-        const fetchAuctionDetails = async () => {
-            if (!auctionId) {
-                setLoading(false);
-                return;
-            }
+        if (!auctionId) return;
 
-            try {
-                const apiUrl = process.env.NEXT_PUBLIC_API_URL || 'http://127.0.0.1:5000';
-                
-                // Fetch auction details
-                const res = await fetch(`${apiUrl}/api/auctions/${auctionId}`);
-                const data = await res.json();
+        const socket = io(apiUrl, { transports: ['websocket', 'polling'] });
+        socketRef.current = socket;
 
-                if (res.ok) {
-                    setAuction(data);
-                    // Update bids from existing data if possible, or fetch separately
-                    // For now let's fetch bids separately to match the ticker
-                    fetchBids();
-                } else {
-                    setError(data.error || 'Failed to fetch auction details');
-                }
-            } catch (err) {
-                setError('An error occurred while fetching auction details');
-            } finally {
-                setLoading(false);
-            }
+        socket.on('connect', () => {
+            socket.emit('join-auction', auctionId);
+        });
+
+        socket.on('bid-update', (bid) => {
+            setBids(prev => [bid, ...prev]);
+        });
+
+        socket.on('new-comment', (comment) => {
+            setComments(prev => [...prev, comment]);
+        });
+
+        return () => {
+            socket.disconnect();
         };
+    }, [auctionId, apiUrl]);
+
+    // ── Fetch auction data + initial bids ────────────────────────────────────
+    useEffect(() => {
+        if (!auctionId) {
+            setLoading(false);
+            return;
+        }
 
         const fetchBids = async () => {
             try {
-                const apiUrl = process.env.NEXT_PUBLIC_API_URL || 'http://127.0.0.1:5000';
                 const res = await fetch(`${apiUrl}/api/dashboard/auction/${auctionId}/bids`);
                 const data = await res.json();
                 if (res.ok) {
-                    // map to view format
                     const formattedBids = data.map(bid => ({
                         id: bid.bid_id,
                         user: bid.bidder ? `${bid.bidder.Fname} ${bid.bidder.Lname[0]}.` : 'Unknown',
@@ -79,36 +99,179 @@ export default function LivePage() {
             }
         };
 
+        const fetchAuctionDetails = async () => {
+            try {
+                const res = await fetch(`${apiUrl}/api/auctions/${auctionId}`);
+                const data = await res.json();
+                if (res.ok) {
+                    setAuction(data);
+                    await fetchBids();
+                } else {
+                    setError(data.error || 'Failed to fetch auction details');
+                }
+            } catch (err) {
+                setError('An error occurred while fetching auction details');
+            } finally {
+                setLoading(false);
+            }
+        };
+
         fetchAuctionDetails();
-        // Set up interval for bids
-        const interval = setInterval(fetchBids, 5000);
-        return () => clearInterval(interval);
-    }, [auctionId]);
+    }, [auctionId, apiUrl]);
+
+    // ── Agora setup (runs after auction is loaded so isHost is known) ─────────
+    useEffect(() => {
+        if (!auction || !auctionId || !process.env.NEXT_PUBLIC_AGORA_APP_ID) return;
+
+        let cancelled = false;
+
+        const startAgora = async () => {
+            // Dynamic import to avoid SSR errors
+            const module = await import('agora-rtc-sdk-ng');
+            AgoraRTC = module.default;
+            AgoraRTC.setLogLevel(4); // suppress verbose logs
+
+            const token = await fetchAgoraToken();
+            if (!token || cancelled) return;
+
+            const client = AgoraRTC.createClient({ mode: 'live', codec: 'vp8' });
+            agoraClientRef.current = client;
+
+            const role = isHost ? 'host' : 'audience';
+            await client.setClientRole(role);
+
+            const uid = user?.id ? Number(String(user.id).replace(/\D/g, '').slice(-8)) || 0 : 0;
+            await client.join(process.env.NEXT_PUBLIC_AGORA_APP_ID, String(auctionId), token, uid);
+
+            if (isHost) {
+                // Seller: publish camera + mic
+                const [audioTrack, videoTrack] = await AgoraRTC.createMicrophoneAndCameraTracks();
+                if (cancelled) { audioTrack.close(); videoTrack.close(); return; }
+                localTracksRef.current = { audio: audioTrack, video: videoTrack };
+                await client.publish([audioTrack, videoTrack]);
+                videoTrack.play('agora-local-video');
+                setStreamReady(true);
+            } else {
+                // Buyer: subscribe to host stream
+                client.on('user-published', async (remoteUser, mediaType) => {
+                    await client.subscribe(remoteUser, mediaType);
+                    if (mediaType === 'video') {
+                        remoteUser.videoTrack.play('agora-remote-video');
+                        setStreamReady(true);
+                    }
+                    if (mediaType === 'audio') {
+                        remoteUser.audioTrack.play();
+                    }
+                });
+                client.on('user-unpublished', () => setStreamReady(false));
+            }
+
+            // Track viewer count via Agora presence
+            client.on('user-joined', () => setViewerCount(c => c + 1));
+            client.on('user-left', () => setViewerCount(c => Math.max(0, c - 1)));
+        };
+
+        startAgora().catch(console.error);
+
+        return () => {
+            cancelled = true;
+            const { audio, video } = localTracksRef.current;
+            if (audio) audio.close();
+            if (video) video.close();
+            if (agoraClientRef.current) {
+                agoraClientRef.current.leave().catch(() => {});
+            }
+        };
+    }, [auction, auctionId, isHost]);
+
+    const fetchAgoraToken = async () => {
+        try {
+            const token = localStorage.getItem('bidpal_token');
+            const role = isHost ? 'host' : 'audience';
+            const res = await fetch(
+                `${apiUrl}/api/agora/token?channelName=${auctionId}&role=${role}&uid=0`,
+                { headers: { Authorization: `Bearer ${token}` } }
+            );
+            const data = await res.json();
+            return res.ok ? data.token : null;
+        } catch {
+            return null;
+        }
+    };
 
     const handleSendMessage = () => {
         if (!inputValue.trim()) return;
         const newComment = {
             id: Date.now(),
-            user: 'You',
+            user: user ? `${user.Fname || 'Guest'}` : 'Guest',
             text: inputValue
         };
-        setComments([...comments, newComment]);
+        // Broadcast via socket so all viewers see it
+        if (socketRef.current) {
+            socketRef.current.emit('send-comment', { auctionId, comment: newComment });
+        }
+        // Also add locally for immediate feedback
+        setComments(prev => [...prev, newComment]);
         setInputValue('');
     };
 
-    const handlePlaceBid = () => {
+    const handlePlaceBid = async () => {
         if (!bidAmount) return;
 
-        // Add new bid to top
-        const newBid = {
-            id: Date.now(),
-            user: 'You',
-            amount: bidAmount,
-            time: 'Just now'
-        };
-        setBids([newBid, ...bids]);
+        const token = localStorage.getItem('bidpal_token');
+        try {
+            const res = await fetch(`${apiUrl}/api/auctions/${auctionId}/bids`, {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json',
+                    Authorization: `Bearer ${token}`
+                },
+                body: JSON.stringify({ amount: Number(bidAmount) })
+            });
+            const data = await res.json();
+
+            const newBid = {
+                id: data.bid_id || Date.now(),
+                user: user ? `${user.Fname} ${user.Lname?.[0]}.` : 'You',
+                amount: Number(bidAmount).toLocaleString(),
+                time: 'Just now'
+            };
+
+            // Emit to all viewers in the room via socket
+            if (socketRef.current) {
+                socketRef.current.emit('new-bid', { auctionId, bid: newBid });
+            }
+            setBids(prev => [newBid, ...prev]);
+        } catch (err) {
+            // Optimistic update even if API call fails (for demo)
+            const newBid = {
+                id: Date.now(),
+                user: 'You',
+                amount: Number(bidAmount).toLocaleString(),
+                time: 'Just now'
+            };
+            if (socketRef.current) {
+                socketRef.current.emit('new-bid', { auctionId, bid: newBid });
+            }
+            setBids(prev => [newBid, ...prev]);
+        }
+
         setShowModal(false);
         setBidAmount('');
+    };
+
+    const toggleMic = () => {
+        const { audio } = localTracksRef.current;
+        if (!audio) return;
+        if (isMuted) { audio.setEnabled(true); } else { audio.setEnabled(false); }
+        setIsMuted(!isMuted);
+    };
+
+    const toggleVideo = () => {
+        const { video } = localTracksRef.current;
+        if (!video) return;
+        if (isVideoOff) { video.setEnabled(true); } else { video.setEnabled(false); }
+        setIsVideoOff(!isVideoOff);
     };
 
     const simulateWin = () => {
@@ -165,7 +328,7 @@ export default function LivePage() {
     return (
         <main>
             <Header />
-            {/* Simulation Controls (Secretly for demo) */}
+            {/* Simulation Controls (for demo) */}
             <div className={styles.simControls}>
                 <span style={{ fontSize: '0.6rem', color: '#999', fontWeight: 700 }}>SIMULATION</span>
                 <button className={styles.simBtn} onClick={simulateWin}>Win Auction</button>
@@ -177,16 +340,95 @@ export default function LivePage() {
 
                 {/* VIDEO SECTION */}
                 <section className={styles.videoWrapper}>
-                    <div className={styles.videoPlaceholder}>
-                        <div style={{
-                            position: 'absolute',
-                            inset: 0,
-                            background: `linear-gradient(rgba(0,0,0,0.3), rgba(0,0,0,0.3)), url(${product?.images?.[0]?.image_url || 'https://placehold.co/1280x720'}) center/cover`,
-                            opacity: 0.8,
-                            filter: 'blur(10px)'
-                        }} />
-                        <Video size={64} fill="white" stroke="none" style={{ zIndex: 1, opacity: 0.5 }} />
-                        <h2 style={{ zIndex: 1, marginTop: '1rem', fontWeight: 800, fontSize: '1.5rem', color: 'white' }}>LIVE STREAM</h2>
+                    <div className={styles.videoPlaceholder} style={{ position: 'relative', background: '#000' }}>
+                        {/* Agora video containers */}
+                        <div
+                            id="agora-local-video"
+                            style={{
+                                width: '100%',
+                                height: '100%',
+                                display: isHost ? 'block' : 'none',
+                                position: 'absolute',
+                                inset: 0
+                            }}
+                        />
+                        <div
+                            id="agora-remote-video"
+                            style={{
+                                width: '100%',
+                                height: '100%',
+                                display: !isHost ? 'block' : 'none',
+                                position: 'absolute',
+                                inset: 0
+                            }}
+                        />
+
+                        {/* Fallback overlay when stream not yet active */}
+                        {!streamReady && (
+                            <div style={{
+                                position: 'absolute',
+                                inset: 0,
+                                display: 'flex',
+                                flexDirection: 'column',
+                                alignItems: 'center',
+                                justifyContent: 'center',
+                                background: `linear-gradient(rgba(0,0,0,0.5), rgba(0,0,0,0.5)), url(${product?.images?.[0]?.image_url || 'https://placehold.co/1280x720'}) center/cover`,
+                                zIndex: 1
+                            }}>
+                                <Loader2 size={40} color="white" className={styles.spinner} />
+                                <p style={{ color: 'white', marginTop: '1rem', fontWeight: 600 }}>
+                                    {isHost ? 'Starting your stream...' : 'Waiting for host to go live...'}
+                                </p>
+                            </div>
+                        )}
+
+                        {/* Host mic/video controls */}
+                        {isHost && streamReady && (
+                            <div style={{
+                                position: 'absolute',
+                                bottom: '1rem',
+                                left: '50%',
+                                transform: 'translateX(-50%)',
+                                display: 'flex',
+                                gap: '1rem',
+                                zIndex: 10
+                            }}>
+                                <button
+                                    onClick={toggleMic}
+                                    style={{
+                                        background: isMuted ? '#D32F2F' : 'rgba(255,255,255,0.2)',
+                                        border: 'none',
+                                        borderRadius: '50%',
+                                        width: 44,
+                                        height: 44,
+                                        display: 'flex',
+                                        alignItems: 'center',
+                                        justifyContent: 'center',
+                                        cursor: 'pointer',
+                                        backdropFilter: 'blur(4px)'
+                                    }}
+                                >
+                                    {isMuted ? <MicOff size={20} color="white" /> : <Mic size={20} color="white" />}
+                                </button>
+                                <button
+                                    onClick={toggleVideo}
+                                    style={{
+                                        background: isVideoOff ? '#D32F2F' : 'rgba(255,255,255,0.2)',
+                                        border: 'none',
+                                        borderRadius: '50%',
+                                        width: 44,
+                                        height: 44,
+                                        display: 'flex',
+                                        alignItems: 'center',
+                                        justifyContent: 'center',
+                                        cursor: 'pointer',
+                                        backdropFilter: 'blur(4px)'
+                                    }}
+                                >
+                                    {isVideoOff ? <VideoOff size={20} color="white" /> : <Video size={20} color="white" />}
+                                </button>
+                            </div>
+                        )}
                     </div>
 
                     <div className={styles.overlayTop}>
@@ -196,12 +438,12 @@ export default function LivePage() {
                         </div>
                         <div className={styles.viewerBadge}>
                             <Eye size={16} />
-                            <span>{Math.floor(Math.random() * 50) + 50}</span>
+                            <span>{viewerCount}</span>
                         </div>
                     </div>
 
                     <div className={styles.sellerOverlay}>
-                        <div className={styles.sellerAvatar} style={{ 
+                        <div className={styles.sellerAvatar} style={{
                             backgroundImage: seller_info.avatar ? `url(${seller_info.avatar})` : 'none',
                             backgroundColor: '#ccc',
                             backgroundSize: 'cover'
@@ -246,7 +488,7 @@ export default function LivePage() {
                                     </div>
                                     <div style={{ textAlign: 'right' }}>
                                         <div style={{ textDecoration: 'line-through', color: '#999', fontSize: '0.9rem' }}>₱ {auction.reserve_price}</div>
-                                        <div className={styles.price}>₱ {auction.current_price || auction.reserve_price}</div>
+                                        <div className={styles.price}>₱ {bids[0]?.amount || auction.current_price || auction.reserve_price}</div>
                                     </div>
                                 </div>
                             </div>
@@ -321,7 +563,7 @@ export default function LivePage() {
 
                         <div className={styles.bidInfoRow}>
                             <span className={styles.bidLabel}>Current Bid ({bids.length} Bids)</span>
-                            <span className={styles.bidValue}>₱ {auction.current_price || auction.reserve_price}</span>
+                            <span className={styles.bidValue}>₱ {bids[0]?.amount || auction.current_price || auction.reserve_price}</span>
                         </div>
 
                         <div className={styles.inputGroup}>
@@ -377,7 +619,7 @@ export default function LivePage() {
                                 </div>
                                 <div style={{ textAlign: 'right' }}>
                                     <div style={{ fontSize: '0.9rem', color: '#999', textDecoration: 'line-through' }}>₱ {auction.reserve_price}</div>
-                                    <div style={{ fontSize: '1.25rem', fontWeight: 700 }}>₱ {auction.current_price || auction.reserve_price}</div>
+                                    <div style={{ fontSize: '1.25rem', fontWeight: 700 }}>₱ {bids[0]?.amount || auction.current_price || auction.reserve_price}</div>
                                 </div>
                             </div>
 
@@ -405,7 +647,7 @@ export default function LivePage() {
 
                             <div className={styles.sellerCard}>
                                 <div className={styles.sellerHead}>
-                                    <div className={styles.sellerAvatarLarge} style={{ 
+                                    <div className={styles.sellerAvatarLarge} style={{
                                         backgroundImage: seller_info.avatar ? `url(${seller_info.avatar})` : 'none',
                                         backgroundColor: '#ccc',
                                         backgroundSize: 'cover'
@@ -504,7 +746,7 @@ export default function LivePage() {
                                 <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start' }}>
                                     <h3 style={{ fontSize: '1.5rem', fontWeight: 700 }}>{product?.name}</h3>
                                     <div style={{ textAlign: 'right' }}>
-                                        <div style={{ fontWeight: 700 }}>₱ {auction.current_price || auction.reserve_price}</div>
+                                        <div style={{ fontWeight: 700 }}>₱ {bids[0]?.amount || auction.current_price || auction.reserve_price}</div>
                                     </div>
                                 </div>
                                 <div style={{ fontWeight: 600, marginTop: '0.5rem' }}>Winning Bid</div>
@@ -569,7 +811,7 @@ export default function LivePage() {
                             <div className={styles.paymentFooter}>
                                 <div>
                                     <span className={styles.totalLabel}>Total</span>
-                                    <span className={styles.totalAmount}>₱ {auction.current_price || auction.reserve_price}</span>
+                                    <span className={styles.totalAmount}>₱ {bids[0]?.amount || auction.current_price || auction.reserve_price}</span>
                                 </div>
                                 <button className={styles.finalPayBtn}>Pay Now</button>
                             </div>
