@@ -1,4 +1,5 @@
-import { RtcTokenBuilder, RtcRole } from 'agora-access-token';
+import pkg from 'agora-access-token';
+const { RtcTokenBuilder, RtcRole } = pkg;
 
 export const generateToken = (req, res) => {
     const appId = process.env.AGORA_APP_ID;

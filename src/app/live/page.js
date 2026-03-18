@@ -1,12 +1,12 @@
 'use client';
 
-import { useState, useEffect, useRef, useContext } from 'react';
+import { useState, useEffect, useRef } from 'react';
 import { useSearchParams } from 'next/navigation';
 import Header from '@/components/layout/Header';
 import { Clock, Eye, Heart, Send, X, Star, Truck, Pencil, CheckCircle, Loader2, Mic, MicOff, Video, VideoOff } from 'lucide-react';
 import styles from './page.module.css';
 import { io } from 'socket.io-client';
-import { AuthContext } from '@/context/AuthContext';
+import { useAuth } from '@/context/AuthContext';
 
 // Dynamically import Agora to avoid SSR issues
 let AgoraRTC = null;
@@ -14,7 +14,7 @@ let AgoraRTC = null;
 export default function LivePage() {
     const searchParams = useSearchParams();
     const auctionId = searchParams.get('id');
-    const { user } = useContext(AuthContext);
+    const { user } = useAuth();
 
     const [auction, setAuction] = useState(null);
     const [loading, setLoading] = useState(true);
