@@ -17,7 +17,7 @@ export function CartProvider({ children }) {
             return;
         }
         try {
-            const apiUrl = process.env.NEXT_PUBLIC_API_URL || 'http://127.0.0.1:5000';
+            const apiUrl = 'http://127.0.0.1:5000';
             const res = await fetch(`${apiUrl}/api/cart/${user.user_id}`);
             if (!res.ok) throw new Error('Failed to fetch cart');
             const data = await res.json();
@@ -36,7 +36,7 @@ export function CartProvider({ children }) {
     const addToCart = async (product_id) => {
         if (!user) return { success: false, error: 'User not logged in' };
         try {
-            const apiUrl = process.env.NEXT_PUBLIC_API_URL || 'http://127.0.0.1:5000';
+            const apiUrl = 'http://127.0.0.1:5000';
             const res = await fetch(`${apiUrl}/api/cart`, {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
@@ -57,7 +57,7 @@ export function CartProvider({ children }) {
 
     const removeItem = async (cart_id) => {
         try {
-            const apiUrl = process.env.NEXT_PUBLIC_API_URL || 'http://127.0.0.1:5000';
+            const apiUrl = 'http://127.0.0.1:5000';
             const res = await fetch(`${apiUrl}/api/cart/${cart_id}`, {
                 method: 'DELETE'
             });
