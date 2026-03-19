@@ -24,6 +24,23 @@ export default function AuctionCard({ data }) {
                         className={styles.image} 
                     />
 
+                    {data.status === 'active' && (
+                        <div style={{
+                            position: 'absolute',
+                            top: '8px',
+                            left: '8px',
+                            background: '#D32F2F',
+                            color: 'white',
+                            padding: '4px 12px',
+                            borderRadius: '4px',
+                            fontSize: '0.75rem',
+                            fontWeight: 700,
+                            zIndex: 2
+                        }}>
+                            🔴 LIVE
+                        </div>
+                    )}
+
                     <div className={`${styles.overlayBadge} ${styles.redBadge}`}>
                         <User size={12} />
                         <span>{data.viewers}</span>

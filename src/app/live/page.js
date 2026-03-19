@@ -32,6 +32,10 @@ export default function LivePage() {
     const [isMuted, setIsMuted] = useState(false);
     const [isVideoOff, setIsVideoOff] = useState(false);
 
+    // Permission and Stream State
+    const [permissionStatus, setPermissionStatus] = useState('idle'); // idle, requesting, granted, denied
+    const [hasStarted, setHasStarted] = useState(false);
+
     // Winner Modal State
     const [winnerModal, setWinnerModal] = useState({
         show: false,
@@ -123,55 +127,114 @@ export default function LivePage() {
     useEffect(() => {
         if (!auction || !auctionId || !process.env.NEXT_PUBLIC_AGORA_APP_ID) return;
 
+        // If auction is already active (seller navigated here from dashboard), auto-start
+        if (isHost && auction.status === 'active' && !hasStarted) {
+            setHasStarted(true);
+            setPermissionStatus('granted');
+        }
+
+        if (isHost && !hasStarted) return;
+
         let cancelled = false;
 
         const startAgora = async () => {
-            // Dynamic import to avoid SSR errors
-            const module = await import('agora-rtc-sdk-ng');
-            AgoraRTC = module.default;
-            AgoraRTC.setLogLevel(4); // suppress verbose logs
+            try {
+                // Dynamic import to avoid SSR errors
+                const module = await import('agora-rtc-sdk-ng');
+                AgoraRTC = module.default;
+                AgoraRTC.setLogLevel(4); // suppress verbose logs
 
-            const token = await fetchAgoraToken();
-            if (!token || cancelled) return;
+                const token = await fetchAgoraToken();
+                if (!token || cancelled) return;
 
-            const client = AgoraRTC.createClient({ mode: 'live', codec: 'vp8' });
-            agoraClientRef.current = client;
+                const client = AgoraRTC.createClient({ mode: 'live', codec: 'vp8' });
+                agoraClientRef.current = client;
 
-            const role = isHost ? 'host' : 'audience';
-            await client.setClientRole(role);
+                const role = isHost ? 'host' : 'audience';
+                await client.setClientRole(role);
 
-            const uid = user?.id ? Number(String(user.id).replace(/\D/g, '').slice(-8)) || 0 : 0;
-            await client.join(process.env.NEXT_PUBLIC_AGORA_APP_ID, String(auctionId), token, uid);
+                const uid = user?.id ? Number(String(user.id).replace(/\D/g, '').slice(-8)) || 0 : 0;
+                await client.join(process.env.NEXT_PUBLIC_AGORA_APP_ID, String(auctionId), token, uid);
 
-            if (isHost) {
-                // Seller: publish camera + mic
-                const [audioTrack, videoTrack] = await AgoraRTC.createMicrophoneAndCameraTracks();
-                if (cancelled) { audioTrack.close(); videoTrack.close(); return; }
-                localTracksRef.current = { audio: audioTrack, video: videoTrack };
-                await client.publish([audioTrack, videoTrack]);
-                videoTrack.play('agora-local-video');
-                setStreamReady(true);
-            } else {
-                // Buyer: subscribe to host stream
-                client.on('user-published', async (remoteUser, mediaType) => {
-                    await client.subscribe(remoteUser, mediaType);
-                    if (mediaType === 'video') {
-                        remoteUser.videoTrack.play('agora-remote-video');
-                        setStreamReady(true);
+                if (isHost) {
+                    console.log('🎥 Starting camera and microphone...');
+                    // Seller: publish camera + mic
+                    const [audioTrack, videoTrack] = await AgoraRTC.createMicrophoneAndCameraTracks(
+                        {
+                            AEC: true, // Acoustic Echo Cancellation
+                            ANS: true, // Automatic Noise Suppression
+                        },
+                        {
+                            encoderConfig: {
+                                width: 1280,
+                                height: 720,
+                                frameRate: 30,
+                                bitrateMin: 600,
+                                bitrateMax: 1000,
+                            },
+                        }
+                    );
+                    if (cancelled) {
+                        audioTrack.close();
+                        videoTrack.close();
+                        return;
                     }
-                    if (mediaType === 'audio') {
-                        remoteUser.audioTrack.play();
-                    }
-                });
-                client.on('user-unpublished', () => setStreamReady(false));
+
+                    console.log('✅ Tracks created successfully');
+                    localTracksRef.current = { audio: audioTrack, video: videoTrack };
+
+                    // Play video immediately to show camera feed
+                    console.log('▶️ Playing video track on agora-local-video');
+                    const videoElement = document.getElementById('agora-local-video');
+                    console.log('Video container element:', videoElement);
+                    videoTrack.play('agora-local-video');
+                    console.log('✅ Video track played, setting stream ready');
+                    setStreamReady(true);
+
+                    // Then publish to the channel
+                    console.log('📡 Publishing tracks to channel...');
+                    await client.publish([audioTrack, videoTrack]);
+                    console.log('✅ Published to channel successfully');
+                } else {
+                    // Buyer: subscribe to host stream
+                    console.log('👁️ Buyer mode: Waiting for host to publish...');
+
+                    client.on('user-published', async (remoteUser, mediaType) => {
+                        console.log(`📺 Host published ${mediaType}, subscribing...`);
+                        await client.subscribe(remoteUser, mediaType);
+
+                        if (mediaType === 'video') {
+                            console.log('▶️ Playing remote video...');
+                            remoteUser.videoTrack.play('agora-remote-video');
+                            setStreamReady(true);
+                            console.log('✅ Video is now playing for buyer!');
+                        }
+                        if (mediaType === 'audio') {
+                            console.log('🔊 Playing remote audio...');
+                            remoteUser.audioTrack.play();
+                        }
+                    });
+
+                    client.on('user-unpublished', (remoteUser, mediaType) => {
+                        console.log(`❌ Host unpublished ${mediaType}`);
+                        if (mediaType === 'video') {
+                            setStreamReady(false);
+                        }
+                    });
+
+                    console.log('✅ Buyer ready to receive stream');
+                }
+
+                // Track viewer count via Agora presence
+                client.on('user-joined', () => setViewerCount(c => c + 1));
+                client.on('user-left', () => setViewerCount(c => Math.max(0, c - 1)));
+            } catch (error) {
+                console.error('Agora initialization error:', error);
+                setPermissionStatus('denied');
             }
-
-            // Track viewer count via Agora presence
-            client.on('user-joined', () => setViewerCount(c => c + 1));
-            client.on('user-left', () => setViewerCount(c => Math.max(0, c - 1)));
         };
 
-        startAgora().catch(console.error);
+        startAgora();
 
         return () => {
             cancelled = true;
@@ -182,7 +245,7 @@ export default function LivePage() {
                 agoraClientRef.current.leave().catch(() => {});
             }
         };
-    }, [auction, auctionId, isHost]);
+    }, [auction, auctionId, isHost, hasStarted]);
 
     const fetchAgoraToken = async () => {
         try {
@@ -196,6 +259,22 @@ export default function LivePage() {
             return res.ok ? data.token : null;
         } catch {
             return null;
+        }
+    };
+
+    const requestPermissionsAndStart = async () => {
+        if (!isHost) return;
+        setPermissionStatus('requesting');
+        try {
+            const stream = await navigator.mediaDevices.getUserMedia({ video: true, audio: true });
+            // User granted permission, stop the tracks right away just to free them up,
+            // Agora will request them again or we can let Agora handle it.
+            stream.getTracks().forEach(track => track.stop());
+            setPermissionStatus('granted');
+            setHasStarted(true);
+        } catch (err) {
+            console.error('Permission denied or error:', err);
+            setPermissionStatus('denied');
         }
     };
 
@@ -349,7 +428,9 @@ export default function LivePage() {
                                 height: '100%',
                                 display: isHost ? 'block' : 'none',
                                 position: 'absolute',
-                                inset: 0
+                                inset: 0,
+                                zIndex: 0,
+                                overflow: 'hidden'
                             }}
                         />
                         <div
@@ -359,7 +440,9 @@ export default function LivePage() {
                                 height: '100%',
                                 display: !isHost ? 'block' : 'none',
                                 position: 'absolute',
-                                inset: 0
+                                inset: 0,
+                                zIndex: 0,
+                                overflow: 'hidden'
                             }}
                         />
 
@@ -372,13 +455,67 @@ export default function LivePage() {
                                 flexDirection: 'column',
                                 alignItems: 'center',
                                 justifyContent: 'center',
-                                background: `linear-gradient(rgba(0,0,0,0.5), rgba(0,0,0,0.5)), url(${product?.images?.[0]?.image_url || 'https://placehold.co/1280x720'}) center/cover`,
+                                background: `linear-gradient(rgba(0,0,0,0.6), rgba(0,0,0,0.6)), url(${product?.images?.[0]?.image_url || 'https://placehold.co/1280x720'}) center/cover`,
                                 zIndex: 1
                             }}>
-                                <Loader2 size={40} color="white" className={styles.spinner} />
-                                <p style={{ color: 'white', marginTop: '1rem', fontWeight: 600 }}>
-                                    {isHost ? 'Starting your stream...' : 'Waiting for host to go live...'}
-                                </p>
+                                {isHost ? (
+                                    <>
+                                        {!hasStarted && permissionStatus === 'idle' && (
+                                            <div style={{ textAlign: 'center' }}>
+                                                <h2 style={{ color: 'white', marginBottom: '1rem', fontSize: '1.5rem' }}>Ready to Go Live?</h2>
+                                                <p style={{ color: '#ddd', marginBottom: '1.5rem' }}>Start your live auction for {product?.name}</p>
+                                                <button
+                                                    onClick={requestPermissionsAndStart}
+                                                    style={{
+                                                        padding: '14px 32px',
+                                                        fontSize: '1.1rem',
+                                                        fontWeight: 600,
+                                                        borderRadius: '8px',
+                                                        cursor: 'pointer',
+                                                        background: '#D32F2F',
+                                                        color: 'white',
+                                                        border: 'none',
+                                                        boxShadow: '0 4px 12px rgba(211, 47, 47, 0.4)',
+                                                        transition: 'all 0.2s'
+                                                    }}
+                                                    onMouseOver={(e) => e.target.style.background = '#B71C1C'}
+                                                    onMouseOut={(e) => e.target.style.background = '#D32F2F'}
+                                                >
+                                                    Start Live Stream
+                                                </button>
+                                            </div>
+                                        )}
+                                        {permissionStatus === 'requesting' && (
+                                            <>
+                                                <Loader2 size={40} color="white" className={styles.spinner} />
+                                                <p style={{ color: 'white', marginTop: '1rem', fontWeight: 600 }}>Requesting camera/mic access...</p>
+                                            </>
+                                        )}
+                                        {permissionStatus === 'denied' && (
+                                            <div style={{ textAlign: 'center' }}>
+                                                <p style={{ color: '#FF5252', marginBottom: '0.5rem', fontWeight: 600, fontSize: '1.1rem' }}>Camera/Microphone access denied</p>
+                                                <p style={{ color: 'white', fontSize: '0.9rem', marginBottom: '1rem' }}>Please allow permissions in your browser settings to go live.</p>
+                                                <button
+                                                    onClick={requestPermissionsAndStart}
+                                                    style={{ marginTop: '1rem', padding: '10px 20px', borderRadius: '6px', cursor: 'pointer', background: 'transparent', color: 'white', border: '2px solid white', fontWeight: 600 }}
+                                                >
+                                                    Retry
+                                                </button>
+                                            </div>
+                                        )}
+                                        {hasStarted && permissionStatus === 'granted' && (
+                                            <>
+                                                <Loader2 size={40} color="white" className={styles.spinner} />
+                                                <p style={{ color: 'white', marginTop: '1rem', fontWeight: 600 }}>Starting your stream...</p>
+                                            </>
+                                        )}
+                                    </>
+                                ) : (
+                                    <>
+                                        <Loader2 size={40} color="white" className={styles.spinner} />
+                                        <p style={{ color: 'white', marginTop: '1rem', fontWeight: 600 }}>Waiting for host to go live...</p>
+                                    </>
+                                )}
                             </div>
                         )}
 

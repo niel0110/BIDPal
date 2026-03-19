@@ -1,10 +1,9 @@
 'use client';
 
-import { useState, useEffect, useCallback } from 'react';
+import { useState, useEffect, useCallback, useRef } from 'react';
 import Link from 'next/link';
 import { useAuth } from '@/context/AuthContext';
 import { useRouter } from 'next/navigation';
-import { useNotifications } from '@/hooks/useNotifications';
 import {
     Plus,
     Radio,
@@ -15,20 +14,23 @@ import {
     Square,
     Clock,
     TrendingUp,
-    MoreVertical,
     Send,
     Eye,
     Share2,
-    Heart
+    Heart,
+    Video,
+    Mic,
+    MicOff,
+    VideoOff
 } from 'lucide-react';
 import styles from './page.module.css';
 
-
+// Dynamically import Agora to avoid SSR issues
+let AgoraRTC = null;
 
 export default function SellerDashboard() {
     const { user } = useAuth();
     const router = useRouter();
-    const { unreadCount: msgUnreadCount } = useNotifications();
     const [isLive, setIsLive] = useState(false);
     const [messageInput, setMessageInput] = useState('');
     const [queueProgress, setQueueProgress] = useState(0);
@@ -41,7 +43,13 @@ export default function SellerDashboard() {
     const [recentBids, setRecentBids] = useState([]);
     const [recentMessages, setRecentMessages] = useState([]);
     const [latestConvId, setLatestConvId] = useState(null);
-    const [loading, setLoading] = useState(true);
+    const [streamReady, setStreamReady] = useState(false);
+    const [isMuted, setIsMuted] = useState(false);
+    const [isVideoOff, setIsVideoOff] = useState(false);
+
+    // Agora refs
+    const agoraClientRef = useRef(null);
+    const localTracksRef = useRef({ audio: null, video: null });
 
     const fetchDashboardData = useCallback(async () => {
         if (!user) return;
@@ -77,8 +85,6 @@ export default function SellerDashboard() {
             }
         } catch (err) {
             console.error('Failed to fetch dashboard data:', err);
-        } finally {
-            setLoading(false);
         }
     }, [user]);
 
@@ -118,6 +124,31 @@ export default function SellerDashboard() {
         return () => clearInterval(interval);
     }, [fetchDashboardData, fetchLatestMessages]);
 
+    // Auto-start camera if auction is already live
+    useEffect(() => {
+        if (dashboardData.activeAuction && isLive && !streamReady && !agoraClientRef.current) {
+            // Auction is active, start camera
+            startAgoraStream(dashboardData.activeAuction.auction_id);
+        }
+
+        // Cleanup on unmount
+        return () => {
+            if (agoraClientRef.current) {
+                const { audio, video } = localTracksRef.current;
+                if (audio) {
+                    audio.close();
+                    localTracksRef.current.audio = null;
+                }
+                if (video) {
+                    video.close();
+                    localTracksRef.current.video = null;
+                }
+                agoraClientRef.current.leave().catch(() => {});
+                agoraClientRef.current = null;
+            }
+        };
+    }, [dashboardData.activeAuction, isLive, streamReady]);
+
     const handleQueueScroll = (e) => {
         const element = e.target;
         const progress = element.scrollLeft / (element.scrollWidth - element.clientWidth);
@@ -136,6 +167,96 @@ export default function SellerDashboard() {
     // Check if there are products available (queue + active)
     const hasProducts = dashboardData.queue.length > 0 || activeItem !== null;
 
+    const startAgoraStream = async (auctionId) => {
+        try {
+            console.log('🎥 Requesting camera and microphone permissions...');
+
+            // First, request browser permissions
+            const stream = await navigator.mediaDevices.getUserMedia({ video: true, audio: true });
+            console.log('✅ Browser permissions granted');
+
+            // Stop the preview stream as Agora will create its own
+            stream.getTracks().forEach(track => track.stop());
+
+            // Dynamic import Agora
+            const module = await import('agora-rtc-sdk-ng');
+            AgoraRTC = module.default;
+            AgoraRTC.setLogLevel(4);
+
+            const apiUrl = process.env.NEXT_PUBLIC_API_URL || 'http://127.0.0.1:5000';
+            const token = localStorage.getItem('bidpal_token');
+
+            console.log('🔑 Fetching Agora token...');
+            // Fetch Agora token
+            const tokenRes = await fetch(
+                `${apiUrl}/api/agora/token?channelName=${auctionId}&role=host&uid=0`,
+                { headers: { Authorization: `Bearer ${token}` } }
+            );
+            const tokenData = await tokenRes.json();
+            if (!tokenRes.ok) {
+                throw new Error(tokenData.error || 'Failed to get Agora token');
+            }
+            console.log('✅ Agora token received');
+
+            const client = AgoraRTC.createClient({ mode: 'live', codec: 'vp8' });
+            agoraClientRef.current = client;
+
+            await client.setClientRole('host');
+            const uid = user?.id ? Number(String(user.id).replace(/\D/g, '').slice(-8)) || 0 : 0;
+
+            console.log('🔗 Joining Agora channel...');
+            await client.join(process.env.NEXT_PUBLIC_AGORA_APP_ID, String(auctionId), tokenData.token, uid);
+            console.log('✅ Joined Agora channel');
+
+            console.log('📹 Creating camera and microphone tracks...');
+            // Create camera and mic tracks with simpler settings
+            const [audioTrack, videoTrack] = await AgoraRTC.createMicrophoneAndCameraTracks(
+                { AEC: true, ANS: true },
+                { encoderConfig: '480p_1' }
+            );
+            console.log('✅ Tracks created');
+
+            localTracksRef.current = { audio: audioTrack, video: videoTrack };
+
+            // Play video on dashboard
+            console.log('▶️ Playing video on dashboard...');
+            videoTrack.play('seller-camera-preview');
+            setStreamReady(true);
+            console.log('✅ Video playing');
+
+            // Publish to channel
+            console.log('📡 Publishing to channel...');
+            await client.publish([audioTrack, videoTrack]);
+            console.log('✅ Live stream started successfully!');
+        } catch (err) {
+            console.error('❌ Failed to start camera:', err);
+
+            let errorMessage = 'Failed to start camera. ';
+
+            if (err.name === 'NotAllowedError') {
+                errorMessage += 'Camera/microphone permission denied. Please allow access in your browser settings.';
+            } else if (err.name === 'NotReadableError' || err.code === 'NOT_READABLE') {
+                errorMessage += 'Camera is already in use by another application. Please close other apps using the camera and try again.';
+            } else if (err.name === 'NotFoundError') {
+                errorMessage += 'No camera or microphone found. Please connect a camera/microphone.';
+            } else {
+                errorMessage += err.message || 'Unknown error occurred.';
+            }
+
+            alert(errorMessage);
+        }
+    };
+
+    const stopAgoraStream = () => {
+        const { audio, video } = localTracksRef.current;
+        if (audio) audio.close();
+        if (video) video.close();
+        if (agoraClientRef.current) {
+            agoraClientRef.current.leave().catch(() => {});
+        }
+        setStreamReady(false);
+    };
+
     const handleGoLive = async () => {
         if (!isLive) {
             if (dashboardData.queue.length === 0) {
@@ -153,6 +274,9 @@ export default function SellerDashboard() {
                     }
                 });
                 if (res.ok) {
+                    // Start camera on dashboard
+                    await startAgoraStream(nextAuction.auction_id);
+                    // Refresh dashboard to show active auction
                     fetchDashboardData();
                 } else {
                     const error = await res.json();
@@ -160,6 +284,7 @@ export default function SellerDashboard() {
                 }
             } catch (err) {
                 console.error(err);
+                alert('An error occurred while starting the auction');
             }
         } else {
             // End Stream
@@ -173,12 +298,27 @@ export default function SellerDashboard() {
                     }
                 });
                 if (res.ok) {
+                    stopAgoraStream();
                     fetchDashboardData();
                 }
             } catch (err) {
                 console.error(err);
             }
         }
+    };
+
+    const toggleMic = () => {
+        const { audio } = localTracksRef.current;
+        if (!audio) return;
+        if (isMuted) { audio.setEnabled(true); } else { audio.setEnabled(false); }
+        setIsMuted(!isMuted);
+    };
+
+    const toggleVideo = () => {
+        const { video } = localTracksRef.current;
+        if (!video) return;
+        if (isVideoOff) { video.setEnabled(true); } else { video.setEnabled(false); }
+        setIsVideoOff(!isVideoOff);
     };
 
     return (
@@ -193,19 +333,8 @@ export default function SellerDashboard() {
                     </div>
                 </div>
                 <div className={styles.headerActions}>
-                    <Link href="/messages" className={styles.addBtnSmall} style={{ position: 'relative' }}>
-                        <MessageSquare size={18} />
-                        Messages
-                        {msgUnreadCount > 0 && (
-                            <span style={{
-                                position: 'absolute', top: '-6px', right: '-6px',
-                                background: '#ef4444', color: 'white',
-                                fontSize: '0.6rem', fontWeight: 800,
-                                minWidth: '16px', height: '16px', borderRadius: '8px',
-                                display: 'flex', alignItems: 'center', justifyContent: 'center',
-                                padding: '0 3px', border: '1.5px solid white'
-                            }}>{msgUnreadCount > 99 ? '99+' : msgUnreadCount}</span>
-                        )}
+                    <Link href="/seller/add-product" className={styles.addBtnSmall}>
+                        <Plus size={18} /> Add Product
                     </Link>
                     <button
                         className={`${styles.liveControlBtn} ${isLive ? styles.stop : styles.start} ${!hasProducts && !isLive ? styles.disabled : ''}`}
@@ -216,9 +345,6 @@ export default function SellerDashboard() {
                         {isLive ? <Square size={18} fill="currentColor" /> : <Play size={18} fill="currentColor" />}
                         {isLive ? 'End Stream' : 'Go Live'}
                     </button>
-                    <Link href="/seller/add-product" className={styles.addBtnSmall}>
-                        <Plus size={18} /> Add Product
-                    </Link>
                 </div>
             </header>
 
@@ -240,8 +366,103 @@ export default function SellerDashboard() {
                             </div>
 
                             <div className={styles.auctionShowcase}>
-                                <div className={styles.showcaseImage}>
-                                    <img src={activeItem.image} alt={activeItem.title} />
+                                <div className={styles.showcaseImage} style={{ position: 'relative', background: '#000' }}>
+                                    {streamReady ? (
+                                        <>
+                                            {/* Live Camera Feed */}
+                                            <div
+                                                id="seller-camera-preview"
+                                                style={{
+                                                    width: '100%',
+                                                    height: '100%',
+                                                    position: 'absolute',
+                                                    inset: 0,
+                                                    objectFit: 'cover'
+                                                }}
+                                            />
+                                            {/* Camera Controls */}
+                                            <div style={{
+                                                position: 'absolute',
+                                                bottom: '1rem',
+                                                left: '50%',
+                                                transform: 'translateX(-50%)',
+                                                display: 'flex',
+                                                gap: '0.75rem',
+                                                zIndex: 10
+                                            }}>
+                                                <button
+                                                    onClick={toggleMic}
+                                                    style={{
+                                                        background: isMuted ? '#D32F2F' : 'rgba(255,255,255,0.2)',
+                                                        border: 'none',
+                                                        borderRadius: '50%',
+                                                        width: 44,
+                                                        height: 44,
+                                                        display: 'flex',
+                                                        alignItems: 'center',
+                                                        justifyContent: 'center',
+                                                        cursor: 'pointer',
+                                                        backdropFilter: 'blur(4px)'
+                                                    }}
+                                                >
+                                                    {isMuted ? <MicOff size={20} color="white" /> : <Mic size={20} color="white" />}
+                                                </button>
+                                                <button
+                                                    onClick={toggleVideo}
+                                                    style={{
+                                                        background: isVideoOff ? '#D32F2F' : 'rgba(255,255,255,0.2)',
+                                                        border: 'none',
+                                                        borderRadius: '50%',
+                                                        width: 44,
+                                                        height: 44,
+                                                        display: 'flex',
+                                                        alignItems: 'center',
+                                                        justifyContent: 'center',
+                                                        cursor: 'pointer',
+                                                        backdropFilter: 'blur(4px)'
+                                                    }}
+                                                >
+                                                    {isVideoOff ? <VideoOff size={20} color="white" /> : <Video size={20} color="white" />}
+                                                </button>
+                                            </div>
+                                        </>
+                                    ) : (
+                                        <>
+                                            <img src={activeItem.image} alt={activeItem.title} style={{ width: '100%', height: '100%', objectFit: 'cover' }} />
+                                            {isLive && (
+                                                <div style={{
+                                                    position: 'absolute',
+                                                    inset: 0,
+                                                    display: 'flex',
+                                                    alignItems: 'center',
+                                                    justifyContent: 'center',
+                                                    background: 'rgba(0,0,0,0.5)',
+                                                    zIndex: 5
+                                                }}>
+                                                    <button
+                                                        onClick={() => startAgoraStream(activeItem.id)}
+                                                        style={{
+                                                            padding: '14px 28px',
+                                                            fontSize: '1rem',
+                                                            fontWeight: 600,
+                                                            borderRadius: '8px',
+                                                            cursor: 'pointer',
+                                                            background: '#D32F2F',
+                                                            color: 'white',
+                                                            border: 'none',
+                                                            display: 'flex',
+                                                            alignItems: 'center',
+                                                            gap: '8px',
+                                                            boxShadow: '0 4px 12px rgba(211, 47, 47, 0.4)'
+                                                        }}
+                                                    >
+                                                        <Video size={20} />
+                                                        Start Camera
+                                                    </button>
+                                                </div>
+                                            )}
+                                        </>
+                                    )}
                                 </div>
                                 <div className={styles.showcaseDetails}>
                                     <h1 className={styles.showcaseTitle}>{activeItem.title}</h1>
