@@ -3,7 +3,7 @@
 import { useState, useEffect, Suspense } from 'react';
 import { useSearchParams, useRouter } from 'next/navigation';
 import Link from 'next/link';
-import { ChevronRight, Check, Package, ArrowRight, Loader2 } from 'lucide-react';
+import { ChevronRight, Check, Package, ArrowRight, Loader2, Calendar } from 'lucide-react';
 import PhilippineIDVerification from '@/components/PhilippineIDVerification';
 import { useAuth } from '@/context/AuthContext';
 import styles from './page.module.css';
@@ -53,7 +53,7 @@ function Sidebar({ currentStep, onStepClick }) {
 
 // ─── Step 1: Personal Information ──────────────────────────────────────────
 function PersonalInfoStep({ data, onChange, onNext }) {
-    const isValid = data.firstName && data.lastName && data.birthday && data.gender && data.contactNumber;
+    const isValid = data.firstName && data.lastName && data.birthday && data.birthday.length === 10 && data.gender && data.contactNumber && data.contactNumber.length === 11;
     return (
         <div className={styles.formArea}>
             <h2 className={styles.formTitle}>Personal <span className={styles.redText}>Information</span></h2>
@@ -61,25 +61,29 @@ function PersonalInfoStep({ data, onChange, onNext }) {
 
             <div className={styles.formGrid}>
                 <div className={styles.formGroup}>
-                    <label>First Name</label>
-                    <input className={styles.input} placeholder="Juan" value={data.firstName} onChange={e => onChange({ firstName: e.target.value })} />
+                    <label>First Name<span style={{ color: 'red' }}>*</span></label>
+                    <input className={styles.input} type="text" placeholder="Juan" value={data.firstName} onChange={e => onChange({ firstName: e.target.value.replace(/[^a-zA-ZÀ-ÖØ-öø-ÿ\s\-]/g, '') })} />
                 </div>
                 <div className={styles.formGroup}>
-                    <label>Last Name</label>
-                    <input className={styles.input} placeholder="Dela Cruz" value={data.lastName} onChange={e => onChange({ lastName: e.target.value })} />
+                    <label>Last Name<span style={{ color: 'red' }}>*</span></label>
+                    <input className={styles.input} type="text" placeholder="Dela Cruz" value={data.lastName} onChange={e => onChange({ lastName: e.target.value.replace(/[^a-zA-ZÀ-ÖØ-öø-ÿ\s\-]/g, '') })} />
                 </div>
                 <div className={styles.formGroup}>
                     <label>Middle Name (Optional)</label>
-                    <input className={styles.input} placeholder="Santos" value={data.middleName} onChange={e => onChange({ middleName: e.target.value })} />
+                    <input className={styles.input} placeholder="Santos" value={data.middleName} onChange={e => onChange({ middleName: e.target.value.replace(/[^a-zA-ZÀ-ÖØ-öø-ÿ\s\-]/g, '') })} />
                 </div>
                 <div className={styles.formGroup}>
-                    <label>Birthday</label>
-                    <input className={styles.input} type="date" max={new Date().toISOString().split('T')[0]} value={data.birthday} onChange={e => onChange({ birthday: e.target.value })} />
+                    <label>Birthday<span style={{ color: 'red' }}>*</span></label>
+                    <div style={{ position: 'relative', display: 'flex', alignItems: 'center' }}>
+                        <input className={styles.input} type="text" placeholder="MM/DD/YYYY" maxLength={10} value={data.birthday} style={{ paddingRight: '2.5rem' }} onChange={e => { const digits = e.target.value.replace(/\D/g, '').slice(0, 8); let formatted = digits; if (digits.length > 4) formatted = digits.slice(0, 2) + '/' + digits.slice(2, 4) + '/' + digits.slice(4); else if (digits.length > 2) formatted = digits.slice(0, 2) + '/' + digits.slice(2); onChange({ birthday: formatted }); }} />
+                        <input type="date" max={new Date().toISOString().split('T')[0]} style={{ position: 'absolute', right: 0, opacity: 0, width: '2rem', height: '100%', cursor: 'pointer' }} onChange={e => { const [y, m, d] = e.target.value.split('-'); if (y && m && d) onChange({ birthday: `${m}/${d}/${y}` }); }} />
+                        <Calendar size={16} style={{ position: 'absolute', right: '0.6rem', pointerEvents: 'none', color: '#888' }} />
+                    </div>
                 </div>
                 <div className={styles.formGroup}>
-                    <label>Gender</label>
+                    <label>Gender<span style={{ color: 'red' }}>*</span></label>
                     <select className={styles.select} value={data.gender} onChange={e => onChange({ gender: e.target.value })}>
-                        <option value="">Select Gender</option>
+                        <option value="" disabled hidden>Select Gender</option>
                         <option>Male</option>
                         <option>Female</option>
                         <option>Non-binary</option>
@@ -87,8 +91,22 @@ function PersonalInfoStep({ data, onChange, onNext }) {
                     </select>
                 </div>
                 <div className={styles.formGroup}>
-                    <label>Contact Number</label>
-                    <input className={styles.input} type="tel" placeholder="+63 917 123 4567" value={data.contactNumber} onChange={e => onChange({ contactNumber: e.target.value })} />
+                    <label>Contact Number<span style={{ color: 'red' }}>*</span></label>
+                    <div style={{ display: 'flex', alignItems: 'center', border: '1px solid #ccc', borderRadius: '6px', overflow: 'hidden' }}>
+                        <span style={{ padding: '0 10px', background: '#f5f5f5', color: '#555', fontWeight: 600, borderRight: '1px solid #ccc', height: '100%', display: 'flex', alignItems: 'center', whiteSpace: 'nowrap' }}>09</span>
+                        <input
+                            className={styles.input}
+                            type="tel"
+                            placeholder="171234567"
+                            maxLength={9}
+                            value={data.contactNumber ? data.contactNumber.slice(2) : ''}
+                            onChange={e => {
+                                const digits = e.target.value.replace(/[^0-9]/g, '').slice(0, 9);
+                                onChange({ contactNumber: '09' + digits });
+                            }}
+                            style={{ border: 'none', borderRadius: 0, outline: 'none', flex: 1 }}
+                        />
+                    </div>
                 </div>
                 <div className={`${styles.formGroup} ${styles.formGridFull}`}>
                     <label>Bio / Short Introduction (Optional)</label>
@@ -115,13 +133,13 @@ function StoreInfoStep({ data, onChange, onNext, onBack }) {
 
             <div className={styles.formGrid}>
                 <div className={`${styles.formGroup} ${styles.formGridFull}`}>
-                    <label>Store Name</label>
+                    <label>Store Name<span style={{ color: 'red' }}>*</span></label>
                     <input className={styles.input} placeholder="e.g. Juan's Vintage Corner" value={data.storeName} onChange={e => onChange({ storeName: e.target.value })} />
                 </div>
                 <div className={styles.formGroup}>
-                    <label>Business Category</label>
+                    <label>Business Category<span style={{ color: 'red' }}>*</span></label>
                     <select className={styles.select} value={data.category} onChange={e => onChange({ category: e.target.value })}>
-                        <option value="">Select Category</option>
+                        <option value="" disabled hidden>Select Category</option>
                         <option>Fashion & Accessories</option>
                         <option>Gadgets & Electronics</option>
                         <option>Collectibles & Antiques</option>
@@ -134,11 +152,11 @@ function StoreInfoStep({ data, onChange, onNext, onBack }) {
                     </select>
                 </div>
                 <div className={styles.formGroup}>
-                    <label>Store Handle</label>
+                    <label>Store Handle<span style={{ color: 'red' }}>*</span></label>
                     <input className={styles.input} placeholder="juansvintage" value={data.handle} onChange={e => onChange({ handle: e.target.value })} />
                 </div>
                 <div className={`${styles.formGroup} ${styles.formGridFull}`}>
-                    <label>Store Description</label>
+                    <label>Store Description<span style={{ color: 'red' }}>*</span></label>
                     <textarea className={styles.textarea} rows={4} placeholder="Tell buyers what makes your store unique..." value={data.description} onChange={e => onChange({ description: e.target.value })} />
                 </div>
             </div>
@@ -157,14 +175,14 @@ function StoreInfoStep({ data, onChange, onNext, onBack }) {
 function AddressStep({ data, onChange, onNext, onBack }) {
     const apiUrl = process.env.NEXT_PUBLIC_API_URL || 'http://127.0.0.1:5000';
 
-    const [regions,    setRegions]    = useState([]);
-    const [provinces,  setProvinces]  = useState([]);
-    const [cities,     setCities]     = useState([]);
-    const [barangays,  setBarangays]  = useState([]);
+    const [regions, setRegions] = useState([]);
+    const [provinces, setProvinces] = useState([]);
+    const [cities, setCities] = useState([]);
+    const [barangays, setBarangays] = useState([]);
 
-    const [loadingRegions,   setLoadingRegions]   = useState(true);
+    const [loadingRegions, setLoadingRegions] = useState(true);
     const [loadingProvinces, setLoadingProvinces] = useState(false);
-    const [loadingCities,    setLoadingCities]    = useState(false);
+    const [loadingCities, setLoadingCities] = useState(false);
     const [loadingBarangays, setLoadingBarangays] = useState(false);
 
     // Load regions on mount
@@ -213,7 +231,7 @@ function AddressStep({ data, onChange, onNext, onBack }) {
             .finally(() => setLoadingBarangays(false));
     }, [data.municipality_city, apiUrl]);
 
-    const isValid = data.Line1 && data.Barangay && data.municipality_city && data.province && data.region && data.zip_code;
+    const isValid = data.Line1 && data.Barangay && data.municipality_city && data.province && data.region && data.zip_code && data.zip_code.length === 4;
 
     const SelectWithLoader = ({ loading, children, ...props }) => (
         <div style={{ position: 'relative' }}>
@@ -238,43 +256,43 @@ function AddressStep({ data, onChange, onNext, onBack }) {
             <div className={styles.formGrid}>
                 {/* Region */}
                 <div className={styles.formGroup}>
-                    <label>Region</label>
+                    <label>Region<span style={{ color: 'red' }}>*</span></label>
                     <SelectWithLoader loading={loadingRegions} value={data.region} onChange={e => onChange({ region: e.target.value, province: '', municipality_city: '', Barangay: '' })}>
-                        <option value="">{loadingRegions ? 'Loading…' : 'Select Region'}</option>
+                        <option value="" disabled hidden>{loadingRegions ? 'Loading…' : 'Select Region'}</option>
                         {regions.map(r => <option key={r.region} value={r.region}>{r.name}</option>)}
                     </SelectWithLoader>
                 </div>
 
                 {/* Province */}
                 <div className={styles.formGroup}>
-                    <label>Province</label>
+                    <label>Province<span style={{ color: 'red' }}>*</span></label>
                     <SelectWithLoader loading={loadingProvinces} value={data.province} onChange={e => onChange({ province: e.target.value, municipality_city: '', Barangay: '' })}>
-                        <option value="">{!data.region ? 'Select a region first' : loadingProvinces ? 'Loading…' : 'Select Province'}</option>
+                        <option value="" disabled hidden>{!data.region ? 'Select a region first' : loadingProvinces ? 'Loading…' : 'Select Province'}</option>
                         {provinces.map(p => <option key={p} value={p}>{p}</option>)}
                     </SelectWithLoader>
                 </div>
 
                 {/* City / Municipality */}
                 <div className={styles.formGroup}>
-                    <label>City / Municipality</label>
+                    <label>City / Municipality<span style={{ color: 'red' }}>*</span></label>
                     <SelectWithLoader loading={loadingCities} value={data.municipality_city} onChange={e => onChange({ municipality_city: e.target.value, Barangay: '' })}>
-                        <option value="">{!data.province ? 'Select a province first' : loadingCities ? 'Loading…' : 'Select City / Municipality'}</option>
+                        <option value="" disabled hidden>{!data.province ? 'Select a province first' : loadingCities ? 'Loading…' : 'Select City / Municipality'}</option>
                         {cities.map(c => <option key={c} value={c}>{c}</option>)}
                     </SelectWithLoader>
                 </div>
 
                 {/* Barangay */}
                 <div className={styles.formGroup}>
-                    <label>Barangay</label>
+                    <label>Barangay<span style={{ color: 'red' }}>*</span></label>
                     <SelectWithLoader loading={loadingBarangays} value={data.Barangay} onChange={e => onChange({ Barangay: e.target.value })}>
-                        <option value="">{!data.municipality_city ? 'Select a city first' : loadingBarangays ? 'Loading…' : 'Select Barangay'}</option>
+                        <option value="" disabled hidden>{!data.municipality_city ? 'Select a city first' : loadingBarangays ? 'Loading…' : 'Select Barangay'}</option>
                         {barangays.map(b => <option key={b} value={b}>{b}</option>)}
                     </SelectWithLoader>
                 </div>
 
                 {/* Street / House No. */}
                 <div className={`${styles.formGroup} ${styles.formGridFull}`}>
-                    <label>Street Address / Building / House No.</label>
+                    <label>Street Address / Building / House No.<span style={{ color: 'red' }}>*</span></label>
                     <input
                         className={styles.input}
                         placeholder="e.g. 123 Rizal St., Unit 4B, Sunrise Bldg."
@@ -296,14 +314,14 @@ function AddressStep({ data, onChange, onNext, onBack }) {
 
                 {/* Zip Code */}
                 <div className={styles.formGroup}>
-                    <label>Zip Code</label>
+                    <label>Zip Code<span style={{ color: 'red' }}>*</span></label>
                     <input
                         className={styles.input}
                         type="text"
-                        maxLength={5}
+                        maxLength={4}
                         placeholder="e.g. 8000"
                         value={data.zip_code}
-                        onChange={e => onChange({ zip_code: e.target.value })}
+                        onChange={e => onChange({ zip_code: e.target.value.replace(/[^0-9]/g, '').slice(0, 4) })}
                     />
                 </div>
 
@@ -453,7 +471,7 @@ function SetupPageInner() {
                     Fname: personal.firstName,
                     Lname: personal.lastName,
                     Mname: personal.middleName || null,
-                    Birthday: personal.birthday || null,
+                    Birthday: personal.birthday && personal.birthday.length === 10 ? `${personal.birthday.slice(6)}-${personal.birthday.slice(0, 2)}-${personal.birthday.slice(3, 5)}` : null,
                     Gender: personal.gender,
                     contact_num: personal.contactNumber,
                     Bio: personal.bio || null,
@@ -471,11 +489,11 @@ function SetupPageInner() {
                     ...(token && { Authorization: `Bearer ${token}` }),
                 },
                 body: JSON.stringify({
-                    store_name:        store.storeName,
-                    business_category: store.category    || null,
-                    store_handle:      store.handle      || null,
+                    store_name: store.storeName,
+                    business_category: store.category || null,
+                    store_handle: store.handle || null,
                     store_description: store.description || null,
-                    user_id:           user.user_id,
+                    user_id: user.user_id,
                 }),
             });
             const sellerData = await sellerRes.json();
@@ -489,18 +507,18 @@ function SetupPageInner() {
                     ...(token && { Authorization: `Bearer ${token}` }),
                 },
                 body: JSON.stringify({
-                    user_id:           user.user_id,
-                    Line1:             address.Line1,
-                    Line2:             address.Line2             || null,
-                    household_blk_st:  address.household_blk_st || null,
-                    Barangay:          address.Barangay          || null,
+                    user_id: user.user_id,
+                    Line1: address.Line1,
+                    Line2: address.Line2 || null,
+                    household_blk_st: address.household_blk_st || null,
+                    Barangay: address.Barangay || null,
                     municipality_city: address.municipality_city || null,
-                    zip_code:          address.zip_code          || null,
-                    region:            address.region            || null,
-                    province:          address.province          || null,
-                    address_type:      'pickup',
-                    is_default:        true,
-                    Country:           'Philippines',
+                    zip_code: address.zip_code || null,
+                    region: address.region || null,
+                    province: address.province || null,
+                    address_type: 'pickup',
+                    is_default: true,
+                    Country: 'Philippines',
                 }),
             });
             const addressData = await addressRes.json();

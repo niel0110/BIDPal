@@ -12,7 +12,7 @@ const httpServer = createServer(app)
 // Socket.IO setup for real-time events (future native clients)
 const io = new SocketIOServer(httpServer, {
   cors: {
-    origin: '*',
+    origin: process.env.FRONTEND_URL || '*',
     methods: ['GET', 'POST']
   }
 })
@@ -24,6 +24,21 @@ io.on('connection', (socket) => {
   // Client joins their own user room for targeted events
   socket.on('join', (userId) => {
     socket.join(`user:${userId}`)
+  })
+
+  // Join an auction room
+  socket.on('join-auction', (auctionId) => {
+    socket.join(`auction:${auctionId}`)
+  })
+
+  // Broadcast new bid to everyone in the auction room
+  socket.on('new-bid', ({ auctionId, bid }) => {
+    io.to(`auction:${auctionId}`).emit('bid-update', bid)
+  })
+
+  // Broadcast a comment to everyone in the auction room
+  socket.on('send-comment', ({ auctionId, comment }) => {
+    io.to(`auction:${auctionId}`).emit('new-comment', comment)
   })
 
   socket.on('disconnect', () => {})
@@ -44,6 +59,7 @@ import dashboardRoutes from './routes/dashboardRoutes.js'
 import messagesRoutes from './routes/messagesRoutes.js'
 import followsRoutes from './routes/followsRoutes.js'
 import notificationsRoutes from './routes/notificationsRoutes.js'
+import agoraRoutes from './routes/agoraRoutes.js'
 
 app.get('/', (req, res) => {
   res.json({ message: 'Backend running' })
@@ -66,6 +82,7 @@ app.use('/api/dashboard', dashboardRoutes)
 app.use('/api/messages', messagesRoutes)
 app.use('/api/follows', followsRoutes)
 app.use('/api/notifications', notificationsRoutes)
+app.use('/api/agora', agoraRoutes)
 
 httpServer.listen(process.env.PORT, () => {
   console.log(`Server running on port ${process.env.PORT}`)

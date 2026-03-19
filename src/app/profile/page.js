@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, Suspense, useEffect } from 'react';
+import { useState, Suspense, useEffect, useRef } from 'react';
 import dynamic from 'next/dynamic';
 import {
     User,
@@ -153,7 +153,7 @@ function AccountContent() {
                 const name = [data.Fname, data.Mname, data.Lname].filter(Boolean).join(' ');
                 setSidebarName(name || data.email || '');
             })
-            .catch(() => {});
+            .catch(() => { });
     }, [user?.user_id]);
 
     const getUserDisplayName = () => sidebarName || user?.email || '';
@@ -352,7 +352,7 @@ function StoreProfileSection() {
                     setBusinessCategory(data.business_category || '');
                 }
             })
-            .catch(() => {})
+            .catch(() => { })
             .finally(() => setLoading(false));
     }, [user?.user_id]);
 
@@ -386,8 +386,6 @@ function StoreProfileSection() {
         }
     };
 
-    const initials = storeName ? storeName.split(' ').map(w => w[0]).slice(0, 2).join('').toUpperCase() : '?';
-
     if (loading) {
         return (
             <div className={styles.section}>
@@ -398,24 +396,7 @@ function StoreProfileSection() {
 
     return (
         <div className={styles.section}>
-            {/* Store Hero Header */}
-            <div className={styles.storeHero}>
-                <div className={styles.storeHeroBg} />
-                <div className={styles.storeHeroContent}>
-                    <div className={styles.storeAvatar}>
-                        {initials}
-                    </div>
-                    <div className={styles.storeHeroInfo}>
-                        <h2 className={styles.storeHeroName}>{storeName || 'Your Store'}</h2>
-                        {storeHandle && (
-                            <span className={styles.storeHeroHandle}>bidpal.com/{storeHandle}</span>
-                        )}
-                        <span className={styles.storeHeroBadge}>{businessCategory || 'No category set'}</span>
-                    </div>
-                </div>
-            </div>
-
-            <header className={styles.sectionHeader} style={{ marginTop: '2rem' }}>
+            <header className={styles.sectionHeader}>
                 <h1>Store Profile</h1>
                 <p>Public information visible to buyers on your store page.</p>
             </header>
@@ -459,7 +440,7 @@ function StoreProfileSection() {
                     <label>Business Category</label>
                     <div className={styles.selectWrapper}>
                         <select value={businessCategory} onChange={e => setBusinessCategory(e.target.value)}>
-                            <option value="">Select Category</option>
+                            <option value="" disabled hidden>Select Category</option>
                             <option>Fashion &amp; Accessories</option>
                             <option>Gadgets &amp; Electronics</option>
                             <option>Collectibles &amp; Antiques</option>
@@ -507,6 +488,7 @@ function ProfileSection() {
     const [email, setEmail] = useState('');
     const [phone, setPhone] = useState('');
     const [birthday, setBirthday] = useState('');
+    const birthdayPickerRef = useRef(null);
     const [gender, setGender] = useState('');
     const [bio, setBio] = useState('');
     const [loading, setLoading] = useState(false);
@@ -522,7 +504,7 @@ function ProfileSection() {
         setLastName(user.Lname || '');
         setEmail(user.email || '');
         setPhone(user.contact_num || '');
-        setBirthday(user.Birthday ? user.Birthday.split('T')[0] : '');
+        setBirthday(user.Birthday ? toDisplayBirthday(user.Birthday.split('T')[0]) : '');
         setGender(user.Gender || '');
         setBio(user.Bio || '');
 
@@ -539,12 +521,32 @@ function ProfileSection() {
                 setLastName(data.Lname || '');
                 setEmail(data.email || '');
                 setPhone(data.contact_num || '');
-                setBirthday(data.Birthday ? data.Birthday.split('T')[0] : '');
+                setBirthday(data.Birthday ? toDisplayBirthday(data.Birthday.split('T')[0]) : '');
                 setGender(data.Gender || '');
                 setBio(data.Bio || '');
             })
-            .catch(() => {});
+            .catch(() => { });
     }, [user?.user_id]);
+
+    const toDisplayBirthday = (iso) => {
+        if (!iso) return '';
+        const [y, m, d] = iso.split('-');
+        return `${m}/${d}/${y}`;
+    };
+
+    const toISOBirthday = (display) => {
+        if (!display) return '';
+        const [m, d, y] = display.split('/');
+        if (!m || !d || !y || y.length < 4) return '';
+        return `${y}-${m.padStart(2, '0')}-${d.padStart(2, '0')}`;
+    };
+
+    const handleBirthdayChange = (e) => {
+        let val = e.target.value.replace(/\D/g, '');
+        if (val.length > 2) val = val.slice(0, 2) + '/' + val.slice(2);
+        if (val.length > 5) val = val.slice(0, 5) + '/' + val.slice(5);
+        setBirthday(val.slice(0, 10));
+    };
 
     const handleSaveProfile = async () => {
         if (!user) return;
@@ -563,7 +565,7 @@ function ProfileSection() {
                     Mname: middleName,
                     Lname: lastName,
                     contact_num: phone,
-                    Birthday: birthday || null,
+                    Birthday: birthday ? toISOBirthday(birthday) : null,
                     Gender: gender || null,
                     Bio: bio || null,
                 }),
@@ -599,15 +601,15 @@ function ProfileSection() {
                 <div className={styles.formGrid3}>
                     <div className={styles.formGroup}>
                         <label>First Name</label>
-                        <input type="text" value={firstName} onChange={e => setFirstName(e.target.value)} placeholder="Juan" />
+                        <input type="text" value={firstName} onChange={e => setFirstName(e.target.value.replace(/[^a-zA-ZÀ-ÖØ-öø-ÿ\s\-]/g, ''))} placeholder="Juan" />
                     </div>
                     <div className={styles.formGroup}>
                         <label>Middle Name <span className={styles.optionalTag}>(Optional)</span></label>
-                        <input type="text" value={middleName} onChange={e => setMiddleName(e.target.value)} placeholder="Santos" />
+                        <input type="text" value={middleName} onChange={e => setMiddleName(e.target.value.replace(/[^a-zA-ZÀ-ÖØ-öø-ÿ\s\-]/g, ''))} placeholder="Santos" />
                     </div>
                     <div className={styles.formGroup}>
                         <label>Last Name</label>
-                        <input type="text" value={lastName} onChange={e => setLastName(e.target.value)} placeholder="Dela Cruz" />
+                        <input type="text" value={lastName} onChange={e => setLastName(e.target.value.replace(/[^a-zA-ZÀ-ÖØ-öø-ÿ\s\-]/g, ''))} placeholder="Dela Cruz" />
                     </div>
                 </div>
 
@@ -623,7 +625,20 @@ function ProfileSection() {
                     </div>
                     <div className={styles.formGroup}>
                         <label>Phone Number</label>
-                        <input type="tel" value={phone} onChange={e => setPhone(e.target.value)} placeholder="+63 917 123 4567" />
+                        <div style={{ display: 'flex', alignItems: 'center', border: '1px solid #eee', borderRadius: '14px', overflow: 'hidden', padding: '0 1.1rem', background: '#f5f5f5' }}>
+                            <span style={{ color: '#555', fontWeight: 600, whiteSpace: 'nowrap', paddingRight: '8px', borderRight: '1px solid #eee' }}>09</span>
+                            <input
+                                type="tel"
+                                placeholder="171234567"
+                                maxLength={9}
+                                value={phone ? phone.slice(2) : ''}
+                                onChange={e => {
+                                    const digits = e.target.value.replace(/[^0-9]/g, '').slice(0, 9);
+                                    setPhone('09' + digits);
+                                }}
+                                style={{ border: 'none', outline: 'none', flex: 1, padding: '1.1rem 0 1.1rem 8px', fontFamily: 'inherit', fontSize: 'inherit', background: 'transparent' }}
+                            />
+                        </div>
                     </div>
                 </div>
 
@@ -631,18 +646,34 @@ function ProfileSection() {
                 <div className={styles.formGrid2}>
                     <div className={styles.formGroup}>
                         <label><Calendar size={14} style={{ display: 'inline', marginRight: 5 }} />Birthday</label>
-                        <input
-                            type="date"
-                            value={birthday}
-                            max={new Date().toISOString().split('T')[0]}
-                            onChange={e => setBirthday(e.target.value)}
-                        />
+                        <div className={styles.dateWrapper}>
+                            <input
+                                type="text"
+                                placeholder="mm/dd/yyyy"
+                                value={birthday}
+                                maxLength={10}
+                                onChange={handleBirthdayChange}
+                            />
+                            <button
+                                type="button"
+                                className={styles.calendarBtn}
+                                onClick={() => birthdayPickerRef.current?.showPicker()}
+                            >
+                                <Calendar size={16} />
+                            </button>
+                            <input
+                                ref={birthdayPickerRef}
+                                type="date"
+                                max={new Date().toISOString().split('T')[0]}
+                                onChange={e => setBirthday(toDisplayBirthday(e.target.value))}
+                            />
+                        </div>
                     </div>
                     <div className={styles.formGroup}>
                         <label>Gender</label>
                         <div className={styles.selectWrapper}>
                             <select value={gender} onChange={e => setGender(e.target.value)}>
-                                <option value="">Select Gender</option>
+                                <option value="" disabled hidden>Select Gender</option>
                                 <option>Male</option>
                                 <option>Female</option>
                                 <option>Non-binary</option>
@@ -901,7 +932,7 @@ function AddressSection({ state, setState }) {
 
     const handleMapSelect = (locationData) => {
         console.log('Map location selected:', locationData);
-        
+
         setFormData(prev => ({
             ...prev,
             Line1: locationData.address || '',
@@ -910,7 +941,7 @@ function AddressSection({ state, setState }) {
             region: locationData.region || '',
             province: locationData.province || ''
         }));
-        
+
         setShowMap(false);
         setMessage({ type: 'success', text: '✓ Location selected from map!' });
         setTimeout(() => setMessage(''), 3000);
@@ -935,7 +966,7 @@ function AddressSection({ state, setState }) {
 
         try {
             const apiUrl = process.env.NEXT_PUBLIC_API_URL || 'http://127.0.0.1:5000';
-            
+
             const payload = {
                 user_id: user.user_id,
                 Line1: formData.Line1,
@@ -1015,80 +1046,80 @@ function AddressSection({ state, setState }) {
                 )}
 
                 <div className={styles.addressForm}>
-                        <div className={styles.formGroup}>
-                            <label>Address Name</label>
-                            <select
-                                value={formData.addressType}
-                                onChange={(e) => setFormData(prev => ({ ...prev, addressType: e.target.value }))}
-                                className={styles.selectInput}
-                            >
-                                <option>Home</option>
-                                <option>Office</option>
-                                <option>Apartment</option>
-                                <option>Other</option>
-                            </select>
-                        </div>
-
-                        <button
-                            className={styles.geolocationBtn}
-                            onClick={() => setShowMap(true)}
+                    <div className={styles.formGroup}>
+                        <label>Address Name</label>
+                        <select
+                            value={formData.addressType}
+                            onChange={(e) => setFormData(prev => ({ ...prev, addressType: e.target.value }))}
+                            className={styles.selectInput}
                         >
-                            <MapPin size={20} />
-                            Open Map to Select Location
-                        </button>
+                            <option>Home</option>
+                            <option>Office</option>
+                            <option>Apartment</option>
+                            <option>Other</option>
+                        </select>
+                    </div>
 
-                        {formData.Line1 && (
-                            <>
-                                <div className={styles.formGroup}>
-                                    <label>Location Selected</label>
-                                    <div className={styles.selectedLocation}>
-                                        <MapPin size={18} />
-                                        <div>
-                                            <p className={styles.locationMain}>{formData.Line1}</p>
-                                            {formData.city && <p className={styles.locationSub}>{formData.barangay}, {formData.city}</p>}
-                                        </div>
+                    <button
+                        className={styles.geolocationBtn}
+                        onClick={() => setShowMap(true)}
+                    >
+                        <MapPin size={20} />
+                        Open Map to Select Location
+                    </button>
+
+                    {formData.Line1 && (
+                        <>
+                            <div className={styles.formGroup}>
+                                <label>Location Selected</label>
+                                <div className={styles.selectedLocation}>
+                                    <MapPin size={18} />
+                                    <div>
+                                        <p className={styles.locationMain}>{formData.Line1}</p>
+                                        {formData.city && <p className={styles.locationSub}>{formData.barangay}, {formData.city}</p>}
                                     </div>
                                 </div>
+                            </div>
 
-                                <div className={styles.formGroup}>
-                                    <label>Additional Details (Optional)</label>
-                                    <textarea
-                                        placeholder="Apt number, building name, etc."
-                                        value={formData.Line2}
-                                        onChange={(e) => setFormData(prev => ({ ...prev, Line2: e.target.value }))}
-                                        rows={3}
-                                        className={styles.textarea}
-                                    />
-                                </div>
+                            <div className={styles.formGroup}>
+                                <label>Additional Details (Optional)</label>
+                                <textarea
+                                    placeholder="Apt number, building name, etc."
+                                    value={formData.Line2}
+                                    onChange={(e) => setFormData(prev => ({ ...prev, Line2: e.target.value }))}
+                                    rows={3}
+                                    className={styles.textarea}
+                                />
+                            </div>
 
-                                <div className={styles.checkboxGroup}>
-                                    <input
-                                        type="checkbox"
-                                        id="defaultAddr"
-                                        checked={formData.isDefault}
-                                        onChange={(e) => setFormData(prev => ({ ...prev, isDefault: e.target.checked }))}
-                                    />
-                                    <label htmlFor="defaultAddr">Make this your default address</label>
-                                </div>
+                            <div className={styles.checkboxGroup}>
+                                <input
+                                    type="checkbox"
+                                    id="defaultAddr"
+                                    checked={formData.isDefault}
+                                    onChange={(e) => setFormData(prev => ({ ...prev, isDefault: e.target.checked }))}
+                                />
+                                <label htmlFor="defaultAddr">Make this your default address</label>
+                            </div>
 
-                                <div className={styles.buttonGroup}>
-                                    <button 
-                                        className={styles.primaryBtn}
-                                        onClick={handleSaveAddress}
-                                        disabled={loading}
-                                    >
-                                        {loading ? 'Saving...' : 'Save Address'}
-                                    </button>
-                                    <button 
-                                        className={styles.secondaryBtn}
-                                        onClick={() => setState('list')}
-                                        disabled={loading}
-                                    >
-                                        Cancel
-                                    </button>
-                                </div>
-                            </>
-                        )}
+                            <div className={styles.buttonGroup}>
+                                <button
+                                    className={styles.primaryBtn}
+                                    onClick={handleSaveAddress}
+                                    disabled={loading}
+                                >
+                                    {loading ? 'Saving...' : 'Save Address'}
+                                </button>
+                                <button
+                                    className={styles.secondaryBtn}
+                                    onClick={() => setState('list')}
+                                    disabled={loading}
+                                >
+                                    Cancel
+                                </button>
+                            </div>
+                        </>
+                    )}
 
                 </div>
             </div>
