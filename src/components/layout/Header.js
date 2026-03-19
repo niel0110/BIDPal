@@ -7,10 +7,12 @@ import { useAuth } from '@/context/AuthContext';
 import { useRouter, usePathname } from 'next/navigation';
 
 import Logo from '@/components/Logo';
+import { useNotifications } from '@/hooks/useNotifications';
 import styles from './Header.module.css';
 
 export default function Header() {
   const { user, logout } = useAuth();
+  const { totalUnreadCount, unreadMsgCount } = useNotifications();
   const [isMenuOpen, setIsMenuOpen] = useState(false);
   const router = useRouter();
 
@@ -48,11 +50,18 @@ export default function Header() {
                     </div>
                     <span>Wishlist</span>
                   </Link>
-                  <Link href="/messages" className={styles.dropdownItem} onClick={() => setIsMenuOpen(false)}>
-                    <div className={`${styles.iconCircle} ${styles.orange}`}>
-                      <MessageCircle size={18} />
+                  <Link href="/messages" className={styles.dropdownItem} onClick={() => setIsMenuOpen(false)} style={{ display: 'flex', justifyContent: 'space-between' }}>
+                    <div style={{ display: 'flex', alignItems: 'center', gap: '0.75rem' }}>
+                      <div className={`${styles.iconCircle} ${styles.orange}`}>
+                        <MessageCircle size={18} />
+                      </div>
+                      <span>Messages</span>
                     </div>
-                    <span>Messages</span>
+                    {totalUnreadCount > 0 && (
+                        <span style={{ background: '#ef4444', color: 'white', fontSize: '0.7rem', fontWeight: 700, padding: '2px 8px', borderRadius: '10px' }}>
+                            {totalUnreadCount > 99 ? '99+' : totalUnreadCount}
+                        </span>
+                    )}
                   </Link>
                   <Link href="/profile" className={styles.dropdownItem} onClick={() => setIsMenuOpen(false)}>
                     <div className={`${styles.iconCircle} ${styles.yellow}`}>
@@ -78,11 +87,18 @@ export default function Header() {
                     </div>
                     <span>My Auctions</span>
                   </Link>
-                  <Link href="/messages" className={styles.dropdownItem} onClick={() => setIsMenuOpen(false)}>
-                    <div className={`${styles.iconCircle} ${styles.orange}`}>
-                      <MessageCircle size={18} />
+                  <Link href="/messages" className={styles.dropdownItem} onClick={() => setIsMenuOpen(false)} style={{ display: 'flex', justifyContent: 'space-between' }}>
+                    <div style={{ display: 'flex', alignItems: 'center', gap: '0.75rem' }}>
+                      <div className={`${styles.iconCircle} ${styles.orange}`}>
+                        <MessageCircle size={18} />
+                      </div>
+                      <span>Messages</span>
                     </div>
-                    <span>Messages</span>
+                    {totalUnreadCount > 0 && (
+                        <span style={{ background: '#ef4444', color: 'white', fontSize: '0.7rem', fontWeight: 700, padding: '2px 8px', borderRadius: '10px' }}>
+                            {totalUnreadCount > 99 ? '99+' : totalUnreadCount}
+                        </span>
+                    )}
                   </Link>
                   <Link href="/profile" className={styles.dropdownItem} onClick={() => setIsMenuOpen(false)}>
                     <div className={`${styles.iconCircle} ${styles.yellow}`}>

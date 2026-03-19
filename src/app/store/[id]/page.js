@@ -1,10 +1,11 @@
 'use client';
 
 import { useState, useEffect } from 'react';
-import { useParams } from 'next/navigation';
+import { useParams, useRouter } from 'next/navigation';
 import Header from '@/components/layout/Header';
 import CategoryNav from '@/components/home/CategoryNav';
 import ProductCard from '@/components/card/ProductCard';
+import { useAuth } from '@/context/AuthContext';
 import { 
     Calendar, 
     MapPin, 
@@ -18,15 +19,20 @@ import styles from './page.module.css';
 
 export default function StorePage() {
     const { id } = useParams();
+    const { user } = useAuth();
+    const router = useRouter();
     const [store, setStore] = useState(null);
     const [products, setProducts] = useState([]);
     const [loading, setLoading] = useState(true);
     const [activeTab, setActiveTab] = useState('all');
+    const [isFollowing, setIsFollowing] = useState(false);
+    const [followLoading, setFollowLoading] = useState(false);
 
     useEffect(() => {
         const fetchStoreData = async () => {
             try {
                 const apiUrl = process.env.NEXT_PUBLIC_API_URL || 'http://127.0.0.1:5000';
+                const token = localStorage.getItem('bidpal_token');
                 
                 // Fetch store profile
                 const storeRes = await fetch(`${apiUrl}/api/sellers/${id}`);
@@ -48,6 +54,18 @@ export default function StorePage() {
                 const productsData = await productsRes.json();
                 setProducts(productsData.data || []);
 
+                // Fetch follow status if user is logged in
+                if (user) {
+                    const followRes = await fetch(`${apiUrl}/api/follows/following/${user.user_id}`, {
+                        headers: { 'Authorization': `Bearer ${token}` }
+                    });
+                    if (followRes.ok) {
+                        const following = await followRes.json();
+                        const isFound = following.some(f => f.Seller.seller_id === id);
+                        setIsFollowing(isFound);
+                    }
+                }
+
             } catch (err) {
                 console.error('Failed to fetch store data:', err);
             } finally {
@@ -56,7 +74,52 @@ export default function StorePage() {
         };
 
         if (id) fetchStoreData();
-    }, [id]);
+    }, [id, user]);
+
+    const handleFollow = async () => {
+        if (!user) {
+            router.push('/login');
+            return;
+        }
+
+        setFollowLoading(true);
+        try {
+            const apiUrl = process.env.NEXT_PUBLIC_API_URL || 'http://127.0.0.1:5000';
+            const token = localStorage.getItem('bidpal_token');
+            const endpoint = isFollowing ? '/api/follows/unfollow' : '/api/follows/follow';
+            
+            const res = await fetch(`${apiUrl}${endpoint}`, {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json',
+                    'Authorization': `Bearer ${token}`
+                },
+                body: JSON.stringify({ followed_seller_id: id })
+            });
+
+            if (res.ok) {
+                setIsFollowing(!isFollowing);
+            } else {
+                const data = await res.json();
+                alert(data.error || 'Failed to update follow status');
+            }
+        } catch (err) {
+            console.error('Follow error:', err);
+        } finally {
+            setFollowLoading(false);
+        }
+    };
+
+    const handleMessage = async () => {
+        if (!user) {
+            router.push('/login');
+            return;
+        }
+
+        // For now, redirect to messages page. 
+        // In a more advanced implementation, this could open a direct chat.
+        router.push(`/messages?receiverId=${store.user_id}`);
+    };
 
     if (loading) return (
         <div className={styles.main}>
@@ -107,25 +170,35 @@ export default function StorePage() {
                     
                     <div className={styles.statsBar}>
                         <div className={styles.statItem}>
-                            <span className={styles.statValue}>4.9</span>
+                            <span className={styles.statValue}>{store.stats?.rating || "0.0"}</span>
                             <span className={styles.statLabel}>Rating</span>
                         </div>
                         <div className={styles.statItem}>
-                            <span className={styles.statValue}>1.2k</span>
+                            <span className={styles.statValue}>{store.stats?.followerCount || 0}</span>
                             <span className={styles.statLabel}>Followers</span>
                         </div>
                         <div className={styles.statItem}>
-                            <span className={styles.statValue}>98%</span>
-                            <span className={styles.statLabel}>Response</span>
+                            <span className={styles.statValue}>{store.stats?.salesCount || 0}</span>
+                            <span className={styles.statLabel}>Sales</span>
                         </div>
                     </div>
                 </div>
 
                 <div className={styles.followActions}>
-                    <button className={styles.messageBtn}>
+                    <button 
+                        className={styles.messageBtn}
+                        onClick={handleMessage}
+                        title="Message Seller"
+                    >
                         <MessageCircle size={18} />
                     </button>
-                    <button className={styles.followBtn}>Follow Store</button>
+                    <button 
+                        className={`${styles.followBtn} ${isFollowing ? styles.following : ''}`}
+                        onClick={handleFollow}
+                        disabled={followLoading}
+                    >
+                        {followLoading ? '...' : (isFollowing ? 'Following' : 'Follow Store')}
+                    </button>
                 </div>
             </section>
 
@@ -156,7 +229,7 @@ export default function StorePage() {
                             </div>
                             <div className={styles.infoItem}>
                                 <Users size={18} color="#666" />
-                                <span>1,245 Total Sales</span>
+                                <span>{store.stats?.salesCount || 0} Total Sales</span>
                             </div>
                         </div>
                     </div>

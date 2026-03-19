@@ -1,11 +1,12 @@
 import { supabase } from '../config/supabase.js';
+import { createNotification } from './notificationsController.js';
 
-// Fetch all conversations for the logged-in user
+// Fetch all conversations for the logged-in user (with unread counts)
 export const getConversations = async (req, res) => {
   try {
     const { user_id } = req.user;
 
-    // First get the conversations this user is part of
+    // Get conversation IDs this user participates in
     const { data: participants, error: partError } = await supabase
       .from('Conversation_participant')
       .select('conversation_id')
@@ -16,13 +17,12 @@ export const getConversations = async (req, res) => {
 
     const conversationIds = participants.map(p => p.conversation_id);
 
-    // Fetch conversation details including the OTHER participant
-    // Note: 'Coversations' has a typo in the schema
+    // Fetch conversation details with other participant info
     const { data: conversations, error: convError } = await supabase
       .from('Coversations')
       .select(`
         conversation_id,
-        last_message,
+        subject,
         last_message_at,
         created_at,
         Conversation_participant (
@@ -44,28 +44,57 @@ export const getConversations = async (req, res) => {
 
     if (convError) throw convError;
 
-    // Format the response to highlight the "other user"
-    const formatted = conversations.map(conv => {
+    // For each conversation, fetch last message + unread count for this user
+    const conversationsWithMeta = await Promise.all(
+      conversations.map(async (conv) => {
+        const [lastMsgRes, unreadRes] = await Promise.all([
+          supabase
+            .from('Messages')
+            .select('body, sent_at')
+            .eq('conversation_id', conv.conversation_id)
+            .order('sent_at', { ascending: false })
+            .limit(1),
+          supabase
+            .from('Messages')
+            .select('*', { count: 'exact', head: true })
+            .eq('conversation_id', conv.conversation_id)
+            .neq('sender_id', user_id)
+            .is('read_at', null)
+        ]);
+
+        const lastMsg = lastMsgRes.data?.[0] || null;
+        const unreadCount = unreadRes.count || 0;
+
+        return { ...conv, lastMessageBody: lastMsg?.body || null, lastMsgAt: lastMsg?.sent_at || conv.last_message_at, unreadCount };
+      })
+    );
+
+    // Format response, highlighting the "other" user
+    const formatted = conversationsWithMeta.map(conv => {
       const otherPart = conv.Conversation_participant.find(p => p.user_id !== user_id);
       const otherUser = otherPart?.User || {};
-      
-      const displayName = otherUser.Seller?.[0]?.store_name || 
-                         (otherUser.Fname ? `${otherUser.Fname} ${otherUser.Lname || ''}`.trim() : 'Unknown User');
+
+      const displayName = otherUser.Seller?.[0]?.store_name ||
+        (otherUser.Fname ? `${otherUser.Fname} ${otherUser.Lname || ''}`.trim() : 'Unknown User');
 
       return {
         id: conv.conversation_id,
-        lastMessage: conv.last_message,
-        lastMessageAt: conv.last_message_at,
+        name: displayName,
+        avatar: otherUser.Seller?.[0]?.logo_url || otherUser.Avatar || null,
+        lastMessage: conv.lastMessageBody || conv.subject || 'New Inquiry',
+        lastMessageAt: conv.lastMsgAt,
+        unreadCount: conv.unreadCount,
         otherUser: {
           id: otherUser.user_id,
           name: displayName,
-          avatar: otherUser.Seller?.[0]?.logo_url || otherUser.Avatar
+          avatar: otherUser.Seller?.[0]?.logo_url || otherUser.Avatar || null
         }
       };
     });
 
     res.json(formatted);
   } catch (err) {
+    console.error('getConversations error:', err.message);
     res.status(500).json({ error: err.message });
   }
 };
@@ -76,7 +105,7 @@ export const getMessages = async (req, res) => {
     const { conversationId } = req.params;
     const { user_id } = req.user;
 
-    // Security check: Is this user part of this conversation?
+    // Security check: Must be a participant
     const { data: participant, error: partError } = await supabase
       .from('Conversation_participant')
       .select('*')
@@ -92,10 +121,60 @@ export const getMessages = async (req, res) => {
       .from('Messages')
       .select('*')
       .eq('conversation_id', conversationId)
-      .order('created_at', { ascending: true });
+      .order('sent_at', { ascending: true });
 
     if (msgError) throw msgError;
     res.json(messages);
+  } catch (err) {
+    res.status(500).json({ error: err.message });
+  }
+};
+
+// Get total unread message count for current user
+export const getUnreadCount = async (req, res) => {
+  try {
+    const { user_id } = req.user;
+
+    // Get all conversations for this user
+    const { data: parts } = await supabase
+      .from('Conversation_participant')
+      .select('conversation_id')
+      .eq('user_id', user_id);
+
+    if (!parts || parts.length === 0) return res.json({ count: 0 });
+
+    const convIds = parts.map(p => p.conversation_id);
+
+    const { count, error } = await supabase
+      .from('Messages')
+      .select('*', { count: 'exact', head: true })
+      .in('conversation_id', convIds)
+      .neq('sender_id', user_id)
+      .is('read_at', null);
+
+    if (error) throw error;
+    res.json({ count: count || 0 });
+  } catch (err) {
+    res.status(500).json({ error: err.message });
+  }
+};
+
+// Mark all unread messages in a conversation as read
+export const markAsRead = async (req, res) => {
+  try {
+    const { conversationId } = req.params;
+    const { user_id } = req.user;
+
+    // Only mark messages sent by others as read
+    const { error } = await supabase
+      .from('Messages')
+      .update({ read_at: new Date().toISOString() })
+      .eq('conversation_id', conversationId)
+      .neq('sender_id', user_id)
+      .is('read_at', null);
+
+    if (error) throw error;
+    res.json({ success: true });
   } catch (err) {
     res.status(500).json({ error: err.message });
   }
@@ -112,13 +191,13 @@ export const sendMessage = async (req, res) => {
     }
 
     let finalConvId = conversationId;
+    let actualReceiverId = receiverId;
 
-    // If no conversationId, check if one exists or create a new one
+    // If no conversationId, find or create one
     if (!finalConvId) {
-      // Find common conversation between user_id and receiverId
       const { data: userConvs } = await supabase.from('Conversation_participant').select('conversation_id').eq('user_id', user_id);
       const { data: receiverConvs } = await supabase.from('Conversation_participant').select('conversation_id').eq('user_id', receiverId);
-      
+
       const common = userConvs?.filter(uc => receiverConvs?.some(rc => rc.conversation_id === uc.conversation_id));
 
       if (common && common.length > 0) {
@@ -127,9 +206,10 @@ export const sendMessage = async (req, res) => {
         // Create new conversation
         const { data: newConv, error: newConvError } = await supabase
           .from('Coversations')
-          .insert([{ 
-              last_message: message, 
-              last_message_at: new Date().toISOString() 
+          .insert([{
+            subject: 'New Inquiry',
+            last_message_at: new Date().toISOString(),
+            created_at: new Date().toISOString()
           }])
           .select()
           .single();
@@ -144,9 +224,17 @@ export const sendMessage = async (req, res) => {
             { conversation_id: finalConvId, user_id: user_id },
             { conversation_id: finalConvId, user_id: receiverId }
           ]);
-        
+
         if (partError) throw partError;
       }
+    } else {
+      // Find receiver from existing conversation participants
+      const { data: parts } = await supabase
+        .from('Conversation_participant')
+        .select('user_id')
+        .eq('conversation_id', finalConvId)
+        .neq('user_id', user_id);
+      actualReceiverId = parts?.[0]?.user_id || null;
     }
 
     // Insert message
@@ -155,26 +243,44 @@ export const sendMessage = async (req, res) => {
       .insert([{
         conversation_id: finalConvId,
         sender_id: user_id,
-        content: message,
-        read_at: new Date().toISOString(), // Satisfying NOT NULL constraint temporarily
-        attachment: null
+        body: message,
+        attachment: {},
+        sent_at: new Date().toISOString(),
+        read_at: null // null = unread
       }])
       .select()
       .single();
 
     if (msgError) throw msgError;
 
-    // Update conversation last message
+    // Update conversation's last_message_at
     await supabase
       .from('Coversations')
-      .update({ 
-          last_message: message, 
-          last_message_at: new Date().toISOString() 
-      })
+      .update({ last_message_at: new Date().toISOString() })
       .eq('conversation_id', finalConvId);
+
+    // Fetch sender display name for notification
+    const { data: senderData } = await supabase
+      .from('User')
+      .select('Fname, Lname, Seller(store_name)')
+      .eq('user_id', user_id)
+      .single();
+
+    const senderName = senderData?.Seller?.[0]?.store_name ||
+      (senderData?.Fname ? `${senderData.Fname} ${senderData.Lname || ''}`.trim() : 'Someone');
+
+    // Create notification for receiver
+    if (actualReceiverId) {
+      await createNotification(actualReceiverId, 'new_message', {
+        conversationId: finalConvId,
+        senderName,
+        preview: message.substring(0, 80)
+      });
+    }
 
     res.status(201).json(msgData);
   } catch (err) {
+    console.error('sendMessage error:', err);
     res.status(500).json({ error: err.message });
   }
 };

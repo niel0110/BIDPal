@@ -291,15 +291,17 @@
 
 .messageBubble {
     max-width: 65%;
-    display: flex;
+    width: fit-content;
 }
 
 .sent {
     align-self: flex-end;
+    margin-left: auto;
 }
 
 .received {
     align-self: flex-start;
+    margin-right: auto;
 }
 
 .bubbleContent {
@@ -308,14 +310,15 @@
 }
 
 .sent .bubbleContent {
-    background: #f0f0f0;
-    color: #111;
+    background: #2563eb;
+    color: #fff;
+    border-radius: 16px 16px 4px 16px;
 }
 
 .received .bubbleContent {
-    background: #fff;
+    background: #f0f0f0;
     color: #111;
-    border: 1px solid #f0f0f0;
+    border-radius: 16px 16px 16px 4px;
 }
 
 .bubbleContent p {
@@ -335,6 +338,11 @@
 
 .sent .msgTime {
     text-align: right;
+    color: rgba(255,255,255,0.7);
+}
+
+.received .msgTime {
+    color: #aaa;
 }
 
 /* Input Bar */

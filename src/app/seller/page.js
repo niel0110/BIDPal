@@ -3,6 +3,8 @@
 import { useState, useEffect, useCallback } from 'react';
 import Link from 'next/link';
 import { useAuth } from '@/context/AuthContext';
+import { useRouter } from 'next/navigation';
+import { useNotifications } from '@/hooks/useNotifications';
 import {
     Plus,
     Radio,
@@ -21,14 +23,12 @@ import {
 } from 'lucide-react';
 import styles from './page.module.css';
 
-const mockComments = [];
 
-const mockBids = [];
-
-const mockQueue = [];
 
 export default function SellerDashboard() {
     const { user } = useAuth();
+    const router = useRouter();
+    const { unreadCount: msgUnreadCount } = useNotifications();
     const [isLive, setIsLive] = useState(false);
     const [messageInput, setMessageInput] = useState('');
     const [queueProgress, setQueueProgress] = useState(0);
@@ -39,6 +39,8 @@ export default function SellerDashboard() {
         stats: { viewers: 0, shares: 0, likes: 0 }
     });
     const [recentBids, setRecentBids] = useState([]);
+    const [recentMessages, setRecentMessages] = useState([]);
+    const [latestConvId, setLatestConvId] = useState(null);
     const [loading, setLoading] = useState(true);
 
     const fetchDashboardData = useCallback(async () => {
@@ -80,12 +82,41 @@ export default function SellerDashboard() {
         }
     }, [user]);
 
+    // Fetch latest conversation messages for Engagement panel
+    const fetchLatestMessages = useCallback(async () => {
+        if (!user) return;
+        try {
+            const apiUrl = process.env.NEXT_PUBLIC_API_URL || 'http://127.0.0.1:5000';
+            const token = localStorage.getItem('bidpal_token');
+            const convRes = await fetch(`${apiUrl}/api/messages`, {
+                headers: { 'Authorization': `Bearer ${token}` }
+            });
+            if (!convRes.ok) return;
+            const convs = await convRes.json();
+            if (!convs || convs.length === 0) return;
+            const convId = convs[0].id;
+            setLatestConvId(convId);
+            const msgRes = await fetch(`${apiUrl}/api/messages/${convId}`, {
+                headers: { 'Authorization': `Bearer ${token}` }
+            });
+            if (!msgRes.ok) return;
+            const msgs = await msgRes.json();
+            setRecentMessages(Array.isArray(msgs) ? msgs.slice(-10) : []);
+        } catch (err) {
+            // silent
+        }
+    }, [user]);
+
     useEffect(() => {
         fetchDashboardData();
+        fetchLatestMessages();
         // Polling for updates every 10 seconds
-        const interval = setInterval(fetchDashboardData, 10000);
+        const interval = setInterval(() => {
+            fetchDashboardData();
+            fetchLatestMessages();
+        }, 10000);
         return () => clearInterval(interval);
-    }, [fetchDashboardData]);
+    }, [fetchDashboardData, fetchLatestMessages]);
 
     const handleQueueScroll = (e) => {
         const element = e.target;
@@ -162,6 +193,20 @@ export default function SellerDashboard() {
                     </div>
                 </div>
                 <div className={styles.headerActions}>
+                    <Link href="/messages" className={styles.addBtnSmall} style={{ position: 'relative' }}>
+                        <MessageSquare size={18} />
+                        Messages
+                        {msgUnreadCount > 0 && (
+                            <span style={{
+                                position: 'absolute', top: '-6px', right: '-6px',
+                                background: '#ef4444', color: 'white',
+                                fontSize: '0.6rem', fontWeight: 800,
+                                minWidth: '16px', height: '16px', borderRadius: '8px',
+                                display: 'flex', alignItems: 'center', justifyContent: 'center',
+                                padding: '0 3px', border: '1.5px solid white'
+                            }}>{msgUnreadCount > 99 ? '99+' : msgUnreadCount}</span>
+                        )}
+                    </Link>
                     <button
                         className={`${styles.liveControlBtn} ${isLive ? styles.stop : styles.start} ${!hasProducts && !isLive ? styles.disabled : ''}`}
                         onClick={handleGoLive}
@@ -363,40 +408,57 @@ export default function SellerDashboard() {
                         </div>
                     </section>
 
-                    {/* Live Engagement */}
+                    {/* Live Engagement / Messages Preview */}
                     <section className={`${styles.card} ${styles.chatCard}`}>
                         <div className={styles.cardHeader}>
                             <div className={styles.cardTitleGroup}>
                                 <MessageSquare size={18} color="#111" />
-                                <h2>Engagement</h2>
+                                <h2>Recent Messages</h2>
                             </div>
+                            <Link href="/messages" style={{ fontSize: '0.8rem', color: '#888', fontWeight: 600, textDecoration: 'none' }}>View All</Link>
                         </div>
                         <div className={styles.chatBox}>
                             <div className={styles.commentList}>
-                                {mockComments.length > 0 ? mockComments.map(comment => (
-                                    <div key={comment.id} className={styles.comment}>
+                                {recentMessages.length > 0 ? recentMessages.map(msg => (
+                                    <div key={msg.message_id} className={styles.comment}>
                                         <div className={styles.commentHeader}>
-                                            <span className={styles.userName}>{comment.user}</span>
-                                            <span className={styles.commentTime}>{comment.time}</span>
+                                            <span className={styles.userName}>
+                                                {msg.sender_id === (user?.user_id || user?.id) ? 'You' : 'Buyer'}
+                                            </span>
+                                            <span className={styles.commentTime}>
+                                                {new Date(msg.sent_at).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
+                                            </span>
                                         </div>
-                                        <p className={styles.commentText}>{comment.text}</p>
+                                        <p className={styles.commentText}>{msg.body}</p>
                                     </div>
                                 )) : (
-                                    <p className={styles.emptyChat}>No messages yet</p>
+                                    <p className={styles.emptyChat}>No messages yet.<br /><Link href="/messages" style={{ color: '#555' }}>Check your inbox →</Link></p>
                                 )}
                             </div>
-                            <div className={styles.chatInputArea}>
-                                <textarea
-                                    placeholder="Type an announcement..."
-                                    className={styles.announcementInput}
-                                    value={messageInput}
-                                    onChange={(e) => setMessageInput(e.target.value)}
-                                    rows={1}
-                                />
-                                <button className={styles.chatSendBtn} disabled={!messageInput.trim()}>
-                                    <Send size={18} />
-                                </button>
-                            </div>
+                            {latestConvId && (
+                                <div className={styles.chatInputArea}>
+                                    <textarea
+                                        placeholder="Quick reply..."
+                                        className={styles.announcementInput}
+                                        value={messageInput}
+                                        onChange={(e) => setMessageInput(e.target.value)}
+                                        rows={1}
+                                        onKeyDown={(e) => {
+                                            if (e.key === 'Enter' && !e.shiftKey) {
+                                                e.preventDefault();
+                                                router.push('/messages');
+                                            }
+                                        }}
+                                    />
+                                    <button
+                                        className={styles.chatSendBtn}
+                                        onClick={() => router.push('/messages')}
+                                        title="Open Messages"
+                                    >
+                                        <Send size={18} />
+                                    </button>
+                                </div>
+                            )}
                         </div>
                     </section>
                 </aside>
