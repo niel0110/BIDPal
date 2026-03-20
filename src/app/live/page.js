@@ -36,6 +36,7 @@ export default function LivePage() {
     // Permission and Stream State
     const [permissionStatus, setPermissionStatus] = useState('idle'); // idle, requesting, granted, denied
     const [hasStarted, setHasStarted] = useState(false);
+    const remoteVideoTrackRef = useRef(null);
 
     // Winner Modal State
     const [winnerModal, setWinnerModal] = useState({
@@ -142,6 +143,7 @@ export default function LivePage() {
             try {
                 // Dynamic import to avoid SSR errors
                 const module = await import('agora-rtc-sdk-ng');
+                if (cancelled) return;
                 AgoraRTC = module.default;
                 AgoraRTC.setLogLevel(4); // suppress verbose logs
 
@@ -152,7 +154,9 @@ export default function LivePage() {
                 agoraClientRef.current = client;
 
                 const role = isHost ? 'host' : 'audience';
+                if (cancelled) return;
                 await client.setClientRole(role);
+                if (cancelled) return;
 
                 // ── Set up ALL event listeners BEFORE joining the channel ────────────
                 // This ensures we don't miss user-published if host is already streaming.
@@ -161,7 +165,7 @@ export default function LivePage() {
                     console.log(`📺 Host published ${mediaType}, subscribing...`);
                     await client.subscribe(remoteUser, mediaType);
                     if (mediaType === 'video') {
-                        remoteUser.videoTrack.play('agora-remote-video');
+                        remoteVideoTrackRef.current = remoteUser.videoTrack;
                         setStreamReady(true);
                     }
                     if (mediaType === 'audio') {
@@ -200,7 +204,8 @@ export default function LivePage() {
                     }
 
                     localTracksRef.current = { audio: audioTrack, video: videoTrack };
-                    videoTrack.play('agora-local-video');
+                    
+                    // Video playback will be handled by useEffect to avoid race conditions
                     setStreamReady(true);
 
                     await client.publish([audioTrack, videoTrack]);
@@ -222,6 +227,10 @@ export default function LivePage() {
                     console.log('✅ Buyer joined — waiting for host to publish...');
                 }
             } catch (error) {
+                if (cancelled || error?.code === 'OPERATION_ABORTED' || error?.message?.includes('cancel token canceled')) {
+                    console.log('Agora initialization cancelled (expected during unmount)');
+                    return;
+                }
                 console.error('Agora initialization error:', error);
                 setPermissionStatus('denied');
             }
@@ -232,13 +241,55 @@ export default function LivePage() {
         return () => {
             cancelled = true;
             const { audio, video } = localTracksRef.current;
-            if (audio) audio.close();
-            if (video) video.close();
+            if (audio) {
+                audio.stop();
+                audio.close();
+                localTracksRef.current.audio = null;
+            }
+            if (video) {
+                video.stop();
+                video.close();
+                localTracksRef.current.video = null;
+            }
+            
             if (agoraClientRef.current) {
-                agoraClientRef.current.leave().catch(() => {});
+                const client = agoraClientRef.current;
+                
+                // Only leave if we are connected or connecting
+                if (client.connectionState === 'CONNECTED' || client.connectionState === 'CONNECTING' || client.connectionState === 'RECONNECTING') {
+                    client.leave().catch(err => {
+                        if (err.code !== 'OPERATION_ABORTED' && err.code !== 'WS_ABORT' && !err.message?.includes('LEAVE')) {
+                            console.warn('Non-critical leave error during unmount cleanup:', err);
+                        }
+                    });
+                }
+                agoraClientRef.current = null; // Prevent multiple leave calls
             }
         };
-    }, [auction, auctionId, isHost, hasStarted]);
+    }, [auctionId, isHost]);
+
+    // Handle video playback once DOM container is ready
+    useEffect(() => {
+        // Local Host Video
+        if (hasStarted && isHost && localTracksRef.current.video) {
+            console.log('▶️ Playing host video locally...');
+            try {
+                localTracksRef.current.video.play('agora-local-video');
+            } catch (e) {
+                console.warn('Host video playback failed:', e);
+            }
+        }
+        
+        // Remote Host Video (for buyers)
+        if (!isHost && streamReady && remoteVideoTrackRef.current) {
+            console.log('▶️ Playing remote video...');
+            try {
+                remoteVideoTrackRef.current.play('agora-remote-video');
+            } catch (e) {
+                console.warn('Remote video playback failed:', e);
+            }
+        }
+    }, [hasStarted, streamReady, isHost]);
 
     const fetchAgoraToken = async () => {
         try {
@@ -348,11 +399,32 @@ export default function LivePage() {
 
     const endStream = async () => {
         const { audio, video } = localTracksRef.current;
-        if (audio) { audio.close(); localTracksRef.current.audio = null; }
-        if (video) { video.close(); localTracksRef.current.video = null; }
+        if (audio) { 
+            audio.stop();
+            audio.close(); 
+            localTracksRef.current.audio = null; 
+        }
+        if (video) { 
+            video.stop();
+            video.close(); 
+            localTracksRef.current.video = null; 
+        }
 
         if (agoraClientRef.current) {
-            try { await agoraClientRef.current.leave(); } catch (e) { console.error(e); }
+            const client = agoraClientRef.current;
+            
+            if (client.connectionState === 'CONNECTED' || client.connectionState === 'CONNECTING' || client.connectionState === 'RECONNECTING') {
+                try { 
+                    // Silently handle leave during cleanup
+                    await client.leave().catch(e => {
+                        if (e.code !== 'OPERATION_ABORTED' && e.code !== 'WS_ABORT' && !e.message?.includes('LEAVE')) {
+                            console.warn('Non-critical leave error during endStream:', e);
+                        }
+                    });
+                } catch (e) { 
+                    // Fail silently for any unexpected cleanup errors
+                }
+            }
             agoraClientRef.current = null;
         }
 

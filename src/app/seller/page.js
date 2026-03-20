@@ -126,28 +126,32 @@ export default function SellerDashboard() {
 
     // Auto-start camera if auction is already live
     useEffect(() => {
-        if (dashboardData.activeAuction && isLive && !streamReady && !agoraClientRef.current) {
+        let cancelled = { val: false };
+        const auctionId = dashboardData.activeAuction?.auction_id;
+
+        if (auctionId && isLive && !streamReady && !agoraClientRef.current) {
             // Auction is active, start camera
-            startAgoraStream(dashboardData.activeAuction.auction_id);
+            startAgoraStream(auctionId, cancelled);
         }
 
-        // Cleanup on unmount
+        // Cleanup on unmount or if auction/isLive changes
         return () => {
-            if (agoraClientRef.current) {
-                const { audio, video } = localTracksRef.current;
-                if (audio) {
-                    audio.close();
-                    localTracksRef.current.audio = null;
-                }
-                if (video) {
-                    video.close();
-                    localTracksRef.current.video = null;
-                }
-                agoraClientRef.current.leave().catch(() => {});
-                agoraClientRef.current = null;
-            }
+            cancelled.val = true;
+            stopAgoraStream();
         };
-    }, [dashboardData.activeAuction, isLive, streamReady]);
+    }, [dashboardData.activeAuction?.auction_id, isLive]);
+
+    // Handle video playback once DOM container is ready
+    useEffect(() => {
+        if (streamReady && localTracksRef.current.video) {
+            console.log('▶️ Playing video locally...');
+            try {
+                localTracksRef.current.video.play('seller-camera-preview');
+            } catch (e) {
+                console.warn('Video playback failed:', e);
+            }
+        }
+    }, [streamReady]);
 
     const handleQueueScroll = (e) => {
         const element = e.target;
@@ -167,37 +171,73 @@ export default function SellerDashboard() {
     // Check if there are products available (queue + active)
     const hasProducts = dashboardData.queue.length > 0 || activeItem !== null;
 
-    const startAgoraStream = async (auctionId) => {
+    const startAgoraStream = async (auctionId, cancelled = { val: false }) => {
         try {
-            console.log('🎥 Requesting camera and microphone permissions...');
+            console.log('🎥 Starting live stream setup...');
 
-            // First, request browser permissions
-            const stream = await navigator.mediaDevices.getUserMedia({ video: true, audio: true });
-            console.log('✅ Browser permissions granted');
-
-            // Stop the preview stream as Agora will create its own
-            stream.getTracks().forEach(track => track.stop());
-
-            // Dynamic import Agora
+            // Dynamic import Agora first
             const module = await import('agora-rtc-sdk-ng');
+            if (cancelled.val) return;
             AgoraRTC = module.default;
-            AgoraRTC.setLogLevel(4);
+            AgoraRTC.setLogLevel(4); // Only errors
 
+            // Get Agora token
             const apiUrl = process.env.NEXT_PUBLIC_API_URL || 'http://127.0.0.1:5000';
             const token = localStorage.getItem('bidpal_token');
 
             console.log('🔑 Fetching Agora token...');
-            // Fetch Agora token
             const tokenRes = await fetch(
                 `${apiUrl}/api/agora/token?channelName=${auctionId}&role=host&uid=0`,
                 { headers: { Authorization: `Bearer ${token}` } }
             );
+            if (cancelled.val) return;
             const tokenData = await tokenRes.json();
             if (!tokenRes.ok) {
                 throw new Error(tokenData.error || 'Failed to get Agora token');
             }
-            console.log('✅ Agora token received');
+            console.log('✅ Token received');
 
+            // Create tracks FIRST (before creating client)
+            console.log('📹 Creating camera and microphone tracks...');
+            let audioTrack, videoTrack;
+
+            try {
+                [audioTrack, videoTrack] = await AgoraRTC.createMicrophoneAndCameraTracks(
+                    {
+                        AEC: true, // Echo cancellation
+                        ANS: true, // Noise suppression
+                        AGC: true  // Auto gain
+                    },
+                    {
+                        encoderConfig: {
+                            width: 640,
+                            height: 480,
+                            frameRate: 15,
+                            bitrateMin: 300,
+                            bitrateMax: 600,
+                        }
+                    }
+                );
+            } catch (mediaError) {
+                console.error('Media error:', mediaError);
+                throw new Error('CAMERA_IN_USE: ' + mediaError.message);
+            }
+
+            console.log('✅ Tracks created successfully');
+            localTracksRef.current = { audio: audioTrack, video: videoTrack };
+
+            // Video will be played by a separate useEffect once streamReady is true
+            setStreamReady(true);
+
+            if (cancelled.val) {
+                audioTrack.stop();
+                audioTrack.close();
+                videoTrack.stop();
+                videoTrack.close();
+                return;
+            }
+
+            // NOW create client and join
             const client = AgoraRTC.createClient({ mode: 'live', codec: 'vp8' });
             agoraClientRef.current = client;
 
@@ -205,56 +245,109 @@ export default function SellerDashboard() {
             const uid = user?.id ? Number(String(user.id).replace(/\D/g, '').slice(-8)) || 0 : 0;
 
             console.log('🔗 Joining Agora channel...');
-            await client.join(process.env.NEXT_PUBLIC_AGORA_APP_ID, String(auctionId), tokenData.token, uid);
-            console.log('✅ Joined Agora channel');
+            try {
+                await client.join(process.env.NEXT_PUBLIC_AGORA_APP_ID, String(auctionId), tokenData.token, uid);
+                if (cancelled.val) {
+                    client.leave().catch(() => {});
+                    return;
+                }
+                console.log('✅ Joined channel');
+            } catch (joinError) {
+                if (cancelled.val || joinError?.code === 'OPERATION_ABORTED' || joinError?.message?.includes('cancel token canceled')) {
+                    console.log('Agora join cancelled');
+                    return;
+                }
+                console.error('Join failed:', joinError);
+                // Don't fail completely - video still works locally
+                console.warn('Continuing with local preview only');
+                return;
+            }
 
-            console.log('📹 Creating camera and microphone tracks...');
-            // Create camera and mic tracks with simpler settings
-            const [audioTrack, videoTrack] = await AgoraRTC.createMicrophoneAndCameraTracks(
-                { AEC: true, ANS: true },
-                { encoderConfig: '480p_1' }
-            );
-            console.log('✅ Tracks created');
+            // Publish tracks
+            console.log('📡 Publishing tracks...');
+            try {
+                await client.publish([audioTrack, videoTrack]);
+                console.log('✅ Live stream started!');
+            } catch (pubError) {
+                console.error('Publish failed:', pubError);
+                console.warn('Continuing with local preview only');
+            }
 
-            localTracksRef.current = { audio: audioTrack, video: videoTrack };
-
-            // Play video on dashboard
-            console.log('▶️ Playing video on dashboard...');
-            videoTrack.play('seller-camera-preview');
-            setStreamReady(true);
-            console.log('✅ Video playing');
-
-            // Publish to channel
-            console.log('📡 Publishing to channel...');
-            await client.publish([audioTrack, videoTrack]);
-            console.log('✅ Live stream started successfully!');
         } catch (err) {
-            console.error('❌ Failed to start camera:', err);
+            console.error('❌ Stream setup failed:', err);
 
-            let errorMessage = 'Failed to start camera. ';
+            // Clean up any created tracks
+            if (localTracksRef.current.audio) {
+                localTracksRef.current.audio.close();
+                localTracksRef.current.audio = null;
+            }
+            if (localTracksRef.current.video) {
+                localTracksRef.current.video.close();
+                localTracksRef.current.video = null;
+            }
+
+            setStreamReady(false);
+
+            let errorMessage = 'Failed to start live stream. ';
 
             if (err.name === 'NotAllowedError') {
-                errorMessage += 'Camera/microphone permission denied. Please allow access in your browser settings.';
+                errorMessage = 'Camera/Microphone Access Denied\n\nPlease allow camera and microphone access in your browser and refresh the page.';
+            } else if (err.message && err.message.includes('CAMERA_IN_USE')) {
+                errorMessage = 'Camera In Use\n\nYour camera is being used by another application.\n\nPlease close:\n• Zoom\n• Microsoft Teams\n• Skype\n• Other video apps\n\nThen refresh this page.';
             } else if (err.name === 'NotReadableError' || err.code === 'NOT_READABLE') {
-                errorMessage += 'Camera is already in use by another application. Please close other apps using the camera and try again.';
+                errorMessage = 'Camera Access Error\n\nCannot access camera. It may be:\n• Used by another application\n• Blocked by system settings\n• Hardware issue\n\nTry restarting your browser or computer.';
             } else if (err.name === 'NotFoundError') {
-                errorMessage += 'No camera or microphone found. Please connect a camera/microphone.';
+                errorMessage = 'No Camera Found\n\nPlease connect a camera/webcam and refresh the page.';
             } else {
-                errorMessage += err.message || 'Unknown error occurred.';
+                errorMessage += err.message || 'Unknown error';
             }
 
             alert(errorMessage);
         }
     };
 
-    const stopAgoraStream = () => {
-        const { audio, video } = localTracksRef.current;
-        if (audio) audio.close();
-        if (video) video.close();
+    const stopAgoraStream = async () => {
+        console.log('🛑 Stopping stream...');
+
+        // Unpublish and leave channel first
         if (agoraClientRef.current) {
-            agoraClientRef.current.leave().catch(() => {});
+            const client = agoraClientRef.current;
+            agoraClientRef.current = null;
+            
+            if (client.connectionState === 'CONNECTED' || client.connectionState === 'CONNECTING' || client.connectionState === 'RECONNECTING') {
+                try {
+                    const { audio, video } = localTracksRef.current;
+                    if (audio || video) {
+                        const tracks = [audio, video].filter(Boolean);
+                        // Silence unpublish errors during cleanup
+                        await client.unpublish(tracks).catch(() => {});
+                    }
+                    // Silently handle leave regardless of the error type during cleanup
+                    await client.leave().catch(e => {
+                        // Only log if it's NOT a common abortion error
+                        if (e.code !== 'OPERATION_ABORTED' && e.code !== 'WS_ABORT' && !e.message?.includes('LEAVE')) {
+                            console.warn('Non-critical leave error:', e);
+                        }
+                    });
+                } catch (e) {
+                    // Fail silently for any unexpected cleanup errors
+                }
+            }
         }
+
+        // Close tracks after leaving
+        const { audio, video } = localTracksRef.current;
+        if (audio) {
+            audio.close();
+            localTracksRef.current.audio = null;
+        }
+        if (video) {
+            video.close();
+            localTracksRef.current.video = null;
+        }
+
         setStreamReady(false);
+        console.log('✅ Stream stopped');
     };
 
     const handleGoLive = async () => {

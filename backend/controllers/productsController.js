@@ -79,12 +79,12 @@ export const getProductsBySeller = async (req, res) => {
 // Create new product
 export const createProduct = async (req, res) => {
   try {
-    const { 
-      seller_id, 
+    const {
+      seller_id,
       user_id,
-      title, 
+      title,
       name,
-      description, 
+      description,
       availability,
       price,
       length_mm,
@@ -92,8 +92,10 @@ export const createProduct = async (req, res) => {
       height_mm,
       starting_price,
       reserve_price,
-      condition, 
-      status, 
+      condition,
+      brand,
+      specifications,
+      status,
       image_urls // fallback if passed normally
     } = req.body;
 
@@ -169,7 +171,9 @@ export const createProduct = async (req, res) => {
       p_height_mm: height_mm ? Math.max(0, parseInt(height_mm)) : 0,
       p_starting_price: starting_price ? parseFloat(starting_price) : null,
       p_reserve_price: reserve_price ? parseFloat(reserve_price) : null,
-      p_condition: condition || 'new',
+      p_condition: condition || 'Good',
+      p_brand: brand || null,
+      p_specifications: specifications || null,
       p_status: status || 'draft',
       p_categories: Array.isArray(categories) ? categories : null,
       p_image_urls: final_image_urls.length > 0 ? final_image_urls : null
