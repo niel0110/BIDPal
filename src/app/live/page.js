@@ -31,6 +31,7 @@ export default function LivePage() {
     const [streamReady, setStreamReady] = useState(false);
     const [isMuted, setIsMuted] = useState(false);
     const [isVideoOff, setIsVideoOff] = useState(false);
+    const [streamEnded, setStreamEnded] = useState(false);
 
     // Permission and Stream State
     const [permissionStatus, setPermissionStatus] = useState('idle'); // idle, requesting, granted, denied
@@ -144,8 +145,8 @@ export default function LivePage() {
                 AgoraRTC = module.default;
                 AgoraRTC.setLogLevel(4); // suppress verbose logs
 
-                const token = await fetchAgoraToken();
-                if (!token || cancelled) return;
+                const agoraToken = await fetchAgoraToken();
+                if (!agoraToken || cancelled) return;
 
                 const client = AgoraRTC.createClient({ mode: 'live', codec: 'vp8' });
                 agoraClientRef.current = client;
@@ -153,17 +154,35 @@ export default function LivePage() {
                 const role = isHost ? 'host' : 'audience';
                 await client.setClientRole(role);
 
-                const uid = user?.id ? Number(String(user.id).replace(/\D/g, '').slice(-8)) || 0 : 0;
-                await client.join(process.env.NEXT_PUBLIC_AGORA_APP_ID, String(auctionId), token, uid);
+                // ── Set up ALL event listeners BEFORE joining the channel ────────────
+                // This ensures we don't miss user-published if host is already streaming.
+                client.on('user-published', async (remoteUser, mediaType) => {
+                    if (isHost) return; // host does not subscribe to other hosts
+                    console.log(`📺 Host published ${mediaType}, subscribing...`);
+                    await client.subscribe(remoteUser, mediaType);
+                    if (mediaType === 'video') {
+                        remoteUser.videoTrack.play('agora-remote-video');
+                        setStreamReady(true);
+                    }
+                    if (mediaType === 'audio') {
+                        remoteUser.audioTrack.play();
+                    }
+                });
+
+                client.on('user-unpublished', (remoteUser, mediaType) => {
+                    if (mediaType === 'video') setStreamReady(false);
+                });
+
+                client.on('user-joined', () => setViewerCount(c => c + 1));
+                client.on('user-left', () => setViewerCount(c => Math.max(0, c - 1)));
+
+                // ── Join using uid=0 (must match what token was generated with) ────────
+                await client.join(process.env.NEXT_PUBLIC_AGORA_APP_ID, String(auctionId), agoraToken, 0);
 
                 if (isHost) {
                     console.log('🎥 Starting camera and microphone...');
-                    // Seller: publish camera + mic
                     const [audioTrack, videoTrack] = await AgoraRTC.createMicrophoneAndCameraTracks(
-                        {
-                            AEC: true, // Acoustic Echo Cancellation
-                            ANS: true, // Automatic Noise Suppression
-                        },
+                        { AEC: true, ANS: true },
                         {
                             encoderConfig: {
                                 width: 1280,
@@ -180,54 +199,28 @@ export default function LivePage() {
                         return;
                     }
 
-                    console.log('✅ Tracks created successfully');
                     localTracksRef.current = { audio: audioTrack, video: videoTrack };
-
-                    // Play video immediately to show camera feed
-                    console.log('▶️ Playing video track on agora-local-video');
-                    const videoElement = document.getElementById('agora-local-video');
-                    console.log('Video container element:', videoElement);
                     videoTrack.play('agora-local-video');
-                    console.log('✅ Video track played, setting stream ready');
                     setStreamReady(true);
 
-                    // Then publish to the channel
-                    console.log('📡 Publishing tracks to channel...');
                     await client.publish([audioTrack, videoTrack]);
                     console.log('✅ Published to channel successfully');
+
+                    // Notify backend to mark auction as active (if still scheduled)
+                    if (auction.status === 'scheduled') {
+                        const authToken = localStorage.getItem('bidpal_token');
+                        try {
+                            await fetch(`${apiUrl}/api/auctions/${auctionId}/start`, {
+                                method: 'POST',
+                                headers: { Authorization: `Bearer ${authToken}` }
+                            });
+                        } catch (e) {
+                            console.error('Failed to start auction on backend:', e);
+                        }
+                    }
                 } else {
-                    // Buyer: subscribe to host stream
-                    console.log('👁️ Buyer mode: Waiting for host to publish...');
-
-                    client.on('user-published', async (remoteUser, mediaType) => {
-                        console.log(`📺 Host published ${mediaType}, subscribing...`);
-                        await client.subscribe(remoteUser, mediaType);
-
-                        if (mediaType === 'video') {
-                            console.log('▶️ Playing remote video...');
-                            remoteUser.videoTrack.play('agora-remote-video');
-                            setStreamReady(true);
-                            console.log('✅ Video is now playing for buyer!');
-                        }
-                        if (mediaType === 'audio') {
-                            console.log('🔊 Playing remote audio...');
-                            remoteUser.audioTrack.play();
-                        }
-                    });
-
-                    client.on('user-unpublished', (remoteUser, mediaType) => {
-                        console.log(`❌ Host unpublished ${mediaType}`);
-                        if (mediaType === 'video') {
-                            setStreamReady(false);
-                        }
-                    });
-
-                    console.log('✅ Buyer ready to receive stream');
+                    console.log('✅ Buyer joined — waiting for host to publish...');
                 }
-
-                // Track viewer count via Agora presence
-                client.on('user-joined', () => setViewerCount(c => c + 1));
-                client.on('user-left', () => setViewerCount(c => Math.max(0, c - 1)));
             } catch (error) {
                 console.error('Agora initialization error:', error);
                 setPermissionStatus('denied');
@@ -351,6 +344,30 @@ export default function LivePage() {
         if (!video) return;
         if (isVideoOff) { video.setEnabled(true); } else { video.setEnabled(false); }
         setIsVideoOff(!isVideoOff);
+    };
+
+    const endStream = async () => {
+        const { audio, video } = localTracksRef.current;
+        if (audio) { audio.close(); localTracksRef.current.audio = null; }
+        if (video) { video.close(); localTracksRef.current.video = null; }
+
+        if (agoraClientRef.current) {
+            try { await agoraClientRef.current.leave(); } catch (e) { console.error(e); }
+            agoraClientRef.current = null;
+        }
+
+        const authToken = localStorage.getItem('bidpal_token');
+        try {
+            await fetch(`${apiUrl}/api/auctions/${auctionId}/end`, {
+                method: 'POST',
+                headers: { Authorization: `Bearer ${authToken}` }
+            });
+        } catch (e) {
+            console.error('Failed to end auction on backend:', e);
+        }
+
+        setStreamReady(false);
+        setStreamEnded(true);
     };
 
     const simulateWin = () => {
@@ -519,8 +536,8 @@ export default function LivePage() {
                             </div>
                         )}
 
-                        {/* Host mic/video controls */}
-                        {isHost && streamReady && (
+                        {/* Host mic/video/end controls */}
+                        {isHost && streamReady && !streamEnded && (
                             <div style={{
                                 position: 'absolute',
                                 bottom: '1rem',
@@ -528,10 +545,12 @@ export default function LivePage() {
                                 transform: 'translateX(-50%)',
                                 display: 'flex',
                                 gap: '1rem',
-                                zIndex: 10
+                                zIndex: 10,
+                                alignItems: 'center'
                             }}>
                                 <button
                                     onClick={toggleMic}
+                                    title={isMuted ? 'Unmute' : 'Mute'}
                                     style={{
                                         background: isMuted ? '#D32F2F' : 'rgba(255,255,255,0.2)',
                                         border: 'none',
@@ -549,6 +568,7 @@ export default function LivePage() {
                                 </button>
                                 <button
                                     onClick={toggleVideo}
+                                    title={isVideoOff ? 'Turn Camera On' : 'Turn Camera Off'}
                                     style={{
                                         background: isVideoOff ? '#D32F2F' : 'rgba(255,255,255,0.2)',
                                         border: 'none',
@@ -563,6 +583,60 @@ export default function LivePage() {
                                     }}
                                 >
                                     {isVideoOff ? <VideoOff size={20} color="white" /> : <Video size={20} color="white" />}
+                                </button>
+                                <button
+                                    onClick={endStream}
+                                    title="End Live Stream"
+                                    style={{
+                                        background: '#D32F2F',
+                                        border: 'none',
+                                        borderRadius: '20px',
+                                        padding: '0 18px',
+                                        height: 44,
+                                        display: 'flex',
+                                        alignItems: 'center',
+                                        justifyContent: 'center',
+                                        cursor: 'pointer',
+                                        color: 'white',
+                                        fontWeight: 700,
+                                        fontSize: '0.85rem',
+                                        gap: '6px',
+                                        backdropFilter: 'blur(4px)',
+                                        boxShadow: '0 2px 8px rgba(211,47,47,0.5)'
+                                    }}
+                                >
+                                    <X size={16} color="white" /> End Stream
+                                </button>
+                            </div>
+                        )}
+
+                        {/* Stream ended overlay for host */}
+                        {isHost && streamEnded && (
+                            <div style={{
+                                position: 'absolute',
+                                inset: 0,
+                                display: 'flex',
+                                flexDirection: 'column',
+                                alignItems: 'center',
+                                justifyContent: 'center',
+                                background: 'rgba(0,0,0,0.8)',
+                                zIndex: 10
+                            }}>
+                                <h2 style={{ color: 'white', marginBottom: '0.5rem' }}>Stream Ended</h2>
+                                <p style={{ color: '#aaa', marginBottom: '1.5rem' }}>Your live auction has been closed.</p>
+                                <button
+                                    onClick={() => window.location.href = '/seller/auctions'}
+                                    style={{
+                                        padding: '12px 28px',
+                                        borderRadius: '8px',
+                                        background: '#D32F2F',
+                                        color: 'white',
+                                        border: 'none',
+                                        fontWeight: 700,
+                                        cursor: 'pointer'
+                                    }}
+                                >
+                                    Back to Auctions
                                 </button>
                             </div>
                         )}
