@@ -11,7 +11,7 @@ import {
 const genAI = new GoogleGenerativeAI(process.env.GEMINI_API_KEY);
 
 /**
- * Generate price recommendation using Gemini AI + Market Dataset
+ * Generate price recommendation using Gemini AI
  * @param {Object} productData - Product information
  * @returns {Object} Price recommendation with insights
  */

@@ -11,12 +11,14 @@ export function CartProvider({ children }) {
     const [loading, setLoading] = useState(true);
 
     const fetchCart = useCallback(async () => {
-        if (!user) {
+        if (!user || !user.user_id) {
+            console.log('Cart fetch skipped: user or user_id is missing', { user });
             setCartItems([]);
             setLoading(false);
             return;
         }
         try {
+            console.log(`Fetching cart for user: ${user.user_id}`);
             const apiUrl = 'http://127.0.0.1:5000';
             const res = await fetch(`${apiUrl}/api/cart/${user.user_id}`);
             if (!res.ok) throw new Error('Failed to fetch cart');

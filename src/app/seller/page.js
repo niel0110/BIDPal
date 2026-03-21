@@ -4,6 +4,7 @@ import { useState, useEffect, useCallback, useRef } from 'react';
 import Link from 'next/link';
 import { useAuth } from '@/context/AuthContext';
 import { useRouter } from 'next/navigation';
+import { io } from 'socket.io-client';
 import {
     Plus,
     Radio,
@@ -42,6 +43,7 @@ export default function SellerDashboard() {
     });
     const [recentBids, setRecentBids] = useState([]);
     const [recentMessages, setRecentMessages] = useState([]);
+    const [comments, setComments] = useState([]);
     const [latestConvId, setLatestConvId] = useState(null);
     const [streamReady, setStreamReady] = useState(false);
     const [isMuted, setIsMuted] = useState(false);
@@ -50,6 +52,7 @@ export default function SellerDashboard() {
     // Agora refs
     const agoraClientRef = useRef(null);
     const localTracksRef = useRef({ audio: null, video: null });
+    const socketRef = useRef(null);
 
     const fetchDashboardData = useCallback(async () => {
         if (!user) return;
@@ -123,6 +126,39 @@ export default function SellerDashboard() {
         }, 10000);
         return () => clearInterval(interval);
     }, [fetchDashboardData, fetchLatestMessages]);
+    
+    // ── Socket.IO for Live Comments ─────
+    useEffect(() => {
+        const auctionId = dashboardData.activeAuction?.auction_id;
+        if (!auctionId || !isLive) {
+            if (socketRef.current) {
+                socketRef.current.disconnect();
+                socketRef.current = null;
+            }
+            return;
+        }
+
+        const apiUrl = process.env.NEXT_PUBLIC_API_URL || 'http://127.0.0.1:5000';
+        const socket = io(apiUrl, { transports: ['websocket', 'polling'] });
+        socketRef.current = socket;
+
+        socket.on('connect', () => {
+            console.log('📡 Connected to auction socket:', auctionId);
+            socket.emit('join-auction', auctionId);
+        });
+
+        socket.on('new-comment', (comment) => {
+            console.log('💬 New comment received:', comment);
+            setComments(prev => [...prev, comment]);
+        });
+
+        return () => {
+            if (socketRef.current) {
+                socketRef.current.disconnect();
+                socketRef.current = null;
+            }
+        };
+    }, [dashboardData.activeAuction?.auction_id, isLive]);
 
     // Auto-start camera if auction is already live
     useEffect(() => {
@@ -414,6 +450,29 @@ export default function SellerDashboard() {
         setIsVideoOff(!isVideoOff);
     };
 
+    const handleSendComment = () => {
+        if (!messageInput.trim()) return;
+        const auctionId = dashboardData.activeAuction?.auction_id;
+        
+        const newComment = {
+            id: Date.now(),
+            user: user?.Fname || 'Seller',
+            text: messageInput,
+            sent_at: new Date().toISOString()
+        };
+
+        if (socketRef.current && isLive && auctionId) {
+            socketRef.current.emit('send-comment', { auctionId, comment: newComment });
+            // For seller, also add to local display
+            setComments(prev => [...prev, newComment]);
+            setMessageInput('');
+        } else {
+            // If not live, maybe it's a regular message? 
+            // The user wants live comments, so we'll just encourage going live.
+            alert('You must be live to send comments to the auction room.');
+        }
+    };
+
     return (
         <>
             {/* Header Section */}
@@ -657,40 +716,11 @@ export default function SellerDashboard() {
                         </div>
                     </section>
 
-                    {/* Completed Auctions */}
+                    {/* Completed Auctions - Hidden per user request
                     <section className={styles.card}>
-                        <div className={styles.cardHeader}>
-                            <div className={styles.cardHeaderText}>
-                                <h2>Completed Auctions</h2>
-                                <p>Recently finished sales</p>
-                            </div>
-                        </div>
-                        <div className={styles.completedList}>
-                            {dashboardData.completed && dashboardData.completed.length > 0 ? (
-                                <div className={styles.completedGrid}>
-                                    {dashboardData.completed.map(item => (
-                                        <div key={item.auction_id} className={styles.completedItem}>
-                                            <div className={styles.completedImage}>
-                                                <img src={item.products?.images?.[0]?.image_url || "https://placehold.co/80x80?text=No+Image"} alt={item.products?.name} />
-                                                <div className={styles.completedBadge}>ENDED</div>
-                                            </div>
-                                            <div className={styles.completedInfo}>
-                                                <h4>{item.products?.name}</h4>
-                                                <div className={styles.completedStats}>
-                                                    <span className={styles.finalPrice}>₱{item.current_price?.toLocaleString() || '0'}</span>
-                                                    <span className={styles.bidCount}>{item.bids?.[0]?.count || 0} bids</span>
-                                                </div>
-                                            </div>
-                                        </div>
-                                    ))}
-                                </div>
-                            ) : (
-                                <div className={styles.emptyCompleted}>
-                                    <p>No completed auctions yet.</p>
-                                </div>
-                            )}
-                        </div>
+                        ... (content hidden)
                     </section>
+                    */}
                 </div>
 
                 {/* Right Column: Interaction & Metrics */}
@@ -727,52 +757,59 @@ export default function SellerDashboard() {
                         <div className={styles.cardHeader}>
                             <div className={styles.cardTitleGroup}>
                                 <MessageSquare size={18} color="#111" />
-                                <h2>Recent Messages</h2>
+                                <h2>Live Comments</h2>
                             </div>
-                            <Link href="/messages" style={{ fontSize: '0.8rem', color: '#888', fontWeight: 600, textDecoration: 'none' }}>View All</Link>
+                            <button 
+                                onClick={() => setComments([])} 
+                                style={{ fontSize: '0.8rem', color: '#888', fontWeight: 600, background: 'none', border: 'none', cursor: 'pointer' }}
+                            >
+                                Clear
+                            </button>
                         </div>
                         <div className={styles.chatBox}>
                             <div className={styles.commentList}>
-                                {recentMessages.length > 0 ? recentMessages.map(msg => (
-                                    <div key={msg.message_id} className={styles.comment}>
+                                {comments.length > 0 ? comments.map(msg => (
+                                    <div key={msg.id} className={styles.comment}>
                                         <div className={styles.commentHeader}>
                                             <span className={styles.userName}>
-                                                {msg.sender_id === (user?.user_id || user?.id) ? 'You' : 'Buyer'}
+                                                {msg.user}
                                             </span>
                                             <span className={styles.commentTime}>
-                                                {new Date(msg.sent_at).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
+                                                {new Date(msg.sent_at || Date.now()).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
                                             </span>
                                         </div>
-                                        <p className={styles.commentText}>{msg.body}</p>
+                                        <p className={styles.commentText}>{msg.text || msg.body}</p>
                                     </div>
                                 )) : (
-                                    <p className={styles.emptyChat}>No messages yet.<br /><Link href="/messages" style={{ color: '#555' }}>Check your inbox →</Link></p>
+                                    <p className={styles.emptyChat}>
+                                        {isLive ? 'No comments yet. Start the conversation!' : 'Comments will appear here when you go live.'}
+                                    </p>
                                 )}
                             </div>
-                            {latestConvId && (
-                                <div className={styles.chatInputArea}>
-                                    <textarea
-                                        placeholder="Quick reply..."
-                                        className={styles.announcementInput}
-                                        value={messageInput}
-                                        onChange={(e) => setMessageInput(e.target.value)}
-                                        rows={1}
-                                        onKeyDown={(e) => {
-                                            if (e.key === 'Enter' && !e.shiftKey) {
-                                                e.preventDefault();
-                                                router.push('/messages');
-                                            }
-                                        }}
-                                    />
-                                    <button
-                                        className={styles.chatSendBtn}
-                                        onClick={() => router.push('/messages')}
-                                        title="Open Messages"
-                                    >
-                                        <Send size={18} />
-                                    </button>
-                                </div>
-                            )}
+                            <div className={styles.chatInputArea}>
+                                <textarea
+                                    placeholder={isLive ? "Type a comment..." : "Go live to comment"}
+                                    className={styles.announcementInput}
+                                    value={messageInput}
+                                    onChange={(e) => setMessageInput(e.target.value)}
+                                    rows={1}
+                                    disabled={!isLive}
+                                    onKeyDown={(e) => {
+                                        if (e.key === 'Enter' && !e.shiftKey) {
+                                            e.preventDefault();
+                                            handleSendComment();
+                                        }
+                                    }}
+                                />
+                                <button
+                                    className={styles.chatSendBtn}
+                                    onClick={handleSendComment}
+                                    disabled={!isLive || !messageInput.trim()}
+                                    title="Send Comment"
+                                >
+                                    <Send size={18} />
+                                </button>
+                            </div>
                         </div>
                     </section>
                 </aside>
