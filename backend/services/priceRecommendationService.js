@@ -7,8 +7,33 @@ import {
     findComparableItems,
     getMarketInsights
 } from './productAnalyzer.js';
+import {
+    initModel,
+    predictPrice,
+    loadMercariDataCache,
+    getMercariData
+} from './mlModelService.js';
+import {
+    getMercariMarketStats,
+    findMercariComparables
+} from './mercariDataLoader.js';
 
+// Initialize ML and Gemini AI
+initModel();
 const genAI = new GoogleGenerativeAI(process.env.GEMINI_API_KEY);
+
+// NOTE: Mercari data auto-loading disabled for faster startup
+// The dataset (1.4M products) takes ~2 minutes to load
+// It will be loaded on-demand when first price recommendation is requested
+// To enable auto-loading, uncomment below:
+/*
+loadMercariDataCache().then(() => {
+    console.log('✅ Mercari dataset loaded and ready');
+}).catch(err => {
+    console.log('⚠️ Mercari dataset not available:', err.message);
+});
+*/
+console.log('💡 Mercari dataset will load on-demand (first request will take ~2 min)');
 
 /**
  * Generate price recommendation using Gemini AI
@@ -21,34 +46,67 @@ export async function generatePriceRecommendation(productData) {
         const productInfo = extractProductInfo(productData);
         console.log('📊 Extracted product info:', productInfo);
 
-        // Get market data from verified dataset
-        const marketData = getMarketData(productInfo.category);
-        console.log('📈 Market data loaded for:', productInfo.category);
+        // Try to use Mercari dataset first (larger, more comprehensive)
+        let mercariData = getMercariData();
+
+        // Load on-demand if not already loaded
+        if (!mercariData || mercariData.length === 0) {
+            console.log('📦 Loading Mercari dataset (first time, this may take ~2 minutes)...');
+            await loadMercariDataCache();
+            mercariData = getMercariData();
+        }
+        let marketData, comparableItems, basePrice;
+
+        if (mercariData && mercariData.length > 0) {
+            console.log('🎯 Using Mercari dataset for analysis');
+
+            // Get Mercari market statistics
+            marketData = getMercariMarketStats(mercariData, productInfo.category, productInfo.brand);
+
+            // Find comparable items from Mercari
+            comparableItems = findMercariComparables(mercariData, productInfo, 10);
+            console.log('🔍 Found Mercari comparable items:', comparableItems.length);
+
+            // Calculate base price from Mercari data
+            if (marketData) {
+                basePrice = marketData.avgPrice;
+
+                // Apply condition depreciation from Mercari data
+                if (marketData.depreciation && productInfo.condition) {
+                    basePrice = basePrice * (marketData.depreciation[productInfo.condition] || 0.7);
+                }
+            } else {
+                basePrice = 5000; // fallback
+            }
+        } else {
+            console.log('⚠️ Mercari dataset not available, using local market data');
+
+            // Fallback to original market data
+            marketData = getMarketData(productInfo.category);
+            comparableItems = findComparableItems(productInfo, productInfo.category);
+
+            // Calculate base price from local market data
+            basePrice = marketData?.averagePrice || 5000;
+
+            // Apply condition depreciation
+            if (marketData?.depreciation && productInfo.condition) {
+                basePrice = basePrice * (marketData.depreciation[productInfo.condition] || 0.7);
+            }
+        }
 
         // Fetch historical data from database
         const historicalData = await fetchHistoricalData(productInfo.category, productInfo.brand);
-
-        // Get comparable items from dataset
-        const comparableItems = findComparableItems(productInfo, productInfo.category);
-        console.log('🔍 Found comparable items:', comparableItems.length);
-
-        // Calculate base price from market data
-        let basePrice = marketData?.averagePrice || 5000;
-
-        // Apply condition depreciation
-        if (marketData?.depreciation && condition) {
-            basePrice = basePrice * (marketData.depreciation[condition] || 0.7);
-        }
 
         // Apply feature adjustments
         basePrice = calculateFeatureAdjustment(productInfo, basePrice);
         console.log('💰 Calculated base price:', basePrice);
 
         // Build comprehensive prompt with dataset
-        const prompt = buildPricePrompt(productData, historicalData, marketData, productInfo, comparableItems, basePrice);
+        const mlPriceEstimate = predictPrice(productInfo);
+        const prompt = buildPricePrompt(productData, historicalData, marketData, productInfo, comparableItems, basePrice, mlPriceEstimate);
 
         // Call Gemini API
-        const model = genAI.getGenerativeModel({ model: 'gemini-1.5-flash' });
+        const model = genAI.getGenerativeModel({ model: 'gemini-flash-latest' });
         const result = await model.generateContent(prompt);
         const response = result.response.text();
 
@@ -94,53 +152,81 @@ export async function generatePriceRecommendation(productData) {
  */
 async function fetchHistoricalData(category, brand) {
     try {
-        // Get completed auctions from the last 90 days
+        // Get both ended and active auctions from the last 90 days
         const { data: auctions, error } = await supabase
-            .from('auctions')
+            .from('Auctions')
             .select(`
                 auction_id,
                 reserve_price,
-                current_price,
                 buy_now_price,
                 status,
-                end_time,
-                products (
+                created_at,
+                products:Products (
                     name,
-                    category,
-                    condition,
-                    brand
+                    description,
+                    condition
                 ),
-                bids (count)
+                bids:Bids (amount)
             `)
-            .eq('status', 'completed')
-            .gte('end_time', new Date(Date.now() - 90 * 24 * 60 * 60 * 1000).toISOString())
-            .limit(50);
+            .in('status', ['ended', 'active', 'completed'])
+            .gte('created_at', new Date(Date.now() - 90 * 24 * 60 * 60 * 1000).toISOString())
+            .limit(100);
 
         if (error) throw error;
 
-        // Filter for similar items
+        // Filter and split into successful sales and active competition
         const similar = auctions?.filter(a => {
-            const product = a.products;
-            return product?.category === category || product?.brand === brand;
+            const prod = a.products;
+            if (!prod) return false;
+            const prodName = (prod.name + ' ' + (prod.description || '')).toLowerCase();
+            const searchCategory = category.toLowerCase();
+            const searchBrand = brand?.toLowerCase();
+            
+            return prodName.includes(searchCategory) || (searchBrand && prodName.includes(searchBrand));
         }) || [];
+
+        const processedAuctions = similar.map(a => {
+            const highestBid = a.bids && a.bids.length > 0 
+                ? Math.max(...a.bids.map(b => b.amount)) 
+                : 0;
+            return {
+                ...a,
+                final_price: highestBid || a.reserve_price || 0,
+                bid_count: a.bids?.length || 0
+            };
+        });
+
+        const successfulSales = processedAuctions.filter(a => a.status === 'ended' && (a.final_price > 0));
+        const activeListings = processedAuctions.filter(a => a.status === 'active');
 
         return {
             totalAuctions: similar.length,
-            averagePrice: similar.length > 0
-                ? similar.reduce((sum, a) => sum + (a.current_price || a.reserve_price), 0) / similar.length
-                : 0,
-            priceRange: {
-                min: Math.min(...similar.map(a => a.current_price || a.reserve_price)),
-                max: Math.max(...similar.map(a => a.current_price || a.reserve_price))
+            successfulSales: {
+                count: successfulSales.length,
+                averagePrice: successfulSales.length > 0
+                    ? successfulSales.reduce((sum, a) => sum + a.final_price, 0) / successfulSales.length
+                    : 0,
+                priceRange: successfulSales.length > 0 ? {
+                    min: Math.min(...successfulSales.map(a => a.final_price)),
+                    max: Math.max(...successfulSales.map(a => a.final_price))
+                } : null,
+                items: successfulSales.slice(0, 10).map(a => ({
+                    name: a.products?.name,
+                    finalPrice: a.final_price,
+                    bidCount: a.bid_count
+                }))
             },
-            averageBidCount: similar.length > 0
-                ? similar.reduce((sum, a) => sum + (a.bids?.[0]?.count || 0), 0) / similar.length
-                : 0,
-            topItems: similar.slice(0, 5).map(a => ({
-                name: a.products?.name,
-                finalPrice: a.current_price || a.reserve_price,
-                bidCount: a.bids?.[0]?.count || 0
-            }))
+            activeCompetition: {
+                count: activeListings.length,
+                averageStartingPrice: activeListings.length > 0
+                    ? activeListings.reduce((sum, a) => sum + (a.reserve_price || a.buy_now_price), 0) / activeListings.length
+                    : 0,
+                items: activeListings.slice(0, 5).map(a => ({
+                    name: a.products?.name,
+                    currentPrice: a.final_price || a.reserve_price,
+                    bidCount: a.bid_count
+                }))
+            }
         };
     } catch (error) {
         console.error('Error fetching historical data:', error);
@@ -151,10 +237,14 @@ async function fetchHistoricalData(category, brand) {
 /**
  * Build comprehensive prompt for Gemini
  */
-function buildPricePrompt(productData, historicalData, marketData, productInfo, comparableItems, basePrice) {
+function buildPricePrompt(productData, historicalData, marketData, productInfo, comparableItems, basePrice, mlPriceEstimate) {
     const { name, description, category, condition, brand, specifications } = productData;
 
     let prompt = `You are an expert auction pricing analyst. Analyze the following product and provide a detailed price recommendation for an online auction.
+
+DYNAMIC ML PREDICTION (RANDOM FOREST):
+- Numerical Price Estimate: ₱${mlPriceEstimate?.toLocaleString() || 'Calculating...'}
+- Note: This estimate was generated by a Random Forest Regression model trained on platform historical data and market trends.
 
 PRODUCT DETAILS:
 - Name: ${name}
@@ -172,13 +262,20 @@ EXTRACTED PRODUCT INFORMATION:
 
 `;
 
-    // Add market dataset information
+    // Add market dataset information (handles both Mercari and local data)
     if (marketData) {
+        const avgPrice = marketData.avgPrice || marketData.averagePrice;
+        const priceMin = marketData.priceRange?.min;
+        const priceMax = marketData.priceRange?.max;
+        const brands = marketData.topBrands || marketData.popularBrands;
+        const totalItems = marketData.totalItems;
+
         prompt += `
-VERIFIED MARKET DATASET FOR ${category.toUpperCase()}:
-- Market Average Price: ₱${marketData.averagePrice?.toLocaleString() || 'N/A'}
-- Typical Price Range: ₱${marketData.priceRange?.min?.toLocaleString()} - ₱${marketData.priceRange?.max?.toLocaleString()}
-- Popular Brands: ${marketData.popularBrands?.join(', ') || 'N/A'}
+MARKET DATASET FOR ${category.toUpperCase()}:
+- Data Source: ${totalItems ? `Mercari Dataset (${totalItems.toLocaleString()} items)` : 'Local Market Data'}
+- Market Average Price: ₱${avgPrice?.toLocaleString() || 'N/A'}
+- Typical Price Range: ₱${priceMin?.toLocaleString()} - ₱${priceMax?.toLocaleString()}
+- Popular Brands: ${brands?.join(', ') || 'N/A'}
 - Condition Depreciation Rates:
 ${Object.entries(marketData.depreciation || {}).map(([cond, rate]) => `  - ${cond}: ${(rate * 100).toFixed(0)}% of original value`).join('\n')}
 
@@ -210,18 +307,31 @@ ${comparableItems.map((item, i) => `${i + 1}. ${item.name}: ₱${item.price.toLo
     }
 
     // Add historical data from database
-    if (historicalData && historicalData.totalAuctions > 0) {
-        prompt += `
-HISTORICAL AUCTION DATA FROM OUR PLATFORM (Last 90 days):
-- Similar items sold: ${historicalData.totalAuctions}
-- Average selling price: ₱${historicalData.averagePrice.toFixed(2)}
-- Price range: ₱${historicalData.priceRange.min} - ₱${historicalData.priceRange.max}
-- Average bid count: ${historicalData.averageBidCount.toFixed(1)}
+    if (historicalData) {
+        if (historicalData.successfulSales?.count > 0) {
+            prompt += `
+HISTORICAL SUCCESSFUL SALES FROM OUR PLATFORM (Last 90 days):
+- Similar items sold: ${historicalData.successfulSales.count}
+- Average selling price: ₱${historicalData.successfulSales.averagePrice.toFixed(2)}
+- Price range: ₱${historicalData.successfulSales.priceRange.min} - ₱${historicalData.successfulSales.priceRange.max}
 
 TOP COMPARABLE SALES:
-${historicalData.topItems.map((item, i) => `${i + 1}. ${item.name}: ₱${item.finalPrice} (${item.bidCount} bids)`).join('\n')}
+${historicalData.successfulSales.items.map((item, i) => `${i + 1}. ${item.name}: ₱${item.finalPrice} (${item.bidCount} bids)`).join('\n')}
 
 `;
+        }
+
+        if (historicalData.activeCompetition?.count > 0) {
+            prompt += `
+CURRENT ACTIVE COMPETITION (Live listings):
+- Other active listings: ${historicalData.activeCompetition.count}
+- Average listed price: ₱${historicalData.activeCompetition.averageStartingPrice.toFixed(2)}
+
+RELEVANT ACTIVE LISTINGS:
+${historicalData.activeCompetition.items.map((item, i) => `${i + 1}. ${item.name}: ₱${item.currentPrice} (${item.bidCount} bids)`).join('\n')}
+
+`;
+        }
     }
 
     prompt += `

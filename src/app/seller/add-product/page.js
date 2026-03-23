@@ -118,6 +118,7 @@ export default function AddProductPage() {
         length: '',
         width: '',
         height: '',
+        price: '',
         reservePrice: '',
         startingPrice: '',
         categories: []
@@ -188,7 +189,9 @@ export default function AddProductPage() {
                 if (user.seller_id) submitData.append('seller_id', user.seller_id);
                 submitData.append('name', formData.name);
                 submitData.append('description', formData.description);
-                submitData.append('condition', formData.condition);
+                // Convert condition to lowercase with underscores for database
+                const dbCondition = formData.condition.toLowerCase().replace(/\s+/g, '_');
+                submitData.append('condition', dbCondition);
                 submitData.append('brand', formData.brand);
                 submitData.append('specifications', formData.specifications);
                 submitData.append('availability', formData.availability);
@@ -292,9 +295,9 @@ export default function AddProductPage() {
                                 rows={6}
                                 value={formData.description}
                                 onChange={(e) => setFormData({ ...formData, description: e.target.value })}
-                                maxLength={60}
+                                maxLength={2000}
                             />
-                            <div className={styles.charCount}>{formData.description.length}/60</div>
+                            <div className={styles.charCount}>{formData.description.length}/2000</div>
                         </div>
 
                         <div className={styles.inputGroup}>

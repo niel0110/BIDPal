@@ -320,10 +320,13 @@ export const startAuction = async (req, res) => {
   try {
     const { id } = req.params;
 
-    // 1. Update Auction status to 'active'
+    // 1. Update Auction status to 'active' and record live start time
     const { data: auction, error: auctionError } = await supabase
       .from('Auctions')
-      .update({ status: 'active' })
+      .update({
+        status: 'active',
+        live_started_at: new Date().toISOString()
+      })
       .eq('auction_id', id)
       .select()
       .single();
@@ -347,10 +350,13 @@ export const endAuction = async (req, res) => {
   try {
     const { id } = req.params;
 
-    // 1. Update Auction status to 'ended'
+    // 1. Update Auction status to 'ended' and record live end time
     const { data: auction, error: auctionError } = await supabase
       .from('Auctions')
-      .update({ status: 'ended' })
+      .update({
+        status: 'ended',
+        live_ended_at: new Date().toISOString()
+      })
       .eq('auction_id', id)
       .select()
       .single();

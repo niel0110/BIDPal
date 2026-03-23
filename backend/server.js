@@ -86,6 +86,7 @@ app.use('/api/notifications', notificationsRoutes)
 app.use('/api/agora', agoraRoutes)
 app.use('/api', priceRecommendationRoutes)
 
-httpServer.listen(process.env.PORT, () => {
+httpServer.listen(process.env.PORT, '0.0.0.0', () => {
   console.log(`Server running on port ${process.env.PORT}`)
+  console.log(`Network access: http://10.0.19.203:${process.env.PORT}`)
 })
