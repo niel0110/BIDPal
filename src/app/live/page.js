@@ -46,7 +46,7 @@ export default function LivePage() {
         amount: "0"
     });
 
-    // Refs for Agora
+    // Refs for Agora RTC (video/audio) and RTM (chat)
     const agoraClientRef = useRef(null);
     const localTracksRef = useRef({ audio: null, video: null });
     const socketRef = useRef(null);
@@ -95,10 +95,8 @@ export default function LivePage() {
         });
 
         socket.on('new-comment', (comment) => {
-            setComments(prev => [
-                ...prev,
-                { id: comment.id, user: comment.user, text: comment.text }
-            ]);
+            const time = comment.time || new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
+            setComments(prev => [...prev, { id: comment.id, user: comment.user, text: comment.text, time }]);
         });
 
         return () => {
@@ -106,11 +104,9 @@ export default function LivePage() {
         };
     }, [auctionId, apiUrl]);
 
-    // ── Auto-scroll comments to bottom ───────────────────────────────────────
+    // ── Auto-scroll chat to the latest message ───────────────────────────────
     useEffect(() => {
-        if (commentsEndRef.current) {
-            commentsEndRef.current.scrollIntoView({ behavior: 'smooth' });
-        }
+        commentsEndRef.current?.scrollIntoView({ behavior: 'smooth' });
     }, [comments]);
 
     // ── Fetch auction data + initial bids ────────────────────────────────────
@@ -357,13 +353,15 @@ export default function LivePage() {
 
     const handleSendMessage = () => {
         if (!inputValue.trim()) return;
+        const time = new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
         const newComment = {
             id: Date.now(),
             user_id: user?.user_id || user?.id || null,
             user: user ? `${user.Fname || 'Guest'}` : 'Guest',
-            text: inputValue
+            text: inputValue,
+            time
         };
-        // Broadcast via socket — server will echo back to all clients AND persist to DB
+        // Emit via socket — server broadcasts to all clients AND persists to DB
         if (socketRef.current) {
             socketRef.current.emit('send-comment', { auctionId, comment: newComment });
         }
@@ -830,34 +828,47 @@ export default function LivePage() {
 
                     {/* RIGHT: CHAT */}
                     <div className={styles.chatSection}>
-                        <h3 className={styles.chatHeader}>Comments</h3>
+                        <h3 className={styles.chatHeader}>Live Chat</h3>
+
                         <div className={styles.messagesList}>
-                            {comments.map(msg => (
-                                <div key={msg.id} className={styles.messageItem}>
-                                    <div className={styles.chatAvatar} />
-                                    <div>
-                                        <div className={styles.messageAuthor}>{msg.user}</div>
-                                        <div className={styles.messageText}>{msg.text}</div>
-                                    </div>
-                                </div>
-                            ))}
                             {comments.length === 0 && (
                                 <div style={{ padding: '20px', color: '#999', textAlign: 'center' }}>
                                     Welcome to the live stream!
                                 </div>
                             )}
+                            {comments.map(msg => (
+                                <div key={msg.id} className={styles.messageItem}>
+                                    <div className={styles.chatAvatar} />
+                                    <div style={{ flex: 1 }}>
+                                        <div style={{ display: 'flex', alignItems: 'baseline', gap: 6 }}>
+                                            <span className={styles.messageAuthor}>{msg.user}</span>
+                                            {msg.time && (
+                                                <span style={{ fontSize: '0.65rem', color: '#aaa' }}>{msg.time}</span>
+                                            )}
+                                        </div>
+                                        <div className={styles.messageText}>{msg.text}</div>
+                                    </div>
+                                </div>
+                            ))}
+                            {/* Anchor — auto-scrolled into view on each new message */}
                             <div ref={commentsEndRef} />
                         </div>
+
                         <div className={styles.inputArea}>
                             <input
                                 type="text"
-                                placeholder="Type..."
+                                placeholder="Say something..."
                                 className={styles.chatInput}
                                 value={inputValue}
                                 onChange={(e) => setInputValue(e.target.value)}
                                 onKeyDown={(e) => e.key === 'Enter' && handleSendMessage()}
                             />
-                            <button className={styles.sendBtn} onClick={handleSendMessage}>
+                            <button
+                                className={styles.sendBtn}
+                                onClick={handleSendMessage}
+                                disabled={!inputValue.trim()}
+                                style={{ opacity: inputValue.trim() ? 1 : 0.4 }}
+                            >
                                 <Send size={20} />
                             </button>
                         </div>
