@@ -27,6 +27,13 @@ const getOrCreateCartId = async (user_id) => {
 export const getCartByUser = async (req, res) => {
   try {
     const { user_id } = req.params;
+
+    // Validate UUID format
+    const uuidRegex = /^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i;
+    if (!user_id || user_id === 'undefined' || !uuidRegex.test(user_id)) {
+      console.warn(`Invalid user_id received in getCartByUser: ${user_id}`);
+      return res.status(400).json({ error: 'Invalid or missing user_id. Must be a valid UUID.' });
+    }
     
     // 1. Get cart_id for user
     const cart_id = await getOrCreateCartId(user_id);
@@ -54,8 +61,13 @@ export const getCartByUser = async (req, res) => {
       .eq('cart_id', cart_id)
       .order('added_at', { ascending: false });
 
-    if (error) return res.status(500).json({ error: error.message });
+    if (error) {
+      console.error(`Supabase error fetching cart for user ${user_id}:`, error.message);
+      return res.status(500).json({ error: error.message });
+    }
     
+    if (!data) return res.json([]);
+
     // Format response for frontend
     const formattedData = data.map(item => ({
         cart_id: item.cartItem_id, // Map database cartItem_id to frontend's expected cart_id for consistency
@@ -71,6 +83,7 @@ export const getCartByUser = async (req, res) => {
 
     res.json(formattedData);
   } catch (err) {
+    console.error(`Unexpected error in getCartByUser for user ${req.params.user_id}:`, err.message);
     res.status(500).json({ error: err.message });
   }
 };
@@ -95,6 +108,7 @@ export const addToCart = async (req, res) => {
       .single();
 
     if (fetchError && fetchError.code !== 'PGRST116') {
+      console.error(`Supabase error checking existing item for cart ${cart_id}:`, fetchError.message);
       return res.status(500).json({ error: fetchError.message });
     }
 
@@ -127,6 +141,7 @@ export const addToCart = async (req, res) => {
       return res.status(201).json({ message: 'Added to cart', data: data[0] });
     }
   } catch (err) {
+    console.error(`Error in ${req.method} ${req.originalUrl}:`, err.message);
     res.status(500).json({ error: err.message });
   }
 };
@@ -152,6 +167,7 @@ export const updateCartQuantity = async (req, res) => {
 
     res.json({ message: 'Quantity updated', data: data[0] });
   } catch (err) {
+    console.error(`Error in ${req.method} ${req.originalUrl}:`, err.message);
     res.status(500).json({ error: err.message });
   }
 };
@@ -170,6 +186,7 @@ export const removeFromCart = async (req, res) => {
     if (error) return res.status(400).json({ error: error.message });
     res.json({ message: 'Removed from cart', data: data[0] });
   } catch (err) {
+    console.error(`Error in ${req.method} ${req.originalUrl}:`, err.message);
     res.status(500).json({ error: err.message });
   }
 };

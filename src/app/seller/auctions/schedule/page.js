@@ -6,6 +6,7 @@ import { ChevronLeft, Gavel, Tag, Calendar, Clock, Info } from 'lucide-react';
 import { useSubmitLock } from '@/hooks/useSubmitLock';
 import styles from './page.module.css';
 import { useAuth } from '@/context/AuthContext';
+import PriceRecommendation from '@/components/pricing/PriceRecommendation';
 
 export default function ScheduleAuctionPage() {
     const router = useRouter();
@@ -53,6 +54,14 @@ export default function ScheduleAuctionPage() {
     }, [productId]);
 
     const handleBack = () => router.back();
+
+    const handleApplyRecommendation = (prices) => {
+        setFormData(prev => ({
+            ...prev,
+            startingBid: prices.startingBid.toString(),
+            price: prices.reservePrice.toString()
+        }));
+    };
 
     const handleSubmit = async (e) => {
         e.preventDefault();
@@ -196,6 +205,21 @@ export default function ScheduleAuctionPage() {
                             </div>
                         </div>
                     </div>
+
+                    {/* AI Price Recommendation */}
+                    {productDetails && saleType === 'bid' && (
+                        <PriceRecommendation
+                            productData={{
+                                name: productDetails.name,
+                                description: productDetails.description,
+                                category: productDetails.categories?.[0] || 'General',
+                                condition: productDetails.condition || 'Good',
+                                brand: productDetails.brand,
+                                specifications: productDetails.specifications
+                            }}
+                            onApplyRecommendation={handleApplyRecommendation}
+                        />
+                    )}
 
                     <div className={styles.section}>
                         <label className={styles.sectionLabel}>

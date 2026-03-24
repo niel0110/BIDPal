@@ -32,11 +32,11 @@ export default function LivePage() {
     const [isMuted, setIsMuted] = useState(false);
     const [isVideoOff, setIsVideoOff] = useState(false);
     const [streamEnded, setStreamEnded] = useState(false);
-    const [rtmConnected, setRtmConnected] = useState(false);
 
     // Permission and Stream State
     const [permissionStatus, setPermissionStatus] = useState('idle'); // idle, requesting, granted, denied
     const [hasStarted, setHasStarted] = useState(false);
+    const remoteVideoTrackRef = useRef(null);
 
     // Winner Modal State
     const [winnerModal, setWinnerModal] = useState({
@@ -49,8 +49,6 @@ export default function LivePage() {
     // Refs for Agora RTC (video/audio) and RTM (chat)
     const agoraClientRef = useRef(null);
     const localTracksRef = useRef({ audio: null, video: null });
-    const rtmClientRef = useRef(null);
-    const rtmChannelRef = useRef(null);
     const socketRef = useRef(null);
     const commentsEndRef = useRef(null);
 
@@ -58,6 +56,28 @@ export default function LivePage() {
 
     // Determine if the current user is the seller (host)
     const isHost = auction && user && String(auction.seller_info?.seller_id) === String(user.seller_id || user.id);
+
+    // ── Fetch existing comments from DB on mount ─────────────────────────────
+    useEffect(() => {
+        if (!auctionId) return;
+        const fetchComments = async () => {
+            try {
+                const res = await fetch(`${apiUrl}/api/auctions/${auctionId}/comments`);
+                if (res.ok) {
+                    const data = await res.json();
+                    // Map DB shape → UI shape
+                    setComments(data.map(c => ({
+                        id: c.comment_id,
+                        user: c.username,
+                        text: c.text
+                    })));
+                }
+            } catch (err) {
+                console.error('Failed to fetch comments:', err);
+            }
+        };
+        fetchComments();
+    }, [auctionId, apiUrl]);
 
     // ── Socket.IO setup ──────────────────────────────────────────────────────
     useEffect(() => {
@@ -74,77 +94,15 @@ export default function LivePage() {
             setBids(prev => [bid, ...prev]);
         });
 
+        socket.on('new-comment', (comment) => {
+            const time = comment.time || new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
+            setComments(prev => [...prev, { id: comment.id, user: comment.user, text: comment.text, time }]);
+        });
+
         return () => {
             socket.disconnect();
         };
     }, [auctionId, apiUrl]);
-
-    // ── Agora RTM (chat) setup ───────────────────────────────────────────────
-    useEffect(() => {
-        if (!auctionId || !user || !process.env.NEXT_PUBLIC_AGORA_APP_ID) return;
-
-        let rtmClient = null;
-        let rtmChannel = null;
-
-        const startRtm = async () => {
-            try {
-                const AgoraRTM = (await import('agora-rtm-sdk')).default;
-
-                rtmClient = AgoraRTM.createInstance(process.env.NEXT_PUBLIC_AGORA_APP_ID);
-                rtmClientRef.current = rtmClient;
-
-                // Fetch RTM token from backend
-                const authToken = localStorage.getItem('bidpal_token');
-                const rtmUid = String(user.id || user.user_id || 'guest');
-                const tokenRes = await fetch(
-                    `${apiUrl}/api/agora/rtm-token?uid=${encodeURIComponent(rtmUid)}`,
-                    { headers: { Authorization: `Bearer ${authToken}` } }
-                );
-                const tokenData = await tokenRes.json();
-                if (!tokenRes.ok) throw new Error(tokenData.error || 'RTM token fetch failed');
-
-                await rtmClient.login({ uid: rtmUid, token: tokenData.token });
-
-                rtmChannel = rtmClient.createChannel(String(auctionId));
-                rtmChannelRef.current = rtmChannel;
-
-                // Listen for incoming chat messages
-                rtmChannel.on('ChannelMessage', (message, senderId) => {
-                    const time = new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
-                    try {
-                        const parsed = JSON.parse(message.text);
-                        setComments(prev => [...prev, {
-                            id: Date.now() + Math.random(),
-                            user: parsed.user || senderId,
-                            text: parsed.text,
-                            time
-                        }]);
-                    } catch {
-                        setComments(prev => [...prev, {
-                            id: Date.now() + Math.random(),
-                            user: senderId,
-                            text: message.text,
-                            time
-                        }]);
-                    }
-                });
-
-                await rtmChannel.join();
-                setRtmConnected(true);
-                console.log('✅ Joined Agora RTM channel for chat');
-            } catch (err) {
-                console.error('Agora RTM init error:', err);
-            }
-        };
-
-        startRtm();
-
-        return () => {
-            setRtmConnected(false);
-            if (rtmChannel) rtmChannel.leave().catch(() => {});
-            if (rtmClient) rtmClient.logout().catch(() => {});
-        };
-    }, [auctionId, user, apiUrl]);
 
     // ── Auto-scroll chat to the latest message ───────────────────────────────
     useEffect(() => {
@@ -214,6 +172,7 @@ export default function LivePage() {
             try {
                 // Dynamic import to avoid SSR errors
                 const module = await import('agora-rtc-sdk-ng');
+                if (cancelled) return;
                 AgoraRTC = module.default;
                 AgoraRTC.setLogLevel(4); // suppress verbose logs
 
@@ -224,7 +183,9 @@ export default function LivePage() {
                 agoraClientRef.current = client;
 
                 const role = isHost ? 'host' : 'audience';
+                if (cancelled) return;
                 await client.setClientRole(role);
+                if (cancelled) return;
 
                 // ── Set up ALL event listeners BEFORE joining the channel ────────────
                 // This ensures we don't miss user-published if host is already streaming.
@@ -233,7 +194,7 @@ export default function LivePage() {
                     console.log(`📺 Host published ${mediaType}, subscribing...`);
                     await client.subscribe(remoteUser, mediaType);
                     if (mediaType === 'video') {
-                        remoteUser.videoTrack.play('agora-remote-video');
+                        remoteVideoTrackRef.current = remoteUser.videoTrack;
                         setStreamReady(true);
                     }
                     if (mediaType === 'audio') {
@@ -272,7 +233,8 @@ export default function LivePage() {
                     }
 
                     localTracksRef.current = { audio: audioTrack, video: videoTrack };
-                    videoTrack.play('agora-local-video');
+                    
+                    // Video playback will be handled by useEffect to avoid race conditions
                     setStreamReady(true);
 
                     await client.publish([audioTrack, videoTrack]);
@@ -294,6 +256,10 @@ export default function LivePage() {
                     console.log('✅ Buyer joined — waiting for host to publish...');
                 }
             } catch (error) {
+                if (cancelled || error?.code === 'OPERATION_ABORTED' || error?.message?.includes('cancel token canceled')) {
+                    console.log('Agora initialization cancelled (expected during unmount)');
+                    return;
+                }
                 console.error('Agora initialization error:', error);
                 setPermissionStatus('denied');
             }
@@ -304,13 +270,55 @@ export default function LivePage() {
         return () => {
             cancelled = true;
             const { audio, video } = localTracksRef.current;
-            if (audio) audio.close();
-            if (video) video.close();
+            if (audio) {
+                audio.stop();
+                audio.close();
+                localTracksRef.current.audio = null;
+            }
+            if (video) {
+                video.stop();
+                video.close();
+                localTracksRef.current.video = null;
+            }
+            
             if (agoraClientRef.current) {
-                agoraClientRef.current.leave().catch(() => {});
+                const client = agoraClientRef.current;
+                
+                // Only leave if we are connected or connecting
+                if (client.connectionState === 'CONNECTED' || client.connectionState === 'CONNECTING' || client.connectionState === 'RECONNECTING') {
+                    client.leave().catch(err => {
+                        if (err.code !== 'OPERATION_ABORTED' && err.code !== 'WS_ABORT' && !err.message?.includes('LEAVE')) {
+                            console.warn('Non-critical leave error during unmount cleanup:', err);
+                        }
+                    });
+                }
+                agoraClientRef.current = null; // Prevent multiple leave calls
             }
         };
-    }, [auction, auctionId, isHost, hasStarted]);
+    }, [auctionId, isHost]);
+
+    // Handle video playback once DOM container is ready
+    useEffect(() => {
+        // Local Host Video
+        if (hasStarted && isHost && localTracksRef.current.video) {
+            console.log('▶️ Playing host video locally...');
+            try {
+                localTracksRef.current.video.play('agora-local-video');
+            } catch (e) {
+                console.warn('Host video playback failed:', e);
+            }
+        }
+        
+        // Remote Host Video (for buyers)
+        if (!isHost && streamReady && remoteVideoTrackRef.current) {
+            console.log('▶️ Playing remote video...');
+            try {
+                remoteVideoTrackRef.current.play('agora-remote-video');
+            } catch (e) {
+                console.warn('Remote video playback failed:', e);
+            }
+        }
+    }, [hasStarted, streamReady, isHost]);
 
     const fetchAgoraToken = async () => {
         try {
@@ -343,25 +351,21 @@ export default function LivePage() {
         }
     };
 
-    const handleSendMessage = async () => {
-        if (!inputValue.trim() || !rtmConnected) return;
-
-        const displayName = user ? (user.Fname || user.email?.split('@')[0] || 'Guest') : 'Guest';
+    const handleSendMessage = () => {
+        if (!inputValue.trim()) return;
         const time = new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
-        const messagePayload = JSON.stringify({ user: displayName, text: inputValue.trim() });
-
-        // Add locally for immediate feedback (with timestamp)
-        setComments(prev => [...prev, { id: Date.now(), user: displayName, text: inputValue.trim(), time }]);
-        setInputValue('');
-
-        // Send via Agora RTM — reaches all channel members without going through our server
-        if (rtmChannelRef.current) {
-            try {
-                await rtmChannelRef.current.sendMessage({ text: messagePayload });
-            } catch (err) {
-                console.error('RTM send error:', err);
-            }
+        const newComment = {
+            id: Date.now(),
+            user_id: user?.user_id || user?.id || null,
+            user: user ? `${user.Fname || 'Guest'}` : 'Guest',
+            text: inputValue,
+            time
+        };
+        // Emit via socket — server broadcasts to all clients AND persists to DB
+        if (socketRef.current) {
+            socketRef.current.emit('send-comment', { auctionId, comment: newComment });
         }
+        setInputValue('');
     };
 
     const handlePlaceBid = async () => {
@@ -425,11 +429,32 @@ export default function LivePage() {
 
     const endStream = async () => {
         const { audio, video } = localTracksRef.current;
-        if (audio) { audio.close(); localTracksRef.current.audio = null; }
-        if (video) { video.close(); localTracksRef.current.video = null; }
+        if (audio) { 
+            audio.stop();
+            audio.close(); 
+            localTracksRef.current.audio = null; 
+        }
+        if (video) { 
+            video.stop();
+            video.close(); 
+            localTracksRef.current.video = null; 
+        }
 
         if (agoraClientRef.current) {
-            try { await agoraClientRef.current.leave(); } catch (e) { console.error(e); }
+            const client = agoraClientRef.current;
+            
+            if (client.connectionState === 'CONNECTED' || client.connectionState === 'CONNECTING' || client.connectionState === 'RECONNECTING') {
+                try { 
+                    // Silently handle leave during cleanup
+                    await client.leave().catch(e => {
+                        if (e.code !== 'OPERATION_ABORTED' && e.code !== 'WS_ABORT' && !e.message?.includes('LEAVE')) {
+                            console.warn('Non-critical leave error during endStream:', e);
+                        }
+                    });
+                } catch (e) { 
+                    // Fail silently for any unexpected cleanup errors
+                }
+            }
             agoraClientRef.current = null;
         }
 
@@ -803,33 +828,12 @@ export default function LivePage() {
 
                     {/* RIGHT: CHAT */}
                     <div className={styles.chatSection}>
-                        {/* Chat header with live connection status */}
-                        <div className={styles.chatHeader} style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
-                            <h3 style={{ margin: 0 }}>Live Chat</h3>
-                            <span style={{
-                                display: 'flex',
-                                alignItems: 'center',
-                                gap: 5,
-                                fontSize: '0.75rem',
-                                color: rtmConnected ? '#4CAF50' : '#999',
-                                fontWeight: 600
-                            }}>
-                                <span style={{
-                                    width: 8,
-                                    height: 8,
-                                    borderRadius: '50%',
-                                    background: rtmConnected ? '#4CAF50' : '#bbb',
-                                    display: 'inline-block'
-                                }} />
-                                {rtmConnected ? 'Connected' : 'Connecting...'}
-                            </span>
-                        </div>
+                        <h3 className={styles.chatHeader}>Live Chat</h3>
 
-                        {/* Messages list — auto-scrolls via commentsEndRef */}
                         <div className={styles.messagesList}>
                             {comments.length === 0 && (
-                                <div style={{ padding: '20px', color: '#999', textAlign: 'center', fontSize: '0.85rem' }}>
-                                    {rtmConnected ? 'Be the first to say something!' : 'Joining chat...'}
+                                <div style={{ padding: '20px', color: '#999', textAlign: 'center' }}>
+                                    Welcome to the live stream!
                                 </div>
                             )}
                             {comments.map(msg => (
@@ -846,27 +850,24 @@ export default function LivePage() {
                                     </div>
                                 </div>
                             ))}
-                            {/* Invisible anchor — scrolled into view on new messages */}
+                            {/* Anchor — auto-scrolled into view on each new message */}
                             <div ref={commentsEndRef} />
                         </div>
 
-                        {/* Input area — disabled until RTM is connected */}
                         <div className={styles.inputArea}>
                             <input
                                 type="text"
-                                placeholder={rtmConnected ? 'Say something...' : 'Connecting to chat...'}
+                                placeholder="Say something..."
                                 className={styles.chatInput}
                                 value={inputValue}
-                                disabled={!rtmConnected}
                                 onChange={(e) => setInputValue(e.target.value)}
                                 onKeyDown={(e) => e.key === 'Enter' && handleSendMessage()}
-                                style={{ opacity: rtmConnected ? 1 : 0.5 }}
                             />
                             <button
                                 className={styles.sendBtn}
                                 onClick={handleSendMessage}
-                                disabled={!rtmConnected || !inputValue.trim()}
-                                style={{ opacity: (rtmConnected && inputValue.trim()) ? 1 : 0.4 }}
+                                disabled={!inputValue.trim()}
+                                style={{ opacity: inputValue.trim() ? 1 : 0.4 }}
                             >
                                 <Send size={20} />
                             </button>

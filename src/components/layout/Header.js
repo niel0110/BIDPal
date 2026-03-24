@@ -14,7 +14,17 @@ export default function Header() {
   const { user, logout } = useAuth();
   const { totalUnreadCount, unreadMsgCount } = useNotifications();
   const [isMenuOpen, setIsMenuOpen] = useState(false);
+  const [searchQuery, setSearchQuery] = useState('');
   const router = useRouter();
+
+  const handleSearch = () => {
+    const q = searchQuery.trim();
+    if (q) router.push(`/search?q=${encodeURIComponent(q)}`);
+  };
+
+  const handleSearchKeyDown = (e) => {
+    if (e.key === 'Enter') handleSearch();
+  };
 
   const handleLogout = () => {
     logout();
@@ -133,11 +143,14 @@ export default function Header() {
         {user && user.role?.toLowerCase() === 'seller' ? null : (
           <div className={styles.searchSection}>
             <div className={styles.searchWrapper}>
-              <Search size={20} className={styles.searchIcon} color="#333" />
+              <Search size={20} className={styles.searchIcon} color="#333" style={{ cursor: 'pointer' }} onClick={handleSearch} />
               <input
                 type="text"
                 placeholder="Search essentials, groceries and more..."
                 className={styles.searchInput}
+                value={searchQuery}
+                onChange={(e) => setSearchQuery(e.target.value)}
+                onKeyDown={handleSearchKeyDown}
               />
               <AlignJustify size={20} className={styles.filterIcon} style={{ transform: 'rotate(90deg)' }} />
             </div>

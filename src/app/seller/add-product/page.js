@@ -2,15 +2,20 @@
 
 import { useState } from 'react';
 import { useRouter } from 'next/navigation';
-import { Info, Grid, Camera, X, Trash2, Upload, ChevronLeft } from 'lucide-react';
+import { Info, Grid, Camera, X, Trash2, Upload, ChevronLeft, Package, DollarSign } from 'lucide-react';
 import styles from './page.module.css';
 import { useAuth } from '@/context/AuthContext';
+import PriceRecommendation from '@/components/pricing/PriceRecommendation';
 
 const steps = [
     { id: 'description', name: 'Description', icon: <Info size={18} /> },
+    { id: 'details', name: 'Details', icon: <Package size={18} /> },
     { id: 'categories', name: 'Categories', icon: <Grid size={18} /> },
+    { id: 'pricing', name: 'Pricing', icon: <DollarSign size={18} /> },
     { id: 'photos', name: 'Photos', icon: <Camera size={18} /> },
 ];
+
+const conditionOptions = ['New', 'Like New', 'Good', 'Fair', 'Poor'];
 
 const categoriesData = [
     {
@@ -106,11 +111,16 @@ export default function AddProductPage() {
     const [formData, setFormData] = useState({
         name: '',
         description: '',
-        availability: '',
+        condition: '',
+        brand: '',
+        specifications: '',
+        availability: '1',
         length: '',
         width: '',
         height: '',
         price: '',
+        reservePrice: '',
+        startingPrice: '',
         categories: []
     });
 
@@ -149,6 +159,14 @@ export default function AddProductPage() {
         });
     };
 
+    const handleApplyRecommendation = (prices) => {
+        setFormData(prev => ({
+            ...prev,
+            reservePrice: prices.reservePrice.toString(),
+            startingPrice: prices.startingBid.toString()
+        }));
+    };
+
     const handleNext = async () => {
         if (currentStep < steps.length - 1) {
             setCurrentStep(currentStep + 1);
@@ -171,11 +189,17 @@ export default function AddProductPage() {
                 if (user.seller_id) submitData.append('seller_id', user.seller_id);
                 submitData.append('name', formData.name);
                 submitData.append('description', formData.description);
-                if (formData.availability) submitData.append('availability', formData.availability);
+                // Convert condition to lowercase with underscores for database
+                const dbCondition = formData.condition.toLowerCase().replace(/\s+/g, '_');
+                submitData.append('condition', dbCondition);
+                submitData.append('brand', formData.brand);
+                submitData.append('specifications', formData.specifications);
+                submitData.append('availability', formData.availability);
+                submitData.append('reserve_price', formData.reservePrice);
+                submitData.append('starting_price', formData.startingPrice);
                 if (formData.length) submitData.append('length_mm', formData.length);
                 if (formData.width) submitData.append('width_mm', formData.width);
                 if (formData.height) submitData.append('height_mm', formData.height);
-                if (formData.price) submitData.append('price', formData.price);
                 submitData.append('categories', JSON.stringify(formData.categories));
                 
                 images.forEach(img => {
@@ -271,9 +295,9 @@ export default function AddProductPage() {
                                 rows={6}
                                 value={formData.description}
                                 onChange={(e) => setFormData({ ...formData, description: e.target.value })}
-                                maxLength={60}
+                                maxLength={2000}
                             />
-                            <div className={styles.charCount}>{formData.description.length}/60</div>
+                            <div className={styles.charCount}>{formData.description.length}/2000</div>
                         </div>
 
                         <div className={styles.inputGroup}>
@@ -315,6 +339,34 @@ export default function AddProductPage() {
                 )}
 
                 {currentStep === 1 && (
+                    <div className={styles.stepContent}>
+                        <h2 className={styles.stepTitle}>Product Details</h2>
+
+                        <div className={styles.inputGroup}>
+                            <label>Condition *</label>
+                            <div className={styles.conditionGrid} style={{display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(100px, 1fr))', gap: '10px', marginBottom: '20px'}}>
+                                {conditionOptions.map(cond => (
+                                    <div key={cond} style={{padding: '12px', border: `2px solid ${formData.condition === cond ? '#00A3FF' : '#ddd'}`, borderRadius: '8px', cursor: 'pointer', textAlign: 'center', backgroundColor: formData.condition === cond ? '#E3F2FD' : 'white'}} onClick={() => setFormData({ ...formData, condition: cond })}>
+                                        {cond}
+                                    </div>
+                                ))}
+                            </div>
+                        </div>
+
+                        <div className={styles.inputGroup}>
+                            <label>Brand *</label>
+                            <input type="text" placeholder="e.g., Apple, Samsung, Nike" value={formData.brand} onChange={(e) => setFormData({ ...formData, brand: e.target.value })} required />
+                        </div>
+
+                        <div className={styles.inputGroup}>
+                            <label>Specifications</label>
+                            <textarea rows={4} placeholder="List key specifications (e.g., RAM, Storage, Size, Material)" value={formData.specifications} onChange={(e) => setFormData({ ...formData, specifications: e.target.value })} />
+                            <small>One spec per line for better readability</small>
+                        </div>
+                    </div>
+                )}
+
+                {currentStep === 2 && (
                     <div className={styles.stepContent}>
                         <h2 className={styles.stepTitle}>Select the category your goods belong to (max. 3)</h2>
                         <div className={styles.categoryLayout}>
@@ -365,7 +417,45 @@ export default function AddProductPage() {
                     </div>
                 )}
 
-                {currentStep === 2 && (
+                {currentStep === 3 && (
+                    <div className={styles.stepContent}>
+                        <h2 className={styles.stepTitle}>Pricing Strategy</h2>
+
+                        <PriceRecommendation
+                            productData={{
+                                name: formData.name,
+                                description: formData.description,
+                                category: formData.categories[0] || 'General',
+                                condition: formData.condition,
+                                brand: formData.brand,
+                                specifications: formData.specifications
+                            }}
+                            onApplyRecommendation={handleApplyRecommendation}
+                        />
+
+                        <div style={{marginTop: '20px'}}>
+                            <div className={styles.inputGroup}>
+                                <label>Reserve Price (Minimum Selling Price) *</label>
+                                <div style={{display: 'flex', alignItems: 'center', gap: '10px'}}>
+                                    <span style={{fontSize: '1.2rem', fontWeight: 'bold'}}>₱</span>
+                                    <input type="number" step="0.01" min="0" placeholder="0.00" value={formData.reservePrice} onChange={(e) => setFormData({ ...formData, reservePrice: e.target.value })} required style={{flex: 1}} />
+                                </div>
+                                <small>The minimum price you'll accept for this item</small>
+                            </div>
+
+                            <div className={styles.inputGroup}>
+                                <label>Starting Bid Price *</label>
+                                <div style={{display: 'flex', alignItems: 'center', gap: '10px'}}>
+                                    <span style={{fontSize: '1.2rem', fontWeight: 'bold'}}>₱</span>
+                                    <input type="number" step="0.01" min="0" placeholder="0.00" value={formData.startingPrice} onChange={(e) => setFormData({ ...formData, startingPrice: e.target.value })} required style={{flex: 1}} />
+                                </div>
+                                <small>The initial bid amount to attract buyers</small>
+                            </div>
+                        </div>
+                    </div>
+                )}
+
+                {currentStep === 4 && (
                     <div className={styles.stepContent}>
                         <h2 className={styles.stepTitle}>Add product photos (max 10)</h2>
                         <div className={styles.photoGridDetailed}>

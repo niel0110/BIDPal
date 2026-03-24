@@ -17,6 +17,9 @@ export const metadata = {
 export default function RootLayout({ children }) {
   return (
     <html lang="en" suppressHydrationWarning className={poppins.variable}>
+      <head>
+        <script src="https://accounts.google.com/gsi/client" async defer></script>
+      </head>
       <body suppressHydrationWarning>
         <AuthProvider>
           <CartProvider>
