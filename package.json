@@ -11,6 +11,7 @@
   "dependencies": {
     "@react-google-maps/api": "^2.20.8",
     "agora-rtc-sdk-ng": "^4.24.3",
+    "agora-rtm-sdk": "^1.5.1",
     "leaflet": "^1.9.4",
     "lucide-react": "^0.563.0",
     "next": "16.1.6",
