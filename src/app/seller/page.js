@@ -145,6 +145,24 @@ export default function SellerDashboard() {
         socket.on('connect', () => {
             console.log('📡 Connected to auction socket:', auctionId);
             socket.emit('join-auction', auctionId);
+
+            // Fetch existing comments from database when joining
+            fetch(`${apiUrl}/api/auctions/${auctionId}/comments`)
+                .then(res => res.json())
+                .then(data => {
+                    if (Array.isArray(data)) {
+                        const formattedComments = data.map(c => ({
+                            id: c.comment_id,
+                            user: c.username,
+                            text: c.text,
+                            sent_at: c.created_at,
+                            user_id: c.user_id
+                        }));
+                        setComments(formattedComments);
+                        console.log(`📥 Loaded ${data.length} existing comments`);
+                    }
+                })
+                .catch(err => console.error('Failed to fetch existing comments:', err));
         });
 
         socket.on('new-comment', (comment) => {
@@ -453,9 +471,10 @@ export default function SellerDashboard() {
     const handleSendComment = () => {
         if (!messageInput.trim()) return;
         const auctionId = dashboardData.activeAuction?.auction_id;
-        
+
         const newComment = {
             id: Date.now(),
+            user_id: user?.id || user?.user_id || null,
             user: user?.Fname || 'Seller',
             text: messageInput,
             sent_at: new Date().toISOString()
@@ -465,7 +484,7 @@ export default function SellerDashboard() {
             socketRef.current.emit('send-comment', { auctionId, comment: newComment });
             setMessageInput('');
         } else {
-            // If not live, maybe it's a regular message? 
+            // If not live, maybe it's a regular message?
             // The user wants live comments, so we'll just encourage going live.
             alert('You must be live to send comments to the auction room.');
         }
