@@ -32,6 +32,7 @@ export default function LivePage() {
     const [isMuted, setIsMuted] = useState(false);
     const [isVideoOff, setIsVideoOff] = useState(false);
     const [streamEnded, setStreamEnded] = useState(false);
+    const [rtmConnected, setRtmConnected] = useState(false);
 
     // Permission and Stream State
     const [permissionStatus, setPermissionStatus] = useState('idle'); // idle, requesting, granted, denied
@@ -51,6 +52,7 @@ export default function LivePage() {
     const rtmClientRef = useRef(null);
     const rtmChannelRef = useRef(null);
     const socketRef = useRef(null);
+    const commentsEndRef = useRef(null);
 
     const apiUrl = process.env.NEXT_PUBLIC_API_URL || 'http://127.0.0.1:5000';
 
@@ -108,24 +110,27 @@ export default function LivePage() {
 
                 // Listen for incoming chat messages
                 rtmChannel.on('ChannelMessage', (message, senderId) => {
+                    const time = new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
                     try {
                         const parsed = JSON.parse(message.text);
                         setComments(prev => [...prev, {
                             id: Date.now() + Math.random(),
                             user: parsed.user || senderId,
-                            text: parsed.text
+                            text: parsed.text,
+                            time
                         }]);
                     } catch {
-                        // Plain text fallback
                         setComments(prev => [...prev, {
                             id: Date.now() + Math.random(),
                             user: senderId,
-                            text: message.text
+                            text: message.text,
+                            time
                         }]);
                     }
                 });
 
                 await rtmChannel.join();
+                setRtmConnected(true);
                 console.log('✅ Joined Agora RTM channel for chat');
             } catch (err) {
                 console.error('Agora RTM init error:', err);
@@ -135,10 +140,16 @@ export default function LivePage() {
         startRtm();
 
         return () => {
+            setRtmConnected(false);
             if (rtmChannel) rtmChannel.leave().catch(() => {});
             if (rtmClient) rtmClient.logout().catch(() => {});
         };
     }, [auctionId, user, apiUrl]);
+
+    // ── Auto-scroll chat to the latest message ───────────────────────────────
+    useEffect(() => {
+        commentsEndRef.current?.scrollIntoView({ behavior: 'smooth' });
+    }, [comments]);
 
     // ── Fetch auction data + initial bids ────────────────────────────────────
     useEffect(() => {
@@ -333,13 +344,14 @@ export default function LivePage() {
     };
 
     const handleSendMessage = async () => {
-        if (!inputValue.trim()) return;
+        if (!inputValue.trim() || !rtmConnected) return;
 
         const displayName = user ? (user.Fname || user.email?.split('@')[0] || 'Guest') : 'Guest';
+        const time = new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
         const messagePayload = JSON.stringify({ user: displayName, text: inputValue.trim() });
 
-        // Add locally for immediate feedback
-        setComments(prev => [...prev, { id: Date.now(), user: displayName, text: inputValue.trim() }]);
+        // Add locally for immediate feedback (with timestamp)
+        setComments(prev => [...prev, { id: Date.now(), user: displayName, text: inputValue.trim(), time }]);
         setInputValue('');
 
         // Send via Agora RTM — reaches all channel members without going through our server
@@ -791,33 +803,71 @@ export default function LivePage() {
 
                     {/* RIGHT: CHAT */}
                     <div className={styles.chatSection}>
-                        <h3 className={styles.chatHeader}>Comments</h3>
+                        {/* Chat header with live connection status */}
+                        <div className={styles.chatHeader} style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
+                            <h3 style={{ margin: 0 }}>Live Chat</h3>
+                            <span style={{
+                                display: 'flex',
+                                alignItems: 'center',
+                                gap: 5,
+                                fontSize: '0.75rem',
+                                color: rtmConnected ? '#4CAF50' : '#999',
+                                fontWeight: 600
+                            }}>
+                                <span style={{
+                                    width: 8,
+                                    height: 8,
+                                    borderRadius: '50%',
+                                    background: rtmConnected ? '#4CAF50' : '#bbb',
+                                    display: 'inline-block'
+                                }} />
+                                {rtmConnected ? 'Connected' : 'Connecting...'}
+                            </span>
+                        </div>
+
+                        {/* Messages list — auto-scrolls via commentsEndRef */}
                         <div className={styles.messagesList}>
+                            {comments.length === 0 && (
+                                <div style={{ padding: '20px', color: '#999', textAlign: 'center', fontSize: '0.85rem' }}>
+                                    {rtmConnected ? 'Be the first to say something!' : 'Joining chat...'}
+                                </div>
+                            )}
                             {comments.map(msg => (
                                 <div key={msg.id} className={styles.messageItem}>
                                     <div className={styles.chatAvatar} />
-                                    <div>
-                                        <div className={styles.messageAuthor}>{msg.user}</div>
+                                    <div style={{ flex: 1 }}>
+                                        <div style={{ display: 'flex', alignItems: 'baseline', gap: 6 }}>
+                                            <span className={styles.messageAuthor}>{msg.user}</span>
+                                            {msg.time && (
+                                                <span style={{ fontSize: '0.65rem', color: '#aaa' }}>{msg.time}</span>
+                                            )}
+                                        </div>
                                         <div className={styles.messageText}>{msg.text}</div>
                                     </div>
                                 </div>
                             ))}
-                            {comments.length === 0 && (
-                                <div style={{ padding: '20px', color: '#999', textAlign: 'center' }}>
-                                    Welcome to the live stream!
-                                </div>
-                            )}
+                            {/* Invisible anchor — scrolled into view on new messages */}
+                            <div ref={commentsEndRef} />
                         </div>
+
+                        {/* Input area — disabled until RTM is connected */}
                         <div className={styles.inputArea}>
                             <input
                                 type="text"
-                                placeholder="Type..."
+                                placeholder={rtmConnected ? 'Say something...' : 'Connecting to chat...'}
                                 className={styles.chatInput}
                                 value={inputValue}
+                                disabled={!rtmConnected}
                                 onChange={(e) => setInputValue(e.target.value)}
                                 onKeyDown={(e) => e.key === 'Enter' && handleSendMessage()}
+                                style={{ opacity: rtmConnected ? 1 : 0.5 }}
                             />
-                            <button className={styles.sendBtn} onClick={handleSendMessage}>
+                            <button
+                                className={styles.sendBtn}
+                                onClick={handleSendMessage}
+                                disabled={!rtmConnected || !inputValue.trim()}
+                                style={{ opacity: (rtmConnected && inputValue.trim()) ? 1 : 0.4 }}
+                            >
                                 <Send size={20} />
                             </button>
                         </div>
