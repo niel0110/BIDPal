@@ -45,9 +45,11 @@ export default function LivePage() {
         amount: "0"
     });
 
-    // Refs for Agora
+    // Refs for Agora RTC (video/audio) and RTM (chat)
     const agoraClientRef = useRef(null);
     const localTracksRef = useRef({ audio: null, video: null });
+    const rtmClientRef = useRef(null);
+    const rtmChannelRef = useRef(null);
     const socketRef = useRef(null);
 
     const apiUrl = process.env.NEXT_PUBLIC_API_URL || 'http://127.0.0.1:5000';
@@ -70,14 +72,73 @@ export default function LivePage() {
             setBids(prev => [bid, ...prev]);
         });
 
-        socket.on('new-comment', (comment) => {
-            setComments(prev => [...prev, comment]);
-        });
-
         return () => {
             socket.disconnect();
         };
     }, [auctionId, apiUrl]);
+
+    // ── Agora RTM (chat) setup ───────────────────────────────────────────────
+    useEffect(() => {
+        if (!auctionId || !user || !process.env.NEXT_PUBLIC_AGORA_APP_ID) return;
+
+        let rtmClient = null;
+        let rtmChannel = null;
+
+        const startRtm = async () => {
+            try {
+                const AgoraRTM = (await import('agora-rtm-sdk')).default;
+
+                rtmClient = AgoraRTM.createInstance(process.env.NEXT_PUBLIC_AGORA_APP_ID);
+                rtmClientRef.current = rtmClient;
+
+                // Fetch RTM token from backend
+                const authToken = localStorage.getItem('bidpal_token');
+                const rtmUid = String(user.id || user.user_id || 'guest');
+                const tokenRes = await fetch(
+                    `${apiUrl}/api/agora/rtm-token?uid=${encodeURIComponent(rtmUid)}`,
+                    { headers: { Authorization: `Bearer ${authToken}` } }
+                );
+                const tokenData = await tokenRes.json();
+                if (!tokenRes.ok) throw new Error(tokenData.error || 'RTM token fetch failed');
+
+                await rtmClient.login({ uid: rtmUid, token: tokenData.token });
+
+                rtmChannel = rtmClient.createChannel(String(auctionId));
+                rtmChannelRef.current = rtmChannel;
+
+                // Listen for incoming chat messages
+                rtmChannel.on('ChannelMessage', (message, senderId) => {
+                    try {
+                        const parsed = JSON.parse(message.text);
+                        setComments(prev => [...prev, {
+                            id: Date.now() + Math.random(),
+                            user: parsed.user || senderId,
+                            text: parsed.text
+                        }]);
+                    } catch {
+                        // Plain text fallback
+                        setComments(prev => [...prev, {
+                            id: Date.now() + Math.random(),
+                            user: senderId,
+                            text: message.text
+                        }]);
+                    }
+                });
+
+                await rtmChannel.join();
+                console.log('✅ Joined Agora RTM channel for chat');
+            } catch (err) {
+                console.error('Agora RTM init error:', err);
+            }
+        };
+
+        startRtm();
+
+        return () => {
+            if (rtmChannel) rtmChannel.leave().catch(() => {});
+            if (rtmClient) rtmClient.logout().catch(() => {});
+        };
+    }, [auctionId, user, apiUrl]);
 
     // ── Fetch auction data + initial bids ────────────────────────────────────
     useEffect(() => {
@@ -271,20 +332,24 @@ export default function LivePage() {
         }
     };
 
-    const handleSendMessage = () => {
+    const handleSendMessage = async () => {
         if (!inputValue.trim()) return;
-        const newComment = {
-            id: Date.now(),
-            user: user ? `${user.Fname || 'Guest'}` : 'Guest',
-            text: inputValue
-        };
-        // Broadcast via socket so all viewers see it
-        if (socketRef.current) {
-            socketRef.current.emit('send-comment', { auctionId, comment: newComment });
-        }
-        // Also add locally for immediate feedback
-        setComments(prev => [...prev, newComment]);
+
+        const displayName = user ? (user.Fname || user.email?.split('@')[0] || 'Guest') : 'Guest';
+        const messagePayload = JSON.stringify({ user: displayName, text: inputValue.trim() });
+
+        // Add locally for immediate feedback
+        setComments(prev => [...prev, { id: Date.now(), user: displayName, text: inputValue.trim() }]);
         setInputValue('');
+
+        // Send via Agora RTM — reaches all channel members without going through our server
+        if (rtmChannelRef.current) {
+            try {
+                await rtmChannelRef.current.sendMessage({ text: messagePayload });
+            } catch (err) {
+                console.error('RTM send error:', err);
+            }
+        }
     };
 
     const handlePlaceBid = async () => {
