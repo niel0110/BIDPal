@@ -463,8 +463,6 @@ export default function SellerDashboard() {
 
         if (socketRef.current && isLive && auctionId) {
             socketRef.current.emit('send-comment', { auctionId, comment: newComment });
-            // For seller, also add to local display
-            setComments(prev => [...prev, newComment]);
             setMessageInput('');
         } else {
             // If not live, maybe it's a regular message? 

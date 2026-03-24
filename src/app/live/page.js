@@ -329,12 +329,10 @@ export default function LivePage() {
             user: user ? `${user.Fname || 'Guest'}` : 'Guest',
             text: inputValue
         };
-        // Broadcast via socket so all viewers see it
+        // Broadcast via socket — server will echo back to all clients including sender
         if (socketRef.current) {
             socketRef.current.emit('send-comment', { auctionId, comment: newComment });
         }
-        // Also add locally for immediate feedback
-        setComments(prev => [...prev, newComment]);
         setInputValue('');
     };
 
