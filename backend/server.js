@@ -3,6 +3,7 @@ import cors from 'cors'
 import dotenv from 'dotenv'
 import { createServer } from 'http'
 import { Server as SocketIOServer } from 'socket.io'
+import { supabase } from './config/supabase.js'
 
 dotenv.config()
 
@@ -36,13 +37,28 @@ io.on('connection', (socket) => {
     io.to(`auction:${auctionId}`).emit('bid-update', bid)
   })
 
-  // Broadcast a comment to everyone in the auction room
+  // Broadcast a comment to everyone in the auction room AND persist to DB
   socket.on('send-comment', ({ auctionId, comment }) => {
+    // Broadcast immediately so all viewers see it in real time
     io.to(`auction:${auctionId}`).emit('new-comment', comment)
+
+    // Persist asynchronously — fire and forget (non-blocking)
+    supabase
+      .from('Live_Comments')
+      .insert([{
+        auction_id: auctionId,
+        user_id: comment.user_id || null,
+        username: comment.user || 'Guest',
+        text: comment.text
+      }])
+      .then(({ error }) => {
+        if (error) console.error('Failed to persist comment:', error.message)
+      })
   })
 
   socket.on('disconnect', () => {})
 })
+
 
 app.use(cors())
 app.use(express.json())

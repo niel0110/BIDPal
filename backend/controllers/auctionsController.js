@@ -426,3 +426,49 @@ export const getAuctionById = async (req, res) => {
     res.status(500).json({ error: err.message });
   }
 };
+
+// Get all live comments for an auction
+export const getLiveComments = async (req, res) => {
+  try {
+    const { id } = req.params;
+    const { data, error } = await supabase
+      .from('Live_Comments')
+      .select('comment_id, user_id, username, text, created_at')
+      .eq('auction_id', id)
+      .order('created_at', { ascending: true })
+      .limit(200);
+
+    if (error) throw error;
+    res.json(data || []);
+  } catch (err) {
+    res.status(500).json({ error: err.message });
+  }
+};
+
+// Post a new live comment
+export const postLiveComment = async (req, res) => {
+  try {
+    const { id } = req.params;
+    const { user_id, username, text } = req.body;
+
+    if (!text || !text.trim()) {
+      return res.status(400).json({ error: 'Comment text is required.' });
+    }
+
+    const { data, error } = await supabase
+      .from('Live_Comments')
+      .insert([{
+        auction_id: id,
+        user_id: user_id || null,
+        username: username || 'Guest',
+        text: text.trim()
+      }])
+      .select('comment_id, user_id, username, text, created_at')
+      .single();
+
+    if (error) throw error;
+    res.status(201).json(data);
+  } catch (err) {
+    res.status(500).json({ error: err.message });
+  }
+};

@@ -50,11 +50,34 @@ export default function LivePage() {
     const agoraClientRef = useRef(null);
     const localTracksRef = useRef({ audio: null, video: null });
     const socketRef = useRef(null);
+    const commentsEndRef = useRef(null);
 
     const apiUrl = process.env.NEXT_PUBLIC_API_URL || 'http://127.0.0.1:5000';
 
     // Determine if the current user is the seller (host)
     const isHost = auction && user && String(auction.seller_info?.seller_id) === String(user.seller_id || user.id);
+
+    // ── Fetch existing comments from DB on mount ─────────────────────────────
+    useEffect(() => {
+        if (!auctionId) return;
+        const fetchComments = async () => {
+            try {
+                const res = await fetch(`${apiUrl}/api/auctions/${auctionId}/comments`);
+                if (res.ok) {
+                    const data = await res.json();
+                    // Map DB shape → UI shape
+                    setComments(data.map(c => ({
+                        id: c.comment_id,
+                        user: c.username,
+                        text: c.text
+                    })));
+                }
+            } catch (err) {
+                console.error('Failed to fetch comments:', err);
+            }
+        };
+        fetchComments();
+    }, [auctionId, apiUrl]);
 
     // ── Socket.IO setup ──────────────────────────────────────────────────────
     useEffect(() => {
@@ -72,13 +95,23 @@ export default function LivePage() {
         });
 
         socket.on('new-comment', (comment) => {
-            setComments(prev => [...prev, comment]);
+            setComments(prev => [
+                ...prev,
+                { id: comment.id, user: comment.user, text: comment.text }
+            ]);
         });
 
         return () => {
             socket.disconnect();
         };
     }, [auctionId, apiUrl]);
+
+    // ── Auto-scroll comments to bottom ───────────────────────────────────────
+    useEffect(() => {
+        if (commentsEndRef.current) {
+            commentsEndRef.current.scrollIntoView({ behavior: 'smooth' });
+        }
+    }, [comments]);
 
     // ── Fetch auction data + initial bids ────────────────────────────────────
     useEffect(() => {
@@ -326,10 +359,11 @@ export default function LivePage() {
         if (!inputValue.trim()) return;
         const newComment = {
             id: Date.now(),
+            user_id: user?.user_id || user?.id || null,
             user: user ? `${user.Fname || 'Guest'}` : 'Guest',
             text: inputValue
         };
-        // Broadcast via socket — server will echo back to all clients including sender
+        // Broadcast via socket — server will echo back to all clients AND persist to DB
         if (socketRef.current) {
             socketRef.current.emit('send-comment', { auctionId, comment: newComment });
         }
@@ -812,6 +846,7 @@ export default function LivePage() {
                                     Welcome to the live stream!
                                 </div>
                             )}
+                            <div ref={commentsEndRef} />
                         </div>
                         <div className={styles.inputArea}>
                             <input
