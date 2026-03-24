@@ -47,10 +47,10 @@ export default function Home() {
   const [confirmPassword, setConfirmPassword] = useState('');
   const [error, setError] = useState('');
   
-  const [auctions, setAuctions] = useState([]);
-  const [deals, setDeals] = useState([]);
-  const [clearance, setClearance] = useState([]);
+  const [allAuctions, setAllAuctions] = useState([]);
+  const [allProducts, setAllProducts] = useState([]);
   const [loadingContent, setLoadingContent] = useState(true);
+  const [selectedCategory, setSelectedCategory] = useState('all');
 
   const { isSubmitting, runWithLock } = useSubmitLock();
   const router = useRouter();
@@ -69,19 +69,15 @@ export default function Home() {
       try {
         const apiUrl = process.env.NEXT_PUBLIC_API_URL || 'http://127.0.0.1:5000';
         
-        // Fetch auctions
-        const auctionRes = await fetch(`${apiUrl}/api/auctions?limit=10`);
+        // Fetch auctions and products
+        const [auctionRes, productsRes] = await Promise.all([
+          fetch(`${apiUrl}/api/auctions?limit=50`),
+          fetch(`${apiUrl}/api/products?limit=50`),
+        ]);
         const auctionJson = await auctionRes.json();
-        setAuctions(auctionJson.data || []);
-
-        // Fetch weekly deals (just get some products for now)
-        const productsRes = await fetch(`${apiUrl}/api/products?limit=8`);
         const productsJson = await productsRes.json();
-        const allProducts = productsJson.data || [];
-        
-        // Split them for variety in the UI
-        setDeals(allProducts.slice(0, 4));
-        setClearance(allProducts.slice(4, 7));
+        setAllAuctions(auctionJson.data || []);
+        setAllProducts(productsJson.data || []);
 
       } catch (err) {
         console.error('Failed to fetch home content:', err);
@@ -98,6 +94,18 @@ export default function Home() {
     const progress = element.scrollLeft / (element.scrollWidth - element.clientWidth);
     setScrollProgress(progress);
   };
+
+  const filterByCategory = (items, field = 'category') => {
+    if (selectedCategory === 'all') return items;
+    return items.filter(item =>
+      item[field]?.toLowerCase() === selectedCategory.toLowerCase()
+    );
+  };
+
+  const auctions = filterByCategory(allAuctions);
+  const filteredProducts = filterByCategory(allProducts);
+  const deals = selectedCategory === 'all' ? allProducts.slice(0, 4) : filteredProducts;
+  const clearance = selectedCategory === 'all' ? allProducts.slice(4, 7) : [];
 
 
   const handleSignIn = async (e) => {
@@ -325,12 +333,14 @@ export default function Home() {
   return (
     <main className={styles.main}>
       <Header />
-      <CategoryNav />
+      <CategoryNav activeId={selectedCategory} onSelect={setSelectedCategory} />
       <HeroBanner />
 
       <section className={styles.section}>
         <div className={styles.sectionHeader}>
-          <h2 className={styles.sectionTitle}>Ongoing <span className={styles.redText}>Auctions</span></h2>
+          <h2 className={styles.sectionTitle}>
+            {selectedCategory === 'all' ? <>Ongoing <span className={styles.redText}>Auctions</span></> : <><span className={styles.redText} style={{ textTransform: 'capitalize' }}>{selectedCategory}</span> Auctions</>}
+          </h2>
           <div className={styles.viewAll}>View all <ChevronRight size={16} /></div>
           {/* Custom Scroll Indicator */}
           <div className={styles.scrollIndicator}>
@@ -356,7 +366,9 @@ export default function Home() {
 
       <section className={styles.section}>
         <div className={`${styles.sectionHeader} ${styles.staticIndicator}`}>
-          <h2 className={styles.sectionTitle}>Weekly <span className={styles.redText}>Deals</span></h2>
+          <h2 className={styles.sectionTitle}>
+            {selectedCategory === 'all' ? <>Weekly <span className={styles.redText}>Deals</span></> : <><span className={styles.redText} style={{ textTransform: 'capitalize' }}>{selectedCategory}</span> Products</>}
+          </h2>
           <div className={styles.viewAll}>View all <ChevronRight size={16} /></div>
         </div>
         <div className={styles.grid}>
@@ -375,7 +387,7 @@ export default function Home() {
         </div>
       </section>
 
-      <section className={styles.section}>
+      {selectedCategory === 'all' && <section className={styles.section}>
         <div className={`${styles.sectionHeader} ${styles.staticIndicator}`}>
           <h2 className={styles.sectionTitle}>12.12 <span className={styles.redText}>Clearance Sale</span></h2>
           <div className={styles.viewAll}>View all <ChevronRight size={16} /></div>
@@ -395,7 +407,7 @@ export default function Home() {
             <div className={styles.emptyState}>Coming soon!</div>
           )}
         </div>
-      </section>
+      </section>}
     </main>
   );
 }
