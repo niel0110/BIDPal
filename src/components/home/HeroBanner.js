@@ -1,15 +1,136 @@
+'use client';
+import { useState, useEffect, useCallback, useRef } from 'react';
+import Image from 'next/image';
+import Link from 'next/link';
 import styles from './HeroBanner.module.css';
 
+const slides = [
+    {
+        image: '/Banners/Banner 1.png',
+        alt: 'Find Your Next Treasure',
+        title: 'Find Your Next Treasure',
+        subtitle: 'Browse live auctions on quality secondhand items',
+        cta: 'Browse Auctions',
+        href: '/auctions',
+        objectPosition: 'center bottom',
+    },
+    {
+        image: '/Banners/Banner 2.png',
+        alt: 'Live Now. Bid Now.',
+        title: 'Live Now. Bid Now.',
+        subtitle: 'Join ongoing livestream auctions and win great deals in real time',
+        cta: 'Join a Live Auction',
+        href: '/live',
+        objectPosition: 'center 30%',
+    },
+    {
+        image: '/Banners/Banner 3.png',
+        alt: 'Bid with Confidence',
+        title: 'Bid with Confidence',
+        subtitle: 'Verified sellers, secure payments, and buyer protection — every auction',
+        cta: 'Learn More',
+        href: '/about',
+        objectPosition: 'center 20%',
+    },
+];
+
 export default function HeroBanner() {
+    const [current, setCurrent] = useState(0);
+    const [paused, setPaused] = useState(false);
+    const touchStartX = useRef(null);
+    const touchEndX = useRef(null);
+
+    const next = useCallback(() => {
+        setCurrent((prev) => (prev + 1) % slides.length);
+    }, []);
+
+    const prev = useCallback(() => {
+        setCurrent((prev) => (prev - 1 + slides.length) % slides.length);
+    }, []);
+
+    useEffect(() => {
+        if (paused) return;
+        const timer = setInterval(next, 5000);
+        return () => clearInterval(timer);
+    }, [paused, next]);
+
+    const onTouchStart = (e) => {
+        touchStartX.current = e.touches[0].clientX;
+        touchEndX.current = null;
+    };
+
+    const onTouchMove = (e) => {
+        touchEndX.current = e.touches[0].clientX;
+    };
+
+    const onTouchEnd = () => {
+        if (touchStartX.current === null || touchEndX.current === null) return;
+        const delta = touchStartX.current - touchEndX.current;
+        if (Math.abs(delta) > 50) {
+            delta > 0 ? next() : prev();
+        }
+        touchStartX.current = null;
+        touchEndX.current = null;
+    };
+
     return (
         <div className={styles.heroContainer}>
-            <div className={styles.banner}>
-                <div className={styles.content}>
-                    <h1 className={styles.flashText}>FLASH<br />SALE</h1>
-                    <h2 className={styles.subText}>Limited Time Clearance Sale</h2>
-                    <div className={styles.discountText}>UP TO 20% OFF</div>
+            <div
+                className={styles.slider}
+                onMouseEnter={() => setPaused(true)}
+                onMouseLeave={() => setPaused(false)}
+                onTouchStart={onTouchStart}
+                onTouchMove={onTouchMove}
+                onTouchEnd={onTouchEnd}
+            >
+                {/* Track that slides horizontally */}
+                <div
+                    className={styles.track}
+                    style={{ transform: `translateX(-${current * 100}%)` }}
+                >
+                    {slides.map((slide, i) => (
+                        <div key={i} className={styles.slide}>
+                            <Image
+                                src={slide.image}
+                                alt={slide.alt}
+                                fill
+                                sizes="(max-width: 768px) 100vw, 1440px"
+                                className={styles.slideImage}
+                                style={{ objectPosition: slide.objectPosition }}
+                                priority={i === 0}
+                                quality={100}
+                            />
+                            <div className={styles.overlay} />
+                            <div className={styles.content}>
+                                <h1 className={styles.title}>{slide.title}</h1>
+                                <p className={styles.subtitle}>{slide.subtitle}</p>
+                                <Link href={slide.href} className={styles.cta}>
+                                    {slide.cta}
+                                </Link>
+                            </div>
+                        </div>
+                    ))}
                 </div>
-                <div className={styles.dateText}>12.12</div>
+
+                {/* Arrows */}
+                <button className={`${styles.arrow} ${styles.arrowLeft}`} onClick={prev} aria-label="Previous slide">
+                    &#8249;
+                </button>
+                <button className={`${styles.arrow} ${styles.arrowRight}`} onClick={next} aria-label="Next slide">
+                    &#8250;
+                </button>
+
+                {/* Dots */}
+                <div className={styles.dots}>
+                    {slides.map((_, i) => (
+                        <button
+                            key={i}
+                            className={`${styles.dot} ${i === current ? styles.dotActive : ''}`}
+                            onClick={() => setCurrent(i)}
+                            aria-label={`Go to slide ${i + 1}`}
+                        />
+                    ))}
+                </div>
             </div>
         </div>
     );
