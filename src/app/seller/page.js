@@ -42,17 +42,20 @@ export default function SellerDashboard() {
         stats: { viewers: 0, shares: 0, likes: 0 }
     });
     const [recentBids, setRecentBids] = useState([]);
+    const [bidderCount, setBidderCount] = useState(0);
     const [recentMessages, setRecentMessages] = useState([]);
     const [comments, setComments] = useState([]);
     const [latestConvId, setLatestConvId] = useState(null);
     const [streamReady, setStreamReady] = useState(false);
     const [isMuted, setIsMuted] = useState(false);
     const [isVideoOff, setIsVideoOff] = useState(false);
+    const [liveDuration, setLiveDuration] = useState({ hours: 0, minutes: 0, seconds: 0 });
 
     // Agora refs
     const agoraClientRef = useRef(null);
     const localTracksRef = useRef({ audio: null, video: null });
     const socketRef = useRef(null);
+    const liveStartTimeRef = useRef(null);
 
     const fetchDashboardData = useCallback(async () => {
         if (!user) return;
@@ -72,7 +75,12 @@ export default function SellerDashboard() {
                 const data = await res.json();
                 setDashboardData(data);
                 setIsLive(data.activeAuction !== null);
-                
+
+                // Set live start time for duration tracking
+                if (data.activeAuction && data.activeAuction.start_time) {
+                    liveStartTimeRef.current = new Date(data.activeAuction.start_time);
+                }
+
                 // If there's an active auction, fetch bids
                 if (data.activeAuction) {
                     const bidsRes = await fetch(`${apiUrl}/api/dashboard/auction/${data.activeAuction.auction_id}/bids`, {
@@ -82,7 +90,8 @@ export default function SellerDashboard() {
                     });
                     if (bidsRes.ok) {
                         const bidsData = await bidsRes.json();
-                        setRecentBids(bidsData);
+                        setRecentBids(bidsData.bids || []);
+                        setBidderCount(bidsData.bidderCount || 0);
                     }
                 }
             }
@@ -170,8 +179,53 @@ export default function SellerDashboard() {
             setComments(prev => [...prev, comment]);
         });
 
+        // Listen for viewer count updates
+        socket.on('viewer-count', (count) => {
+            console.log('👥 Viewer count updated:', count);
+            setDashboardData(prev => ({
+                ...prev,
+                stats: {
+                    ...prev.stats,
+                    viewers: count
+                }
+            }));
+        });
+
+        // Listen for new bids
+        socket.on('bid-update', (bid) => {
+            console.log('💰 New bid received:', bid);
+            setRecentBids(prev => {
+                // Prevent duplicates
+                const bidExists = prev.some(b =>
+                    b.bid_id === bid.bid_id ||
+                    (b.bidder_name === bid.bidder_name && b.amount === bid.amount)
+                );
+                if (bidExists) return prev;
+                return [bid, ...prev].slice(0, 20);
+            });
+        });
+
+        // Listen for bidder count updates
+        socket.on('bidder-count-update', ({ bidderCount, latestBid }) => {
+            console.log('👤 Bidder count updated:', bidderCount);
+            setBidderCount(bidderCount);
+            if (latestBid) {
+                setRecentBids(prev => {
+                    // Prevent duplicates
+                    const bidExists = prev.some(b =>
+                        b.bid_id === latestBid.bid_id ||
+                        (b.bidder_name === latestBid.bidder_name && b.amount === latestBid.amount)
+                    );
+                    if (bidExists) return prev;
+                    return [latestBid, ...prev].slice(0, 20);
+                });
+            }
+        });
+
         return () => {
             if (socketRef.current) {
+                console.log('📡 Disconnecting from auction:', auctionId);
+                socketRef.current.emit('leave-auction', auctionId);
                 socketRef.current.disconnect();
                 socketRef.current = null;
             }
@@ -206,6 +260,34 @@ export default function SellerDashboard() {
             }
         }
     }, [streamReady]);
+
+    // Live duration counter
+    useEffect(() => {
+        if (!isLive || !liveStartTimeRef.current) {
+            setLiveDuration({ hours: 0, minutes: 0, seconds: 0 });
+            return;
+        }
+
+        const updateDuration = () => {
+            const now = new Date();
+            const diff = now - liveStartTimeRef.current;
+            const totalSeconds = Math.floor(diff / 1000);
+
+            const hours = Math.floor(totalSeconds / 3600);
+            const minutes = Math.floor((totalSeconds % 3600) / 60);
+            const seconds = totalSeconds % 60;
+
+            setLiveDuration({ hours, minutes, seconds });
+        };
+
+        // Update immediately
+        updateDuration();
+
+        // Update every second
+        const interval = setInterval(updateDuration, 1000);
+
+        return () => clearInterval(interval);
+    }, [isLive]);
 
     const handleQueueScroll = (e) => {
         const element = e.target;
@@ -523,128 +605,86 @@ export default function SellerDashboard() {
                     {/* Live Auction Display - No Card Container */}
                     {activeItem ? (
                         <div className={styles.liveAuctionArea}>
-                            <div className={styles.liveHeader}>
-                                <div className={styles.liveIndicator}>
-                                    <Radio size={20} color="#D32F2F" />
-                                    <div>
-                                        <h2>Currently Selling</h2>
-                                        <p>Live auction in progress</p>
-                                    </div>
+                            {/* Live Badge */}
+                            {isLive && (
+                                <div className={styles.livePulseBadge}>
+                                    <div className={styles.livePulseDot}></div>
+                                    LIVE
                                 </div>
-                                {isLive && <div className={styles.livePulse}>LIVE</div>}
+                            )}
+
+                            {/* Fullscreen Video Container */}
+                            <div className={styles.videoContainer}>
+                                {streamReady ? (
+                                    <>
+                                        {/* Live Camera Feed */}
+                                        <div
+                                            id="seller-camera-preview"
+                                            style={{
+                                                width: '100%',
+                                                height: '100%',
+                                                position: 'absolute',
+                                                inset: 0,
+                                                objectFit: 'cover'
+                                            }}
+                                        />
+                                        {/* Camera Controls */}
+                                        <div className={styles.cameraControls}>
+                                            <button
+                                                onClick={toggleMic}
+                                                className={`${styles.controlBtn} ${isMuted ? styles.controlBtnDanger : ''}`}
+                                                title={isMuted ? 'Unmute' : 'Mute'}
+                                            >
+                                                {isMuted ? <MicOff size={20} /> : <Mic size={20} />}
+                                            </button>
+                                            <button
+                                                onClick={toggleVideo}
+                                                className={`${styles.controlBtn} ${isVideoOff ? styles.controlBtnDanger : ''}`}
+                                                title={isVideoOff ? 'Turn on camera' : 'Turn off camera'}
+                                            >
+                                                {isVideoOff ? <VideoOff size={20} /> : <Video size={20} />}
+                                            </button>
+                                        </div>
+                                    </>
+                                ) : (
+                                    <>
+                                        <img src={activeItem.image} alt={activeItem.title} className={styles.videoPlaceholder} />
+                                        {isLive && (
+                                            <div className={styles.cameraStartOverlay}>
+                                                <button
+                                                    onClick={() => startAgoraStream(activeItem.id)}
+                                                    className={styles.startCameraBtn}
+                                                >
+                                                    <Video size={24} />
+                                                    Start Camera
+                                                </button>
+                                            </div>
+                                        )}
+                                    </>
+                                )}
                             </div>
 
-                            <div className={styles.auctionShowcase}>
-                                <div className={styles.showcaseImage} style={{ position: 'relative', background: '#000' }}>
-                                    {streamReady ? (
-                                        <>
-                                            {/* Live Camera Feed */}
-                                            <div
-                                                id="seller-camera-preview"
-                                                style={{
-                                                    width: '100%',
-                                                    height: '100%',
-                                                    position: 'absolute',
-                                                    inset: 0,
-                                                    objectFit: 'cover'
-                                                }}
-                                            />
-                                            {/* Camera Controls */}
-                                            <div style={{
-                                                position: 'absolute',
-                                                bottom: '1rem',
-                                                left: '50%',
-                                                transform: 'translateX(-50%)',
-                                                display: 'flex',
-                                                gap: '0.75rem',
-                                                zIndex: 10
-                                            }}>
-                                                <button
-                                                    onClick={toggleMic}
-                                                    style={{
-                                                        background: isMuted ? '#D32F2F' : 'rgba(255,255,255,0.2)',
-                                                        border: 'none',
-                                                        borderRadius: '50%',
-                                                        width: 44,
-                                                        height: 44,
-                                                        display: 'flex',
-                                                        alignItems: 'center',
-                                                        justifyContent: 'center',
-                                                        cursor: 'pointer',
-                                                        backdropFilter: 'blur(4px)'
-                                                    }}
-                                                >
-                                                    {isMuted ? <MicOff size={20} color="white" /> : <Mic size={20} color="white" />}
-                                                </button>
-                                                <button
-                                                    onClick={toggleVideo}
-                                                    style={{
-                                                        background: isVideoOff ? '#D32F2F' : 'rgba(255,255,255,0.2)',
-                                                        border: 'none',
-                                                        borderRadius: '50%',
-                                                        width: 44,
-                                                        height: 44,
-                                                        display: 'flex',
-                                                        alignItems: 'center',
-                                                        justifyContent: 'center',
-                                                        cursor: 'pointer',
-                                                        backdropFilter: 'blur(4px)'
-                                                    }}
-                                                >
-                                                    {isVideoOff ? <VideoOff size={20} color="white" /> : <Video size={20} color="white" />}
-                                                </button>
-                                            </div>
-                                        </>
-                                    ) : (
-                                        <>
-                                            <img src={activeItem.image} alt={activeItem.title} style={{ width: '100%', height: '100%', objectFit: 'cover' }} />
-                                            {isLive && (
-                                                <div style={{
-                                                    position: 'absolute',
-                                                    inset: 0,
-                                                    display: 'flex',
-                                                    alignItems: 'center',
-                                                    justifyContent: 'center',
-                                                    background: 'rgba(0,0,0,0.5)',
-                                                    zIndex: 5
-                                                }}>
-                                                    <button
-                                                        onClick={() => startAgoraStream(activeItem.id)}
-                                                        style={{
-                                                            padding: '14px 28px',
-                                                            fontSize: '1rem',
-                                                            fontWeight: 600,
-                                                            borderRadius: '8px',
-                                                            cursor: 'pointer',
-                                                            background: '#D32F2F',
-                                                            color: 'white',
-                                                            border: 'none',
-                                                            display: 'flex',
-                                                            alignItems: 'center',
-                                                            gap: '8px',
-                                                            boxShadow: '0 4px 12px rgba(211, 47, 47, 0.4)'
-                                                        }}
-                                                    >
-                                                        <Video size={20} />
-                                                        Start Camera
-                                                    </button>
-                                                </div>
-                                            )}
-                                        </>
-                                    )}
+                            {/* Product Details Below Video */}
+                            <div className={styles.productDetailsSection}>
+                                <div className={styles.productHeader}>
+                                    <div className={styles.productTitleArea}>
+                                        <Radio size={18} color="#D32F2F" className={styles.productIcon} />
+                                        <h1 className={styles.productTitle}>{activeItem.title}</h1>
+                                    </div>
                                 </div>
-                                <div className={styles.showcaseDetails}>
-                                    <h1 className={styles.showcaseTitle}>{activeItem.title}</h1>
-                                    <div className={styles.showcaseStats}>
-                                        <div className={styles.bigStat}>
-                                            <span className={styles.bigStatLabel}>Current Bid</span>
-                                            <span className={styles.bigStatValue}>₱{activeItem.currentBid.toLocaleString()}</span>
-                                        </div>
-                                        <div className={styles.bigStat}>
-                                            <span className={styles.bigStatLabel}>Time Left</span>
-                                            <div className={styles.bigStatValue}>
-                                                <Clock size={24} /> {activeItem.timeLeft}
-                                            </div>
+
+                                <div className={styles.productStatsGrid}>
+                                    <div className={styles.statCard}>
+                                        <div className={styles.statCardLabel}>Current Bid</div>
+                                        <div className={styles.statCardValue}>₱{activeItem.currentBid.toLocaleString()}</div>
+                                    </div>
+                                    <div className={styles.statCard}>
+                                        <div className={styles.statCardLabel}>Live Duration</div>
+                                        <div className={styles.statCardValue}>
+                                            <Clock size={20} />
+                                            {String(liveDuration.hours).padStart(2, '0')}:
+                                            {String(liveDuration.minutes).padStart(2, '0')}:
+                                            {String(liveDuration.seconds).padStart(2, '0')}
                                         </div>
                                     </div>
                                 </div>
@@ -671,18 +711,18 @@ export default function SellerDashboard() {
                                     <p>Live bidding activity</p>
                                 </div>
                             </div>
-                            {activeItem && (
+                            {activeItem && bidderCount > 0 && (
                                 <div className={styles.biddersCount}>
-                                    <Users size={16} /> {activeItem.bidders} Bidders
+                                    <Users size={16} /> {bidderCount} Bidder{bidderCount !== 1 ? 's' : ''}
                                 </div>
                             )}
                         </div>
                         <div className={styles.bidsList}>
-                            {recentBids.length > 0 ? recentBids.map(bid => (
-                                <div key={bid.bid_id} className={styles.bidRow}>
+                            {recentBids.length > 0 ? recentBids.map((bid, index) => (
+                                <div key={bid.bid_id || index} className={styles.bidRow}>
                                     <div>
-                                        <div className={styles.bidderName}>{bid.bidder?.Fname} {bid.bidder?.Lname}</div>
-                                        <div className={styles.bidTimestamp}>{new Date(bid.placed_at).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}</div>
+                                        <div className={styles.bidderName}>{bid.bidder_name}</div>
+                                        <div className={styles.bidTimestamp}>{bid.timeAgo}</div>
                                     </div>
                                     <span className={styles.bidPrice}>₱{bid.amount.toLocaleString()}</span>
                                 </div>

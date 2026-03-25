@@ -472,3 +472,162 @@ export const postLiveComment = async (req, res) => {
     res.status(500).json({ error: err.message });
   }
 };
+
+// Place a bid on an auction
+export const placeBid = async (req, res) => {
+  try {
+    const { id } = req.params; // auction_id
+    const { amount } = req.body;
+    const user_id = req.user?.user_id || req.user?.id; // From auth middleware
+
+    console.log('📝 Placing bid:', { auction_id: id, user_id, amount });
+
+    if (!user_id) {
+      return res.status(401).json({ error: 'User authentication required' });
+    }
+
+    if (!amount || amount <= 0) {
+      return res.status(400).json({ error: 'Valid bid amount is required' });
+    }
+
+    // Get auction details to validate bid (include current_price)
+    const { data: auction, error: auctionError } = await supabase
+      .from('Auctions')
+      .select('auction_id, reserve_price, current_price, incremental_bid_step, status')
+      .eq('auction_id', id)
+      .single();
+
+    if (auctionError || !auction) {
+      console.error('❌ Auction lookup error:', { id, auctionError, auction });
+      return res.status(404).json({ error: 'Auction not found' });
+    }
+
+    console.log('📋 Auction found:', { auction_id: auction.auction_id, status: auction.status, current_price: auction.current_price });
+
+    if (auction.status !== 'active') {
+      console.error('⚠️  Auction not active:', auction.status);
+      return res.status(400).json({
+        error: `Auction is not active (status: ${auction.status})`,
+        currentStatus: auction.status
+      });
+    }
+
+    // Use current_price from Auctions table (kept up-to-date by DB trigger)
+    const currentPrice = parseFloat(auction.current_price || auction.reserve_price || 0);
+    const step = parseFloat(auction.incremental_bid_step || 100);
+
+    // Validate bid amount — must exceed current price by at least one step
+    const minBid = currentPrice + step;
+    const bidAmount = parseFloat(amount);
+
+    if (bidAmount < minBid) {
+      return res.status(400).json({
+        error: `Bid must be at least ₱${minBid.toLocaleString('en-PH')}`,
+        minBid,
+        currentPrice
+      });
+    }
+
+    // Insert bid into database (trigger will update Auctions.current_price)
+    const { data: bid, error: bidError } = await supabase
+      .from('Bids')
+      .insert([{
+        auction_id: id,
+        user_id: user_id,
+        bid_amount: bidAmount,
+        placed_at: new Date().toISOString()
+      }])
+      .select('bid_id, bid_amount, placed_at, user_id')
+      .single();
+
+    if (bidError) {
+      console.error('❌ Bid insert error:', bidError);
+      throw bidError;
+    }
+
+    // Get user info separately to avoid foreign key issues
+    const { data: userData } = await supabase
+      .from('User')
+      .select('Fname, Lname, Avatar')
+      .eq('user_id', user_id)
+      .single();
+
+    // Calculate next minimum bid after this one
+    const minNextBid = bidAmount + step;
+
+    console.log('✅ Bid placed successfully:', bid);
+
+    const fName = userData?.Fname;
+    const lName = userData?.Lname;
+    const emailName = userData?.email ? userData.email.split('@')[0] : 'User';
+    const fullName = (fName || lName) ? `${fName || ''} ${lName || ''}`.trim() : emailName;
+
+    // Return formatted bid data with user information and next minimum bid
+    res.status(201).json({
+      success: true,
+      bid_id: bid.bid_id,
+      user_id: user_id,
+      amount: bid.bid_amount,
+      placed_at: bid.placed_at,
+      bidder_name: fullName,
+      bidder_avatar: userData?.Avatar || null,
+      minNextBid,
+      currentPrice: bidAmount,
+      message: 'Bid placed successfully'
+    });
+  } catch (err) {
+    console.error('❌ Place bid error:', err);
+    res.status(500).json({ error: err.message || 'Failed to place bid' });
+  }
+};
+
+// Get real-time stats for an auction
+export const getAuctionStats = async (req, res) => {
+  try {
+    const { id } = req.params;
+    const { user_id } = req.query;
+
+    const getViewerCount = req.app.locals.getViewerCount || (() => 0);
+    const liveViewers = getViewerCount(id);
+
+    const { count: totalViews } = await supabase
+      .from('Auction_Views')
+      .select('*', { count: 'exact', head: true })
+      .eq('auction_id', id);
+
+    const { count: likes } = await supabase
+      .from('Auction_Likes')
+      .select('*', { count: 'exact', head: true })
+      .eq('auction_id', id);
+
+    const { count: shares } = await supabase
+      .from('Auction_Shares')
+      .select('*', { count: 'exact', head: true })
+      .eq('auction_id', id);
+
+    let isLiked = false;
+    if (user_id) {
+      const { data: existingLike } = await supabase
+        .from('Auction_Likes')
+        .select('user_id')
+        .eq('auction_id', id)
+        .eq('user_id', user_id)
+        .maybeSingle();
+      if (existingLike) isLiked = true;
+    }
+
+    res.json({
+      stats: {
+        viewers: Math.max(liveViewers, totalViews || 0),
+        liveViewers,
+        totalViews: totalViews || 0,
+        likes: likes || 0,
+        shares: shares || 0
+      },
+      isLiked
+    });
+  } catch (err) {
+    console.error('Stats fetch error:', err);
+    res.status(500).json({ error: err.message });
+  }
+};

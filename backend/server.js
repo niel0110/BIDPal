@@ -21,20 +21,80 @@ const io = new SocketIOServer(httpServer, {
 // Expose io to routes via app.locals
 app.locals.io = io
 
+// Track active viewers per auction
+const auctionViewers = new Map() // auctionId -> Set of socket IDs
+
+// Helper to get viewer count
+const getViewerCount = (auctionId) => {
+  return auctionViewers.get(auctionId)?.size || 0
+}
+
+// Helper to broadcast viewer count
+const broadcastViewerCount = (auctionId) => {
+  const count = getViewerCount(auctionId)
+  io.to(`auction:${auctionId}`).emit('viewer-count', count)
+}
+
 io.on('connection', (socket) => {
   // Client joins their own user room for targeted events
   socket.on('join', (userId) => {
     socket.join(`user:${userId}`)
   })
 
-  // Join an auction room
+  // Join an auction room and track as viewer
   socket.on('join-auction', (auctionId) => {
     socket.join(`auction:${auctionId}`)
+
+    // Track this viewer
+    if (!auctionViewers.has(auctionId)) {
+      auctionViewers.set(auctionId, new Set())
+    }
+    auctionViewers.get(auctionId).add(socket.id)
+
+    // Store auctionId on socket for cleanup
+    socket.currentAuction = auctionId
+
+    // Broadcast updated viewer count
+    broadcastViewerCount(auctionId)
+  })
+
+  // Leave an auction room
+  socket.on('leave-auction', (auctionId) => {
+    socket.leave(`auction:${auctionId}`)
+
+    // Remove from viewer tracking
+    if (auctionViewers.has(auctionId)) {
+      auctionViewers.get(auctionId).delete(socket.id)
+      if (auctionViewers.get(auctionId).size === 0) {
+        auctionViewers.delete(auctionId)
+      }
+    }
+
+    // Broadcast updated viewer count
+    broadcastViewerCount(auctionId)
   })
 
   // Broadcast new bid to everyone in the auction room
-  socket.on('new-bid', ({ auctionId, bid }) => {
+  socket.on('new-bid', async ({ auctionId, bid }) => {
+    // Broadcast the new bid
     io.to(`auction:${auctionId}`).emit('bid-update', bid)
+
+    // Also fetch and broadcast updated bidder count
+    try {
+      const { data: uniqueBidders } = await supabase
+        .from('Bids')
+        .select('user_id')
+        .eq('auction_id', auctionId);
+
+      const uniqueBidderCount = new Set(uniqueBidders?.map(b => b.user_id)).size;
+
+      io.to(`auction:${auctionId}`).emit('bidder-count-update', {
+        bidderCount: uniqueBidderCount,
+        latestBid: bid
+      });
+    } catch (err) {
+      console.error('Failed to update bidder count:', err);
+    }
   })
 
   // Broadcast a comment to everyone in the auction room AND persist to DB
@@ -56,8 +116,24 @@ io.on('connection', (socket) => {
       })
   })
 
-  socket.on('disconnect', () => {})
+  // Handle disconnect
+  socket.on('disconnect', () => {
+    // Clean up viewer tracking
+    if (socket.currentAuction) {
+      const auctionId = socket.currentAuction
+      if (auctionViewers.has(auctionId)) {
+        auctionViewers.get(auctionId).delete(socket.id)
+        if (auctionViewers.get(auctionId).size === 0) {
+          auctionViewers.delete(auctionId)
+        }
+        broadcastViewerCount(auctionId)
+      }
+    }
+  })
 })
+
+// Expose viewer tracking functions to routes
+app.locals.getViewerCount = getViewerCount
 
 
 app.use(cors())

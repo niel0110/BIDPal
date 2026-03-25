@@ -213,6 +213,56 @@
     background-color: #B71C1C;
 }
 
+/* Stats Row */
+.statsRow {
+    display: flex;
+    gap: 1rem;
+    padding: 1rem 0;
+    border-bottom: 1px solid #eee;
+}
+
+.statButton {
+    display: flex;
+    align-items: center;
+    gap: 0.5rem;
+    padding: 0.5rem 1rem;
+    background: #f8f9fa;
+    border: 1px solid #e9ecef;
+    border-radius: 8px;
+    cursor: pointer;
+    transition: all 0.2s;
+    font-size: 0.9rem;
+    color: #495057;
+}
+
+.statButton:hover {
+    background: #e9ecef;
+    border-color: #dee2e6;
+    transform: translateY(-1px);
+}
+
+.statButtonActive {
+    background: #ffe0e0;
+    border-color: #D32F2F;
+    color: #D32F2F;
+}
+
+.statButtonActive:hover {
+    background: #ffc9c9;
+}
+
+.statDisplay {
+    display: flex;
+    align-items: center;
+    gap: 0.5rem;
+    padding: 0.5rem 1rem;
+    background: #f8f9fa;
+    border: 1px solid #e9ecef;
+    border-radius: 8px;
+    font-size: 0.9rem;
+    color: #495057;
+}
+
 /* Bid Ticker */
 .bidTicker {
     display: flex;

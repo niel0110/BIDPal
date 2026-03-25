@@ -3,7 +3,7 @@
 import { useState, useEffect, useRef } from 'react';
 import { useSearchParams } from 'next/navigation';
 import Header from '@/components/layout/Header';
-import { Clock, Eye, Heart, Send, X, Star, Truck, Pencil, CheckCircle, Loader2, Mic, MicOff, Video, VideoOff } from 'lucide-react';
+import { Clock, Eye, Heart, Send, X, Star, Truck, Pencil, CheckCircle, Loader2, Mic, MicOff, Video, VideoOff, Share2 } from 'lucide-react';
 import styles from './page.module.css';
 import { io } from 'socket.io-client';
 import { useAuth } from '@/context/AuthContext';
@@ -32,6 +32,9 @@ export default function LivePage() {
     const [isMuted, setIsMuted] = useState(false);
     const [isVideoOff, setIsVideoOff] = useState(false);
     const [streamEnded, setStreamEnded] = useState(false);
+    const [stats, setStats] = useState({ likes: 0, shares: 0, viewers: 0 });
+    const [isLiked, setIsLiked] = useState(false);
+    const [minBid, setMinBid] = useState(null); // The minimum required next bid amount
 
     // Permission and Stream State
     const [permissionStatus, setPermissionStatus] = useState('idle'); // idle, requesting, granted, denied
@@ -91,7 +94,22 @@ export default function LivePage() {
         });
 
         socket.on('bid-update', (bid) => {
-            setBids(prev => [bid, ...prev]);
+            setBids(prev => {
+                // Check if bid already exists to prevent duplicates
+                const bidExists = prev.some(b => b.id === (bid.id || bid.bid_id) || (b.user === bid.user && b.amount === bid.amount && b.time === bid.time));
+                if (bidExists) return prev;
+
+                // Format the bid to match the expected structure
+                const formattedBid = {
+                    id: bid.id || bid.bid_id || Date.now(),
+                    user_id: bid.user_id,
+                    user: (bid.user && bid.user.trim() !== 'null null' ? bid.user : null) || (bid.bidder_name && bid.bidder_name.trim() !== 'null null' ? bid.bidder_name : 'Anonymous'),
+                    amount: bid.amount?.toLocaleString ? bid.amount.toLocaleString() : bid.amount,
+                    time: bid.time || bid.timeAgo || new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })
+                };
+
+                return [formattedBid, ...prev];
+            });
         });
 
         socket.on('new-comment', (comment) => {
@@ -99,7 +117,27 @@ export default function LivePage() {
             setComments(prev => [...prev, { id: comment.id, user: comment.user, text: comment.text, time }]);
         });
 
+        // Listen for live viewer count updates (active sockets)
+        socket.on('viewer-count', (count) => {
+            setViewerCount(count);
+        });
+
+        // Listen for persistent total views updates
+        socket.on('total-views-update', (count) => {
+            setStats(prev => ({ ...prev, viewers: Math.max((prev.viewers || 0), count) }));
+        });
+
+        // Listen for like and share updates
+        socket.on('like-update', (count) => {
+            setStats(prev => ({ ...prev, likes: count }));
+        });
+
+        socket.on('share-update', (count) => {
+            setStats(prev => ({ ...prev, shares: count }));
+        });
+
         return () => {
+            socket.emit('leave-auction', auctionId);
             socket.disconnect();
         };
     }, [auctionId, apiUrl]);
@@ -121,12 +159,18 @@ export default function LivePage() {
                 const res = await fetch(`${apiUrl}/api/dashboard/auction/${auctionId}/bids`);
                 const data = await res.json();
                 if (res.ok) {
-                    const formattedBids = data.map(bid => ({
-                        id: bid.bid_id,
-                        user: bid.bidder ? `${bid.bidder.Fname} ${bid.bidder.Lname[0]}.` : 'Unknown',
-                        amount: bid.amount.toLocaleString(),
-                        time: new Date(bid.placed_at).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })
-                    }));
+                    const bidsArray = data.bids || data;
+                    const formattedBids = Array.isArray(bidsArray) ? bidsArray.map(bid => {
+                        const resolvedUser = (bid.bidder_name && bid.bidder_name.trim() !== 'null null') ? bid.bidder_name : (bid.bidder?.Fname ? `${bid.bidder.Fname} ${bid.bidder.Lname?.[0] || ''}.` : 'Anonymous');
+                        
+                        return {
+                            id: bid.bid_id,
+                            user_id: bid.user_id,
+                            user: resolvedUser,
+                            amount: (bid.amount || bid.bid_amount).toLocaleString(),
+                            time: bid.timeAgo || new Date(bid.placed_at || bid.timestamp).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })
+                        };
+                    }) : [];
                     setBids(formattedBids);
                 }
             } catch (err) {
@@ -134,17 +178,44 @@ export default function LivePage() {
             }
         };
 
+        const fetchStats = async () => {
+            try {
+                const userIdParam = user?.user_id || user?.id ? `?user_id=${user.user_id || user.id}` : '';
+                const res = await fetch(`${apiUrl}/api/auctions/${auctionId}/stats${userIdParam}`);
+                if (res.ok) {
+                    const data = await res.json();
+                    if (data.stats) {
+                        setStats(data.stats);
+                        setViewerCount(data.stats.liveViewers || 0);
+                        if (typeof data.isLiked !== 'undefined') setIsLiked(data.isLiked);
+                    }
+                }
+            } catch (err) {
+                console.error('Failed to fetch stats:', err);
+            }
+        };
+
         const fetchAuctionDetails = async () => {
             try {
+                console.log('🔍 Fetching auction:', auctionId);
                 const res = await fetch(`${apiUrl}/api/auctions/${auctionId}`);
                 const data = await res.json();
                 if (res.ok) {
+                    console.log('✅ Auction loaded:', { auction_id: data.auction_id, status: data.status });
                     setAuction(data);
-                    await fetchBids();
+                    
+                    // Initialize minimum bid requirement
+                    const currentPrice = Number(data.current_price || data.reserve_price || 0);
+                    const step = Number(data.incremental_bid_step || 100);
+                    setMinBid(currentPrice + step);
+
+                    await Promise.all([fetchBids(), fetchStats()]);
                 } else {
+                    console.error('❌ Failed to load auction:', data.error);
                     setError(data.error || 'Failed to fetch auction details');
                 }
             } catch (err) {
+                console.error('❌ Error fetching auction:', err);
                 setError('An error occurred while fetching auction details');
             } finally {
                 setLoading(false);
@@ -371,6 +442,14 @@ export default function LivePage() {
     const handlePlaceBid = async () => {
         if (!bidAmount) return;
 
+        if (!auctionId) {
+            console.error('❌ No auction ID available');
+            alert('Invalid auction - please check the URL');
+            return;
+        }
+
+        console.log('🎯 Placing bid:', { auctionId, amount: bidAmount, url: `${apiUrl}/api/auctions/${auctionId}/bids` });
+
         const token = localStorage.getItem('bidpal_token');
         try {
             const res = await fetch(`${apiUrl}/api/auctions/${auctionId}/bids`, {
@@ -383,34 +462,56 @@ export default function LivePage() {
             });
             const data = await res.json();
 
+            console.log('📥 Bid API response:', { status: res.status, ok: res.ok, data });
+
+            // Check for API errors — show meaningful message to user
+            if (!res.ok || data.error) {
+                const errMsg = data.error || 'Failed to place bid';
+                console.error('❌ Bid API error:', { status: res.status, error: errMsg, data });
+                // Update the minimum bid if the server tells us
+                if (data.minBid) setMinBid(data.minBid);
+                alert(`❌ ${errMsg}`);
+                return; // Don't close modal — let user correct the amount
+            }
+
+            console.log('✅ Bid placed successfully:', data);
+
+            // Update minBid for the next attempt
+            if (data.minNextBid) setMinBid(data.minNextBid);
+
+            // Create bid object for local display
             const newBid = {
                 id: data.bid_id || Date.now(),
-                user: user ? `${user.Fname} ${user.Lname?.[0]}.` : 'You',
+                user_id: user?.user_id || user?.id,
+                user: user?.Fname ? `${user.Fname} ${user.Lname?.[0] || ''}.` : (user?.email ? user.email.split('@')[0] : 'Anonymous'),
                 amount: Number(bidAmount).toLocaleString(),
                 time: 'Just now'
+            };
+
+            // Create bid object for Socket.IO broadcast (with full bidder info)
+            const broadcastBid = {
+                bid_id: data.bid_id,
+                user_id: user?.user_id || user?.id,
+                bidder_name: data.bidder_name || 'Anonymous',
+                bidder_avatar: data.bidder_avatar,
+                amount: Number(bidAmount),
+                timeAgo: 'Just now',
+                timestamp: data.placed_at
             };
 
             // Emit to all viewers in the room via socket
             if (socketRef.current) {
-                socketRef.current.emit('new-bid', { auctionId, bid: newBid });
+                socketRef.current.emit('new-bid', { auctionId, bid: broadcastBid });
             }
             setBids(prev => [newBid, ...prev]);
-        } catch (err) {
-            // Optimistic update even if API call fails (for demo)
-            const newBid = {
-                id: Date.now(),
-                user: 'You',
-                amount: Number(bidAmount).toLocaleString(),
-                time: 'Just now'
-            };
-            if (socketRef.current) {
-                socketRef.current.emit('new-bid', { auctionId, bid: newBid });
-            }
-            setBids(prev => [newBid, ...prev]);
-        }
 
-        setShowModal(false);
-        setBidAmount('');
+            // Close modal and reset only on success
+            setShowModal(false);
+            setBidAmount('');
+        } catch (err) {
+            console.error('❌ Bid network error:', err);
+            alert(`❌ Network error: ${err.message}`);
+        }
     };
 
     const toggleMic = () => {
@@ -493,6 +594,64 @@ export default function LivePage() {
     const handleOpenPayment = () => {
         setWinnerModal({ ...winnerModal, show: false });
         setShowPaymentModal(true);
+    };
+
+    const handleLike = async () => {
+        if (!user) return;
+        try {
+            const res = await fetch(`${apiUrl}/api/dashboard/auction/${auctionId}/like`, {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ user_id: user.user_id || user.id })
+            });
+            if (res.ok) {
+                const data = await res.json();
+                setIsLiked(data.liked);
+                setStats(prev => ({ ...prev, likes: data.likeCount }));
+            }
+        } catch (err) {
+            console.error('Failed to like auction:', err);
+        }
+    };
+
+    // Track view/join event when a non-host viewer loads the page
+    useEffect(() => {
+        if (!auctionId || isHost) return; // Only track buyer views
+        const session_id = `${Date.now()}-${Math.random().toString(36).slice(2)}`;
+        fetch(`${apiUrl}/api/dashboard/auction/${auctionId}/view`, {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ user_id: user?.user_id || user?.id || null, session_id })
+        }).catch(() => {}); // Fire-and-forget — non-critical
+    }, [auctionId, isHost]); // eslint-disable-line react-hooks/exhaustive-deps
+
+    const handleShare = async () => {
+        try {
+            // Share using Web Share API if available
+            if (navigator.share) {
+                await navigator.share({
+                    title: product?.name || 'Live Auction',
+                    text: `Check out this live auction: ${product?.name}`,
+                    url: window.location.href
+                });
+            } else {
+                // Fallback: copy link to clipboard
+                await navigator.clipboard.writeText(window.location.href);
+                alert('Link copied to clipboard!');
+            }
+
+            // Track share in backend
+            await fetch(`${apiUrl}/api/dashboard/auction/${auctionId}/share`, {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ user_id: user?.user_id || user?.id || null })
+            });
+
+            // Update share count
+            setStats(prev => ({ ...prev, shares: prev.shares + 1 }));
+        } catch (err) {
+            console.error('Failed to share:', err);
+        }
     };
 
     if (loading) {
@@ -805,15 +964,37 @@ export default function LivePage() {
                                     </div>
                                 </div>
                             </div>
-                            <button className={styles.bidButton} onClick={() => setShowModal(true)}>Bid</button>
+                            <button className={styles.bidButton} onClick={() => {
+                                // Pre-fill bid amount with minimum required
+                                if (minBid) setBidAmount(minBid);
+                                setShowModal(true);
+                            }}>Bid</button>
+                        </div>
+
+                        {/* Stats Section */}
+                        <div className={styles.statsRow}>
+                            <button className={`${styles.statButton} ${isLiked ? styles.statButtonActive : ''}`} onClick={handleLike}>
+                                <Heart size={18} fill={isLiked ? 'currentColor' : 'none'} />
+                                <span>{stats.likes}</span>
+                            </button>
+                            <button className={styles.statButton} onClick={handleShare}>
+                                <Share2 size={18} />
+                                <span>{stats.shares}</span>
+                            </button>
+                            <div className={styles.statDisplay}>
+                                <Eye size={18} />
+                                <span>{stats.viewers}</span>
+                            </div>
                         </div>
 
                         <div className={styles.bidTicker}>
-                            {bids.length > 0 ? bids.map(bid => (
-                                <div key={bid.id} className={styles.bidItem}>
+                            {bids.length > 0 ? bids.map((bid, index) => (
+                                <div key={bid.id ? `bid-${bid.id}-${index}` : `bid-${index}`} className={styles.bidItem}>
                                     <div className={styles.bidderInfo}>
                                         <div className={styles.bidderAvatar} />
-                                        <span className={styles.bidderName}>{bid.user}</span>
+                                        <span className={styles.bidderName}>
+                                            {user && (bid.user_id === (user?.user_id || user?.id)) ? 'You' : bid.user}
+                                        </span>
                                     </div>
                                     <div style={{ display: 'flex', gap: '1rem', alignItems: 'center' }}>
                                         <span className={styles.bidTime}>{bid.time}</span>
@@ -895,7 +1076,7 @@ export default function LivePage() {
 
                         <div className={styles.inputGroup}>
                             <label className={styles.inputLabel}>
-                                Minimum increment: Php {auction.incremental_bid_step || 100}
+                                Minimum bid: <strong>₱ {(minBid || ((auction.current_price || auction.reserve_price) + (auction.incremental_bid_step || 100))).toLocaleString('en-PH')}</strong>
                             </label>
                             <div className={styles.currencyInputWrapper}>
                                 <span className={styles.currencySymbol}>₱</span>
@@ -903,7 +1084,8 @@ export default function LivePage() {
                                     type="number"
                                     className={styles.bidInput}
                                     value={bidAmount}
-                                    placeholder={(auction.current_price || auction.reserve_price) + (auction.incremental_bid_step || 100)}
+                                    placeholder={minBid || ((auction.current_price || auction.reserve_price) + (auction.incremental_bid_step || 100))}
+                                    min={minBid || ((auction.current_price || auction.reserve_price) + (auction.incremental_bid_step || 100))}
                                     onChange={(e) => setBidAmount(e.target.value)}
                                     autoFocus
                                 />
