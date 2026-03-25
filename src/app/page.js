@@ -8,33 +8,12 @@ import Header from '@/components/layout/Header';
 import CategoryNav from '@/components/home/CategoryNav';
 import HeroBanner from '@/components/home/HeroBanner';
 import AuctionCard from '@/components/card/AuctionCard';
-import ProductCard from '@/components/card/ProductCard';
 import Button from '@/components/ui/Button';
 import AuthLogo from '@/components/AuthLogo';
 import { useSubmitLock } from '@/hooks/useSubmitLock';
 import { ChevronRight } from 'lucide-react';
 import styles from './page.module.css';
 
-const auctionData = [
-  { id: 1, title: 'Blackstride Classics', price: '1200', currentBid: '1700', seller: '@seller321', viewers: 98, timeLeft: '00h: 25m: 37s', isFollowing: true },
-  { id: 2, title: 'Blue Nocturne Dress', price: '900', currentBid: '1400', seller: '@seller456', viewers: 76, timeLeft: '00h: 41m: 26s', isFollowing: false },
-  { id: 3, title: 'CloudStride Sneakers', price: '500', currentBid: '1500', seller: '@seller789', viewers: 98, timeLeft: '03h: 42m: 51s', isFollowing: true },
-  { id: 4, title: 'AmberSnap Purse', price: '1200', currentBid: '1700', seller: '@seller321', viewers: 99, timeLeft: '05h: 14m: 52s', isFollowing: false },
-  { id: 5, title: 'Ivory Luxe Boots', price: '900', currentBid: '1400', seller: '@seller456', viewers: 76, timeLeft: '08h: 41m: 26s', isFollowing: false },
-];
-
-const weeklyDeals = [
-  { id: 1, title: 'Chestnut Charm Backpack', price: '500', wishlistCount: 123, isSoldOut: true },
-  { id: 2, title: 'PixelPast Analog Camera', price: '500', wishlistCount: 123, badges: [{ text: '32% OFF', color: 'yellow' }, { text: 'HOT', color: 'red' }], flashDate: 'December 1, 10:00 am' },
-  { id: 3, title: 'Chestnut Charm Backpack', price: '500', wishlistCount: 123, isSoldOut: true },
-  { id: 4, title: 'Chestnut Charm Backpack', price: '500', wishlistCount: 123, isSoldOut: true },
-];
-
-const clearanceSale = [
-  { id: 1, title: 'Amethyst Gleam Earrings', price: '2500', wishlistCount: 131, badges: [{ text: '50% off', color: 'yellow' }] },
-  { id: 2, title: 'BreezeStep Flats', price: '700', wishlistCount: 157, badges: [{ text: '50% off', color: 'yellow' }] },
-  { id: 3, title: 'Ocean Breeze Sling', price: '500', wishlistCount: 104, badges: [{ text: '50% off', color: 'yellow' }] },
-];
 
 export default function Home() {
   const { user, loading, login, register } = useAuth();
@@ -48,7 +27,6 @@ export default function Home() {
   const [error, setError] = useState('');
   
   const [allAuctions, setAllAuctions] = useState([]);
-  const [allProducts, setAllProducts] = useState([]);
   const [loadingContent, setLoadingContent] = useState(true);
   const [selectedCategory, setSelectedCategory] = useState('all');
 
@@ -69,15 +47,10 @@ export default function Home() {
       try {
         const apiUrl = process.env.NEXT_PUBLIC_API_URL || 'http://127.0.0.1:5000';
         
-        // Fetch auctions and products
-        const [auctionRes, productsRes] = await Promise.all([
-          fetch(`${apiUrl}/api/auctions?limit=50`),
-          fetch(`${apiUrl}/api/products?limit=50`),
-        ]);
+        // Fetch auctions
+        const auctionRes = await fetch(`${apiUrl}/api/auctions?limit=50`);
         const auctionJson = await auctionRes.json();
-        const productsJson = await productsRes.json();
         setAllAuctions(auctionJson.data || []);
-        setAllProducts(productsJson.data || []);
 
       } catch (err) {
         console.error('Failed to fetch home content:', err);
@@ -103,9 +76,8 @@ export default function Home() {
   };
 
   const auctions = filterByCategory(allAuctions);
-  const filteredProducts = filterByCategory(allProducts);
-  const deals = selectedCategory === 'all' ? allProducts.slice(0, 4) : filteredProducts;
-  const clearance = selectedCategory === 'all' ? allProducts.slice(4, 7) : [];
+  const liveAuctions = auctions.filter(a => a.status === 'active');
+  const scheduledAuctions = auctions.filter(a => a.status === 'scheduled');
 
 
   const handleSignIn = async (e) => {
@@ -339,10 +311,9 @@ export default function Home() {
       <section className={styles.section}>
         <div className={styles.sectionHeader}>
           <h2 className={styles.sectionTitle}>
-            {selectedCategory === 'all' ? <>Ongoing <span className={styles.redText}>Auctions</span></> : <><span className={styles.redText} style={{ textTransform: 'capitalize' }}>{selectedCategory}</span> Auctions</>}
+            {selectedCategory === 'all' ? <>Live <span className={styles.redText}>Auctions</span></> : <><span className={styles.redText} style={{ textTransform: 'capitalize' }}>{selectedCategory}</span> Live</>}
           </h2>
-          <div className={styles.viewAll}>View all <ChevronRight size={16} /></div>
-          {/* Custom Scroll Indicator */}
+          <Link href="/live" className={styles.viewAll}>View all <ChevronRight size={16} /></Link>
           <div className={styles.scrollIndicator}>
             <div
               className={styles.scrollThumb}
@@ -354,12 +325,12 @@ export default function Home() {
           </div>
         </div>
         <div className={styles.horizontalScroll} onScroll={handleScroll}>
-          {auctions.length > 0 ? (
-            auctions.map(item => (
+          {liveAuctions.length > 0 ? (
+            liveAuctions.map(item => (
               <AuctionCard key={item.id} data={item} />
             ))
           ) : (
-            <div className={styles.emptyState}>No ongoing auctions at the moment.</div>
+            <div className={styles.emptyState}>No live auctions at the moment.</div>
           )}
         </div>
       </section>
@@ -367,47 +338,20 @@ export default function Home() {
       <section className={styles.section}>
         <div className={`${styles.sectionHeader} ${styles.staticIndicator}`}>
           <h2 className={styles.sectionTitle}>
-            {selectedCategory === 'all' ? <>Weekly <span className={styles.redText}>Deals</span></> : <><span className={styles.redText} style={{ textTransform: 'capitalize' }}>{selectedCategory}</span> Products</>}
+            {selectedCategory === 'all' ? <>Scheduled <span className={styles.redText}>Auctions</span></> : <><span className={styles.redText} style={{ textTransform: 'capitalize' }}>{selectedCategory}</span> Scheduled</>}
           </h2>
-          <div className={styles.viewAll}>View all <ChevronRight size={16} /></div>
+          <Link href="/auctions" className={styles.viewAll}>View all <ChevronRight size={16} /></Link>
         </div>
-        <div className={styles.grid}>
-          {deals.length > 0 ? (
-            deals.map(item => (
-              <ProductCard key={item.products_id} data={{
-                ...item,
-                title: item.name,
-                image: item.images?.[0]?.image_url,
-                wishlistCount: Math.floor(Math.random() * 200)
-              }} />
+        <div className={styles.horizontalScroll}>
+          {scheduledAuctions.length > 0 ? (
+            scheduledAuctions.map(item => (
+              <AuctionCard key={item.id} data={item} />
             ))
           ) : (
-            <div className={styles.emptyState}>Coming soon!</div>
+            <div className={styles.emptyState}>No scheduled auctions at the moment.</div>
           )}
         </div>
       </section>
-
-      {selectedCategory === 'all' && <section className={styles.section}>
-        <div className={`${styles.sectionHeader} ${styles.staticIndicator}`}>
-          <h2 className={styles.sectionTitle}>12.12 <span className={styles.redText}>Clearance Sale</span></h2>
-          <div className={styles.viewAll}>View all <ChevronRight size={16} /></div>
-        </div>
-        <div className={styles.grid}>
-          {clearance.length > 0 ? (
-            clearance.map(item => (
-              <ProductCard key={item.products_id} data={{
-                ...item,
-                title: item.name,
-                image: item.images?.[0]?.image_url,
-                wishlistCount: Math.floor(Math.random() * 200),
-                badges: [{ text: '50% off', color: 'yellow' }]
-              }} />
-            ))
-          ) : (
-            <div className={styles.emptyState}>Coming soon!</div>
-          )}
-        </div>
-      </section>}
     </main>
   );
 }
