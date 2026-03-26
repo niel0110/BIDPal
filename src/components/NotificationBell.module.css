@@ -185,6 +185,21 @@
     color: #22c55e;
 }
 
+.iconWrap.auction_won {
+    background: #fef3c7;
+    color: #f59e0b;
+}
+
+.iconWrap.auction_sold {
+    background: #dcfce7;
+    color: #16a34a;
+}
+
+.iconWrap.auction_reserve_not_met {
+    background: #fee2e2;
+    color: #dc2626;
+}
+
 .iconWrap.order_update {
     background: #fdf4ff;
     color: #a855f7;

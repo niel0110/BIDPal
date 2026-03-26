@@ -16,7 +16,7 @@ export default function InventoryPage() {
         if (!user) return;
         try {
             const userId = user.user_id || user.id;
-            const apiUrl = process.env.NEXT_PUBLIC_API_URL || 'http://127.0.0.1:5000';
+            const apiUrl = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:5000';
             const token = localStorage.getItem('bidpal_token');
 
             const res = await fetch(`${apiUrl}/api/products/seller/${userId}`, {
@@ -25,14 +25,16 @@ export default function InventoryPage() {
                 }
             });
 
-            const responseData = await res.json();
-            if (res.ok) {
-                setProducts(responseData.data || []);
-            } else {
-                console.error('Failed to fetch products:', responseData.error);
+            if (!res.ok) {
+                const errorData = await res.json().catch(() => ({ error: 'Network error' }));
+                throw new Error(errorData.error || 'Failed to fetch products');
             }
+
+            const responseData = await res.json();
+            setProducts(responseData.data || []);
         } catch (error) {
-            console.error('Error fetching inventory:', error);
+            console.error('Error fetching inventory:', error.message);
+            setProducts([]); // Set empty array on error
         } finally {
             setLoading(false);
         }
@@ -53,7 +55,7 @@ export default function InventoryPage() {
 
         setDeletingId(productId);
         try {
-            const apiUrl = process.env.NEXT_PUBLIC_API_URL || 'http://127.0.0.1:5000';
+            const apiUrl = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:5000';
             const token = localStorage.getItem('bidpal_token');
 
             const res = await fetch(`${apiUrl}/api/products/${productId}`, {

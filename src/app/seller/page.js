@@ -9,6 +9,7 @@ import {
     Plus,
     Radio,
     Users,
+    User,
     MessageSquare,
     Gavel,
     Play,
@@ -60,7 +61,7 @@ export default function SellerDashboard() {
     const fetchDashboardData = useCallback(async () => {
         if (!user) return;
         try {
-            const apiUrl = process.env.NEXT_PUBLIC_API_URL || 'http://127.0.0.1:5000';
+            const apiUrl = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:5000';
             const token = localStorage.getItem('bidpal_token');
             const seller_id = user.seller_id;
             const user_id = user.user_id || user.id;
@@ -104,7 +105,7 @@ export default function SellerDashboard() {
     const fetchLatestMessages = useCallback(async () => {
         if (!user) return;
         try {
-            const apiUrl = process.env.NEXT_PUBLIC_API_URL || 'http://127.0.0.1:5000';
+            const apiUrl = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:5000';
             const token = localStorage.getItem('bidpal_token');
             const convRes = await fetch(`${apiUrl}/api/messages`, {
                 headers: { 'Authorization': `Bearer ${token}` }
@@ -147,7 +148,7 @@ export default function SellerDashboard() {
             return;
         }
 
-        const apiUrl = process.env.NEXT_PUBLIC_API_URL || 'http://127.0.0.1:5000';
+        const apiUrl = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:5000';
         const socket = io(apiUrl, { transports: ['websocket', 'polling'] });
         socketRef.current = socket;
 
@@ -318,7 +319,7 @@ export default function SellerDashboard() {
             AgoraRTC.setLogLevel(4); // Only errors
 
             // Get Agora token
-            const apiUrl = process.env.NEXT_PUBLIC_API_URL || 'http://127.0.0.1:5000';
+            const apiUrl = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:5000';
             const token = localStorage.getItem('bidpal_token');
 
             console.log('🔑 Fetching Agora token...');
@@ -494,7 +495,7 @@ export default function SellerDashboard() {
             }
             const nextAuction = dashboardData.queue[0];
             try {
-                const apiUrl = process.env.NEXT_PUBLIC_API_URL || 'http://127.0.0.1:5000';
+                const apiUrl = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:5000';
                 const token = localStorage.getItem('bidpal_token');
                 const res = await fetch(`${apiUrl}/api/auctions/${nextAuction.auction_id}/start`, {
                     method: 'POST',
@@ -517,21 +518,45 @@ export default function SellerDashboard() {
             }
         } else {
             // End Stream
+            const confirmed = confirm('Are you sure you want to end this live auction? This will declare the winner and cannot be undone.');
+            if (!confirmed) return;
+
             try {
-                const apiUrl = process.env.NEXT_PUBLIC_API_URL || 'http://127.0.0.1:5000';
+                console.log('🏁 Ending auction:', activeItem.id);
+                const apiUrl = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:5000';
                 const token = localStorage.getItem('bidpal_token');
+
                 const res = await fetch(`${apiUrl}/api/auctions/${activeItem.id}/end`, {
                     method: 'POST',
                     headers: {
+                        'Content-Type': 'application/json',
                         ...(token ? { 'Authorization': `Bearer ${token}` } : {})
                     }
                 });
+
+                const data = await res.json();
+                console.log('End auction response:', data);
+
                 if (res.ok) {
-                    stopAgoraStream();
-                    fetchDashboardData();
+                    console.log('✅ Auction ended successfully');
+
+                    // Show winner info if available
+                    if (data.has_winner && data.winner) {
+                        alert(`🎉 Auction ended!\n\nWinner: User ${data.winner.user_id}\nFinal Price: ₱${data.winner.bid_amount.toLocaleString('en-PH')}\n\nBoth you and the winner have been notified.`);
+                    } else {
+                        alert('Auction ended. No bids were placed or reserve price was not met.');
+                    }
+
+                    // Stop stream and refresh
+                    await stopAgoraStream();
+                    await fetchDashboardData();
+                } else {
+                    console.error('Failed to end auction:', data);
+                    alert(`Failed to end auction: ${data.error || 'Unknown error'}`);
                 }
             } catch (err) {
-                console.error(err);
+                console.error('Error ending auction:', err);
+                alert(`Error ending auction: ${err.message}`);
             }
         }
     };
@@ -773,11 +798,6 @@ export default function SellerDashboard() {
                         </div>
                     </section>
 
-                    {/* Completed Auctions - Hidden per user request
-                    <section className={styles.card}>
-                        ... (content hidden)
-                    </section>
-                    */}
                 </div>
 
                 {/* Right Column: Interaction & Metrics */}

@@ -27,7 +27,7 @@ export default function OrdersPage() {
     const fetchOrders = useCallback(async () => {
         if (!user) return;
         try {
-            const apiUrl = process.env.NEXT_PUBLIC_API_URL || 'http://127.0.0.1:5000';
+            const apiUrl = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:5000';
             const res = await fetch(`${apiUrl}/api/orders/user/${user.user_id}`);
             if (!res.ok) throw new Error('Failed to fetch orders');
             const data = await res.json();

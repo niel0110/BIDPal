@@ -17,7 +17,7 @@ export default function SelectProductPage() {
             if (!user) return;
             try {
                 const userId = user.user_id || user.id;
-                const apiUrl = process.env.NEXT_PUBLIC_API_URL || 'http://127.0.0.1:5000';
+                const apiUrl = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:5000';
                 const token = localStorage.getItem('bidpal_token');
 
                 // Only fetch products that are NOT scheduled or active (available for auction)

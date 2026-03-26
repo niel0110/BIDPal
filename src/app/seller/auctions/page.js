@@ -39,7 +39,7 @@ export default function MyAuctions() {
 
             try {
                 const userId = user.user_id || user.id;
-                const apiUrl = process.env.NEXT_PUBLIC_API_URL || 'http://127.0.0.1:5000';
+                const apiUrl = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:5000';
                 const token = localStorage.getItem('bidpal_token');
 
                 // If drafts tab is selected, fetch draft products
@@ -266,10 +266,13 @@ export default function MyAuctions() {
                             </div>
 
                             <div className={styles.cardActions}>
-                                <button className={styles.secondaryBtn}>Details</button>
                                 {auction.status === 'scheduled' && <button className={styles.primaryBtn}>Promote</button>}
                                 {auction.status === 'active' && <Link href="/seller" className={styles.primaryBtn}>Control Hub</Link>}
-                                {auction.status === 'completed' && <button className={styles.primaryBtn}>Settlement</button>}
+                                {(auction.status === 'completed' || auction.status === 'ended') && (
+                                    <Link href={`/seller/auctions/${auction.auction_id}/results`} className={styles.primaryBtn}>
+                                        View Results
+                                    </Link>
+                                )}
                             </div>
                         </div>
                         );

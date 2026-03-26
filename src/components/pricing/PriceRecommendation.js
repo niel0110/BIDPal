@@ -15,7 +15,7 @@ export default function PriceRecommendation({ productData, onApplyRecommendation
 
         try {
             const token = localStorage.getItem('bidpal_token');
-            const apiUrl = process.env.NEXT_PUBLIC_API_URL || 'http://127.0.0.1:5000';
+            const apiUrl = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:5000';
 
             const response = await fetch(`${apiUrl}/api/price-recommendation`, {
                 method: 'POST',

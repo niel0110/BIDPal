@@ -7,6 +7,7 @@ import { useAuth } from '@/context/AuthContext';
 import { useRouter, usePathname } from 'next/navigation';
 
 import Logo from '@/components/Logo';
+import NotificationBell from '@/components/NotificationBell';
 import { useNotifications } from '@/hooks/useNotifications';
 import styles from './Header.module.css';
 
@@ -170,6 +171,9 @@ export default function Header() {
               </Link>
             </>
           )}
+
+          {/* Notification Bell - Shows for all logged-in users */}
+          {user && <NotificationBell />}
 
           {user ? (
             <Link href="/settings" className={styles.navItem}>

@@ -1,0 +1,363 @@
+.container {
+    max-width: 1200px;
+    margin: 0 auto;
+    padding: 2rem;
+}
+
+.header {
+    display: flex;
+    align-items: center;
+    gap: 1rem;
+    margin-bottom: 2rem;
+}
+
+.backBtn {
+    display: flex;
+    align-items: center;
+    gap: 0.5rem;
+    padding: 0.5rem 1rem;
+    background: white;
+    border: 1px solid #e5e7eb;
+    border-radius: 8px;
+    cursor: pointer;
+    font-size: 0.9rem;
+    font-weight: 500;
+    transition: all 0.2s;
+}
+
+.backBtn:hover {
+    background: #f9fafb;
+    border-color: #d1d5db;
+}
+
+.title {
+    font-size: 2rem;
+    font-weight: 800;
+    color: #111;
+    margin: 0;
+}
+
+/* Product Section */
+.productSection {
+    display: flex;
+    gap: 2rem;
+    background: white;
+    padding: 2rem;
+    border-radius: 16px;
+    border: 1px solid #f0f0f0;
+    margin-bottom: 2rem;
+}
+
+.productImage {
+    width: 300px;
+    height: 300px;
+    object-fit: cover;
+    border-radius: 12px;
+    flex-shrink: 0;
+}
+
+.productInfo {
+    flex: 1;
+}
+
+.productInfo h2 {
+    font-size: 1.75rem;
+    font-weight: 700;
+    margin: 0 0 1rem 0;
+    color: #111;
+}
+
+.productDesc {
+    color: #666;
+    line-height: 1.6;
+    margin-bottom: 1.5rem;
+}
+
+.auctionMeta {
+    display: flex;
+    gap: 2rem;
+    color: #888;
+    font-size: 0.9rem;
+}
+
+.auctionMeta span {
+    display: flex;
+    align-items: center;
+    gap: 0.5rem;
+}
+
+/* Stats Grid */
+.statsGrid {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+    gap: 1.5rem;
+    margin-bottom: 2rem;
+}
+
+.statCard {
+    background: white;
+    padding: 2rem;
+    border-radius: 16px;
+    border: 1px solid #f0f0f0;
+    text-align: center;
+    transition: all 0.2s;
+}
+
+.statCard:hover {
+    border-color: #e0e0e0;
+    box-shadow: 0 4px 12px rgba(0, 0, 0, 0.05);
+}
+
+.statCard svg {
+    color: #673AB7;
+    margin-bottom: 0.75rem;
+}
+
+.statValue {
+    font-size: 2rem;
+    font-weight: 800;
+    color: #111;
+    margin-bottom: 0.25rem;
+}
+
+.statLabel {
+    font-size: 0.9rem;
+    color: #888;
+    font-weight: 500;
+}
+
+/* Winner Section */
+.winnerSection,
+.noWinnerSection {
+    background: white;
+    padding: 2rem;
+    border-radius: 16px;
+    border: 1px solid #f0f0f0;
+    margin-bottom: 2rem;
+}
+
+.sectionHeader {
+    display: flex;
+    align-items: center;
+    gap: 0.75rem;
+    margin-bottom: 1.5rem;
+}
+
+.sectionHeader h3 {
+    font-size: 1.25rem;
+    font-weight: 700;
+    color: #111;
+    margin: 0;
+}
+
+.winnerCard {
+    display: flex;
+    align-items: center;
+    gap: 1.5rem;
+    padding: 1.5rem;
+    background: linear-gradient(135deg, #fef3c7 0%, #fde68a 100%);
+    border-radius: 12px;
+    border: 2px solid #f59e0b;
+}
+
+.winnerAvatar {
+    width: 80px;
+    height: 80px;
+    border-radius: 50%;
+    background: white;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    overflow: hidden;
+    flex-shrink: 0;
+    border: 3px solid #f59e0b;
+}
+
+.winnerAvatar img {
+    width: 100%;
+    height: 100%;
+    object-fit: cover;
+}
+
+.winnerInfo {
+    flex: 1;
+}
+
+.winnerInfo h4 {
+    font-size: 1.25rem;
+    font-weight: 700;
+    color: #111;
+    margin: 0 0 0.25rem 0;
+}
+
+.winnerInfo p {
+    color: #78350f;
+    font-size: 0.9rem;
+    margin: 0;
+}
+
+.winnerPrice {
+    display: flex;
+    align-items: center;
+    gap: 0.5rem;
+    font-size: 2rem;
+    font-weight: 800;
+    color: #16a34a;
+}
+
+.orderStatus {
+    padding: 0.5rem 1rem;
+    background: white;
+    border-radius: 8px;
+    font-size: 0.9rem;
+    font-weight: 600;
+    color: #666;
+}
+
+.orderStatus span {
+    color: #f59e0b;
+    text-transform: uppercase;
+    font-size: 0.75rem;
+    margin-left: 0.5rem;
+}
+
+.noWinnerSection {
+    text-align: center;
+    padding: 4rem 2rem;
+}
+
+.noWinnerSection h3 {
+    font-size: 1.5rem;
+    font-weight: 700;
+    color: #888;
+    margin: 1rem 0 0.5rem 0;
+}
+
+.noWinnerSection p {
+    color: #aaa;
+    margin: 0;
+}
+
+/* Top Bidders */
+.biddersSection {
+    background: white;
+    padding: 2rem;
+    border-radius: 16px;
+    border: 1px solid #f0f0f0;
+}
+
+.biddersList {
+    display: flex;
+    flex-direction: column;
+    gap: 1rem;
+}
+
+.bidderCard {
+    display: flex;
+    align-items: center;
+    gap: 1rem;
+    padding: 1rem;
+    background: #fafafa;
+    border-radius: 12px;
+    border: 1px solid #f0f0f0;
+    transition: all 0.2s;
+}
+
+.bidderCard:hover {
+    background: #f5f5f5;
+    border-color: #e0e0e0;
+}
+
+.bidderRank {
+    width: 40px;
+    height: 40px;
+    border-radius: 50%;
+    background: #673AB7;
+    color: white;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-weight: 800;
+    font-size: 1.1rem;
+}
+
+.bidderCard:first-child .bidderRank {
+    background: linear-gradient(135deg, #fbbf24, #f59e0b);
+}
+
+.bidderCard:nth-child(2) .bidderRank {
+    background: linear-gradient(135deg, #9ca3af, #6b7280);
+}
+
+.bidderCard:nth-child(3) .bidderRank {
+    background: linear-gradient(135deg, #d97706, #92400e);
+}
+
+.bidderAvatar {
+    width: 50px;
+    height: 50px;
+    border-radius: 50%;
+    background: #e5e7eb;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    overflow: hidden;
+    flex-shrink: 0;
+}
+
+.bidderAvatar img {
+    width: 100%;
+    height: 100%;
+    object-fit: cover;
+}
+
+.bidderInfo {
+    flex: 1;
+}
+
+.bidderInfo h5 {
+    font-size: 1rem;
+    font-weight: 600;
+    color: #111;
+    margin: 0 0 0.25rem 0;
+}
+
+.bidderInfo p {
+    font-size: 0.85rem;
+    color: #888;
+    margin: 0;
+}
+
+.bidderAmount {
+    font-size: 1.25rem;
+    font-weight: 700;
+    color: #16a34a;
+}
+
+.loading,
+.error {
+    text-align: center;
+    padding: 4rem 2rem;
+    font-size: 1.1rem;
+    color: #888;
+}
+
+@media (max-width: 768px) {
+    .productSection {
+        flex-direction: column;
+    }
+
+    .productImage {
+        width: 100%;
+        height: auto;
+    }
+
+    .statsGrid {
+        grid-template-columns: repeat(2, 1fr);
+    }
+
+    .winnerCard {
+        flex-direction: column;
+        text-align: center;
+    }
+}

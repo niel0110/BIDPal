@@ -19,15 +19,38 @@ function getNotificationIcon(type) {
     switch (type) {
         case 'new_message': return <MessageCircle size={16} />;
         case 'new_bid': return <Gavel size={16} />;
+        case 'auction_won': return <Gavel size={16} />;
+        case 'auction_sold': return <Package size={16} />;
+        case 'auction_reserve_not_met': return <Gavel size={16} />;
         case 'order_update': return <Package size={16} />;
         default: return <Bell size={16} />;
     }
 }
 
 function getNotificationTarget(notification) {
-    const { type, payload } = notification;
-    if (type === 'new_message' && payload?.conversationId) {
+    const { type, reference_id, metadata } = notification;
+
+    // Parse metadata if it's a string
+    let meta = metadata;
+    if (typeof metadata === 'string') {
+        try {
+            meta = JSON.parse(metadata);
+        } catch (e) {
+            meta = {};
+        }
+    }
+
+    if (type === 'new_message') {
         return `/messages`;
+    }
+    if (type === 'auction_won' && meta?.order_id) {
+        return `/orders/${meta.order_id}`;
+    }
+    if (type === 'auction_sold' && reference_id) {
+        return `/seller?auction=${reference_id}`;
+    }
+    if (type === 'auction_reserve_not_met' && reference_id) {
+        return `/live?id=${reference_id}`;
     }
     return '/';
 }
@@ -108,11 +131,20 @@ export default function NotificationBell() {
                                             {n.type === 'new_bid' && (
                                                 <>New bid on <strong>{n.payload?.itemName}</strong></>
                                             )}
+                                            {n.type === 'auction_won' && (
+                                                <><strong>{n.title}</strong><br/>{n.message}</>
+                                            )}
+                                            {n.type === 'auction_sold' && (
+                                                <><strong>{n.title}</strong><br/>{n.message}</>
+                                            )}
+                                            {n.type === 'auction_reserve_not_met' && (
+                                                <><strong>{n.title}</strong><br/>{n.message}</>
+                                            )}
                                             {n.type === 'order_update' && (
                                                 <>Your order has been updated</>
                                             )}
-                                            {!['new_message', 'new_bid', 'order_update'].includes(n.type) && (
-                                                <>{n.payload?.message || 'You have a new notification'}</>
+                                            {!['new_message', 'new_bid', 'order_update', 'auction_won', 'auction_sold', 'auction_reserve_not_met'].includes(n.type) && (
+                                                <>{n.message || n.payload?.message || 'You have a new notification'}</>
                                             )}
                                         </p>
                                         <span className={styles.itemTime}>{timeAgo(n.created_at)}</span>

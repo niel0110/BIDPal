@@ -55,7 +55,7 @@ export default function LivePage() {
     const socketRef = useRef(null);
     const commentsEndRef = useRef(null);
 
-    const apiUrl = process.env.NEXT_PUBLIC_API_URL || 'http://127.0.0.1:5000';
+    const apiUrl = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:5000';
 
     // Determine if the current user is the seller (host)
     const isHost = auction && user && String(auction.seller_info?.seller_id) === String(user.seller_id || user.id);
@@ -136,11 +136,48 @@ export default function LivePage() {
             setStats(prev => ({ ...prev, shares: count }));
         });
 
+        // Listen for auction-ended event
+        socket.on('auction-ended', (data) => {
+            console.log('🏁 Auction ended:', data);
+            setStreamEnded(true);
+
+            // Check if current user is the winner
+            if (data.has_winner && data.winner && user) {
+                const userId = user.user_id || user.id;
+                if (data.winner.user_id === userId) {
+                    // Current user won!
+                    setWinnerModal({
+                        show: true,
+                        title: "🎉 Congratulations!",
+                        subtitle: "You won the auction!",
+                        amount: `₱${data.winner.bid_amount?.toLocaleString('en-PH') || '0'}`
+                    });
+                }
+            }
+
+            // Show auction ended message to everyone
+            if (data.has_winner && data.winner) {
+                setComments(prev => [...prev, {
+                    id: Date.now(),
+                    user: 'System',
+                    text: `🏆 Auction ended! Winner: ${data.winner.bidder_name} with ₱${data.winner.bid_amount?.toLocaleString('en-PH')}`,
+                    time: 'Just now'
+                }]);
+            } else {
+                setComments(prev => [...prev, {
+                    id: Date.now(),
+                    user: 'System',
+                    text: '🏁 Auction ended. No bids were placed.',
+                    time: 'Just now'
+                }]);
+            }
+        });
+
         return () => {
             socket.emit('leave-auction', auctionId);
             socket.disconnect();
         };
-    }, [auctionId, apiUrl]);
+    }, [auctionId, apiUrl, user]);
 
     // ── Auto-scroll chat to the latest message ───────────────────────────────
     useEffect(() => {
@@ -685,13 +722,6 @@ export default function LivePage() {
     return (
         <main>
             <Header />
-            {/* Simulation Controls (for demo) */}
-            <div className={styles.simControls}>
-                <span style={{ fontSize: '0.6rem', color: '#999', fontWeight: 700 }}>SIMULATION</span>
-                <button className={styles.simBtn} onClick={simulateWin}>Win Auction</button>
-                <button className={styles.simBtn} onClick={simulateBackupWin}>Backup Win</button>
-                <button className={styles.simBtn} onClick={() => setShowPaymentModal(true)}>Open Payment</button>
-            </div>
 
             <div className={styles.container}>
 

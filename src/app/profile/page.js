@@ -103,7 +103,7 @@ function AccountContent() {
             const formData = new FormData();
             formData.append('avatar', file);
 
-            const apiUrl = process.env.NEXT_PUBLIC_API_URL || 'http://127.0.0.1:5000';
+            const apiUrl = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:5000';
             const res = await fetch(`${apiUrl}/api/users/${user.user_id}/avatar`, {
                 method: 'POST',
                 body: formData
@@ -142,7 +142,7 @@ function AccountContent() {
         const cached = [user.Fname, user.Mname, user.Lname].filter(Boolean).join(' ');
         if (cached) setSidebarName(cached);
 
-        const apiUrl = process.env.NEXT_PUBLIC_API_URL || 'http://127.0.0.1:5000';
+        const apiUrl = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:5000';
         const token = localStorage.getItem('bidpal_token');
         fetch(`${apiUrl}/api/users/${user.user_id}`, {
             headers: { ...(token && { Authorization: `Bearer ${token}` }) },
@@ -333,7 +333,7 @@ function StoreProfileSection() {
     const [saving, setSaving] = useState(false);
     const [message, setMessage] = useState('');
 
-    const apiUrl = process.env.NEXT_PUBLIC_API_URL || 'http://127.0.0.1:5000';
+    const apiUrl = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:5000';
     const token = typeof window !== 'undefined' ? localStorage.getItem('bidpal_token') : null;
 
     useEffect(() => {
@@ -494,7 +494,7 @@ function ProfileSection() {
     const [loading, setLoading] = useState(false);
     const [message, setMessage] = useState('');
 
-    const apiUrl = process.env.NEXT_PUBLIC_API_URL || 'http://127.0.0.1:5000';
+    const apiUrl = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:5000';
 
     useEffect(() => {
         if (!user?.user_id) return;
@@ -744,7 +744,7 @@ function AddressSection({ state, setState }) {
 
         setFetchingAddresses(true);
         try {
-            const apiUrl = process.env.NEXT_PUBLIC_API_URL || 'http://127.0.0.1:5000';
+            const apiUrl = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:5000';
             const res = await fetch(`${apiUrl}/api/addresses/user/${user.user_id}`);
 
             if (!res.ok) {
@@ -778,7 +778,7 @@ function AddressSection({ state, setState }) {
     const fetchRegions = async () => {
         setLoadingLocations(true);
         try {
-            const apiUrl = process.env.NEXT_PUBLIC_API_URL || 'http://127.0.0.1:5000';
+            const apiUrl = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:5000';
             const res = await fetch(`${apiUrl}/api/addresses/locations/regions`);
 
             if (!res.ok) {
@@ -816,7 +816,7 @@ function AddressSection({ state, setState }) {
             return;
         }
         try {
-            const apiUrl = process.env.NEXT_PUBLIC_API_URL || 'http://127.0.0.1:5000';
+            const apiUrl = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:5000';
             const res = await fetch(`${apiUrl}/api/addresses/locations/provinces/${region}`);
 
             if (!res.ok) {
@@ -851,7 +851,7 @@ function AddressSection({ state, setState }) {
             return;
         }
         try {
-            const apiUrl = process.env.NEXT_PUBLIC_API_URL || 'http://127.0.0.1:5000';
+            const apiUrl = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:5000';
             const res = await fetch(`${apiUrl}/api/addresses/locations/cities/${region}/${province}`);
 
             if (!res.ok) {
@@ -885,7 +885,7 @@ function AddressSection({ state, setState }) {
             return;
         }
         try {
-            const apiUrl = process.env.NEXT_PUBLIC_API_URL || 'http://127.0.0.1:5000';
+            const apiUrl = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:5000';
             const res = await fetch(`${apiUrl}/api/addresses/locations/barangays/${city}`);
 
             if (!res.ok) {
@@ -965,7 +965,7 @@ function AddressSection({ state, setState }) {
         setMessage('');
 
         try {
-            const apiUrl = process.env.NEXT_PUBLIC_API_URL || 'http://127.0.0.1:5000';
+            const apiUrl = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:5000';
 
             const payload = {
                 user_id: user.user_id,

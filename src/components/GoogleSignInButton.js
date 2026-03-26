@@ -15,7 +15,7 @@ export default function GoogleSignInButton({ onSuccess, onError, text = 'signin_
             client_id: process.env.NEXT_PUBLIC_GOOGLE_CLIENT_ID,
             callback: async (response) => {
                 try {
-                    const apiUrl = process.env.NEXT_PUBLIC_API_URL || 'http://127.0.0.1:5000';
+                    const apiUrl = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:5000';
                     const res = await fetch(`${apiUrl}/api/auth/google-login`, {
                         method: 'POST',
                         headers: { 'Content-Type': 'application/json' },

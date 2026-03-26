@@ -321,11 +321,13 @@ export const startAuction = async (req, res) => {
     const { id } = req.params;
 
     // 1. Update Auction status to 'active' and record live start time
+    const now = new Date().toISOString();
     const { data: auction, error: auctionError } = await supabase
       .from('Auctions')
       .update({
         status: 'active',
-        live_started_at: new Date().toISOString()
+        start_time: now, // Update start_time to actual live time
+        live_started_at: now
       })
       .eq('auction_id', id)
       .select()
@@ -350,27 +352,226 @@ export const endAuction = async (req, res) => {
   try {
     const { id } = req.params;
 
-    // 1. Update Auction status to 'ended' and record live end time
+    console.log(`🏁 Ending auction ${id}...`);
+
+    // 1. Get the highest bid (winning bid)
+    const { data: winningBid, error: bidError } = await supabase
+      .from('Bids')
+      .select('bid_id, bid_amount, user_id, placed_at, bidder:User(user_id, Fname, Lname, Avatar, email)')
+      .eq('auction_id', id)
+      .order('bid_amount', { ascending: false })
+      .limit(1)
+      .maybeSingle();
+
+    if (bidError) {
+      console.error('Error fetching winning bid:', bidError);
+    }
+
+    console.log('🏆 Winning bid:', winningBid);
+
+    // 2. Get auction details before updating
+    const { data: currentAuction } = await supabase
+      .from('Auctions')
+      .select('*, Seller(seller_id, user_id, store_name)')
+      .eq('auction_id', id)
+      .single();
+
+    // 3. Update Auction status to 'ended' and record live end time and winner
+    const updateData = {
+      status: 'ended',
+      live_ended_at: new Date().toISOString()
+    };
+
+    // Add winner information if there's a winning bid
+    if (winningBid) {
+      updateData.winning_bid_id = winningBid.bid_id;
+      updateData.winner_user_id = winningBid.user_id;
+      updateData.final_price = winningBid.bid_amount;
+    }
+
     const { data: auction, error: auctionError } = await supabase
       .from('Auctions')
-      .update({
-        status: 'ended',
-        live_ended_at: new Date().toISOString()
-      })
+      .update(updateData)
       .eq('auction_id', id)
       .select()
       .single();
 
     if (auctionError) throw auctionError;
 
-    // 2. Update Product status to 'sold' (or 'inactive' if no winner)
+    // 4. Determine product status based on whether there's a winner
+    let productStatus = 'inactive'; // Default if no bids
+    let reserveMet = false;
+
+    if (winningBid) {
+      // Check if winning bid meets reserve price
+      if (winningBid.bid_amount >= (auction.reserve_price || 0)) {
+        productStatus = 'sold';
+        reserveMet = true;
+      } else {
+        productStatus = 'inactive'; // Reserve not met
+        console.log(`⚠️ Reserve price not met. Winning bid: ${winningBid.bid_amount}, Reserve: ${auction.reserve_price}`);
+      }
+    }
+
+    // Update Product status
     await supabase
       .from('Products')
-      .update({ status: 'inactive' })
+      .update({ status: productStatus })
       .eq('products_id', auction.products_id);
 
-    res.json({ message: 'Auction ended', data: auction });
+    // 5. Create notifications and order if there's a winner and reserve is met
+    let orderId = null;
+
+    if (winningBid && reserveMet) {
+      console.log('✅ Creating order for winner...');
+
+      // Get product details for the order
+      const { data: productData } = await supabase
+        .from('vw_product_details')
+        .select('*')
+        .eq('products_id', auction.products_id)
+        .maybeSingle();
+
+      // Create order for the winner
+      const { data: orderData, error: orderError } = await supabase
+        .from('Orders')
+        .insert([{
+          user_id: winningBid.user_id,
+          total_amount: winningBid.bid_amount,
+          status: 'pending_payment', // Awaiting payment
+          order_type: 'auction'
+        }])
+        .select('order_id')
+        .single();
+
+      if (orderError) {
+        console.error('Error creating order:', orderError);
+      } else {
+        orderId = orderData.order_id;
+
+        // Create order item
+        await supabase
+          .from('Order_items')
+          .insert([{
+            order_id: orderId,
+            products_id: auction.products_id,
+            quantity: 1,
+            unit_price: winningBid.bid_amount,
+            subtotal: winningBid.bid_amount
+          }]);
+
+        console.log(`📦 Order created: ${orderId}`);
+      }
+
+      // Notify winner
+      const winnerName = winningBid.bidder ?
+        `${winningBid.bidder.Fname || ''} ${winningBid.bidder.Lname || ''}`.trim() ||
+        winningBid.bidder.email?.split('@')[0] : 'Bidder';
+
+      const { data: winnerNotif, error: winnerNotifError } = await supabase
+        .from('Notifications')
+        .insert([{
+          user_id: winningBid.user_id,
+          type: 'auction_won',
+          title: '🎉 Congratulations! You won the auction',
+          message: `You won the auction with a bid of ₱${winningBid.bid_amount.toLocaleString('en-PH')}. Please proceed to payment.`,
+          reference_id: id,
+          reference_type: 'auction',
+          metadata: JSON.stringify({
+            order_id: orderId,
+            product_name: productData?.name
+          })
+        }])
+        .select();
+
+      if (winnerNotifError) {
+        console.error('❌ Failed to create winner notification:', winnerNotifError);
+      } else {
+        console.log(`🔔 Winner notification sent to user ${winningBid.user_id}`, winnerNotif);
+      }
+
+      // Get seller info and notify seller about the sale
+      const sellerUserId = currentAuction?.Seller?.user_id;
+
+      if (sellerUserId) {
+        const { data: sellerNotif, error: sellerNotifError } = await supabase
+          .from('Notifications')
+          .insert([{
+            user_id: sellerUserId,
+            type: 'auction_sold',
+            title: '💰 Your auction has ended successfully',
+            message: `Your auction sold to ${winnerName} for ₱${winningBid.bid_amount.toLocaleString('en-PH')}. Awaiting buyer payment.`,
+            reference_id: id,
+            reference_type: 'auction',
+            metadata: JSON.stringify({
+              order_id: orderId,
+              winner_user_id: winningBid.user_id
+            })
+          }])
+          .select();
+
+        if (sellerNotifError) {
+          console.error('❌ Failed to create seller notification:', sellerNotifError);
+        } else {
+          console.log(`🔔 Seller notification sent to user ${sellerUserId}`, sellerNotif);
+        }
+      }
+    } else if (winningBid && !reserveMet) {
+      // Notify bidder that reserve wasn't met
+      await supabase
+        .from('Notifications')
+        .insert([{
+          user_id: winningBid.user_id,
+          type: 'auction_reserve_not_met',
+          title: 'Auction ended - Reserve not met',
+          message: `The auction ended but the reserve price was not met. Your bid of ₱${winningBid.bid_amount.toLocaleString('en-PH')} was the highest.`,
+          reference_id: id,
+          reference_type: 'auction'
+        }]);
+    }
+
+    // 6. Broadcast auction end via Socket.IO
+    if (req.app.locals.io) {
+      const winnerInfo = winningBid && reserveMet ? {
+        user_id: winningBid.user_id,
+        bid_amount: winningBid.bid_amount,
+        bidder_name: winningBid.bidder ?
+          `${winningBid.bidder.Fname || ''} ${winningBid.bidder.Lname || ''}`.trim() ||
+          winningBid.bidder.email?.split('@')[0] || 'Winner' : 'Winner',
+        bidder_avatar: winningBid.bidder?.Avatar || null,
+        order_id: orderId
+      } : null;
+
+      req.app.locals.io.to(`auction:${id}`).emit('auction-ended', {
+        auction_id: id,
+        winner: winnerInfo,
+        final_price: winningBid?.bid_amount || 0,
+        product_status: productStatus,
+        reserve_met: reserveMet,
+        has_winner: winningBid && reserveMet
+      });
+
+      console.log('📡 Broadcast auction-ended event');
+    }
+
+    console.log(`✅ Auction ${id} ended successfully`);
+
+    res.json({
+      success: true,
+      message: 'Auction ended successfully',
+      data: auction,
+      winner: winningBid && reserveMet ? {
+        user_id: winningBid.user_id,
+        bid_amount: winningBid.bid_amount,
+        bid_id: winningBid.bid_id,
+        order_id: orderId
+      } : null,
+      product_status: productStatus,
+      reserve_met: reserveMet,
+      has_winner: winningBid && reserveMet
+    });
   } catch (err) {
+    console.error('❌ End auction error:', err);
     res.status(500).json({ error: err.message });
   }
 };
@@ -628,6 +829,117 @@ export const getAuctionStats = async (req, res) => {
     });
   } catch (err) {
     console.error('Stats fetch error:', err);
+    res.status(500).json({ error: err.message });
+  }
+};
+
+// Get auction winner details
+export const getAuctionWinner = async (req, res) => {
+  try {
+    const { id } = req.params;
+
+    // Get auction with winner info
+    const { data: auction, error: auctionError } = await supabase
+      .from('Auctions')
+      .select('auction_id, status, winner_user_id, winning_bid_id, final_price, reserve_price, products_id')
+      .eq('auction_id', id)
+      .single();
+
+    if (auctionError) throw auctionError;
+
+    if (auction.status !== 'ended') {
+      return res.status(400).json({
+        error: 'Auction has not ended yet',
+        status: auction.status
+      });
+    }
+
+    if (!auction.winner_user_id || !auction.winning_bid_id) {
+      return res.json({
+        has_winner: false,
+        message: 'No winner for this auction'
+      });
+    }
+
+    // Get winning bid details with bidder info
+    const { data: winningBid, error: bidError } = await supabase
+      .from('Bids')
+      .select('bid_id, bid_amount, placed_at, user_id, bidder:User(user_id, Fname, Lname, Avatar, email)')
+      .eq('bid_id', auction.winning_bid_id)
+      .single();
+
+    if (bidError) throw bidError;
+
+    // Get product details
+    const { data: productData } = await supabase
+      .from('vw_product_details')
+      .select('*')
+      .eq('products_id', auction.products_id)
+      .maybeSingle();
+
+    // Find associated order
+    const { data: orderData } = await supabase
+      .from('Orders')
+      .select('order_id, status, total_amount, placed_at')
+      .eq('user_id', auction.winner_user_id)
+      .eq('order_type', 'auction')
+      .order('placed_at', { ascending: false })
+      .limit(1)
+      .maybeSingle();
+
+    const winnerName = winningBid.bidder ?
+      `${winningBid.bidder.Fname || ''} ${winningBid.bidder.Lname || ''}`.trim() ||
+      winningBid.bidder.email?.split('@')[0] : 'Winner';
+
+    res.json({
+      has_winner: true,
+      auction_id: auction.auction_id,
+      winner: {
+        user_id: winningBid.user_id,
+        name: winnerName,
+        avatar: winningBid.bidder?.Avatar || null,
+        email: winningBid.bidder?.email
+      },
+      winning_bid: {
+        bid_id: winningBid.bid_id,
+        amount: winningBid.bid_amount,
+        placed_at: winningBid.placed_at
+      },
+      product: {
+        product_id: auction.products_id,
+        name: productData?.name || 'Unknown Product',
+        images: productData?.images || []
+      },
+      order: orderData ? {
+        order_id: orderData.order_id,
+        status: orderData.status,
+        total_amount: orderData.total_amount,
+        placed_at: orderData.placed_at
+      } : null,
+      reserve_met: auction.final_price >= (auction.reserve_price || 0)
+    });
+  } catch (err) {
+    console.error('Get auction winner error:', err);
+    res.status(500).json({ error: err.message });
+  }
+};
+
+// Get all bids for an auction
+export const getAuctionBids = async (req, res) => {
+  try {
+    const { id } = req.params;
+
+    const { data: bids, error } = await supabase
+      .from('Bids')
+      .select('bid_id, bid_amount, placed_at, user_id, bidder:User(user_id, Fname, Lname, Avatar, email)')
+      .eq('auction_id', id)
+      .order('bid_amount', { ascending: false });
+
+    if (error) throw error;
+
+    res.json(bids || []);
+  } catch (err) {
+    console.error('Get auction bids error:', err);
     res.status(500).json({ error: err.message });
   }
 };

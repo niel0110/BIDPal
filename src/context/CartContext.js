@@ -4,6 +4,7 @@ import { createContext, useContext, useState, useEffect, useCallback } from 'rea
 import { useAuth } from './AuthContext';
 
 const CartContext = createContext();
+const API_URL = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:5000';
 
 export function CartProvider({ children }) {
     const { user } = useAuth();
@@ -12,20 +13,38 @@ export function CartProvider({ children }) {
 
     const fetchCart = useCallback(async () => {
         if (!user || !user.user_id) {
-            console.log('Cart fetch skipped: user or user_id is missing', { user });
             setCartItems([]);
             setLoading(false);
             return;
         }
+
+        // Skip cart fetch for sellers (they don't need a cart)
+        if (user.role?.toLowerCase() === 'seller') {
+            setCartItems([]);
+            setLoading(false);
+            return;
+        }
+
         try {
-            console.log(`Fetching cart for user: ${user.user_id}`);
-            const apiUrl = 'http://127.0.0.1:5000';
-            const res = await fetch(`${apiUrl}/api/cart/${user.user_id}`);
-            if (!res.ok) throw new Error('Failed to fetch cart');
+            const res = await fetch(`${API_URL}/api/cart/${user.user_id}`);
+
+            if (!res.ok) {
+                // If it's a 404 or validation error, just set empty cart silently
+                if (res.status === 404 || res.status === 400) {
+                    setCartItems([]);
+                    setLoading(false);
+                    return;
+                }
+                const errorData = await res.json().catch(() => ({}));
+                throw new Error(errorData.error || 'Failed to fetch cart');
+            }
+
             const data = await res.json();
-            setCartItems(data);
+            setCartItems(Array.isArray(data) ? data : []);
         } catch (err) {
-            console.error('Cart fetch error:', err);
+            // Silently fail - cart is optional, don't break the app
+            console.warn('Cart unavailable:', err.message);
+            setCartItems([]);
         } finally {
             setLoading(false);
         }
@@ -38,8 +57,7 @@ export function CartProvider({ children }) {
     const addToCart = async (product_id) => {
         if (!user) return { success: false, error: 'User not logged in' };
         try {
-            const apiUrl = 'http://127.0.0.1:5000';
-            const res = await fetch(`${apiUrl}/api/cart`, {
+            const res = await fetch(`${API_URL}/api/cart`, {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
                 body: JSON.stringify({
@@ -48,26 +66,31 @@ export function CartProvider({ children }) {
                     quantity: 1
                 }),
             });
-            if (!res.ok) throw new Error('Failed to add to cart');
+            if (!res.ok) {
+                const errorData = await res.json().catch(() => ({}));
+                throw new Error(errorData.error || 'Failed to add to cart');
+            }
             await fetchCart(); // Refresh cart
             return { success: true };
         } catch (err) {
-            console.error(err);
+            console.error('Add to cart error:', err);
             return { success: false, error: err.message };
         }
     };
 
     const removeItem = async (cart_id) => {
         try {
-            const apiUrl = 'http://127.0.0.1:5000';
-            const res = await fetch(`${apiUrl}/api/cart/${cart_id}`, {
+            const res = await fetch(`${API_URL}/api/cart/${cart_id}`, {
                 method: 'DELETE'
             });
-            if (!res.ok) throw new Error('Failed to remove item');
+            if (!res.ok) {
+                const errorData = await res.json().catch(() => ({}));
+                throw new Error(errorData.error || 'Failed to remove item');
+            }
             setCartItems(prev => prev.filter(item => item.cart_id !== cart_id));
             return { success: true };
         } catch (err) {
-            console.error(err);
+            console.error('Remove cart item error:', err);
             return { success: false, error: err.message };
         }
     };
