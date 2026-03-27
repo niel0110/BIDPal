@@ -44,28 +44,30 @@ export const getConversations = async (req, res) => {
 
     if (convError) throw convError;
 
-    // For each conversation, fetch last message + unread count for this user
+    // For each conversation, fetch last message + unread count from the JSONB body
     const conversationsWithMeta = await Promise.all(
       conversations.map(async (conv) => {
-        const [lastMsgRes, unreadRes] = await Promise.all([
-          supabase
-            .from('Messages')
-            .select('body, sent_at')
-            .eq('conversation_id', conv.conversation_id)
-            .order('sent_at', { ascending: false })
-            .limit(1),
-          supabase
-            .from('Messages')
-            .select('*', { count: 'exact', head: true })
-            .eq('conversation_id', conv.conversation_id)
-            .neq('sender_id', user_id)
-            .is('read_at', null)
-        ]);
+        const { data: msgRow } = await supabase
+          .from('Messages')
+          .select('body')
+          .eq('conversation_id', conv.conversation_id)
+          .single();
 
-        const lastMsg = lastMsgRes.data?.[0] || null;
-        const unreadCount = unreadRes.count || 0;
+        let lastMsg = null;
+        let unreadCount = 0;
 
-        return { ...conv, lastMessageBody: lastMsg?.body || null, lastMsgAt: lastMsg?.sent_at || conv.last_message_at, unreadCount };
+        if (msgRow?.body && msgRow.body.length > 0) {
+          const msgs = msgRow.body;
+          lastMsg = msgs[msgs.length - 1];
+          unreadCount = msgs.filter(m => m.sender_id !== user_id && m.read_at === null).length;
+        }
+
+        return {
+          ...conv,
+          lastMessageBody: lastMsg?.text || null,
+          lastMsgAt: lastMsg?.sent_at || conv.last_message_at,
+          unreadCount
+        };
       })
     );
 
@@ -117,13 +119,27 @@ export const getMessages = async (req, res) => {
       return res.status(403).json({ error: 'You are not a participant in this conversation.' });
     }
 
-    const { data: messages, error: msgError } = await supabase
+    const { data: msgRow, error: msgError } = await supabase
       .from('Messages')
-      .select('*')
+      .select('message_id, body')
       .eq('conversation_id', conversationId)
-      .order('sent_at', { ascending: true });
+      .single();
 
-    if (msgError) throw msgError;
+    // PGRST116 = row not found — conversation has no messages yet
+    if (msgError && msgError.code !== 'PGRST116') throw msgError;
+    if (!msgRow?.body) return res.json([]);
+
+    // Transform JSONB array entries into flat message objects for the frontend
+    const messages = msgRow.body.map((entry, index) => ({
+      message_id: `${msgRow.message_id}-${index}`,
+      conversation_id: conversationId,
+      sender_id: entry.sender_id,
+      body: entry.text,
+      attachment: entry.attachment || {},
+      sent_at: entry.sent_at,
+      read_at: entry.read_at
+    }));
+
     res.json(messages);
   } catch (err) {
     res.status(500).json({ error: err.message });
@@ -135,7 +151,6 @@ export const getUnreadCount = async (req, res) => {
   try {
     const { user_id } = req.user;
 
-    // Get all conversations for this user
     const { data: parts } = await supabase
       .from('Conversation_participant')
       .select('conversation_id')
@@ -145,15 +160,21 @@ export const getUnreadCount = async (req, res) => {
 
     const convIds = parts.map(p => p.conversation_id);
 
-    const { count, error } = await supabase
+    const { data: msgRows, error } = await supabase
       .from('Messages')
-      .select('*', { count: 'exact', head: true })
-      .in('conversation_id', convIds)
-      .neq('sender_id', user_id)
-      .is('read_at', null);
+      .select('body')
+      .in('conversation_id', convIds);
 
     if (error) throw error;
-    res.json({ count: count || 0 });
+
+    let count = 0;
+    for (const row of msgRows || []) {
+      for (const entry of row.body || []) {
+        if (entry.sender_id !== user_id && entry.read_at === null) count++;
+      }
+    }
+
+    res.json({ count });
   } catch (err) {
     res.status(500).json({ error: err.message });
   }
@@ -165,13 +186,26 @@ export const markAsRead = async (req, res) => {
     const { conversationId } = req.params;
     const { user_id } = req.user;
 
-    // Only mark messages sent by others as read
+    const { data: msgRow, error: fetchErr } = await supabase
+      .from('Messages')
+      .select('message_id, body')
+      .eq('conversation_id', conversationId)
+      .single();
+
+    if (fetchErr || !msgRow) return res.json({ success: true });
+
+    const now = new Date().toISOString();
+    const updatedBody = msgRow.body.map(entry => {
+      if (entry.sender_id !== user_id && entry.read_at === null) {
+        return { ...entry, read_at: now };
+      }
+      return entry;
+    });
+
     const { error } = await supabase
       .from('Messages')
-      .update({ read_at: new Date().toISOString() })
-      .eq('conversation_id', conversationId)
-      .neq('sender_id', user_id)
-      .is('read_at', null);
+      .update({ body: updatedBody })
+      .eq('conversation_id', conversationId);
 
     if (error) throw error;
     res.json({ success: true });
@@ -237,21 +271,46 @@ export const sendMessage = async (req, res) => {
       actualReceiverId = parts?.[0]?.user_id || null;
     }
 
-    // Insert message
-    const { data: msgData, error: msgError } = await supabase
+    const newEntry = {
+      sender_id: user_id,
+      text: message,
+      sent_at: new Date().toISOString(),
+      read_at: null,
+      attachment: {}
+    };
+
+    // Check if a Messages row already exists for this conversation
+    const { data: existing, error: fetchErr } = await supabase
       .from('Messages')
-      .insert([{
-        conversation_id: finalConvId,
-        sender_id: user_id,
-        body: message,
-        attachment: {},
-        sent_at: new Date().toISOString(),
-        read_at: null // null = unread
-      }])
-      .select()
+      .select('message_id, body')
+      .eq('conversation_id', finalConvId)
       .single();
 
-    if (msgError) throw msgError;
+    let msgData;
+    if (fetchErr?.code === 'PGRST116' || !existing) {
+      // No row yet — insert the first message
+      const { data, error: insertErr } = await supabase
+        .from('Messages')
+        .insert([{
+          conversation_id: finalConvId,
+          body: [newEntry]
+        }])
+        .select()
+        .single();
+      if (insertErr) throw insertErr;
+      msgData = data;
+    } else {
+      // Row exists — append new entry to the JSONB array
+      const updatedBody = [...existing.body, newEntry];
+      const { data, error: updateErr } = await supabase
+        .from('Messages')
+        .update({ body: updatedBody })
+        .eq('conversation_id', finalConvId)
+        .select()
+        .single();
+      if (updateErr) throw updateErr;
+      msgData = data;
+    }
 
     // Update conversation's last_message_at
     await supabase
@@ -278,7 +337,17 @@ export const sendMessage = async (req, res) => {
       });
     }
 
-    res.status(201).json(msgData);
+    // Return flat message object matching the frontend's expected shape
+    const newIndex = msgData.body.length - 1;
+    res.status(201).json({
+      message_id: `${msgData.message_id}-${newIndex}`,
+      conversation_id: finalConvId,
+      sender_id: user_id,
+      body: message,
+      attachment: {},
+      sent_at: newEntry.sent_at,
+      read_at: null
+    });
   } catch (err) {
     console.error('sendMessage error:', err);
     res.status(500).json({ error: err.message });
