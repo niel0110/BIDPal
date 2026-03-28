@@ -439,18 +439,27 @@ export const endAuction = async (req, res) => {
           user_id: winningBid.user_id,
           total_amount: winningBid.bid_amount,
           status: 'pending_payment', // Awaiting payment
-          order_type: 'auction'
+          order_type: 'auction',
+          auction_id: id // Link to auction
         }])
         .select('order_id')
         .single();
 
       if (orderError) {
-        console.error('Error creating order:', orderError);
+        console.error('❌ ERROR creating order:', orderError);
+        console.error('Order data attempted:', {
+          user_id: winningBid.user_id,
+          total_amount: winningBid.bid_amount,
+          status: 'pending_payment',
+          order_type: 'auction',
+          auction_id: id
+        });
       } else {
         orderId = orderData.order_id;
+        console.log(`✅ Order created successfully: ${orderId}`);
 
         // Create order item
-        await supabase
+        const { error: itemError } = await supabase
           .from('Order_items')
           .insert([{
             order_id: orderId,
@@ -460,7 +469,11 @@ export const endAuction = async (req, res) => {
             subtotal: winningBid.bid_amount
           }]);
 
-        console.log(`📦 Order created: ${orderId}`);
+        if (itemError) {
+          console.error('❌ ERROR creating order item:', itemError);
+        } else {
+          console.log(`📦 Order item created for order: ${orderId}`);
+        }
       }
 
       // Notify winner

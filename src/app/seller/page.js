@@ -51,6 +51,7 @@ export default function SellerDashboard() {
     const [isMuted, setIsMuted] = useState(false);
     const [isVideoOff, setIsVideoOff] = useState(false);
     const [liveDuration, setLiveDuration] = useState({ hours: 0, minutes: 0, seconds: 0 });
+    const [auctionEndModal, setAuctionEndModal] = useState({ show: false, hasWinner: false, winner: null });
 
     // Agora refs
     const agoraClientRef = useRef(null);
@@ -540,16 +541,16 @@ export default function SellerDashboard() {
                 if (res.ok) {
                     console.log('✅ Auction ended successfully');
 
-                    // Show winner info if available
-                    if (data.has_winner && data.winner) {
-                        alert(`🎉 Auction ended!\n\nWinner: User ${data.winner.user_id}\nFinal Price: ₱${data.winner.bid_amount.toLocaleString('en-PH')}\n\nBoth you and the winner have been notified.`);
-                    } else {
-                        alert('Auction ended. No bids were placed or reserve price was not met.');
-                    }
-
                     // Stop stream and refresh
                     await stopAgoraStream();
                     await fetchDashboardData();
+
+                    // Show modal with winner info
+                    setAuctionEndModal({
+                        show: true,
+                        hasWinner: data.has_winner,
+                        winner: data.winner
+                    });
                 } else {
                     console.error('Failed to end auction:', data);
                     alert(`Failed to end auction: ${data.error || 'Unknown error'}`);
@@ -891,6 +892,63 @@ export default function SellerDashboard() {
                     </section>
                 </aside>
             </div>
+
+            {/* Auction End Modal */}
+            {auctionEndModal.show && (
+                <div className={styles.modalOverlay} onClick={() => setAuctionEndModal({ show: false, hasWinner: false, winner: null })}>
+                    <div className={styles.modalContent} onClick={(e) => e.stopPropagation()}>
+                        {auctionEndModal.hasWinner ? (
+                            <>
+                                <div className={styles.modalIcon}>
+                                    <div className={styles.iconCircle}>🎉</div>
+                                </div>
+                                <h2 className={styles.modalTitle}>Auction ended!</h2>
+                                <div className={styles.modalBody}>
+                                    <div className={styles.winnerInfo}>
+                                        <div className={styles.winnerLabel}>Winner</div>
+                                        <div className={styles.winnerValue}>
+                                            User {auctionEndModal.winner?.user_id}
+                                        </div>
+                                    </div>
+                                    <div className={styles.priceInfo}>
+                                        <div className={styles.priceLabel}>Final Price</div>
+                                        <div className={styles.priceValue}>
+                                            ₱{auctionEndModal.winner?.bid_amount?.toLocaleString('en-PH')}
+                                        </div>
+                                    </div>
+                                    <div className={styles.notificationNote}>
+                                        Both you and the winner have been notified.
+                                    </div>
+                                </div>
+                                <button
+                                    className={styles.modalBtn}
+                                    onClick={() => setAuctionEndModal({ show: false, hasWinner: false, winner: null })}
+                                >
+                                    OK
+                                </button>
+                            </>
+                        ) : (
+                            <>
+                                <div className={styles.modalIcon}>
+                                    <div className={styles.iconCircle}>📋</div>
+                                </div>
+                                <h2 className={styles.modalTitle}>Auction ended</h2>
+                                <div className={styles.modalBody}>
+                                    <p className={styles.noWinnerText}>
+                                        No bids were placed or reserve price was not met.
+                                    </p>
+                                </div>
+                                <button
+                                    className={styles.modalBtn}
+                                    onClick={() => setAuctionEndModal({ show: false, hasWinner: false, winner: null })}
+                                >
+                                    OK
+                                </button>
+                            </>
+                        )}
+                    </div>
+                </div>
+            )}
         </>
     );
 }

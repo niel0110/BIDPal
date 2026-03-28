@@ -43,14 +43,18 @@ function getNotificationTarget(notification) {
     if (type === 'new_message') {
         return `/messages`;
     }
-    if (type === 'auction_won' && meta?.order_id) {
-        return `/orders/${meta.order_id}`;
+    if (type === 'auction_won') {
+        // Redirect to orders page, filtered to "To Pay" tab
+        return `/orders`;
     }
     if (type === 'auction_sold' && reference_id) {
-        return `/seller?auction=${reference_id}`;
+        return `/seller/auctions/${reference_id}/results`;
     }
     if (type === 'auction_reserve_not_met' && reference_id) {
         return `/live?id=${reference_id}`;
+    }
+    if (type === 'order_update' && meta?.order_id) {
+        return `/orders`;
     }
     return '/';
 }

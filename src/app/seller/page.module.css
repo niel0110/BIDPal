@@ -1240,3 +1240,152 @@
     color: #999;
     font-weight: 500;
 }
+
+/* Auction End Modal */
+.modalOverlay {
+    position: fixed;
+    top: 0;
+    left: 0;
+    right: 0;
+    bottom: 0;
+    background: rgba(0, 0, 0, 0.6);
+    backdrop-filter: blur(4px);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    z-index: 9999;
+    animation: fadeIn 0.2s ease-out;
+}
+
+@keyframes fadeIn {
+    from {
+        opacity: 0;
+    }
+    to {
+        opacity: 1;
+    }
+}
+
+.modalContent {
+    background: white;
+    border-radius: 16px;
+    padding: 2rem;
+    max-width: 440px;
+    width: 90%;
+    box-shadow: 0 20px 60px rgba(0, 0, 0, 0.3);
+    animation: slideUp 0.3s ease-out;
+    text-align: center;
+}
+
+@keyframes slideUp {
+    from {
+        transform: translateY(20px);
+        opacity: 0;
+    }
+    to {
+        transform: translateY(0);
+        opacity: 1;
+    }
+}
+
+.modalIcon {
+    margin-bottom: 1.5rem;
+}
+
+.iconCircle {
+    width: 80px;
+    height: 80px;
+    margin: 0 auto;
+    background: linear-gradient(135deg, #fef3c7 0%, #fde68a 100%);
+    border-radius: 50%;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 2.5rem;
+    box-shadow: 0 8px 24px rgba(251, 191, 36, 0.3);
+}
+
+.modalTitle {
+    font-size: 1.75rem;
+    font-weight: 800;
+    color: #111;
+    margin: 0 0 1.5rem 0;
+    letter-spacing: -0.02em;
+}
+
+.modalBody {
+    margin-bottom: 2rem;
+}
+
+.winnerInfo,
+.priceInfo {
+    background: #f9fafb;
+    border-radius: 12px;
+    padding: 1.25rem;
+    margin-bottom: 1rem;
+    text-align: left;
+}
+
+.winnerLabel,
+.priceLabel {
+    font-size: 0.75rem;
+    font-weight: 600;
+    text-transform: uppercase;
+    letter-spacing: 0.5px;
+    color: #888;
+    margin-bottom: 0.5rem;
+}
+
+.winnerValue {
+    font-size: 1.25rem;
+    font-weight: 700;
+    color: #111;
+}
+
+.priceValue {
+    font-size: 1.75rem;
+    font-weight: 800;
+    color: #16a34a;
+    display: flex;
+    align-items: center;
+    gap: 0.5rem;
+}
+
+.notificationNote {
+    margin-top: 1.25rem;
+    padding: 1rem;
+    background: #e0f2fe;
+    border-radius: 10px;
+    font-size: 0.9rem;
+    color: #0369a1;
+    font-weight: 500;
+    border: 1px solid #bae6fd;
+}
+
+.noWinnerText {
+    font-size: 1rem;
+    color: #666;
+    line-height: 1.6;
+    margin: 0;
+    padding: 1rem;
+}
+
+.modalBtn {
+    width: 100%;
+    padding: 1rem;
+    background: linear-gradient(135deg, #673AB7, #9C27B0);
+    color: white;
+    border: none;
+    border-radius: 10px;
+    font-size: 1rem;
+    font-weight: 700;
+    cursor: pointer;
+    transition: all 0.2s;
+    text-transform: uppercase;
+    letter-spacing: 0.5px;
+}
+
+.modalBtn:hover {
+    transform: translateY(-2px);
+    box-shadow: 0 8px 20px rgba(103, 58, 183, 0.4);
+}
