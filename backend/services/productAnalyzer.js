@@ -1,21 +1,6 @@
-import fs from 'fs';
-import path from 'path';
-import { fileURLToPath } from 'url';
-
-const __filename = fileURLToPath(import.meta.url);
-const __dirname = path.dirname(__filename);
-
-// Load market dataset
-const datasetPath = path.join(__dirname, '../data/marketDataset.json');
-let marketData = null;
-
-try {
-    const rawData = fs.readFileSync(datasetPath, 'utf8');
-    marketData = JSON.parse(rawData);
-    console.log('✅ Market dataset loaded successfully');
-} catch (error) {
-    console.error('❌ Failed to load market dataset:', error);
-}
+// Product analyzer utilities
+// Note: This module no longer uses local marketDataset.json
+// All market data comes from the Mercari dataset
 
 /**
  * Extract detailed product information from name and description
@@ -36,30 +21,30 @@ export function extractProductInfo(product) {
 }
 
 /**
- * Extract brand from text
+ * Extract brand from text using common brand patterns
  */
 function extractBrand(text) {
-    const allBrands = [];
-
-    // Collect all brands from dataset
-    if (marketData && marketData.categories) {
-        Object.values(marketData.categories).forEach(cat => {
-            if (cat.popularBrands) {
-                allBrands.push(...cat.popularBrands);
-            }
-            // Handle nested categories (Fashion, etc.)
-            if (typeof cat === 'object' && !Array.isArray(cat)) {
-                Object.values(cat).forEach(subcat => {
-                    if (subcat.popularBrands) {
-                        allBrands.push(...subcat.popularBrands);
-                    }
-                });
-            }
-        });
-    }
+    // Common brands across categories
+    const commonBrands = [
+        // Electronics
+        'Apple', 'Samsung', 'Sony', 'LG', 'Huawei', 'Xiaomi', 'Oppo', 'Vivo', 'OnePlus', 'Google',
+        'Dell', 'HP', 'Lenovo', 'Asus', 'Acer', 'MSI', 'Microsoft', 'Razer',
+        // Fashion
+        'Nike', 'Adidas', 'Puma', 'Under Armour', 'Reebok', 'New Balance', 'Converse',
+        'Gucci', 'Louis Vuitton', 'Prada', 'Chanel', 'Hermes', 'Dior', 'Burberry',
+        'Zara', 'H&M', 'Uniqlo', 'Gap', 'Forever 21',
+        // Watches
+        'Rolex', 'Omega', 'Casio', 'Seiko', 'Citizen', 'Fossil', 'Timex',
+        // Cameras
+        'Canon', 'Nikon', 'Fujifilm', 'Panasonic', 'Olympus', 'GoPro',
+        // Audio
+        'Bose', 'JBL', 'Sennheiser', 'Audio-Technica', 'Beats', 'AKG', 'Shure',
+        // Gaming
+        'PlayStation', 'Xbox', 'Nintendo', 'Logitech', 'Corsair', 'SteelSeries'
+    ];
 
     // Find brand mention in text
-    for (const brand of allBrands) {
+    for (const brand of commonBrands) {
         if (text.includes(brand.toLowerCase())) {
             return brand;
         }
@@ -91,7 +76,7 @@ function extractModel(name) {
 /**
  * Extract technical specifications
  */
-function extractSpecs(text, category) {
+function extractSpecs(text) {
     const specs = {};
 
     // Storage
@@ -190,26 +175,6 @@ function detectCategory(text) {
     return 'General';
 }
 
-/**
- * Get market data for category
- */
-export function getMarketData(category) {
-    if (!marketData || !marketData.categories) return null;
-
-    // Direct match
-    if (marketData.categories[category]) {
-        return marketData.categories[category];
-    }
-
-    // Check nested categories (Fashion, Home & Living, etc.)
-    for (const mainCat of Object.values(marketData.categories)) {
-        if (typeof mainCat === 'object' && !Array.isArray(mainCat) && mainCat[category]) {
-            return mainCat[category];
-        }
-    }
-
-    return null;
-}
 
 /**
  * Calculate price adjustment based on product features
@@ -251,72 +216,8 @@ export function calculateFeatureAdjustment(productInfo, basePrice) {
     return Math.round(basePrice * multiplier);
 }
 
-/**
- * Find comparable sold items
- */
-export function findComparableItems(productInfo, category) {
-    const marketCat = getMarketData(category);
-    if (!marketCat || !marketCat.trendingModels) return [];
-
-    return marketCat.trendingModels.map(model => ({
-        name: model.name,
-        price: model.avgPrice,
-        demand: model.demand,
-        relevance: calculateRelevance(productInfo, model)
-    })).sort((a, b) => b.relevance - a.relevance).slice(0, 5);
-}
-
-/**
- * Calculate how relevant a comparable item is
- */
-function calculateRelevance(productInfo, trendingModel) {
-    let score = 50; // Base relevance
-
-    const modelLower = trendingModel.name.toLowerCase();
-    const brand = productInfo.brand?.toLowerCase();
-    const model = productInfo.model?.toLowerCase();
-
-    // Brand match
-    if (brand && modelLower.includes(brand)) score += 30;
-
-    // Model match
-    if (model && modelLower.includes(model)) score += 20;
-
-    // Demand boost
-    if (trendingModel.demand === 'very high') score += 15;
-    else if (trendingModel.demand === 'high') score += 10;
-    else if (trendingModel.demand === 'medium') score += 5;
-
-    return Math.min(100, score);
-}
-
-/**
- * Get comprehensive market insights
- */
-export function getMarketInsights(category, productInfo) {
-    const marketCat = getMarketData(category);
-    if (!marketCat) return [];
-
-    const insights = [...(marketCat.marketInsights || [])];
-
-    // Add dynamic insights based on product
-    if (productInfo.keywords.includes('box')) {
-        insights.push('✓ Including original box detected - adds 10-15% value');
-    }
-    if (productInfo.keywords.includes('warranty')) {
-        insights.push('✓ Warranty mentioned - significant value booster');
-    }
-    if (productInfo.specs.age && productInfo.specs.age <= 1) {
-        insights.push('✓ Recent model - better value retention');
-    }
-
-    return insights.slice(0, 5); // Return top 5 insights
-}
 
 export default {
     extractProductInfo,
-    getMarketData,
-    calculateFeatureAdjustment,
-    findComparableItems,
-    getMarketInsights
+    calculateFeatureAdjustment
 };

@@ -28,10 +28,10 @@ export default function PriceRecommendation({ productData, onApplyRecommendation
 
             const data = await response.json();
 
-            if (response.ok) {
+            if (response.ok && data.success !== false) {
                 setRecommendation(data);
             } else {
-                setError(data.error || 'Failed to get recommendation');
+                setError(data.message || data.error || 'Failed to get recommendation');
             }
         } catch (err) {
             console.error('Price recommendation error:', err);
@@ -52,6 +52,9 @@ export default function PriceRecommendation({ productData, onApplyRecommendation
     };
 
     const formatCurrency = (amount) => {
+        if (amount === undefined || amount === null) {
+            return '₱0.00';
+        }
         return `₱${amount.toLocaleString('en-PH', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`;
     };
 

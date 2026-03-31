@@ -2,10 +2,7 @@ import { GoogleGenerativeAI } from '@google/generative-ai';
 import { supabase } from '../config/supabase.js';
 import {
     extractProductInfo,
-    getMarketData,
-    calculateFeatureAdjustment,
-    findComparableItems,
-    getMarketInsights
+    calculateFeatureAdjustment
 } from './productAnalyzer.js';
 import {
     initModel,
@@ -46,51 +43,59 @@ export async function generatePriceRecommendation(productData) {
         const productInfo = extractProductInfo(productData);
         console.log('📊 Extracted product info:', productInfo);
 
-        // Try to use Mercari dataset first (larger, more comprehensive)
+        // Use Mercari dataset exclusively
         let mercariData = getMercariData();
 
         // Load on-demand if not already loaded
         if (!mercariData || mercariData.length === 0) {
             console.log('📦 Loading Mercari dataset (first time, this may take ~2 minutes)...');
-            await loadMercariDataCache();
-            mercariData = getMercariData();
+            try {
+                await loadMercariDataCache();
+                mercariData = getMercariData();
+                console.log('✅ Mercari dataset loaded successfully:', mercariData?.length, 'items');
+            } catch (loadError) {
+                console.error('❌ Failed to load Mercari dataset:', loadError);
+                throw new Error('Mercari dataset could not be loaded: ' + loadError.message);
+            }
         }
-        let marketData, comparableItems, basePrice;
 
-        if (mercariData && mercariData.length > 0) {
-            console.log('🎯 Using Mercari dataset for analysis');
+        if (!mercariData || mercariData.length === 0) {
+            throw new Error('Mercari dataset not available. Please ensure the dataset is properly loaded.');
+        }
 
-            // Get Mercari market statistics
-            marketData = getMercariMarketStats(mercariData, productInfo.category, productInfo.brand);
+        console.log('🎯 Using Mercari dataset for analysis');
 
-            // Find comparable items from Mercari
-            comparableItems = findMercariComparables(mercariData, productInfo, 10);
-            console.log('🔍 Found Mercari comparable items:', comparableItems.length);
+        // Get Mercari market statistics
+        const marketData = getMercariMarketStats(mercariData, productInfo.category, productInfo.brand);
+        console.log('📈 Market data stats:', {
+            avgPrice: marketData?.avgPrice,
+            totalItems: marketData?.totalItems,
+            category: productInfo.category,
+            brand: productInfo.brand
+        });
 
-            // Calculate base price from Mercari data
-            if (marketData) {
-                basePrice = marketData.avgPrice;
+        // Find comparable items from Mercari
+        const comparableItems = findMercariComparables(mercariData, productInfo, 10);
+        console.log('🔍 Found Mercari comparable items:', comparableItems.length);
 
-                // Apply condition depreciation from Mercari data
-                if (marketData.depreciation && productInfo.condition) {
-                    basePrice = basePrice * (marketData.depreciation[productInfo.condition] || 0.7);
-                }
-            } else {
-                basePrice = 5000; // fallback
+        // Calculate base price from Mercari data
+        let basePrice;
+        if (marketData && marketData.avgPrice) {
+            basePrice = marketData.avgPrice;
+
+            // Apply condition depreciation from Mercari data
+            if (marketData.depreciation && productInfo.condition) {
+                basePrice = basePrice * (marketData.depreciation[productInfo.condition] || 0.7);
             }
         } else {
-            console.log('⚠️ Mercari dataset not available, using local market data');
-
-            // Fallback to original market data
-            marketData = getMarketData(productInfo.category);
-            comparableItems = findComparableItems(productInfo, productInfo.category);
-
-            // Calculate base price from local market data
-            basePrice = marketData?.averagePrice || 5000;
-
-            // Apply condition depreciation
-            if (marketData?.depreciation && productInfo.condition) {
-                basePrice = basePrice * (marketData.depreciation[productInfo.condition] || 0.7);
+            // If no exact category match, use comparable items average
+            if (comparableItems && comparableItems.length > 0) {
+                const avgComparablePrice = comparableItems.reduce((sum, item) => sum + item.price, 0) / comparableItems.length;
+                basePrice = avgComparablePrice;
+                console.log('💡 Using average from comparable items:', basePrice);
+            } else {
+                basePrice = 5000; // ultimate fallback
+                console.log('⚠️ No market data or comparables found, using base fallback');
             }
         }
 
@@ -113,9 +118,6 @@ export async function generatePriceRecommendation(productData) {
         // Parse the response
         const recommendation = parseGeminiResponse(response);
 
-        // Get market insights from dataset
-        const datasetInsights = getMarketInsights(productInfo.category, productInfo);
-
         return {
             success: true,
             recommendation: {
@@ -128,7 +130,7 @@ export async function generatePriceRecommendation(productData) {
                 },
                 confidence: recommendation.confidence,
                 reasoning: recommendation.reasoning,
-                marketInsights: [...(recommendation.marketInsights || []), ...datasetInsights].slice(0, 5),
+                marketInsights: recommendation.marketInsights || [],
                 comparableItems: comparableItems.map(item => ({
                     name: item.name,
                     price: item.price,
@@ -142,7 +144,7 @@ export async function generatePriceRecommendation(productData) {
         return {
             success: false,
             error: error.message,
-            fallback: generateFallbackRecommendation(productData)
+            message: 'Unable to generate price recommendation. Please ensure the Mercari dataset is loaded and the AI service is available.'
         };
     }
 }
@@ -411,93 +413,6 @@ function parseGeminiResponse(response) {
         console.error('Failed to parse Gemini response:', error);
         console.log('Raw response:', response);
         throw new Error('Invalid AI response format');
-    }
-}
-
-/**
- * Generate fallback recommendation when AI fails
- */
-function generateFallbackRecommendation(productData) {
-    try {
-        // Try to use market dataset for fallback
-        const productInfo = extractProductInfo(productData);
-        const marketData = getMarketData(productInfo.category);
-
-        let basePrice = 5000; // Default fallback
-
-        if (marketData && marketData.averagePrice) {
-            // Use market dataset if available
-            basePrice = marketData.averagePrice;
-
-            // Apply condition depreciation from dataset
-            if (marketData.depreciation && productData.condition) {
-                basePrice = basePrice * (marketData.depreciation[productData.condition] || 0.7);
-            }
-
-            // Apply feature adjustments
-            basePrice = calculateFeatureAdjustment(productInfo, basePrice);
-        } else {
-            // Old fallback logic if dataset not available
-            const categoryMultipliers = {
-                'Smartphones': 15000,
-                'Laptops': 35000,
-                'Smartwatches': 8000,
-                'Tablets': 20000,
-                'Electronics': 10000,
-                'Fashion': 2000,
-                'Home & Garden': 5000,
-                'Sports': 8000,
-                'Collectibles': 5000
-            };
-
-            const conditionMultipliers = {
-                'New': 1.0,
-                'Like New': 0.85,
-                'Good': 0.70,
-                'Fair': 0.50,
-                'Poor': 0.30
-            };
-
-            basePrice = categoryMultipliers[productData.category] || 5000;
-            basePrice = Math.round(basePrice * (conditionMultipliers[productData.condition] || 0.7));
-        }
-
-        const reservePrice = Math.round(basePrice);
-        const startingBid = Math.round(reservePrice * 0.7);
-        const bidIncrement = Math.round(startingBid * 0.08);
-
-        return {
-            suggestedReservePrice: reservePrice,
-            suggestedStartingBid: startingBid,
-            suggestedBidIncrement: bidIncrement,
-            priceRange: {
-                min: Math.round(reservePrice * 0.8),
-                max: Math.round(reservePrice * 1.5)
-            },
-            confidence: 'Medium',
-            reasoning: marketData
-                ? `Price based on market dataset for ${productInfo.category}. Average market price: ₱${marketData.averagePrice?.toLocaleString()}, adjusted for ${productData.condition} condition and detected features.`
-                : 'This is a basic estimate. For more accurate pricing, please try again or consult market research.',
-            marketInsights: marketData?.marketInsights || [
-                'Consider researching similar items on other platforms',
-                'High-quality photos can increase final price by 20-30%',
-                'Detailed descriptions attract more serious bidders'
-            ],
-            comparableItems: []
-        };
-    } catch (error) {
-        console.error('Fallback recommendation error:', error);
-        // Ultimate fallback if everything fails
-        return {
-            suggestedReservePrice: 5000,
-            suggestedStartingBid: 3500,
-            suggestedBidIncrement: 300,
-            priceRange: { min: 4000, max: 7500 },
-            confidence: 'Low',
-            reasoning: 'Basic estimate due to system error. Please consult market research.',
-            marketInsights: ['Consider researching similar items on other platforms'],
-            comparableItems: []
-        };
     }
 }
 

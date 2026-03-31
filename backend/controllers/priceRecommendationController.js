@@ -25,12 +25,11 @@ export const getPriceRecommendation = async (req, res) => {
                 ...result.recommendation
             });
         } else {
-            // Return fallback recommendation with error info
-            return res.json({
-                success: true,
-                ...result.fallback,
-                warning: 'AI service unavailable, showing basic estimate',
-                errorDetails: result.error
+            // Return error - no fallback
+            return res.status(503).json({
+                success: false,
+                error: result.error || 'Unable to generate price recommendation',
+                message: result.message || 'Please ensure the Mercari dataset is loaded and the AI service is available.'
             });
         }
 
