@@ -31,7 +31,16 @@ export default function InventoryPage() {
             }
 
             const responseData = await res.json();
-            setProducts(responseData.data || []);
+            const allProducts = responseData.data || [];
+
+            // Filter to show only draft products (not scheduled, not active, not ended/completed)
+            const draftProducts = allProducts.filter(product =>
+                product.status === 'draft' ||
+                product.status === 'pending' ||
+                !product.status
+            );
+
+            setProducts(draftProducts);
         } catch (error) {
             console.error('Error fetching inventory:', error.message);
             setProducts([]); // Set empty array on error
@@ -88,87 +97,76 @@ export default function InventoryPage() {
                     <ChevronLeft size={24} />
                     <span>Products</span>
                 </Link>
-                <h1 className={styles.title}>My Products</h1>
+                <div>
+                    <h1 className={styles.title}>My Products</h1>
+                    <p style={{ color: '#999', fontSize: '0.9rem', marginTop: '0.5rem' }}>
+                        Draft products ready to be scheduled
+                    </p>
+                </div>
             </header>
 
             {loading ? (
                 <div style={{ textAlign: 'center', padding: '2rem' }}>Loading inventory...</div>
             ) : (
                 <div className={styles.productGrid}>
-                    {products.map((product) => {
-                        const isScheduledOrActive = product.status === 'scheduled' || product.status === 'active';
-                        const isDeleting = deletingId === product.products_id;
-
-                        return (
-                        <div key={product.products_id} className={styles.productCard}>
-                            <div className={styles.imageWrapper}>
-                                <img
-                                   src={product.images && product.images.length > 0 ? product.images[0].image_url : 'https://placehold.co/200x200?text=No+Image'}
-                                   alt={product.name}
-                                   style={{ objectFit: 'cover', width: '100%', height: '100%' }}
-                                />
-                                {isScheduledOrActive && (
-                                    <div style={{
-                                        position: 'absolute',
-                                        top: '8px',
-                                        right: '8px',
-                                        background: product.status === 'scheduled' ? '#FF9800' : '#4CAF50',
-                                        color: 'white',
-                                        padding: '4px 8px',
-                                        borderRadius: '4px',
-                                        fontSize: '0.75rem',
-                                        fontWeight: 'bold',
-                                        textTransform: 'uppercase'
-                                    }}>
-                                        {product.status}
-                                    </div>
-                                )}
-                                {!isScheduledOrActive && (
-                                    <button
-                                        onClick={() => handleDelete(product.products_id, product.name)}
-                                        disabled={isDeleting}
-                                        style={{
-                                            position: 'absolute',
-                                            top: '8px',
-                                            right: '8px',
-                                            background: 'rgba(220, 38, 38, 0.9)',
-                                            color: 'white',
-                                            border: 'none',
-                                            borderRadius: '4px',
-                                            padding: '6px',
-                                            cursor: isDeleting ? 'not-allowed' : 'pointer',
-                                            display: 'flex',
-                                            alignItems: 'center',
-                                            justifyContent: 'center',
-                                            opacity: isDeleting ? 0.5 : 1
-                                        }}
-                                        title="Delete product"
-                                    >
-                                        <Trash2 size={16} />
-                                    </button>
-                                )}
-                            </div>
-                            <div className={styles.productInfo}>
-                                <strong>{product.name}</strong>
-                                <span style={{ textTransform: 'capitalize', color: isScheduledOrActive ? '#666' : '#333' }}>
-                                    Status: {product.status}
-                                </span>
-                            </div>
-                            {isScheduledOrActive ? (
-                                <button
-                                    className={styles.scheduledBtn}
-                                    disabled
-                                >
-                                    {product.status === 'scheduled' ? 'Scheduled' : 'In Auction'}
-                                </button>
-                            ) : (
-                                <Link href={`/seller/auctions/schedule?id=${product.products_id}`} className={styles.scheduleBtn}>
-                                    Schedule
-                                </Link>
-                            )}
+                    {products.length === 0 ? (
+                        <div style={{
+                            gridColumn: '1 / -1',
+                            textAlign: 'center',
+                            padding: '3rem',
+                            color: '#999'
+                        }}>
+                            <p style={{ fontSize: '1.1rem', marginBottom: '0.5rem' }}>No draft products available</p>
+                            <p style={{ fontSize: '0.9rem' }}>Products that are scheduled or completed won't appear here</p>
                         </div>
-                        );
-                    })}
+                    ) : (
+                        products.map((product) => {
+                            const isDeleting = deletingId === product.products_id;
+
+                            return (
+                                <div key={product.products_id} className={styles.productCard}>
+                                    <div className={styles.imageWrapper}>
+                                        <img
+                                            src={product.images && product.images.length > 0 ? product.images[0].image_url : 'https://placehold.co/200x200?text=No+Image'}
+                                            alt={product.name}
+                                            style={{ objectFit: 'cover', width: '100%', height: '100%' }}
+                                        />
+                                        <button
+                                            onClick={() => handleDelete(product.products_id, product.name)}
+                                            disabled={isDeleting}
+                                            style={{
+                                                position: 'absolute',
+                                                top: '8px',
+                                                right: '8px',
+                                                background: 'rgba(220, 38, 38, 0.9)',
+                                                color: 'white',
+                                                border: 'none',
+                                                borderRadius: '4px',
+                                                padding: '6px',
+                                                cursor: isDeleting ? 'not-allowed' : 'pointer',
+                                                display: 'flex',
+                                                alignItems: 'center',
+                                                justifyContent: 'center',
+                                                opacity: isDeleting ? 0.5 : 1
+                                            }}
+                                            title="Delete product"
+                                        >
+                                            <Trash2 size={16} />
+                                        </button>
+                                    </div>
+                                    <div className={styles.productInfo}>
+                                        <strong>{product.name}</strong>
+                                        <span style={{ textTransform: 'capitalize', color: '#999', fontSize: '0.85rem' }}>
+                                            Draft • Ready to schedule
+                                        </span>
+                                    </div>
+                                    <Link href={`/seller/auctions/schedule?id=${product.products_id}`} className={styles.scheduleBtn}>
+                                        Schedule
+                                    </Link>
+                                </div>
+                            );
+                        })
+                    )}
 
                     <Link href="/seller/add-product" className={styles.addCard}>
                         <div className={styles.plusCircle}>

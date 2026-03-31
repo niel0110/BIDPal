@@ -1,5 +1,5 @@
 import express from 'express';
-import { scheduleAuction, getSellerAuctions, startAuction, endAuction, getAllAuctions, getAuctionById, getLiveComments, postLiveComment, placeBid, getAuctionStats, getAuctionWinner, getAuctionBids } from '../controllers/auctionsController.js';
+import { scheduleAuction, getSellerAuctions, startAuction, endAuction, getAllAuctions, getAuctionById, getLiveComments, postLiveComment, placeBid, getAuctionStats, getAuctionWinner, getAuctionBids, deleteAuction } from '../controllers/auctionsController.js';
 import { authenticateToken } from '../middleware/authMiddleware.js';
 
 const router = express.Router();
@@ -32,5 +32,8 @@ router.get('/:id/stats', getAuctionStats);
 router.get('/:id/winner', getAuctionWinner);
 
 router.get('/:id', getAuctionById);
+
+// Delete auction (only scheduled auctions)
+router.delete('/:id', authenticateToken, deleteAuction);
 
 export default router;
