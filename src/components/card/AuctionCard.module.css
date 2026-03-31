@@ -13,116 +13,210 @@
     box-shadow: 0 4px 12px rgba(0, 0, 0, 0.1);
     display: flex;
     flex-direction: column;
-    transition: transform 0.2s ease, box-shadow 0.2s ease;
+    transition: transform 0.2s ease, box-shadow 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+    background: #fff;
+    border: 1px solid rgba(0, 0, 0, 0.05);
 }
 
 .card:hover {
-    transform: translateY(-4px);
-    box-shadow: 0 8px 24px rgba(0, 0, 0, 0.15);
+    transform: translateY(-6px);
+    box-shadow: 0 12px 30px rgba(0, 0, 0, 0.15);
 }
 
 .imageWrapper {
     position: relative;
     height: 280px;
-    background-color: #f0f0f0;
+    background-color: #f8f9fa;
+    overflow: hidden;
 }
 
 .image {
     width: 100%;
     height: 100%;
     object-fit: cover;
+    transition: transform 0.5s ease;
+}
+
+.card:hover .image {
+    transform: scale(1.05);
 }
 
 .overlayBadge {
     position: absolute;
-    top: 1rem;
-    right: 1rem;
-    /* Design shows top right for user count/timer on some, checking again.. actually top right mostly */
-    /* Wait, image 1 shows top right. Let's stick to top right. */
-    background: rgba(0, 0, 0, 0.6);
-    backdrop-filter: blur(4px);
+    bottom: 10px;
+    right: 10px;
+    background: rgba(0, 0, 0, 0.65);
+    backdrop-filter: blur(6px);
+    -webkit-backdrop-filter: blur(6px);
     color: white;
-    padding: 0.25rem 0.5rem;
-    border-radius: 4px;
+    padding: 5px 10px;
+    border-radius: 6px;
     display: flex;
     align-items: center;
-    gap: 0.5rem;
-    font-size: 0.75rem;
+    gap: 6px;
+    font-size: 0.7rem;
+    font-weight: 500;
+    z-index: 5;
+    border: 1px solid rgba(255, 255, 255, 0.1);
 }
 
-.redBadge {
-    background-color: #D32F2F;
-    /* Overwrite for red style */
+.liveBadge {
+    position: absolute;
+    top: 10px;
+    left: 10px;
+    background: #D32F2F;
+    color: white;
+    padding: 4px 12px;
+    border-radius: 6px;
+    font-size: 0.7rem;
+    font-weight: 800;
+    letter-spacing: 0.5px;
+    box-shadow: 0 4px 12px rgba(211, 47, 47, 0.4);
+    z-index: 5;
+    animation: pulse 2s infinite;
+}
+
+@keyframes pulse {
+    0% { transform: scale(1); opacity: 1; }
+    50% { transform: scale(1.05); opacity: 0.95; }
+    100% { transform: scale(1); opacity: 1; }
+}
+
+.heartBtn {
+    position: absolute;
+    top: 10px;
+    right: 10px;
+    width: 34px;
+    height: 34px;
+    border-radius: 50%;
+    background: rgba(0, 0, 0, 0.25);
+    backdrop-filter: blur(8px);
+    -webkit-backdrop-filter: blur(8px);
+    border: 1px solid rgba(255, 255, 255, 0.25);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    cursor: pointer;
+    transition: all 0.2s cubic-bezier(0.4, 0, 0.2, 1);
+    z-index: 10;
+    color: white;
+    padding: 0;
+}
+
+.heartBtn:hover {
+    background: rgba(255, 255, 255, 0.9);
+    color: #D32F2F;
+    transform: scale(1.1);
+    border-color: transparent;
+}
+
+.activeHeart {
+    background: rgba(255, 255, 255, 1);
+    border-color: transparent;
+    box-shadow: 0 4px 15px rgba(211, 47, 47, 0.35);
 }
 
 .footer {
-    background: linear-gradient(to bottom, #d65a68, #8E2432);
-    /* Approx pinkish-red gradient */
+    background: linear-gradient(135deg, #d65a68 0%, #8E2432 100%);
     padding: 1rem;
     color: white;
+    position: relative;
 }
 
 .sellerRow {
     display: flex;
     align-items: center;
     justify-content: space-between;
-    margin-bottom: 0.75rem;
+    margin-bottom: 0.85rem;
 }
 
 .sellerInfo {
     display: flex;
     align-items: center;
-    gap: 0.5rem;
+    gap: 0.6rem;
 }
 
 .avatar {
-    width: 24px;
-    height: 24px;
+    width: 26px;
+    height: 26px;
     border-radius: 50%;
-    background-color: #ccc;
+    background-color: rgba(255, 255, 255, 0.2);
+    border: 1px solid rgba(255, 255, 255, 0.3);
 }
 
 .sellerName {
-    font-size: 0.8rem;
+    font-size: 0.85rem;
     font-weight: 500;
+    color: rgba(255, 255, 255, 0.95);
 }
 
 .followBtn {
-    background: rgba(255, 255, 255, 0.2);
-    border: 1px solid rgba(255, 255, 255, 0.4);
+    background: rgba(255, 255, 255, 0.15);
+    border: 1px solid rgba(255, 255, 255, 0.3);
     color: white;
     font-size: 0.7rem;
-    padding: 0.2rem 0.5rem;
-    border-radius: 4px;
+    font-weight: 600;
+    padding: 0.3rem 0.7rem;
+    border-radius: 6px;
     cursor: pointer;
+    transition: all 0.2s ease;
+}
+
+.followBtn:hover {
+    background: rgba(255, 255, 255, 0.25);
+    transform: scale(1.05);
 }
 
 .itemInfo {
     display: flex;
     flex-direction: column;
-    gap: 0.25rem;
+    gap: 0.4rem;
 }
 
 .titleRow {
     display: flex;
     justify-content: space-between;
-    font-size: 0.9rem;
+    align-items: flex-start;
+    gap: 1rem;
+}
+
+.titleText {
+    font-size: 1rem;
     font-weight: 700;
+    line-height: 1.25;
+    color: #fff;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    display: -webkit-box;
+    -webkit-line-clamp: 1;
+    -webkit-box-orient: vertical;
+    line-clamp: 1;
+}
+
+.priceText {
+    font-size: 1.1rem;
+    font-weight: 800;
+    color: #fff;
+    white-space: nowrap;
+    text-shadow: 0 1px 2px rgba(0, 0, 0, 0.1);
 }
 
 .bidRow {
     display: flex;
     justify-content: space-between;
-    font-size: 0.8rem;
-    opacity: 0.9;
+    align-items: center;
+    font-size: 0.85rem;
+    color: rgba(255, 255, 255, 0.85);
+    font-weight: 500;
+}
+
+.bidValue {
+    font-weight: 700;
+    color: #ffffff;
 }
 
 .sellerLink {
     text-decoration: none;
     color: inherit;
-    transition: opacity 0.2s;
-}
-
-.sellerLink:hover {
-    opacity: 0.8;
+    display: block;
 }

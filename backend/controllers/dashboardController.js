@@ -437,3 +437,97 @@ export const trackAuctionView = async (req, res) => {
     res.json({ success: false });
   }
 };
+
+// Get a user's wishlist (liked auctions)
+export const getWishlist = async (req, res) => {
+  try {
+    const { user_id } = req.params;
+
+    if (!user_id) {
+      return res.status(400).json({ error: 'user_id is required' });
+    }
+
+    // 1. Get all liked auctions for the user
+    const { data: likes, error: likesError } = await supabase
+      .from('Auction_Likes')
+      .select('auction_id, liked_at')
+      .eq('user_id', user_id)
+      .order('liked_at', { ascending: false });
+
+    if (likesError) throw likesError;
+
+    if (!likes || likes.length === 0) {
+      return res.json([]);
+    }
+
+    const auctionIds = likes.map(l => l.auction_id);
+
+    // 2. Fetch auction and product details for these IDs
+    const { data: auctions, error: auctionsError } = await supabase
+      .from('Auctions')
+      .select(`
+        auction_id,
+        products_id,
+        seller_id,
+        status,
+        start_time,
+        end_time,
+        reserve_price,
+        buy_now_price,
+        current_price,
+        incremental_bid_step,
+        Seller (
+          store_name,
+          logo_url
+        )
+      `)
+      .in('auction_id', auctionIds);
+
+    if (auctionsError) throw auctionsError;
+
+    // 3. Enrich with product details from view
+    const wishlistItems = await Promise.all(
+      likes.map(async (like) => {
+        const auction = auctions.find(a => a.auction_id === like.auction_id);
+        if (!auction) return null;
+
+        const { data: productData, error: productError } = await supabase
+          .from('vw_product_details')
+          .select('*')
+          .eq('products_id', auction.products_id)
+          .maybeSingle();
+
+        if (productError) {
+          console.error(`Error fetching product details for ${auction.products_id}:`, productError);
+          // Continue anyway, just fallback to minimal data
+        }
+
+        const images = productData?.images || [];
+        const primaryImage = images.find(img => img.is_primary) || images[0];
+
+        return {
+          id: auction.auction_id,
+          liked_at: like.liked_at,
+          auction_id: auction.auction_id,
+          product_id: auction.products_id,
+          title: productData?.name || 'Unknown Product',
+          description: productData?.description,
+          image: primaryImage?.image_url || null,
+          seller: auction.Seller?.store_name || 'Unknown Seller',
+          seller_logo: auction.Seller?.logo_url,
+          status: auction.status,
+          start_time: auction.start_time,
+          end_time: auction.end_time,
+          current_price: auction.current_price || auction.reserve_price || 0,
+          buy_now_price: auction.buy_now_price || 0,
+          is_liked: true
+        };
+      })
+    );
+
+    res.json(wishlistItems.filter(item => item !== null));
+  } catch (err) {
+    console.error('Error fetching wishlist:', err);
+    res.status(500).json({ error: err.message || 'Internal Server Error' });
+  }
+};
