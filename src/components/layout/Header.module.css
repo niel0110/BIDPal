@@ -6,11 +6,6 @@
     box-shadow: 0 2px 8px rgba(0, 0, 0, 0.05);
 }
 
-.topBar {
-    height: 4px;
-    background: linear-gradient(to right, #D32F2F, #FBC02D, #4A148C, #EF6C00);
-}
-
 .mainHeader {
     display: flex;
     align-items: center;

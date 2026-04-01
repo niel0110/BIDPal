@@ -35,7 +35,6 @@ export default function Header() {
 
   return (
     <div className={styles.headerContainer}>
-      <div className={styles.topBar}></div>
       <header className={styles.mainHeader}>
         <div className={styles.leftSection}>
           <button
