@@ -556,11 +556,247 @@
 }
 
 .editBtn {
+    background: #f5f5f5;
+    border: none;
+    width: 34px;
+    height: 34px;
+    border-radius: 10px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    cursor: pointer;
+    color: #555;
+    transition: all 0.2s;
+    flex-shrink: 0;
+}
+
+.editBtn:hover {
+    background: #e8f5e9;
+    color: #2e7d32;
+}
+
+/* Address card action buttons */
+.addressActions {
+    display: flex;
+    align-items: center;
+    gap: 0.5rem;
+    flex-shrink: 0;
+}
+
+.deleteBtn {
+    background: #fff0f0;
+    border: none;
+    width: 34px;
+    height: 34px;
+    border-radius: 10px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    cursor: pointer;
+    color: #c62828;
+    transition: all 0.2s;
+    flex-shrink: 0;
+}
+
+.deleteBtn:hover {
+    background: #ffcdd2;
+}
+
+.deleteBtn:disabled {
+    opacity: 0.5;
+    cursor: not-allowed;
+}
+
+.setDefaultBtn {
+    background: #f0f4ff;
+    border: 1px solid #c5cae9;
+    padding: 0.4rem 0.85rem;
+    border-radius: 10px;
+    font-size: 0.78rem;
+    font-weight: 700;
+    color: #3949ab;
+    cursor: pointer;
+    transition: all 0.2s;
+    white-space: nowrap;
+}
+
+.setDefaultBtn:hover {
+    background: #e8eaf6;
+    border-color: #3949ab;
+}
+
+.setDefaultBtn:disabled {
+    opacity: 0.5;
+    cursor: not-allowed;
+}
+
+.defaultAddressCard {
+    border-color: var(--color-primary) !important;
+    background: #fff8f8;
+}
+
+/* Map/geolocation button */
+.geolocationBtn {
+    display: flex;
+    align-items: center;
+    gap: 0.6rem;
+    background: #f5f5f5;
+    border: 1.5px dashed #ccc;
+    padding: 0.9rem 1.25rem;
+    border-radius: 14px;
+    font-weight: 600;
+    font-size: 0.9rem;
+    color: #555;
+    cursor: pointer;
+    transition: all 0.2s;
+    width: 100%;
+}
+
+.geolocationBtn:hover {
+    border-color: var(--color-primary);
+    background: #fff8f8;
+    color: var(--color-primary);
+}
+
+/* Pinned location banner shown after map confirm */
+.pinnedBanner {
+    display: flex;
+    align-items: flex-start;
+    gap: 0.6rem;
+    padding: 0.75rem 1rem;
+    background: #f0fdf4;
+    border: 1px solid #bbf7d0;
+    border-radius: 12px;
+    font-size: 0.85rem;
+    color: #166534;
+    line-height: 1.4;
+}
+
+.pinnedDetails {
+    flex: 1;
+    display: flex;
+    flex-direction: column;
+    gap: 0.1rem;
+}
+
+.pinnedTitle {
+    font-weight: 700;
+    font-size: 0.78rem;
+    text-transform: uppercase;
+    letter-spacing: 0.04em;
+    color: #15803d;
+}
+
+.clearPinBtn {
     background: none;
     border: none;
-    padding: 0.5rem;
     cursor: pointer;
+    padding: 0.2rem;
+    color: #166534;
+    display: flex;
+    align-items: center;
+    opacity: 0.6;
+    flex-shrink: 0;
+    margin-top: 0.1rem;
+    transition: opacity 0.2s;
+}
+
+.clearPinBtn:hover {
+    opacity: 1;
+}
+
+
+/* Back button inside forms */
+.backBtn {
+    display: inline-flex;
+    align-items: center;
+    gap: 0.5rem;
+    background: none;
+    border: none;
+    padding: 0.5rem 0;
+    font-weight: 700;
+    font-size: 0.9rem;
     color: #666;
+    cursor: pointer;
+    margin-bottom: 0.75rem;
+    transition: color 0.2s;
+}
+
+.backBtn:hover {
+    color: var(--color-primary);
+}
+
+/* Checkbox group */
+.checkboxGroup {
+    display: flex;
+    align-items: center;
+    gap: 0.75rem;
+    font-size: 0.9rem;
+    font-weight: 600;
+    color: #444;
+}
+
+.checkboxGroup input[type="checkbox"] {
+    width: 18px;
+    height: 18px;
+    accent-color: var(--color-primary);
+    cursor: pointer;
+    flex-shrink: 0;
+}
+
+/* Button group (primary + secondary side by side) */
+.buttonGroup {
+    display: flex;
+    gap: 1rem;
+    margin-top: 0.5rem;
+}
+
+.buttonGroup .primaryBtn {
+    flex: 1;
+    margin-top: 0;
+}
+
+.secondaryBtn {
+    flex: 1;
+    background: #f5f5f5;
+    border: none;
+    padding: 1.2rem;
+    border-radius: 14px;
+    font-size: 1rem;
+    font-weight: 700;
+    cursor: pointer;
+    color: #555;
+    transition: all 0.2s;
+}
+
+.secondaryBtn:hover {
+    background: #eeeeee;
+}
+
+.secondaryBtn:disabled {
+    opacity: 0.6;
+    cursor: not-allowed;
+}
+
+/* 2-column form grid */
+.formGrid2 {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 1rem;
+}
+
+@media (max-width: 600px) {
+    .formGrid2 {
+        grid-template-columns: 1fr;
+    }
+}
+
+/* Optional tag inside labels */
+.optionalTag {
+    font-weight: 500;
+    color: #aaa;
+    font-size: 0.82rem;
+    margin-left: 0.25rem;
 }
 
 .addFullBtn {
@@ -584,6 +820,7 @@
     color: var(--color-primary);
     background: #fff8f8;
 }
+
 
 /* Toggles */
 .toggleList {
@@ -2157,4 +2394,141 @@ input:checked+.slider:before {
     font-weight: 400;
     color: #aaa;
     margin-left: 4px;
-}
+}
+
+/* ══════════════════════════════════════════
+   Custom Confirm / Alert Dialog
+══════════════════════════════════════════ */
+.dialogOverlay {
+    position: fixed;
+    inset: 0;
+    background: rgba(0, 0, 0, 0.45);
+    backdrop-filter: blur(4px);
+    -webkit-backdrop-filter: blur(4px);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    z-index: 9999;
+    animation: fadeInOverlay 0.18s ease;
+}
+
+@keyframes fadeInOverlay {
+    from { opacity: 0; }
+    to   { opacity: 1; }
+}
+
+.dialogCard {
+    background: #ffffff;
+    border-radius: 24px;
+    padding: 2.25rem 2rem 1.75rem;
+    width: 100%;
+    max-width: 400px;
+    margin: 1rem;
+    box-shadow: 0 24px 60px rgba(0, 0, 0, 0.18);
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    text-align: center;
+    gap: 0.6rem;
+    animation: slideUpCard 0.22s cubic-bezier(0.34, 1.56, 0.64, 1);
+}
+
+@keyframes slideUpCard {
+    from {
+        opacity: 0;
+        transform: translateY(28px) scale(0.96);
+    }
+    to {
+        opacity: 1;
+        transform: translateY(0) scale(1);
+    }
+}
+
+.dialogIcon {
+    font-size: 2.4rem;
+    line-height: 1;
+    margin-bottom: 0.25rem;
+}
+
+.dialogTitle {
+    font-size: 1.2rem;
+    font-weight: 800;
+    color: #1a1a1a;
+    margin: 0;
+    letter-spacing: -0.02em;
+}
+
+.dialogMessage {
+    font-size: 0.9rem;
+    color: #666;
+    line-height: 1.55;
+    margin: 0 0 0.75rem;
+    max-width: 320px;
+}
+
+.dialogActions {
+    display: flex;
+    gap: 0.75rem;
+    width: 100%;
+    margin-top: 0.5rem;
+}
+
+.dialogCancelBtn {
+    flex: 1;
+    padding: 0.9rem 1rem;
+    border: 1.5px solid #e5e5e5;
+    border-radius: 14px;
+    background: #f9f9f9;
+    color: #555;
+    font-size: 0.95rem;
+    font-weight: 700;
+    cursor: pointer;
+    transition: all 0.2s;
+}
+
+.dialogCancelBtn:hover {
+    background: #eeeeee;
+    border-color: #ccc;
+}
+
+.dialogConfirmBtn {
+    flex: 1;
+    padding: 0.9rem 1rem;
+    border: none;
+    border-radius: 14px;
+    background: var(--color-primary, #d32f2f);
+    color: #ffffff;
+    font-size: 0.95rem;
+    font-weight: 700;
+    cursor: pointer;
+    transition: all 0.2s;
+    box-shadow: 0 4px 14px rgba(211, 47, 47, 0.35);
+}
+
+.dialogConfirmBtn:hover {
+    background: #b71c1c;
+    box-shadow: 0 6px 18px rgba(211, 47, 47, 0.45);
+    transform: translateY(-1px);
+}
+
+.dialogConfirmBtn:active {
+    transform: translateY(0);
+}
+
+.dialogOkBtn {
+    flex: 1;
+    padding: 0.9rem 1rem;
+    border: none;
+    border-radius: 14px;
+    background: #1a1a1a;
+    color: #ffffff;
+    font-size: 0.95rem;
+    font-weight: 700;
+    cursor: pointer;
+    transition: all 0.2s;
+}
+
+.dialogOkBtn:hover {
+    background: #333;
+}
+
