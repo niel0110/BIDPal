@@ -303,6 +303,29 @@ export const setDefaultAddress = async (req, res) => {
   }
 };
 
+// Unset default address (remove default flag without setting another)
+export const unsetDefaultAddress = async (req, res) => {
+  try {
+    const { address_id } = req.params;
+
+    const { data, error } = await supabase
+      .from('Addresses')
+      .update({ is_default: false })
+      .eq('address_id', address_id)
+      .select('*');
+
+    if (error) return res.status(400).json({ error: error.message });
+    if (!data || data.length === 0) {
+      return res.status(404).json({ error: 'Address not found' });
+    }
+
+    res.json({ message: 'Default address removed successfully', data: data[0] });
+  } catch (err) {
+    res.status(500).json({ error: err.message });
+  }
+};
+
+
 // Count addresses for a user
 export const countUserAddresses = async (req, res) => {
   try {

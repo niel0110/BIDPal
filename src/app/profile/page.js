@@ -1024,6 +1024,30 @@ function AddressSection({ state, setState }) {
         } finally { setSettingDefaultId(null); }
     };
 
+    // UNSET DEFAULT
+    const handleUnsetDefault = (addressId) => {
+        setConfirmDialog({
+            title: 'Remove Default',
+            message: 'Remove the default designation from this address? You can always set a new default later.',
+            confirmLabel: 'Yes, Remove',
+            onConfirm: async () => {
+                setConfirmDialog(null);
+                setSettingDefaultId(addressId);
+                try {
+                    const res = await fetch(`${apiUrl}/api/addresses/${addressId}/unset-default`, { method: 'PATCH' });
+                    if (!res.ok) {
+                        const d = await res.json();
+                        setConfirmDialog({ title: 'Error', message: d.error || 'Failed to remove default.', isAlert: true });
+                        return;
+                    }
+                    fetchUserAddresses();
+                } catch (err) {
+                    setConfirmDialog({ title: 'Error', message: err.message, isAlert: true });
+                } finally { setSettingDefaultId(null); }
+            }
+        });
+    };
+
     // OPEN EDIT
     const openEdit = (addr) => {
         const region = addr.region || '';
@@ -1056,7 +1080,7 @@ function AddressSection({ state, setState }) {
                 <div className={styles.dialogOverlay} onClick={() => !confirmDialog.onConfirm && setConfirmDialog(null)}>
                     <div className={styles.dialogCard} onClick={e => e.stopPropagation()}>
                         <div className={styles.dialogIcon}>
-                            {confirmDialog.isAlert ? '⚠️' : '🗑️'}
+                            {confirmDialog.icon || (confirmDialog.isAlert ? '⚠️' : '🗑️')}
                         </div>
                         <h2 className={styles.dialogTitle}>{confirmDialog.title || 'Confirm'}</h2>
                         <p className={styles.dialogMessage}>{confirmDialog.message}</p>
@@ -1301,7 +1325,7 @@ function AddressSection({ state, setState }) {
                 <div className={styles.dialogOverlay} onClick={() => !confirmDialog.onConfirm && setConfirmDialog(null)}>
                     <div className={styles.dialogCard} onClick={e => e.stopPropagation()}>
                         <div className={styles.dialogIcon}>
-                            {confirmDialog.isAlert ? '⚠️' : '🗑️'}
+                            {confirmDialog.icon || (confirmDialog.isAlert ? '⚠️' : '🗑️')}
                         </div>
                         <h2 className={styles.dialogTitle}>{confirmDialog.title || 'Confirm'}</h2>
                         <p className={styles.dialogMessage}>{confirmDialog.message}</p>
@@ -1363,7 +1387,16 @@ function AddressSection({ state, setState }) {
                             </div>
 
                             <div className={styles.addressActions}>
-                                {!addr.is_default && (
+                                {addr.is_default ? (
+                                    <button
+                                        className={styles.unsetDefaultBtn}
+                                        onClick={() => handleUnsetDefault(addr.address_id)}
+                                        disabled={settingDefaultId === addr.address_id}
+                                        title="Click to remove default"
+                                    >
+                                        {settingDefaultId === addr.address_id ? '...' : '★ Default'}
+                                    </button>
+                                ) : (
                                     <button
                                         className={styles.setDefaultBtn}
                                         onClick={() => handleSetDefault(addr.address_id)}

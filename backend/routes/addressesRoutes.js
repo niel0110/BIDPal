@@ -7,6 +7,7 @@ import {
   updateAddress,
   deleteAddress,
   setDefaultAddress,
+  unsetDefaultAddress,
   countUserAddresses,
   getRegions,
   getProvincesByRegion,
@@ -47,5 +48,8 @@ router.delete('/:address_id', deleteAddress);
 
 // Set address as default
 router.patch('/:address_id/default', setDefaultAddress);
+
+// Unset default (remove default flag from an address)
+router.patch('/:address_id/unset-default', unsetDefaultAddress);
 
 export default router;
