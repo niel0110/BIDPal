@@ -763,6 +763,7 @@
     font-size: 0.9rem;
     font-weight: 600;
     color: #444;
+    margin-bottom: -0.5rem;
 }
 
 .checkboxGroup input[type="checkbox"] {
@@ -777,7 +778,9 @@
 .buttonGroup {
     display: flex;
     gap: 1rem;
-    margin-top: 0.5rem;
+    margin-top: 0;
+    padding-top: 1rem;
+    border-top: 1px solid #f0f0f0;
 }
 
 .buttonGroup .primaryBtn {
@@ -787,8 +790,8 @@
 
 .secondaryBtn {
     flex: 1;
-    background: #f5f5f5;
-    border: none;
+    background: #fff;
+    border: 1.5px solid #ddd;
     padding: 1.2rem;
     border-radius: 14px;
     font-size: 1rem;
@@ -799,7 +802,8 @@
 }
 
 .secondaryBtn:hover {
-    background: #eeeeee;
+    background: #f5f5f5;
+    border-color: #bbb;
 }
 
 .secondaryBtn:disabled {

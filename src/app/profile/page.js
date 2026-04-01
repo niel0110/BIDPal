@@ -60,11 +60,12 @@ function AccountContent() {
 
     const [activeTab, setActiveTab] = useState(isSeller ? 'merchant-insights' : 'profile');
     const [addressState, setAddressState] = useState('list'); // 'list' or 'add'
+    const [sellerAddressState, setSellerAddressState] = useState('list'); // 'list' or 'add'
     const [avatarLoading, setAvatarLoading] = useState(false);
     const [avatarMessage, setAvatarMessage] = useState('');
 
     useEffect(() => {
-        const validTabs = ['profile', 'address', 'notifications', 'payment', 'wishlist', 'security', 'privacy', 'help', 'invite', 'merchant-insights', 'store-profile'];
+        const validTabs = ['profile', 'address', 'notifications', 'payment', 'wishlist', 'security', 'privacy', 'help', 'invite', 'merchant-insights', 'store-profile', 'pickup-address'];
         if (tabParam && validTabs.includes(tabParam)) {
             setActiveTab(tabParam);
         }
@@ -85,6 +86,7 @@ function AccountContent() {
         { id: 'merchant-insights', label: 'Merchant Insights', icon: <BarChart3 size={20} /> },
         { id: 'store-profile', label: 'Store Profile', icon: <Store size={20} /> },
         { id: 'profile', label: 'Personal Info', icon: <User size={20} /> },
+        { id: 'pickup-address', label: 'Pickup Address', icon: <MapPin size={20} /> },
         { id: 'notifications', label: 'Notification', icon: <Bell size={20} /> },
         { id: 'security', label: 'Security', icon: <ShieldCheck size={20} /> },
         { id: 'help', label: 'Help Center', icon: <HelpCircle size={20} /> },
@@ -257,6 +259,7 @@ function AccountContent() {
                 {/* Seller Specific Sections */}
                 {activeTab === 'merchant-insights' && <MerchantInsightsSection />}
                 {activeTab === 'store-profile' && <StoreProfileSection />}
+                {activeTab === 'pickup-address' && <SellerAddressSection state={sellerAddressState} setState={setSellerAddressState} />}
             </main>
         </div>
     );
@@ -1430,6 +1433,646 @@ function AddressSection({ state, setState }) {
             <button className={styles.addFullBtn} onClick={() => { setFormData(emptyForm); setEditingId(null); setPinnedLocation(null); setState('add'); }}>
                 <Plus size={20} /> Add New Address
             </button>
+            </div>
+        </>
+    );
+}
+
+function SellerAddressSection({ state, setState }) {
+    const { user } = useAuth();
+    const [showMap, setShowMap] = useState(false);
+    const [pinnedLocation, setPinnedLocation] = useState(null);
+    const emptyForm = {
+        Line1: '',
+        Line2: '',
+        household_blk_st: '',
+        region: '',
+        province: '',
+        city: '',
+        barangay: '',
+        zip_code: '',
+        isDefault: false
+    };
+    const [formData, setFormData] = useState(emptyForm);
+    const [editingId, setEditingId] = useState(null);
+    const [regions, setRegions] = useState([]);
+    const [provinces, setProvinces] = useState([]);
+    const [cities, setCities] = useState([]);
+    const [barangays, setBarangays] = useState([]);
+    const [loading, setLoading] = useState(false);
+    const [message, setMessage] = useState('');
+    const [addresses, setAddresses] = useState([]);
+    const [fetchingAddresses, setFetchingAddresses] = useState(false);
+    const [deletingId, setDeletingId] = useState(null);
+    const [settingDefaultId, setSettingDefaultId] = useState(null);
+    const [confirmDialog, setConfirmDialog] = useState(null);
+
+    const apiUrl = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:5000';
+
+    useEffect(() => {
+        fetchRegions();
+        if (state === 'list' && user?.user_id) {
+            fetchUserAddresses();
+        }
+    }, [state, user?.user_id]);
+
+    const fetchUserAddresses = async () => {
+        if (!user?.user_id) return;
+        setFetchingAddresses(true);
+        try {
+            const res = await fetch(`${apiUrl}/api/addresses/user/${user.user_id}`);
+            if (!res.ok) { setAddresses([]); return; }
+            const data = await res.json();
+            const all = Array.isArray(data) ? data : [];
+            setAddresses(all.filter(a => a.address_type === 'pickup'));
+        } catch (err) {
+            console.error('Error fetching addresses:', err);
+            setAddresses([]);
+        } finally {
+            setFetchingAddresses(false);
+        }
+    };
+
+    const fetchRegions = async () => {
+        try {
+            const res = await fetch(`${apiUrl}/api/addresses/locations/regions`);
+            if (!res.ok) return;
+            const data = await res.json();
+            setRegions(Array.isArray(data) ? data : []);
+        } catch (err) { console.error('Error fetching regions:', err); }
+    };
+
+    const fetchProvinces = async (region) => {
+        if (!region) { setProvinces([]); setCities([]); setBarangays([]); return; }
+        try {
+            const res = await fetch(`${apiUrl}/api/addresses/locations/provinces/${encodeURIComponent(region)}`);
+            if (!res.ok) { setProvinces([]); return; }
+            const data = await res.json();
+            setProvinces(Array.isArray(data) ? data : []);
+            setCities([]); setBarangays([]);
+        } catch (err) { setProvinces([]); }
+    };
+
+    const fetchCities = async (region, province) => {
+        if (!region || !province) { setCities([]); return; }
+        try {
+            const res = await fetch(`${apiUrl}/api/addresses/locations/cities/${encodeURIComponent(region)}/${encodeURIComponent(province)}`);
+            if (!res.ok) { setCities([]); return; }
+            const data = await res.json();
+            setCities(Array.isArray(data) ? data : []);
+            setBarangays([]);
+        } catch (err) { setCities([]); }
+    };
+
+    const fetchBarangays = async (city) => {
+        if (!city) { setBarangays([]); return; }
+        try {
+            const res = await fetch(`${apiUrl}/api/addresses/locations/barangays/${encodeURIComponent(city)}`);
+            if (!res.ok) { setBarangays([]); return; }
+            const data = await res.json();
+            setBarangays(Array.isArray(data) ? data : []);
+        } catch (err) { setBarangays([]); }
+    };
+
+    const handleRegionChange = (e) => {
+        const region = e.target.value;
+        setFormData(prev => ({ ...prev, region, province: '', city: '', barangay: '' }));
+        fetchProvinces(region);
+    };
+
+    const handleProvinceChange = (e) => {
+        const province = e.target.value;
+        setFormData(prev => ({ ...prev, province, city: '', barangay: '' }));
+        fetchCities(formData.region, province);
+    };
+
+    const handleCityChange = (e) => {
+        const city = e.target.value;
+        setFormData(prev => ({ ...prev, city, barangay: '' }));
+        fetchBarangays(city);
+    };
+
+    const handleMapSelect = async (locationData) => {
+        setPinnedLocation(locationData);
+        const street = locationData.address || '';
+        const osmRegion = locationData.region || '';
+        const osmProvince = locationData.province || '';
+        const osmCity = locationData.city || '';
+        const osmBarangay = locationData.barangay || '';
+
+        const matchedRegion = regions.find(
+            r => osmRegion && (
+                r.region?.toLowerCase().includes(osmRegion.toLowerCase()) ||
+                osmRegion.toLowerCase().includes(r.region?.toLowerCase() || '') ||
+                r.name?.toLowerCase().includes(osmRegion.toLowerCase()) ||
+                osmRegion.toLowerCase().includes(r.name?.toLowerCase() || '')
+            )
+        );
+
+        let resolvedRegion = matchedRegion?.region || '';
+        let resolvedProvince = '';
+        let resolvedCity = '';
+        let resolvedBarangay = '';
+
+        if (resolvedRegion) {
+            try {
+                const res = await fetch(`${apiUrl}/api/addresses/locations/provinces/${encodeURIComponent(resolvedRegion)}`);
+                if (res.ok) {
+                    const data = await res.json();
+                    const fetchedProvinces = Array.isArray(data) ? data : [];
+                    setProvinces(fetchedProvinces);
+                    const matchedProv = fetchedProvinces.find(
+                        p => osmProvince && (
+                            p.toLowerCase().includes(osmProvince.toLowerCase()) ||
+                            osmProvince.toLowerCase().includes(p.toLowerCase())
+                        )
+                    );
+                    resolvedProvince = matchedProv || '';
+                    if (resolvedProvince) {
+                        const r2 = await fetch(`${apiUrl}/api/addresses/locations/cities/${encodeURIComponent(resolvedRegion)}/${encodeURIComponent(resolvedProvince)}`);
+                        if (r2.ok) {
+                            const d2 = await r2.json();
+                            const fetchedCities = Array.isArray(d2) ? d2 : [];
+                            setCities(fetchedCities);
+                            const matchedCity = fetchedCities.find(
+                                c => osmCity && (
+                                    c.toLowerCase().includes(osmCity.toLowerCase()) ||
+                                    osmCity.toLowerCase().includes(c.toLowerCase())
+                                )
+                            );
+                            resolvedCity = matchedCity || '';
+                            if (resolvedCity) {
+                                const r3 = await fetch(`${apiUrl}/api/addresses/locations/barangays/${encodeURIComponent(resolvedCity)}`);
+                                if (r3.ok) {
+                                    const d3 = await r3.json();
+                                    const fetchedBarangays = Array.isArray(d3) ? d3 : [];
+                                    setBarangays(fetchedBarangays);
+                                    const matchedBrgy = fetchedBarangays.find(
+                                        b => osmBarangay && (
+                                            b.toLowerCase().includes(osmBarangay.toLowerCase()) ||
+                                            osmBarangay.toLowerCase().includes(b.toLowerCase())
+                                        )
+                                    );
+                                    resolvedBarangay = matchedBrgy || '';
+                                }
+                            }
+                        }
+                    }
+                }
+            } catch (err) {
+                console.error('Error cascading location from map pin:', err);
+            }
+        }
+
+        setFormData(prev => ({
+            ...prev,
+            Line1: street,
+            region: resolvedRegion,
+            province: resolvedProvince,
+            city: resolvedCity || osmCity,
+            barangay: resolvedBarangay || osmBarangay,
+        }));
+
+        setShowMap(false);
+        setMessage({ type: 'success', text: '✓ Location pinned! Review and adjust the fields below.' });
+        setTimeout(() => setMessage(''), 5000);
+    };
+
+    const buildPayload = (withUserId = true) => ({
+        ...(withUserId && { user_id: user.user_id }),
+        Line1: formData.Line1,
+        Line2: formData.Line2 || null,
+        household_blk_st: formData.household_blk_st || null,
+        Barangay: formData.barangay || null,
+        municipality_city: formData.city || null,
+        region: formData.region || null,
+        province: formData.province || null,
+        zip_code: formData.zip_code || null,
+        Country: 'Philippines',
+        address_type: 'pickup',
+        is_default: formData.isDefault,
+    });
+
+    const handleSaveAddress = async () => {
+        if (!user) return;
+        if (!formData.Line1) { setMessage({ type: 'error', text: 'Street address is required.' }); return; }
+        if (!formData.city && !formData.barangay) { setMessage({ type: 'error', text: 'Please select a city or barangay.' }); return; }
+        setLoading(true); setMessage('');
+        try {
+            const res = await fetch(`${apiUrl}/api/addresses`, {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify(buildPayload(true))
+            });
+            const data = await res.json();
+            if (!res.ok) { setMessage({ type: 'error', text: data.error || 'Error saving address.' }); return; }
+            setMessage({ type: 'success', text: '✓ Pickup address saved successfully!' });
+            setTimeout(() => { setState('list'); setFormData(emptyForm); fetchUserAddresses(); }, 1200);
+        } catch (err) {
+            setMessage({ type: 'error', text: `Error: ${err.message}` });
+        } finally { setLoading(false); }
+    };
+
+    const handleUpdateAddress = async () => {
+        if (!user || !editingId) return;
+        if (!formData.Line1) { setMessage({ type: 'error', text: 'Street address is required.' }); return; }
+        setLoading(true); setMessage('');
+        try {
+            const res = await fetch(`${apiUrl}/api/addresses/${editingId}`, {
+                method: 'PUT',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify(buildPayload(false))
+            });
+            const data = await res.json();
+            if (!res.ok) { setMessage({ type: 'error', text: data.error || 'Error updating address.' }); return; }
+            setMessage({ type: 'success', text: '✓ Pickup address updated successfully!' });
+            setTimeout(() => { setEditingId(null); setState('list'); setFormData(emptyForm); fetchUserAddresses(); }, 1200);
+        } catch (err) {
+            setMessage({ type: 'error', text: `Error: ${err.message}` });
+        } finally { setLoading(false); }
+    };
+
+    const handleDeleteAddress = (addressId) => {
+        setConfirmDialog({
+            title: 'Delete Pickup Address',
+            message: 'Are you sure you want to delete this pickup address? This action cannot be undone.',
+            confirmLabel: 'Yes, Delete',
+            onConfirm: async () => {
+                setConfirmDialog(null);
+                setDeletingId(addressId);
+                try {
+                    const res = await fetch(`${apiUrl}/api/addresses/${addressId}`, { method: 'DELETE' });
+                    if (!res.ok) {
+                        const d = await res.json();
+                        setConfirmDialog({ title: 'Error', message: d.error || 'Failed to delete address.', isAlert: true });
+                        return;
+                    }
+                    fetchUserAddresses();
+                } catch (err) {
+                    setConfirmDialog({ title: 'Error', message: err.message, isAlert: true });
+                } finally { setDeletingId(null); }
+            }
+        });
+    };
+
+    const handleSetDefault = async (addressId) => {
+        setSettingDefaultId(addressId);
+        try {
+            const res = await fetch(`${apiUrl}/api/addresses/${addressId}/default`, { method: 'PATCH' });
+            if (!res.ok) {
+                const d = await res.json();
+                setConfirmDialog({ title: 'Error', message: d.error || 'Failed to set default address.', isAlert: true });
+                return;
+            }
+            fetchUserAddresses();
+        } catch (err) {
+            setConfirmDialog({ title: 'Error', message: err.message, isAlert: true });
+        } finally { setSettingDefaultId(null); }
+    };
+
+    const handleUnsetDefault = (addressId) => {
+        setConfirmDialog({
+            title: 'Remove Default',
+            message: 'Remove the default designation from this pickup address?',
+            confirmLabel: 'Yes, Remove',
+            onConfirm: async () => {
+                setConfirmDialog(null);
+                setSettingDefaultId(addressId);
+                try {
+                    const res = await fetch(`${apiUrl}/api/addresses/${addressId}/unset-default`, { method: 'PATCH' });
+                    if (!res.ok) {
+                        const d = await res.json();
+                        setConfirmDialog({ title: 'Error', message: d.error || 'Failed to remove default.', isAlert: true });
+                        return;
+                    }
+                    fetchUserAddresses();
+                } catch (err) {
+                    setConfirmDialog({ title: 'Error', message: err.message, isAlert: true });
+                } finally { setSettingDefaultId(null); }
+            }
+        });
+    };
+
+    const openEdit = (addr) => {
+        const region = addr.region || '';
+        const province = addr.province || '';
+        const city = addr['Municipality/City'] || '';
+        const barangay = addr.Barangay || '';
+        setFormData({
+            Line1: addr.Line1 || '',
+            Line2: addr.Line2 || '',
+            household_blk_st: addr['Household/blk st.'] || '',
+            region, province, city, barangay,
+            zip_code: addr['zip code'] || '',
+            isDefault: addr.is_default || false,
+        });
+        if (region) fetchProvinces(region);
+        if (region && province) fetchCities(region, province);
+        if (city) fetchBarangays(city);
+        setEditingId(addr.address_id);
+        setState('add');
+    };
+
+    const ConfirmDialogMarkup = () => confirmDialog ? (
+        <div className={styles.dialogOverlay} onClick={() => !confirmDialog.onConfirm && setConfirmDialog(null)}>
+            <div className={styles.dialogCard} onClick={e => e.stopPropagation()}>
+                <div className={styles.dialogIcon}>
+                    {confirmDialog.isAlert ? '⚠️' : '🗑️'}
+                </div>
+                <h2 className={styles.dialogTitle}>{confirmDialog.title || 'Confirm'}</h2>
+                <p className={styles.dialogMessage}>{confirmDialog.message}</p>
+                <div className={styles.dialogActions}>
+                    {!confirmDialog.isAlert && (
+                        <button className={styles.dialogCancelBtn} onClick={() => setConfirmDialog(null)}>Cancel</button>
+                    )}
+                    <button
+                        className={confirmDialog.isAlert ? styles.dialogOkBtn : styles.dialogConfirmBtn}
+                        onClick={confirmDialog.onConfirm || (() => setConfirmDialog(null))}
+                    >
+                        {confirmDialog.confirmLabel || (confirmDialog.isAlert ? 'OK' : 'Confirm')}
+                    </button>
+                </div>
+            </div>
+        </div>
+    ) : null;
+
+    if (state === 'add') {
+        const isEditing = !!editingId;
+        const formIsValid = formData.Line1 && (formData.city || formData.barangay);
+        return (
+            <>
+                <ConfirmDialogMarkup />
+                <div className={styles.section}>
+                    {showMap && (
+                        <MapComponent onSelectLocation={handleMapSelect} onClose={() => setShowMap(false)} />
+                    )}
+                    <header className={styles.sectionHeader}>
+                        <button className={styles.backBtn} onClick={() => { setState('list'); setEditingId(null); setFormData(emptyForm); setPinnedLocation(null); }}>
+                            <ChevronRight size={18} style={{ transform: 'rotate(180deg)' }} /> Back
+                        </button>
+                        <h1>{isEditing ? 'Edit Pickup Address' : 'Add Pickup Address'}</h1>
+                        <p>{isEditing ? 'Update your store pickup/drop-off location.' : 'Add a new pickup location for your store.'}</p>
+                    </header>
+
+                    {message && (
+                        <div className={`${styles.messageBox} ${message.type === 'error' ? styles.errorMessage : styles.successMessage}`}>
+                            {message.text}
+                        </div>
+                    )}
+
+                    <div className={styles.addressForm}>
+                        <button className={styles.geolocationBtn} onClick={() => setShowMap(true)} type="button">
+                            <MapPin size={18} />
+                            {pinnedLocation ? 'Change Map Pin' : 'Pin on Map (Optional)'}
+                        </button>
+
+                        {pinnedLocation && (
+                            <div className={styles.pinnedBanner}>
+                                <MapPin size={14} />
+                                <div className={styles.pinnedDetails}>
+                                    <span className={styles.pinnedTitle}>Map detected:</span>
+                                    <span>
+                                        {[pinnedLocation.address, pinnedLocation.barangay, pinnedLocation.city, pinnedLocation.province, pinnedLocation.region]
+                                            .filter(Boolean).join(', ')}
+                                    </span>
+                                </div>
+                                <button
+                                    className={styles.clearPinBtn}
+                                    onClick={() => {
+                                        setPinnedLocation(null);
+                                        setFormData(prev => ({ ...prev, Line1: '', city: '', barangay: '', region: '', province: '' }));
+                                        setProvinces([]); setCities([]); setBarangays([]);
+                                    }}
+                                    title="Clear pin"
+                                    type="button"
+                                >
+                                    <X size={14} />
+                                </button>
+                            </div>
+                        )}
+
+                        <div className={styles.formGrid2}>
+                            <div className={styles.formGroup}>
+                                <label>Region</label>
+                                <div className={styles.selectWrapper}>
+                                    <select value={formData.region} onChange={handleRegionChange}>
+                                        <option value="">Select Region</option>
+                                        {regions.map((r, i) => <option key={i} value={r.region}>{r.name || r.region}</option>)}
+                                    </select>
+                                    <ChevronDown size={18} color="#999" />
+                                </div>
+                            </div>
+                            <div className={styles.formGroup}>
+                                <label>Province</label>
+                                <div className={styles.selectWrapper}>
+                                    <select value={formData.province} onChange={handleProvinceChange} disabled={provinces.length === 0}>
+                                        <option value="">Select Province</option>
+                                        {provinces.map((p, i) => <option key={i} value={p}>{p}</option>)}
+                                    </select>
+                                    <ChevronDown size={18} color="#999" />
+                                </div>
+                            </div>
+                        </div>
+
+                        <div className={styles.formGrid2}>
+                            <div className={styles.formGroup}>
+                                <label>City / Municipality <span className={styles.optionalTag}>*</span></label>
+                                {cities.length > 0 ? (
+                                    <div className={styles.selectWrapper}>
+                                        <select value={formData.city} onChange={handleCityChange}>
+                                            <option value="">Select City</option>
+                                            {cities.map((c, i) => <option key={i} value={c}>{c}</option>)}
+                                        </select>
+                                        <ChevronDown size={18} color="#999" />
+                                    </div>
+                                ) : (
+                                    <input
+                                        type="text"
+                                        placeholder={pinnedLocation ? `Detected: ${pinnedLocation.city || 'unknown'} — type to override` : 'Select a region first'}
+                                        value={formData.city}
+                                        onChange={(e) => setFormData(prev => ({ ...prev, city: e.target.value }))}
+                                    />
+                                )}
+                            </div>
+                            <div className={styles.formGroup}>
+                                <label>Barangay <span className={styles.optionalTag}>*</span></label>
+                                {barangays.length > 0 ? (
+                                    <div className={styles.selectWrapper}>
+                                        <select value={formData.barangay} onChange={(e) => setFormData(prev => ({ ...prev, barangay: e.target.value }))}>
+                                            <option value="">Select Barangay</option>
+                                            {barangays.map((b, i) => <option key={i} value={b}>{b}</option>)}
+                                        </select>
+                                        <ChevronDown size={18} color="#999" />
+                                    </div>
+                                ) : (
+                                    <input
+                                        type="text"
+                                        placeholder={pinnedLocation ? `Detected: ${pinnedLocation.barangay || 'unknown'} — type to override` : 'Select a city first'}
+                                        value={formData.barangay}
+                                        onChange={(e) => setFormData(prev => ({ ...prev, barangay: e.target.value }))}
+                                    />
+                                )}
+                            </div>
+                        </div>
+
+                        <div className={styles.formGroup}>
+                            <label>Street Address <span className={styles.optionalTag}>*</span></label>
+                            <input
+                                type="text"
+                                placeholder="e.g. 123 Rizal Street"
+                                value={formData.Line1}
+                                onChange={(e) => setFormData(prev => ({ ...prev, Line1: e.target.value }))}
+                            />
+                        </div>
+
+                        <div className={styles.formGrid2}>
+                            <div className={styles.formGroup}>
+                                <label>House / Block / Lot <span className={styles.optionalTag}>(Optional)</span></label>
+                                <input
+                                    type="text"
+                                    placeholder="e.g. Blk 4 Lot 12"
+                                    value={formData.household_blk_st}
+                                    onChange={(e) => setFormData(prev => ({ ...prev, household_blk_st: e.target.value }))}
+                                />
+                            </div>
+                            <div className={styles.formGroup}>
+                                <label>ZIP Code <span className={styles.optionalTag}>(Optional)</span></label>
+                                <input
+                                    type="text"
+                                    placeholder="e.g. 1000"
+                                    maxLength={4}
+                                    value={formData.zip_code}
+                                    onChange={(e) => setFormData(prev => ({ ...prev, zip_code: e.target.value.replace(/\D/g, '') }))}
+                                />
+                            </div>
+                        </div>
+
+                        <div className={styles.formGroup}>
+                            <label>Additional Details <span className={styles.optionalTag}>(Optional)</span></label>
+                            <textarea
+                                placeholder="Landmark, directions, or other notes for buyers..."
+                                value={formData.Line2}
+                                onChange={(e) => setFormData(prev => ({ ...prev, Line2: e.target.value }))}
+                                rows={3}
+                                className={styles.storeTextarea}
+                            />
+                        </div>
+
+                        <div className={styles.checkboxGroup}>
+                            <input
+                                type="checkbox"
+                                id="defaultPickup"
+                                checked={formData.isDefault}
+                                onChange={(e) => setFormData(prev => ({ ...prev, isDefault: e.target.checked }))}
+                            />
+                            <label htmlFor="defaultPickup">Set as default pickup address</label>
+                        </div>
+
+                        <div className={styles.buttonGroup}>
+                            <button
+                                className={styles.primaryBtn}
+                                onClick={editingId ? handleUpdateAddress : handleSaveAddress}
+                                disabled={loading || !formIsValid}
+                            >
+                                {loading ? 'Saving...' : editingId ? 'Update Address' : 'Save Address'}
+                            </button>
+                            <button
+                                className={styles.secondaryBtn}
+                                onClick={() => { setState('list'); setEditingId(null); setFormData(emptyForm); setPinnedLocation(null); }}
+                                disabled={loading}
+                            >
+                                Cancel
+                            </button>
+                        </div>
+                    </div>
+                </div>
+            </>
+        );
+    }
+
+    // LIST VIEW
+    return (
+        <>
+            <ConfirmDialogMarkup />
+            <div className={styles.section}>
+                <header className={styles.sectionHeader}>
+                    <h1>Pickup Address</h1>
+                    <p>Manage your store pickup and drop-off locations.</p>
+                </header>
+
+                {fetchingAddresses ? (
+                    <div className={styles.loadingPlaceholder}><p>Loading your pickup addresses...</p></div>
+                ) : addresses.length === 0 ? (
+                    <div className={styles.noResults}><p>No pickup address saved yet.</p></div>
+                ) : (
+                    <div className={styles.addressList}>
+                        {addresses.map((addr) => (
+                            <div key={addr.address_id} className={`${styles.addressCard} ${addr.is_default ? styles.defaultAddressCard : ''}`}>
+                                <div className={styles.addressIcon}>
+                                    <MapPin size={24} color="white" />
+                                </div>
+                                <div className={styles.addressInfo}>
+                                    <div className={styles.addressTypeLine}>
+                                        <h3>Pickup</h3>
+                                        {addr.is_default && <span className={styles.defaultBadge}>Default</span>}
+                                    </div>
+                                    <p>{addr.Line1}</p>
+                                    {addr['Household/blk st.'] && (
+                                        <p className={styles.addressSubtext}>{addr['Household/blk st.']}</p>
+                                    )}
+                                    {(addr.Barangay || addr['Municipality/City']) && (
+                                        <p className={styles.addressSubtext}>
+                                            {addr.Barangay && `${addr.Barangay}, `}
+                                            {addr['Municipality/City']}
+                                            {addr.province && `, ${addr.province}`}
+                                            {addr['zip code'] && ` ${addr['zip code']}`}
+                                        </p>
+                                    )}
+                                </div>
+                                <div className={styles.addressActions}>
+                                    {addr.is_default ? (
+                                        <button
+                                            className={styles.unsetDefaultBtn}
+                                            onClick={() => handleUnsetDefault(addr.address_id)}
+                                            disabled={settingDefaultId === addr.address_id}
+                                            title="Click to remove default"
+                                        >
+                                            {settingDefaultId === addr.address_id ? '...' : '★ Default'}
+                                        </button>
+                                    ) : (
+                                        <button
+                                            className={styles.setDefaultBtn}
+                                            onClick={() => handleSetDefault(addr.address_id)}
+                                            disabled={settingDefaultId === addr.address_id}
+                                            title="Set as default"
+                                        >
+                                            {settingDefaultId === addr.address_id ? '...' : 'Set Default'}
+                                        </button>
+                                    )}
+                                    <button
+                                        className={styles.editBtn}
+                                        onClick={() => openEdit(addr)}
+                                        title="Edit address"
+                                    >
+                                        <Pencil size={16} />
+                                    </button>
+                                    <button
+                                        className={styles.deleteBtn}
+                                        onClick={() => handleDeleteAddress(addr.address_id)}
+                                        disabled={deletingId === addr.address_id}
+                                        title="Delete address"
+                                    >
+                                        <X size={16} />
+                                    </button>
+                                </div>
+                            </div>
+                        ))}
+                    </div>
+                )}
+
+                <button className={styles.addFullBtn} onClick={() => { setFormData(emptyForm); setEditingId(null); setPinnedLocation(null); setState('add'); }}>
+                    <Plus size={20} /> Add Pickup Address
+                </button>
             </div>
         </>
     );
