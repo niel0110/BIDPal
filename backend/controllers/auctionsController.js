@@ -956,3 +956,121 @@ export const getAuctionBids = async (req, res) => {
     res.status(500).json({ error: err.message });
   }
 };
+
+/**
+ * Delete an auction (only allowed if it has no associated orders)
+ */
+export const deleteAuction = async (req, res) => {
+  try {
+    const { id } = req.params;
+    const { deleteProduct } = req.query; // Check if user also wants to delete the product
+
+    console.log(`🗑️ Deleting auction: ${id} (deleteProduct: ${deleteProduct})`);
+
+    // 1. Fetch auction details
+    const { data: auction, error: fetchError } = await supabase
+      .from('Auctions')
+      .select('status, products_id')
+      .eq('auction_id', id)
+      .maybeSingle();
+
+    if (fetchError || !auction) {
+      return res.status(404).json({ error: 'Auction not found' });
+    }
+
+    // 2. Check for Orders - Critical guard rail
+    const { data: hasOrder } = await supabase
+        .from('Orders')
+        .select('order_id')
+        .eq('auction_id', id)
+        .maybeSingle();
+
+    if (hasOrder) {
+        return res.status(400).json({ error: 'This auction has an associated order. It cannot be deleted from records.' });
+    }
+
+    // 3. Deep cascading cleanup of metadata
+    console.log(`📦 Cleaning up metadata for auction: ${id}`);
+    
+    // Break circular reference if any
+    await supabase
+        .from('Auctions')
+        .update({ winning_bid_id: null })
+        .eq('auction_id', id);
+
+    await Promise.all([
+        supabase.from('Bids').delete().eq('auction_id', id),
+        supabase.from('Auction_Likes').delete().eq('auction_id', id),
+        supabase.from('Auction_Shares').delete().eq('auction_id', id),
+        supabase.from('Auction_Views').delete().eq('auction_id', id),
+        supabase.from('Live_Comments').delete().eq('auction_id', id),
+        supabase.from('Live_stream').delete().eq('auction_id', id),
+        supabase.from('Auction_winners').delete().eq('auction_id', id),
+        supabase.from('Auction_schedules').delete().eq('auction_id', id),
+        supabase.from('Notifications').delete().eq('reference_id', id).eq('reference_type', 'auction'),
+        // Cleanup violation-related data if any
+        supabase.from('payment_windows').delete().eq('auction_id', id),
+        supabase.from('Order_Cancellations').delete().eq('auction_id', id),
+        supabase.from('Seller_Reports').delete().eq('auction_id', id)
+    ]);
+
+    // 4. Delete the Auction itself
+    const { error: deleteError } = await supabase
+      .from('Auctions')
+      .delete()
+      .eq('auction_id', id);
+
+    if (deleteError) {
+      console.error('❌ Error deleting auction record:', deleteError);
+      return res.status(500).json({ error: `System Error: ${deleteError.message}` });
+    }
+
+    let productDeleted = false;
+    let message = 'Auction and all associated data permanently removed.';
+
+    // 5. Handle Product (Back to draft or delete)
+    if (auction.products_id) {
+        if (deleteProduct === 'true') {
+            // Delete the product as well
+            console.log(`📦 User requested to delete product ${auction.products_id} as well.`);
+            
+            // Re-using product cleanup logic
+            const { data: hasOrderProduct } = await supabase
+              .from('Order_items')
+              .select('orderItem_id')
+              .eq('products_id', auction.products_id)
+              .maybeSingle();
+
+            if (!hasOrderProduct) {
+                await Promise.all([
+                    supabase.from('Cart_items').delete().eq('product_id', auction.products_id),
+                    supabase.from('Product_Categories').delete().eq('products_id', auction.products_id),
+                    supabase.from('Product_Images').delete().eq('products_id', auction.products_id)
+                ]);
+                
+                await supabase.from('Products').delete().eq('products_id', auction.products_id);
+                productDeleted = true;
+                message = 'Auction, Product, and all associated history permanently removed.';
+            } else {
+                message = 'Auction removed, but Product remains because it was part of previous sales.';
+            }
+        } else {
+            // Move back to draft
+            await supabase
+                .from('Products')
+                .update({ status: 'draft' })
+                .eq('products_id', auction.products_id);
+            message = 'Auction removed. Product has been moved back to drafts.';
+        }
+    }
+
+    res.json({ 
+        success: true, 
+        message,
+        productDeleted
+    });
+  } catch (err) {
+    console.error('🔥 Unexpected error in deleteAuction:', err);
+    res.status(500).json({ error: 'Internal server error occurred during deletion.' });
+  }
+};

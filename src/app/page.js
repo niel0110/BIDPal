@@ -42,6 +42,8 @@ export default function Home() {
     }
   }, [user, loading, router]);
 
+  const [likedAuctionIds, setLikedAuctionIds] = useState(new Set());
+
   useEffect(() => {
     const fetchData = async () => {
       try {
@@ -50,7 +52,32 @@ export default function Home() {
         // Fetch auctions
         const auctionRes = await fetch(`${apiUrl}/api/auctions?limit=50`);
         const auctionJson = await auctionRes.json();
-        setAllAuctions(auctionJson.data || []);
+        const fetchedAuctions = auctionJson.data || [];
+
+        // Fetch wishlist if logged in
+        if (user?.user_id) {
+          try {
+            const wishRes = await fetch(`${apiUrl}/api/dashboard/wishlist/${user.user_id}`);
+            if (wishRes.ok) {
+              const wishData = await wishRes.json();
+              const likedIds = new Set(wishData.map(item => item.auction_id));
+              setLikedAuctionIds(likedIds);
+              
+              // Mark auctions as liked
+              setAllAuctions(fetchedAuctions.map(a => ({
+                ...a,
+                is_liked: likedIds.has(a.id)
+              })));
+            } else {
+              setAllAuctions(fetchedAuctions);
+            }
+          } catch (wishErr) {
+            console.error('Failed to fetch wishlist:', wishErr);
+            setAllAuctions(fetchedAuctions);
+          }
+        } else {
+          setAllAuctions(fetchedAuctions);
+        }
 
       } catch (err) {
         console.error('Failed to fetch home content:', err);
@@ -60,7 +87,7 @@ export default function Home() {
     };
 
     fetchData();
-  }, []);
+  }, [user?.user_id]);
 
   const handleScroll = (e) => {
     const element = e.target;

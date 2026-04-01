@@ -5,6 +5,7 @@ import { useSearchParams } from 'next/navigation';
 import Header from '@/components/layout/Header';
 import AuctionCard from '@/components/card/AuctionCard';
 import ProductCard from '@/components/card/ProductCard';
+import { useAuth } from '@/context/AuthContext';
 import { Gavel, Package } from 'lucide-react';
 import styles from './page.module.css';
 
@@ -16,6 +17,7 @@ export default function SearchPage() {
     const [products, setProducts] = useState([]);
     const [loading, setLoading] = useState(false);
     const [activeTab, setActiveTab] = useState('all');
+    const { user } = useAuth();
 
     useEffect(() => {
         if (!query) return;
@@ -34,8 +36,25 @@ export default function SearchPage() {
                 const auctionJson = await auctionRes.json();
                 const productJson = await productRes.json();
 
-                const fetchedAuctions = auctionJson.data || [];
+                let fetchedAuctions = auctionJson.data || [];
                 const fetchedProducts = productJson.data || [];
+
+                // Fetch wishlist if logged in to mark auctions as liked
+                if (user?.user_id) {
+                    try {
+                        const wishRes = await fetch(`${apiUrl}/api/dashboard/wishlist/${user.user_id}`);
+                        if (wishRes.ok) {
+                            const wishData = await wishRes.json();
+                            const likedIds = new Set(wishData.map(item => item.auction_id));
+                            fetchedAuctions = fetchedAuctions.map(a => ({
+                                ...a,
+                                is_liked: likedIds.has(a.id)
+                            }));
+                        }
+                    } catch (wishErr) {
+                        console.error('Failed to fetch wishlist for search:', wishErr);
+                    }
+                }
 
                 // Client-side filter as fallback if API doesn't support search param
                 const lq = query.toLowerCase();
@@ -57,7 +76,7 @@ export default function SearchPage() {
         };
 
         fetchResults();
-    }, [query]);
+    }, [query, user?.user_id]);
 
     const totalResults = auctions.length + products.length;
 

@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useRef } from 'react';
 import {
     Plus,
     Search,
@@ -8,12 +8,19 @@ import {
     Clock,
     TrendingUp,
     Calendar,
+    Package,
+    Trash2,
+    X,
+    Edit2,
+    AlertTriangle,
     CheckCircle2,
-    Package
+    Info,
+    AlertOctagon
 } from 'lucide-react';
 import Link from 'next/link';
 import { useAuth } from '@/context/AuthContext';
 import styles from './page.module.css';
+import ConfirmationModal from '@/components/ui/ConfirmationModal';
 
 export default function MyAuctions() {
     const { user } = useAuth();
@@ -23,6 +30,49 @@ export default function MyAuctions() {
     const [loading, setLoading] = useState(true);
     const [searchQuery, setSearchQuery] = useState('');
     const [debouncedSearch, setDebouncedSearch] = useState('');
+    const [deletingId, setDeletingId] = useState(null);
+    const [openDropdown, setOpenDropdown] = useState(null);
+    const dropdownRef = useRef(null);
+    const [cleaningInventory, setCleaningInventory] = useState(false);
+    const [selectedItems, setSelectedItems] = useState([]);
+    const [selectMode, setSelectMode] = useState(false);
+    const [modalConfig, setModalConfig] = useState({
+        isOpen: false,
+        title: '',
+        message: '',
+        type: 'info',
+        confirmText: 'OK',
+        cancelText: 'Cancel',
+        showCancel: true,
+        extraContent: null,
+        onConfirm: null
+    });
+
+    const showModal = (config) => {
+        setModalConfig({
+            isOpen: true,
+            title: config.title || 'Notification',
+            message: config.message || '',
+            type: config.type || 'info',
+            confirmText: config.confirmText || 'OK',
+            cancelText: config.cancelText || 'Cancel',
+            showCancel: config.showCancel !== undefined ? config.showCancel : true,
+            extraContent: config.extraContent || null,
+            onConfirm: config.onConfirm || null
+        });
+    };
+
+    // Close dropdown when clicking outside
+    useEffect(() => {
+        const handleClickOutside = (event) => {
+            if (dropdownRef.current && !dropdownRef.current.contains(event.target)) {
+                setOpenDropdown(null);
+            }
+        };
+
+        document.addEventListener('mousedown', handleClickOutside);
+        return () => document.removeEventListener('mousedown', handleClickOutside);
+    }, []);
 
     // Debounce search query
     useEffect(() => {
@@ -106,6 +156,397 @@ export default function MyAuctions() {
         }
     }, [user, activeTab, debouncedSearch]);
 
+    // Clear selections when changing tabs
+    useEffect(() => {
+        setSelectedItems([]);
+        setSelectMode(false);
+    }, [activeTab]);
+
+    const toggleSelectMode = () => {
+        setSelectMode(!selectMode);
+        setSelectedItems([]);
+    };
+
+    const toggleItemSelection = (itemId) => {
+        if (!selectMode) return;
+
+        setSelectedItems(prev =>
+            prev.includes(itemId)
+                ? prev.filter(id => id !== itemId)
+                : [...prev, itemId]
+        );
+    };
+
+    const handleCardClick = (itemId, e) => {
+        // Don't select if clicking on buttons, links, or checkboxes
+        if (e.target.closest('button') || e.target.closest('a') || e.target.type === 'checkbox') {
+            return;
+        }
+
+        if (selectMode) {
+            toggleItemSelection(itemId);
+        }
+    };
+
+    const toggleSelectAll = () => {
+        const currentItems = activeTab === 'drafts'
+            ? draftProducts.map(p => p.products_id)
+            : auctions.map(a => a.auction_id);
+
+        if (selectedItems.length === currentItems.length) {
+            setSelectedItems([]);
+        } else {
+            setSelectedItems(currentItems);
+        }
+    };
+
+    const handleDeleteSelected = async () => {
+        if (selectedItems.length === 0) {
+            alert('No items selected');
+            return;
+        }
+
+        const itemType = activeTab === 'drafts' ? 'products' : 'auctions';
+        
+        showModal({
+            title: 'Confirm Deletion',
+            message: `Are you sure you want to delete ${selectedItems.length} selected ${itemType}?`,
+            type: 'danger',
+            confirmText: 'Delete',
+            onConfirm: async () => {
+                setCleaningInventory(true);
+                let successCount = 0;
+                let failCount = 0;
+                let lastErrorMessage = '';
+
+                try {
+                    const apiUrl = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:5000';
+                    const token = localStorage.getItem('bidpal_token');
+
+                    await Promise.all(selectedItems.map(async (itemId) => {
+                        try {
+                            const endpoint = activeTab === 'drafts'
+                                ? `${apiUrl}/api/products/${itemId}`
+                                : `${apiUrl}/api/auctions/${itemId}`;
+
+                            const res = await fetch(endpoint, {
+                                method: 'DELETE',
+                                headers: {
+                                    ...(token ? { 'Authorization': `Bearer ${token}` } : {})
+                                }
+                            });
+
+                            if (res.ok) {
+                                successCount++;
+                            } else {
+                                const errorData = await res.json();
+                                failCount++;
+                                lastErrorMessage = errorData.error || 'Error occurred';
+                            }
+                        } catch (error) {
+                            console.error('Error deleting item:', error);
+                            failCount++;
+                            lastErrorMessage = 'Network error';
+                        }
+                    }));
+
+                    // Refresh the list
+                    if (activeTab === 'drafts') {
+                        setDraftProducts(draftProducts.filter(p => !selectedItems.includes(p.products_id)));
+                    } else {
+                        setAuctions(auctions.filter(a => !selectedItems.includes(a.auction_id)));
+                    }
+
+                    setSelectedItems([]);
+                    setSelectMode(false);
+                    
+                    showModal({
+                        title: 'Deletion Result',
+                        message: (
+                            <div className={styles.resultSummary}>
+                                <div className={styles.resultBadge} style={{ background: '#ecfdf5', color: '#059669' }}>
+                                    <CheckCircle2 size={18} />
+                                    <span>{successCount} Success</span>
+                                </div>
+                                {failCount > 0 && (
+                                    <div className={styles.resultBadge} style={{ background: '#fef2f2', color: '#dc2626' }}>
+                                        <AlertTriangle size={18} />
+                                        <div style={{ display: 'flex', flexDirection: 'column' }}>
+                                            <span>{failCount} Failed</span>
+                                            {lastErrorMessage && (
+                                                <small style={{ fontSize: '0.75rem', opacity: 0.8 }}>{lastErrorMessage}</small>
+                                            )}
+                                        </div>
+                                    </div>
+                                )}
+                            </div>
+                        ),
+                        type: successCount > 0 && failCount === 0 ? 'success' : 'warning',
+                        confirmText: 'Done',
+                        showCancel: false
+                    });
+
+                } catch (error) {
+                    console.error('Error deleting selected items:', error);
+                    showModal({
+                        title: 'Error',
+                        message: 'Error deleting items. Please try again.',
+                        type: 'danger',
+                        showCancel: false
+                    });
+                } finally {
+                    setCleaningInventory(false);
+                }
+            }
+        });
+    };
+
+    const handleDeleteAuction = async (auctionId, productName) => {
+        let deleteAssociatedProduct = false;
+
+        const updateDeleteProduct = (e) => {
+            deleteAssociatedProduct = e.target.checked;
+        };
+
+        showModal({
+            title: 'Delete Auction',
+            message: `Are you sure you want to delete the auction for "${productName}"?`,
+            type: 'danger',
+            confirmText: 'Delete',
+            extraContent: (
+                <label className={styles.checkboxLabel}>
+                    <input 
+                        type="checkbox" 
+                        onChange={updateDeleteProduct}
+                        className={styles.modalCheckbox}
+                    />
+                    <span>Also permanently delete the associated product</span>
+                </label>
+            ),
+            onConfirm: async () => {
+                setDeletingId(auctionId);
+                try {
+                    const apiUrl = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:5000';
+                    const token = localStorage.getItem('bidpal_token');
+
+                    const res = await fetch(`${apiUrl}/api/auctions/${auctionId}?deleteProduct=${deleteAssociatedProduct}`, {
+                        method: 'DELETE',
+                        headers: {
+                            ...(token ? { 'Authorization': `Bearer ${token}` } : {})
+                        }
+                    });
+
+                    if (res.ok) {
+                        const data = await res.json();
+                        setAuctions(auctions.filter(a => a.auction_id !== auctionId));
+                        
+                        showModal({
+                            title: 'Success',
+                            message: data.message || 'Auction deleted successfully.',
+                            type: 'success',
+                            showCancel: false
+                        });
+                    } else {
+                        const errorData = await res.json();
+                        showModal({
+                            title: 'Error',
+                            message: `Failed to delete auction: ${errorData.error || 'Unknown error'}`,
+                            type: 'danger',
+                            showCancel: false
+                        });
+                    }
+                } catch (error) {
+                    console.error('Error deleting auction:', error);
+                    showModal({
+                        title: 'Error',
+                        message: 'Error deleting auction. Please try again.',
+                        type: 'danger',
+                        showCancel: false
+                    });
+                } finally {
+                    setDeletingId(null);
+                }
+            }
+        });
+    };
+
+    const handleDeleteProduct = async (productId, productName) => {
+        showModal({
+            title: 'Delete Product',
+            message: `Are you sure you want to delete "${productName}"?`,
+            type: 'danger',
+            confirmText: 'Delete',
+            onConfirm: async () => {
+                setDeletingId(productId);
+                try {
+                    const apiUrl = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:5000';
+                    const token = localStorage.getItem('bidpal_token');
+
+                    const res = await fetch(`${apiUrl}/api/products/${productId}`, {
+                        method: 'DELETE',
+                        headers: {
+                            ...(token ? { 'Authorization': `Bearer ${token}` } : {})
+                        }
+                    });
+
+                    if (res.ok) {
+                        setDraftProducts(draftProducts.filter(p => p.products_id !== productId));
+                        showModal({
+                            title: 'Success',
+                            message: 'Product deleted successfully',
+                            type: 'success',
+                            showCancel: false
+                        });
+                    } else {
+                        const errorData = await res.json();
+                        showModal({
+                            title: 'Error',
+                            message: `Failed to delete product: ${errorData.error || 'Unknown error'}`,
+                            type: 'danger',
+                            showCancel: false
+                        });
+                    }
+                } catch (error) {
+                    console.error('Error deleting product:', error);
+                    showModal({
+                        title: 'Error',
+                        message: 'Error deleting product. Please try again.',
+                        type: 'danger',
+                        showCancel: false
+                    });
+                } finally {
+                    setDeletingId(null);
+                }
+            }
+        });
+    };
+
+    const handleCleanInventory = async () => {
+        let itemsToClean = [];
+        let itemType = '';
+
+        if (activeTab === 'drafts') {
+            itemsToClean = draftProducts;
+            itemType = 'draft products';
+        } else if (activeTab === 'scheduled') {
+            itemsToClean = auctions.filter(a => a.status === 'scheduled');
+            itemType = 'scheduled auctions';
+        } else if (activeTab === 'completed') {
+            itemsToClean = auctions.filter(a => a.status === 'ended' || a.status === 'completed');
+            itemType = 'completed auctions';
+        } else {
+            showModal({
+                title: 'Information',
+                message: 'Clean inventory is only available for Drafts, Scheduled, and Completed tabs.',
+                type: 'info',
+                showCancel: false
+            });
+            return;
+        }
+
+        if (itemsToClean.length === 0) {
+            showModal({
+                title: 'Empty',
+                message: `No ${itemType} to clean.`,
+                type: 'info',
+                showCancel: false
+            });
+            return;
+        }
+
+        const confirmMessage = activeTab === 'drafts'
+            ? `Are you sure you want to delete all ${itemsToClean.length} draft products?\n\nThis action cannot be undone.`
+            : `Are you sure you want to delete all ${itemsToClean.length} ${itemType}?\n\nProducts will be moved back to draft status.`;
+
+        showModal({
+            title: 'Clean Inventory',
+            message: confirmMessage,
+            type: 'warning',
+            confirmText: 'Clean All',
+            onConfirm: async () => {
+                setCleaningInventory(true);
+                let successCount = 0;
+                let failCount = 0;
+                let lastErrorMessage = '';
+
+                try {
+                    const apiUrl = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:5000';
+                    const token = localStorage.getItem('bidpal_token');
+
+                    await Promise.all(itemsToClean.map(async (item) => {
+                        const id = item.products_id || item.auction_id;
+                        const endpoint = activeTab === 'drafts' ? `products/${id}` : `auctions/${id}`;
+                        
+                        try {
+                            const res = await fetch(`${apiUrl}/api/${endpoint}`, {
+                                method: 'DELETE',
+                                headers: {
+                                    ...(token ? { 'Authorization': `Bearer ${token}` } : {})
+                                }
+                            });
+                            if (res.ok) {
+                                successCount++;
+                            } else {
+                                const errorData = await res.json();
+                                failCount++;
+                                lastErrorMessage = errorData.error || 'Error occurred';
+                            }
+                        } catch (err) {
+                            failCount++;
+                            lastErrorMessage = 'Network error';
+                        }
+                    }));
+
+                    // Refresh the list
+                    if (activeTab === 'drafts') {
+                        setDraftProducts([]);
+                    } else if (activeTab === 'scheduled') {
+                        setAuctions(auctions.filter(a => a.status !== 'scheduled'));
+                    } else if (activeTab === 'completed') {
+                        setAuctions(auctions.filter(a => a.status !== 'ended' && a.status !== 'completed'));
+                    }
+
+                    showModal({
+                        title: 'Cleanup Complete',
+                        message: (
+                            <div className={styles.resultSummary}>
+                                <div className={styles.resultBadge} style={{ background: '#ecfdf5', color: '#059669' }}>
+                                    <CheckCircle2 size={18} />
+                                    <span>{successCount} Cleaned</span>
+                                </div>
+                                {failCount > 0 && (
+                                    <div className={styles.resultBadge} style={{ background: '#fef2f2', color: '#dc2626' }}>
+                                        <AlertTriangle size={18} />
+                                        <div style={{ display: 'flex', flexDirection: 'column' }}>
+                                            <span>{failCount} Errors</span>
+                                            {lastErrorMessage && (
+                                                <small style={{ fontSize: '0.75rem', opacity: 0.8 }}>{lastErrorMessage}</small>
+                                            )}
+                                        </div>
+                                    </div>
+                                )}
+                            </div>
+                        ),
+                        type: 'success',
+                        confirmText: 'Great!',
+                        showCancel: false
+                    });
+
+                } catch (error) {
+                    console.error('Error cleaning inventory:', error);
+                    showModal({
+                        title: 'Error',
+                        message: 'Error cleaning inventory. Please try again.',
+                        type: 'danger',
+                        showCancel: false
+                    });
+                } finally {
+                    setCleaningInventory(false);
+                }
+            }
+        });
+    };
+
     return (
         <div className={styles.container}>
             <header className={styles.header}>
@@ -114,14 +555,63 @@ export default function MyAuctions() {
                     <p>Manage your live, scheduled, and past auctions.</p>
                 </div>
                 <div className={styles.buttonGroup}>
-                    <Link href="/seller/inventory" className={styles.productsBtn}>
-                        <Package size={20} />
-                        My Products
-                    </Link>
-                    <Link href="/seller/auctions/create" className={styles.createBtn}>
-                        <Plus size={20} />
-                        Create Auction
-                    </Link>
+                    {selectMode ? (
+                        <>
+                            {selectedItems.length === 1 && (
+                                <Link
+                                    href={activeTab === 'drafts' 
+                                        ? `/seller/add-product?id=${selectedItems[0]}` 
+                                        : `/seller/auctions/schedule?id=${auctions.find(a => a.auction_id === selectedItems[0])?.product_id}`
+                                    }
+                                    className={styles.selectAllBtn} // Reusing style for consistency
+                                    style={{ background: 'linear-gradient(135deg, #3b82f6 0%, #2563eb 100%)' }}
+                                >
+                                    <Edit2 size={18} />
+                                    Edit Details
+                                </Link>
+                            )}
+                            {selectedItems.length > 0 && (
+                                <button
+                                    onClick={handleDeleteSelected}
+                                    disabled={cleaningInventory}
+                                    className={styles.deleteSelectedBtn}
+                                >
+                                    <Trash2 size={18} />
+                                    Delete {selectedItems.length > 1 ? `Selected (${selectedItems.length})` : ''}
+                                </button>
+                            )}
+                            <button
+                                onClick={toggleSelectMode}
+                                className={styles.cancelBtn}
+                            >
+                                <X size={18} />
+                                {selectedItems.length > 0 ? 'Finish' : 'Cancel'}
+                            </button>
+                        </>
+                    ) : (
+                        <>
+                            {(activeTab === 'drafts' || activeTab === 'scheduled' || activeTab === 'completed') && (
+                                <>
+                                    <button
+                                        onClick={toggleSelectMode}
+                                        className={styles.selectBtn}
+                                        title="Enter edit mode"
+                                    >
+                                        <Edit2 size={18} />
+                                        Edit
+                                    </button>
+                                </>
+                            )}
+                            <Link href="/seller/inventory" className={styles.productsBtn}>
+                                <Package size={20} />
+                                My Products
+                            </Link>
+                            <Link href="/seller/auctions/create" className={styles.createBtn}>
+                                <Plus size={20} />
+                                Create Auction
+                            </Link>
+                        </>
+                    )}
                 </div>
             </header>
 
@@ -155,15 +645,56 @@ export default function MyAuctions() {
                     </div>
                 ) : activeTab === 'drafts' ? (
                     // Show draft products
-                    draftProducts.length > 0 ? draftProducts.map(product => (
-                        <div key={product.products_id} className={styles.auctionCard}>
+                    draftProducts.length > 0 ? draftProducts.map(product => {
+                        const isDeleting = deletingId === product.products_id;
+
+                        const isSelected = selectedItems.includes(product.products_id);
+
+                        return (
+                        <div 
+                            key={product.products_id} 
+                            className={`${styles.auctionCard} ${isSelected ? styles.selectedCard : ''} ${selectMode ? styles.clickableCard : ''}`}
+                            onClick={(e) => handleCardClick(product.products_id, e)}
+                        >
                             <div className={styles.cardHeader}>
                                 <span className={`${styles.statusBadge} ${styles.drafts}`}>
                                     <Package size={12} />
                                     DRAFT
                                 </span>
                                 <span className={styles.auctionId}>#{product.products_id.slice(0, 8)}</span>
-                                <button className={styles.moreBtn}><MoreHorizontal size={18} /></button>
+                                {!selectMode && (
+                                <div className={styles.dropdownContainer} ref={openDropdown === product.products_id ? dropdownRef : null}>
+                                    <button
+                                        className={styles.moreBtn}
+                                        onClick={() => setOpenDropdown(openDropdown === product.products_id ? null : product.products_id)}
+                                    >
+                                        <MoreHorizontal size={18} />
+                                    </button>
+                                    {openDropdown === product.products_id && (
+                                        <div className={styles.dropdownMenu}>
+                                            <Link
+                                                href={`/seller/add-product?id=${product.products_id}`}
+                                                className={styles.dropdownItem}
+                                                onClick={() => setOpenDropdown(null)}
+                                            >
+                                                <Edit2 size={16} />
+                                                Edit Product
+                                            </Link>
+                                            <button
+                                                className={`${styles.dropdownItem} ${styles.deleteItem}`}
+                                                onClick={() => {
+                                                    setOpenDropdown(null);
+                                                    handleDeleteProduct(product.products_id, product.name);
+                                                }}
+                                                disabled={isDeleting}
+                                            >
+                                                <Trash2 size={16} />
+                                                Delete Product
+                                            </button>
+                                        </div>
+                                    )}
+                                </div>
+                                )}
                             </div>
 
                             <div className={styles.cardBody}>
@@ -201,7 +732,8 @@ export default function MyAuctions() {
                                 <Link href={`/seller/auctions/schedule?id=${product.products_id}`} className={styles.primaryBtn}>Schedule Auction</Link>
                             </div>
                         </div>
-                    )) : (
+                        );
+                    }) : (
                         <div style={{ gridColumn: '1 / -1', textAlign: 'center', padding: '4rem 2rem', color: '#888' }}>
                             <Package size={48} style={{ marginBottom: '1rem', opacity: 0.3 }} />
                             <p style={{ fontSize: '1.1rem', fontWeight: 600, marginBottom: '0.5rem' }}>No draft products</p>
@@ -220,8 +752,18 @@ export default function MyAuctions() {
                             hour12: true
                         });
 
+                        const isDeleting = deletingId === auction.auction_id;
+                        const isActive = auction.status === 'active';
+                        const isScheduled = auction.status === 'scheduled';
+                        const isCompleted = auction.status === 'ended' || auction.status === 'completed';
+                        const isSelected = selectedItems.includes(auction.auction_id);
+
                         return (
-                        <div key={auction.auction_id} className={styles.auctionCard}>
+                        <div 
+                            key={auction.auction_id} 
+                            className={`${styles.auctionCard} ${isSelected ? styles.selectedCard : ''} ${selectMode ? styles.clickableCard : ''}`}
+                            onClick={(e) => handleCardClick(auction.auction_id, e)}
+                        >
                             <div className={styles.cardHeader}>
                                 <span className={`${styles.statusBadge} ${styles[auction.status === 'ended' ? 'completed' : auction.status]}`}>
                                     {auction.status === 'active' && <TrendingUp size={12} />}
@@ -230,7 +772,59 @@ export default function MyAuctions() {
                                     {(auction.status === 'ended' ? 'completed' : auction.status).toUpperCase()}
                                 </span>
                                 <span className={styles.auctionId}>#{auction.auction_id.slice(0, 8)}</span>
-                                <button className={styles.moreBtn}><MoreHorizontal size={18} /></button>
+                                {!selectMode && (
+                                <div className={styles.dropdownContainer} ref={openDropdown === auction.auction_id ? dropdownRef : null}>
+                                    <button
+                                        className={styles.moreBtn}
+                                        onClick={() => setOpenDropdown(openDropdown === auction.auction_id ? null : auction.auction_id)}
+                                    >
+                                        <MoreHorizontal size={18} />
+                                    </button>
+                                    {openDropdown === auction.auction_id && (
+                                        <div className={styles.dropdownMenu}>
+                                            {isScheduled && (
+                                                <Link
+                                                    href={`/seller/auctions/schedule?id=${auction.product_id}`}
+                                                    className={styles.dropdownItem}
+                                                    onClick={() => setOpenDropdown(null)}
+                                                >
+                                                    <Edit2 size={16} />
+                                                    Edit Schedule
+                                                </Link>
+                                            )}
+                                            {isCompleted && (
+                                                <Link
+                                                    href={`/seller/auctions/${auction.auction_id}/results`}
+                                                    className={styles.dropdownItem}
+                                                    onClick={() => setOpenDropdown(null)}
+                                                >
+                                                    <CheckCircle2 size={16} />
+                                                    View Results
+                                                </Link>
+                                            )}
+                                            {!isActive && (
+                                                <button
+                                                    className={`${styles.dropdownItem} ${styles.deleteItem}`}
+                                                    onClick={() => {
+                                                        setOpenDropdown(null);
+                                                        handleDeleteAuction(auction.auction_id, auction.product_name);
+                                                    }}
+                                                    disabled={isDeleting}
+                                                >
+                                                    <Trash2 size={16} />
+                                                    Delete Auction
+                                                </button>
+                                            )}
+                                            {isActive && (
+                                                <div className={styles.dropdownItem} style={{ opacity: 0.5, cursor: 'not-allowed' }}>
+                                                    <X size={16} />
+                                                    Cannot delete active auction
+                                                </div>
+                                            )}
+                                        </div>
+                                    )}
+                                </div>
+                                )}
                             </div>
 
                             <div className={styles.cardBody}>
@@ -285,6 +879,11 @@ export default function MyAuctions() {
                     )
                 )}
             </div>
+
+            <ConfirmationModal 
+                {...modalConfig} 
+                onClose={() => setModalConfig(prev => ({ ...prev, isOpen: false }))} 
+            />
         </div>
     );
 }

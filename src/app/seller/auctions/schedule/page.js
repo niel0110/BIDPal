@@ -2,11 +2,10 @@
 
 import { useState, useEffect } from 'react';
 import { useRouter, useSearchParams } from 'next/navigation';
-import { ChevronLeft, Gavel, Tag, Calendar, Clock, Info } from 'lucide-react';
+import { ChevronLeft, Gavel, Tag, Calendar, Clock, Info, DollarSign } from 'lucide-react';
 import { useSubmitLock } from '@/hooks/useSubmitLock';
 import styles from './page.module.css';
 import { useAuth } from '@/context/AuthContext';
-import PriceRecommendation from '@/components/pricing/PriceRecommendation';
 
 export default function ScheduleAuctionPage() {
     const router = useRouter();
@@ -16,8 +15,6 @@ export default function ScheduleAuctionPage() {
 
     const [saleType, setSaleType] = useState('bid'); // 'bid' or 'sale'
     const [formData, setFormData] = useState({
-        price: '',
-        startingBid: '',
         startDate: '',
         startTime: '',
     });
@@ -55,14 +52,6 @@ export default function ScheduleAuctionPage() {
 
     const handleBack = () => router.back();
 
-    const handleApplyRecommendation = (prices) => {
-        setFormData(prev => ({
-            ...prev,
-            startingBid: prices.startingBid.toString(),
-            price: prices.reservePrice.toString()
-        }));
-    };
-
     const handleSubmit = async (e) => {
         e.preventDefault();
         await runWithLock(async () => {
@@ -72,13 +61,14 @@ export default function ScheduleAuctionPage() {
                     return;
                 }
                 
+                // Use the already-set prices from product details
                 const payload = {
                     product_id: productId,
                     user_id: user.user_id || user.id,
                     seller_id: user.seller_id,
                     sale_type: saleType,
-                    starting_bid: saleType === 'bid' ? formData.startingBid : null,
-                    buy_now_price: saleType === 'sale' ? formData.price : null,
+                    starting_bid: saleType === 'bid' ? productDetails?.reserve_price : null,
+                    buy_now_price: saleType === 'sale' ? productDetails?.buy_now_price : null,
                     start_date: formData.startDate,
                     start_time: formData.startTime,
                 };
@@ -206,39 +196,28 @@ export default function ScheduleAuctionPage() {
                         </div>
                     </div>
 
-                    {/* AI Price Recommendation */}
-                    {productDetails && saleType === 'bid' && (
-                        <PriceRecommendation
-                            productData={{
-                                name: productDetails.name,
-                                description: productDetails.description,
-                                category: productDetails.categories?.[0] || 'General',
-                                condition: productDetails.condition || 'Good',
-                                brand: productDetails.brand,
-                                specifications: productDetails.specifications
-                            }}
-                            onApplyRecommendation={handleApplyRecommendation}
-                        />
-                    )}
-
+                    {/* Display Already-Set Prices */}
                     <div className={styles.section}>
                         <label className={styles.sectionLabel}>
                             {saleType === 'bid' ? 'Auction Pricing' : 'Fixed Pricing'}
                         </label>
-                        <div className={styles.inputGroup}>
-                            <label>{saleType === 'bid' ? 'Starting Bid' : 'Price'}</label>
-                            <div className={styles.priceInputWrapper}>
-                                <span className={styles.currency}>₱</span>
-                                <input
-                                    type="number"
-                                    placeholder="0.00"
-                                    value={saleType === 'bid' ? formData.startingBid : formData.price}
-                                    onChange={(e) => setFormData({
-                                        ...formData,
-                                        [saleType === 'bid' ? 'startingBid' : 'price']: e.target.value
-                                    })}
-                                    required
-                                />
+                        <div className={styles.priceDisplay}>
+                            <div className={styles.priceDisplayIcon}>
+                                <DollarSign size={24} />
+                            </div>
+                            <div className={styles.priceDisplayContent}>
+                                <div className={styles.priceDisplayLabel}>
+                                    {saleType === 'bid' ? 'Starting Bid (Reserve Price)' : 'Buy Now Price'}
+                                </div>
+                                <div className={styles.priceDisplayValue}>
+                                    ₱{saleType === 'bid'
+                                        ? (productDetails?.reserve_price?.toLocaleString('en-PH', { minimumFractionDigits: 2, maximumFractionDigits: 2 }) || '0.00')
+                                        : (productDetails?.buy_now_price?.toLocaleString('en-PH', { minimumFractionDigits: 2, maximumFractionDigits: 2 }) || '0.00')
+                                    }
+                                </div>
+                                <div className={styles.priceDisplayNote}>
+                                    Price set during product creation
+                                </div>
                             </div>
                         </div>
                     </div>

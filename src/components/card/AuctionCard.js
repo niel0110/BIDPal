@@ -1,18 +1,57 @@
-'use client';
-
+import { useState, useEffect } from 'react';
 import { useRouter } from 'next/navigation';
 import Link from 'next/link';
-import { User, Clock } from 'lucide-react';
+import { User, Clock, Heart } from 'lucide-react';
+import { useAuth } from '@/context/AuthContext';
 import styles from './AuctionCard.module.css';
 
 export default function AuctionCard({ data }) {
+    const { user } = useAuth();
     const router = useRouter();
+    const [isLiked, setIsLiked] = useState(data.is_liked || false);
+    const [isLiking, setIsLiking] = useState(false);
+
+    useEffect(() => {
+        setIsLiked(data.is_liked || false);
+    }, [data.is_liked]);
 
     const handleCardClick = () => {
         router.push(`/live?id=${data.id}`);
     };
 
-    // data: { image, viewers, timeLeft, seller, isFollowing, title, price, currentBid }
+    const handleToggleLike = async (e) => {
+        e.preventDefault();
+        e.stopPropagation();
+
+        if (!user) {
+            router.push('/signin');
+            return;
+        }
+
+        if (isLiking) return;
+
+        try {
+            setIsLiking(true);
+            const apiUrl = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:5000';
+            
+            const res = await fetch(`${apiUrl}/api/dashboard/auction/${data.id}/like`, {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ user_id: user.user_id })
+            });
+
+            const result = await res.json();
+            if (res.ok && result.success) {
+                setIsLiked(result.liked);
+            }
+        } catch (err) {
+            console.error('Error toggling like:', err);
+        } finally {
+            setIsLiking(false);
+        }
+    };
+
+    // data: { id, image, viewers, timeLeft, seller, isFollowing, title, price, currentBid, status, is_liked }
     return (
         <div className={styles.cardLink} onClick={handleCardClick}>
             <div className={styles.card}>
@@ -25,21 +64,19 @@ export default function AuctionCard({ data }) {
                     />
 
                     {data.status === 'active' && (
-                        <div style={{
-                            position: 'absolute',
-                            top: '8px',
-                            left: '8px',
-                            background: '#D32F2F',
-                            color: 'white',
-                            padding: '4px 12px',
-                            borderRadius: '4px',
-                            fontSize: '0.75rem',
-                            fontWeight: 700,
-                            zIndex: 2
-                        }}>
+                        <div className={styles.liveBadge}>
                             🔴 LIVE
                         </div>
                     )}
+
+                    <button 
+                        className={`${styles.heartBtn} ${isLiked ? styles.activeHeart : ''}`}
+                        onClick={handleToggleLike}
+                        disabled={isLiking}
+                        title={isLiked ? "Remove from wishlist" : "Add to wishlist"}
+                    >
+                        <Heart size={18} fill={isLiked ? "#D32F2F" : "none"} color={isLiked ? "#D32F2F" : "white"} />
+                    </button>
 
                     <div className={`${styles.overlayBadge} ${styles.redBadge}`}>
                         <User size={12} />
@@ -78,12 +115,12 @@ export default function AuctionCard({ data }) {
 
                     <div className={styles.itemInfo}>
                         <div className={styles.titleRow}>
-                            <span>{data.title}</span>
-                            <span>₱ {data.price}</span>
+                            <span className={styles.titleText}>{data.title}</span>
+                            <span className={styles.priceText}>₱ {data.price}</span>
                         </div>
                         <div className={styles.bidRow}>
                             <span>Current Bid</span>
-                            <span>₱ {data.currentBid}</span>
+                            <span className={styles.bidValue}>₱ {data.currentBid}</span>
                         </div>
                     </div>
                 </div>

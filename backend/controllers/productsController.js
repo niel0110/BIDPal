@@ -226,26 +226,94 @@ export const updateProduct = async (req, res) => {
   }
 };
 
-// Soft delete product
+// Deep cascading permanent delete for products and all metadata
 export const deleteProduct = async (req, res) => {
   try {
     const { products_id } = req.params;
 
-    const { data, error } = await supabase
-      .from('Products')
-      .update({ deleted_at: new Date().toISOString() })
-      .eq('products_id', products_id)
-      .is('deleted_at', null)
-      .select('*');
+    console.log(`🚀 Starting deep permanent delete for product: ${products_id}`);
 
-    if (error) return res.status(400).json({ error: error.message });
-    if (!data || data.length === 0) {
-      return res.status(404).json({ error: 'Product not found' });
+    // 1. Check for Order Items - Essential guard rail
+    const { data: hasOrder } = await supabase
+      .from('Order_items')
+      .select('orderItem_id')
+      .eq('products_id', products_id)
+      .maybeSingle();
+
+    if (hasOrder) {
+      return res.status(400).json({ error: 'This item has already been sold. It cannot be permanently deleted from records.' });
     }
 
-    res.json({ message: 'Product deleted successfully', data: data[0] });
+    // 2. Find all associated Auction IDs
+    const { data: auctions } = await supabase
+      .from('Auctions')
+      .select('auction_id')
+      .eq('products_id', products_id);
+
+    const auctionIds = auctions?.map(a => a.auction_id) || [];
+
+    if (auctionIds.length > 0) {
+        console.log(`📦 Found ${auctionIds.length} auctions to clean up.`);
+
+        // 3. Break circularity: Nullify winning bid references in Auctions first
+        await supabase
+            .from('Auctions')
+            .update({ winning_bid_id: null })
+            .in('auction_id', auctionIds);
+
+        // 4. Delete dependent metadata for all found auctions
+        await Promise.all([
+            supabase.from('Bids').delete().in('auction_id', auctionIds),
+            supabase.from('Auction_Likes').delete().in('auction_id', auctionIds),
+            supabase.from('Auction_Shares').delete().in('auction_id', auctionIds),
+            supabase.from('Auction_Views').delete().in('auction_id', auctionIds),
+            supabase.from('Live_Comments').delete().in('auction_id', auctionIds),
+            supabase.from('Live_stream').delete().in('auction_id', auctionIds),
+            supabase.from('Auction_winners').delete().in('auction_id', auctionIds),
+            supabase.from('Auction_schedules').delete().in('auction_id', auctionIds),
+            supabase.from('Notifications').delete().in('reference_id', auctionIds).eq('reference_type', 'auction'),
+            supabase.from('payment_windows').delete().in('auction_id', auctionIds),
+            supabase.from('Order_Cancellations').delete().in('auction_id', auctionIds),
+            supabase.from('Seller_Reports').delete().in('auction_id', auctionIds)
+        ]);
+        
+        // 5. Delete the Auctions themselves
+        await supabase.from('Auctions').delete().in('auction_id', auctionIds);
+    }
+
+    // 6. Final cleanup of product-specific assets
+    await Promise.all([
+        supabase.from('Cart_items').delete().eq('product_id', products_id),
+        supabase.from('Product_Categories').delete().eq('products_id', products_id),
+        supabase.from('Product_Images').delete().eq('products_id', products_id)
+    ]);
+
+    // 7. Delete the Product
+    const { data, error } = await supabase
+      .from('Products')
+      .delete()
+      .eq('products_id', products_id)
+      .select('*');
+
+    if (error) {
+        console.error(`❌ Permanent delete failed at final step for ${products_id}:`, error);
+        return res.status(400).json({ error: `System Error: ${error.message}` });
+    }
+
+    if (!data || data.length === 0) {
+      return res.status(404).json({ error: 'Product record was not found.' });
+    }
+
+    console.log(`✅ Deep delete successful for ${products_id}.`);
+
+    res.json({ 
+      success: true,
+      message: 'Product and all associated history permanently removed.',
+      data: data[0] 
+    });
   } catch (err) {
-    res.status(500).json({ error: err.message });
+    console.error('🔥 Unexpected error in deep deleteProduct:', err);
+    res.status(500).json({ error: 'Internal server error occurred during deletion.' });
   }
 };
 

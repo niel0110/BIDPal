@@ -1548,13 +1548,160 @@ function InviteSection() {
 }
 
 function WishlistSection() {
+    const { user } = useAuth();
+    const [items, setItems] = useState([]);
+    const [loading, setLoading] = useState(true);
+    const [error, setError] = useState(null);
+    const apiUrl = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:5000';
+    const router = useRouter();
+
+    useEffect(() => {
+        if (user?.user_id) {
+            fetchWishlist();
+        }
+    }, [user?.user_id]);
+
+    const fetchWishlist = async () => {
+        try {
+            setLoading(true);
+            const res = await fetch(`${apiUrl}/api/dashboard/wishlist/${user.user_id}`);
+            const data = await res.json();
+            if (!res.ok) throw new Error(data.error || 'Failed to fetch wishlist');
+            setItems(data);
+        } catch (err) {
+            console.error('Error fetching wishlist:', err);
+            setError(err.message);
+        } finally {
+            setLoading(false);
+        }
+    };
+
+    const handleToggleLike = async (e, auctionId) => {
+        e.stopPropagation();
+        try {
+            const res = await fetch(`${apiUrl}/api/dashboard/auction/${auctionId}/like`, {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ user_id: user.user_id })
+            });
+
+            if (res.ok) {
+                // If successful, remove from local state immediately
+                setItems(prev => prev.filter(item => item.auction_id !== auctionId));
+            }
+        } catch (err) {
+            console.error('Error toggling like:', err);
+        }
+    };
+
+    const getStatusBadgeClass = (status) => {
+        switch (status?.toLowerCase()) {
+            case 'active': return styles.badgeLive;
+            case 'scheduled': return styles.badgeScheduled;
+            default: return styles.badgeEnded;
+        }
+    };
+
+    if (loading) {
+        return (
+            <div className={styles.section}>
+                <header className={styles.sectionHeader}>
+                    <h1>My Wishlist</h1>
+                </header>
+                <div className={styles.loadingPlaceholder}>
+                    <p>Loading your wishlist...</p>
+                </div>
+            </div>
+        );
+    }
+
+    if (error) {
+        return (
+            <div className={styles.section}>
+                <header className={styles.sectionHeader}>
+                    <h1>My Wishlist</h1>
+                </header>
+                <div className={styles.errorMessage}>
+                    <p>Error: {error}. Please try again later.</p>
+                </div>
+            </div>
+        );
+    }
+
+    if (items.length === 0) {
+        return (
+            <div className={styles.section}>
+                <header className={styles.sectionHeader}>
+                    <h1>My Wishlist</h1>
+                </header>
+                <div className={styles.emptyWishlist}>
+                    <div className={styles.emptyIconWrapper}>
+                        <Heart size={48} fill="#eee" stroke="#ddd" />
+                    </div>
+                    <h2>Your wishlist is empty</h2>
+                    <p>Looks like you haven't added anything to your wishlist yet. Explore our live auctions and find something you love!</p>
+                    <button className={styles.browseBtn} onClick={() => router.push('/search')}>
+                        Browse Auctions
+                    </button>
+                </div>
+            </div>
+        );
+    }
+
     return (
         <div className={styles.section}>
             <header className={styles.sectionHeader}>
                 <h1>My Wishlist</h1>
+                <p>You have {items.length} item{items.length !== 1 ? 's' : ''} in your wishlist.</p>
             </header>
-            <div className={styles.noResults}>
-                <p>Your wishlist is empty.</p>
+
+            <div className={styles.wishlistGrid}>
+                {items.map((item) => (
+                    <div
+                        key={item.auction_id}
+                        className={styles.wishlistCard}
+                        onClick={() => router.push(`/live/${item.auction_id}`)}
+                    >
+                        <div className={styles.wishlistImageWrapper}>
+                            <img
+                                src={item.image || '/placeholder-product.png'}
+                                alt={item.title}
+                                className={styles.wishlistImage}
+                            />
+                            <div className={`${styles.wishlistBadge} ${getStatusBadgeClass(item.status)}`}>
+                                {item.status === 'active' ? 'Live Now' : item.status}
+                            </div>
+                            <button
+                                className={styles.wishlistHeartBtn}
+                                onClick={(e) => handleToggleLike(e, item.auction_id)}
+                                title="Remove from wishlist"
+                            >
+                                <Heart size={20} fill="#D32F2F" color="#D32F2F" />
+                            </button>
+                        </div>
+
+                        <div className={styles.wishlistInfo}>
+                            <div className={styles.wishlistHeader}>
+                                <span className={styles.wishlistSeller}>{item.seller}</span>
+                                <h3 className={styles.wishlistName}>{item.title}</h3>
+                            </div>
+
+                            <div className={styles.wishlistPriceRow}>
+                                <div>
+                                    <span className={styles.priceLabel}>
+                                        {item.status === 'active' ? 'Current Bid' : 'Starting Price'}
+                                    </span>
+                                    <span className={styles.priceValue}>
+                                        ₱{item.current_price?.toLocaleString('en-PH')}
+                                    </span>
+                                </div>
+                                <button className={styles.viewAuctionBtn}>
+                                    {item.status === 'active' ? 'Bid Now' : 'View Detail'}
+                                </button>
+                            </div>
+                        </div>
+                    </div>
+                ))}
             </div>
         </div>
     );
