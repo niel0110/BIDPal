@@ -192,9 +192,10 @@ export const getAllAuctions = async (req, res) => {
           seller: auction.Seller?.store_name || 'Unknown Seller',
           seller_avatar: auction.Seller?.logo_url || auction.Seller?.User?.Avatar,
           seller_banner: auction.Seller?.banner_url,
-          viewers: Math.floor(Math.random() * 100), // Random placeholder for now
+          viewers: Math.floor(Math.random() * 100),
           timeLeft: auction.status === 'active' ? 'Active Now' : new Date(auction.start_time).toLocaleString(),
           image: primaryImage?.image_url || null,
+          images: images.map(img => img.image_url).filter(Boolean),
           status: auction.status
         };
       })
@@ -654,16 +655,25 @@ export const getAuctionById = async (req, res) => {
     if (error) throw error;
     if (!auction) return res.status(404).json({ error: 'Auction not found' });
 
-    // Get product details
+    // Get product details — use view, then enrich with all images directly
     const { data: productData } = await supabase
       .from('vw_product_details')
       .select('*')
       .eq('products_id', auction.products_id)
       .maybeSingle();
 
+    // Always fetch images directly from Product_Images to ensure all are returned
+    const { data: rawImages } = await supabase
+      .from('Product_Images')
+      .select('image_url, is_primary')
+      .eq('products_id', auction.products_id)
+      .order('is_primary', { ascending: false });
+
+    const allImages = (rawImages || []).map(img => ({ image_url: img.image_url, is_primary: img.is_primary }));
+
     const result = {
       ...auction,
-      product: productData,
+      product: productData ? { ...productData, images: allImages } : { images: allImages },
       seller_info: {
           seller_id: auction.Seller?.seller_id,
           store_name: auction.Seller?.store_name || 'Unknown Seller',

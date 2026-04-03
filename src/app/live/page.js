@@ -24,6 +24,7 @@ export default function LivePage() {
     const [inputValue, setInputValue] = useState('');
     const [showModal, setShowModal] = useState(false);
     const [showProductModal, setShowProductModal] = useState(false);
+    const [activeModalImg, setActiveModalImg] = useState(null);
     const [showPaymentModal, setShowPaymentModal] = useState(false);
     const [shippingOption, setShippingOption] = useState('standard');
     const [bidAmount, setBidAmount] = useState('');
@@ -970,13 +971,13 @@ export default function LivePage() {
                                 src={product?.images?.[0]?.image_url || "https://placehold.co/150x150"}
                                 alt={product?.name}
                                 className={styles.productThumb}
-                                onClick={() => setShowProductModal(true)}
+                                onClick={() => { setActiveModalImg(product?.images?.[0]?.image_url || null); setShowProductModal(true); }}
                                 style={{ cursor: 'pointer' }}
                             />
                             <div className={styles.productDetails}>
                                 <h3
                                     className={styles.productTitle}
-                                    onClick={() => setShowProductModal(true)}
+                                    onClick={() => { setActiveModalImg(product?.images?.[0]?.image_url || null); setShowProductModal(true); }}
                                     style={{ cursor: 'pointer' }}
                                 >
                                     {product?.name}
@@ -1141,12 +1142,24 @@ export default function LivePage() {
 
                         {/* Left Side */}
                         <div className={styles.detailLeft}>
-                            <img src={product?.images?.[0]?.image_url || "https://placehold.co/400x400"} alt={product?.name} className={styles.mainProductImg} />
-                            <div className={styles.thumbnailRow}>
-                                {product?.images?.map((img, idx) => (
-                                    <img key={idx} src={img.image_url} className={styles.thumbImg} alt={`thumb ${idx}`} />
-                                ))}
-                            </div>
+                            <img
+                                src={activeModalImg || product?.images?.[0]?.image_url || 'https://placehold.co/400x400?text=No+Image'}
+                                alt={product?.name}
+                                className={styles.mainProductImg}
+                            />
+                            {product?.images?.length > 0 && (
+                                <div className={styles.thumbnailRow}>
+                                    {product.images.map((img, idx) => (
+                                        <img
+                                            key={idx}
+                                            src={img.image_url}
+                                            className={`${styles.thumbImg} ${(activeModalImg || product.images[0]?.image_url) === img.image_url ? styles.thumbImgActive : ''}`}
+                                            alt={`Photo ${idx + 1}`}
+                                            onClick={() => setActiveModalImg(img.image_url)}
+                                        />
+                                    ))}
+                                </div>
+                            )}
 
                             <div className={styles.productBasics}>
                                 <div>
@@ -1157,14 +1170,17 @@ export default function LivePage() {
                                     </div>
                                 </div>
                                 <div style={{ textAlign: 'right' }}>
-                                    <div style={{ fontSize: '0.9rem', color: '#999', textDecoration: 'line-through' }}>₱ {auction.reserve_price}</div>
-                                    <div style={{ fontSize: '1.25rem', fontWeight: 700 }}>₱ {bids[0]?.amount || auction.current_price || auction.reserve_price}</div>
+                                    {/* Only show strikethrough reserve if there's an active higher bid */}
+                                    {bids.length > 0 && bids[0]?.amount > auction.reserve_price && (
+                                        <div style={{ fontSize: '0.9rem', color: '#999', textDecoration: 'line-through' }}>
+                                            ₱{Number(auction.reserve_price).toLocaleString('en-PH')}
+                                        </div>
+                                    )}
+                                    <div style={{ fontSize: '1.25rem', fontWeight: 700 }}>
+                                        ₱{Number(bids[0]?.amount || auction.current_price || auction.reserve_price).toLocaleString('en-PH')}
+                                    </div>
                                 </div>
                             </div>
-
-                            <p className={styles.shortDesc}>
-                                {product?.description}
-                            </p>
                         </div>
 
                         {/* Right Side */}
