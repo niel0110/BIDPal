@@ -2,7 +2,7 @@
 
 import { useState, useEffect, useCallback } from 'react';
 import { useRouter, useSearchParams } from 'next/navigation';
-import { ChevronLeft, MapPin, Plus, CreditCard, Truck, CheckCircle2, Loader2, AlertCircle } from 'lucide-react';
+import { ChevronLeft, MapPin, Plus, CreditCard, Truck, CheckCircle2, Loader2, AlertCircle, X, ShoppingBag } from 'lucide-react';
 import { useAuth } from '@/context/AuthContext';
 import styles from './page.module.css';
 
@@ -14,17 +14,21 @@ export default function CheckoutPage() {
     const { user } = useAuth();
 
     const auctionId = searchParams.get('auction_id');
-    const orderId = searchParams.get('order_id');
 
     const [loading, setLoading] = useState(true);
     const [processing, setProcessing] = useState(false);
     const [orderData, setOrderData] = useState(null);
     const [addresses, setAddresses] = useState([]);
     const [selectedAddressId, setSelectedAddressId] = useState(null);
-    const [showAddressModal, setShowAddressModal] = useState(false);
     const [paymentMethod, setPaymentMethod] = useState('cash_on_delivery');
     const [shippingFee, setShippingFee] = useState(150);
     const [error, setError] = useState(null);
+
+    // Modal state
+    const [showConfirmModal, setShowConfirmModal] = useState(false);
+    const [showSuccessModal, setShowSuccessModal] = useState(false);
+    const [showErrorModal, setShowErrorModal] = useState(false);
+    const [modalError, setModalError] = useState('');
 
     // Fetch order/auction data
     useEffect(() => {
@@ -107,35 +111,29 @@ export default function CheckoutPage() {
         }
     }, [selectedAddressId, addresses]);
 
-    const handlePlaceOrder = async () => {
+    const handlePlaceOrder = () => {
         if (!selectedAddressId) {
-            alert('Please select a shipping address');
+            setModalError('Please select a shipping address before placing your order.');
+            setShowErrorModal(true);
             return;
         }
-
         if (!paymentMethod) {
-            alert('Please select a payment method');
+            setModalError('Please select a payment method before placing your order.');
+            setShowErrorModal(true);
             return;
         }
+        setShowConfirmModal(true);
+    };
 
-        const confirmed = confirm(
-            `Confirm payment of ₱${((orderData?.total || 0) + shippingFee).toLocaleString()}?\n\n` +
-            `Item Total: ₱${(orderData?.total || 0).toLocaleString()}\n` +
-            `Shipping Fee: ₱${shippingFee.toLocaleString()}\n` +
-            `Payment Method: ${paymentMethod === 'cash_on_delivery' ? 'Cash on Delivery' : 'GCash'}`
-        );
-
-        if (!confirmed) return;
-
+    const handleConfirmOrder = async () => {
+        setShowConfirmModal(false);
         setProcessing(true);
         setError(null);
 
         try {
             const res = await fetch(`${API_URL}/api/orders/auction/${auctionId}/pay`, {
                 method: 'POST',
-                headers: {
-                    'Content-Type': 'application/json'
-                },
+                headers: { 'Content-Type': 'application/json' },
                 body: JSON.stringify({
                     user_id: user.user_id,
                     payment_method: paymentMethod,
@@ -148,15 +146,15 @@ export default function CheckoutPage() {
             const data = await res.json();
 
             if (res.ok) {
-                alert('✅ Order placed successfully! Your order is now being processed.');
-                router.push('/orders');
+                setShowSuccessModal(true);
             } else {
-                throw new Error(data.error || 'Failed to place order');
+                throw new Error(data.error || 'Failed to create order');
             }
         } catch (err) {
             console.error('Error placing order:', err);
             setError(err.message);
-            alert(`❌ Error: ${err.message}`);
+            setModalError(err.message);
+            setShowErrorModal(true);
         } finally {
             setProcessing(false);
         }
@@ -214,11 +212,11 @@ export default function CheckoutPage() {
         );
     }
 
-    const selectedAddress = addresses.find(addr => addr.address_id === selectedAddressId);
     const subtotal = orderData.total || 0;
     const total = subtotal + shippingFee;
 
     return (
+        <>
         <div className={styles.checkoutContainer}>
             <div className={styles.checkoutContent}>
                 <header className={styles.checkoutHeader}>
@@ -437,5 +435,102 @@ export default function CheckoutPage() {
                 </div>
             </div>
         </div>
+
+        {/* ── Confirm Payment Modal ── */}
+        {showConfirmModal && (
+            <div className={styles.modalOverlay}>
+                <div className={styles.modal}>
+                    <div className={styles.modalHeader}>
+                        <ShoppingBag size={22} className={styles.modalIcon} />
+                        <h3>Confirm Payment</h3>
+                        <button className={styles.modalClose} onClick={() => setShowConfirmModal(false)}>
+                            <X size={20} />
+                        </button>
+                    </div>
+
+                    <div className={styles.modalBody}>
+                        <div className={styles.confirmProduct}>
+                            <img
+                                src={orderData.items[0]?.image || 'https://placehold.co/60x60?text=Item'}
+                                alt={orderData.items[0]?.name}
+                                className={styles.confirmProductImg}
+                            />
+                            <div>
+                                <p className={styles.confirmProductName}>{orderData.items[0]?.name}</p>
+                                <p className={styles.confirmProductSub}>Auction Win</p>
+                            </div>
+                        </div>
+
+                        <div className={styles.confirmBreakdown}>
+                            <div className={styles.confirmRow}>
+                                <span>Item Total</span>
+                                <span>₱{subtotal.toLocaleString()}</span>
+                            </div>
+                            <div className={styles.confirmRow}>
+                                <span>Shipping Fee</span>
+                                <span>₱{shippingFee.toLocaleString()}</span>
+                            </div>
+                            <div className={styles.confirmRow}>
+                                <span>Payment Method</span>
+                                <span>{paymentMethod === 'cash_on_delivery' ? 'Cash on Delivery' : 'GCash'}</span>
+                            </div>
+                            <div className={styles.confirmDivider} />
+                            <div className={`${styles.confirmRow} ${styles.confirmTotal}`}>
+                                <span>Total</span>
+                                <span>₱{(subtotal + shippingFee).toLocaleString()}</span>
+                            </div>
+                        </div>
+                    </div>
+
+                    <div className={styles.modalFooter}>
+                        <button className={styles.modalCancelBtn} onClick={() => setShowConfirmModal(false)}>
+                            Cancel
+                        </button>
+                        <button className={styles.modalConfirmBtn} onClick={handleConfirmOrder}>
+                            <CheckCircle2 size={18} />
+                            Confirm Order
+                        </button>
+                    </div>
+                </div>
+            </div>
+        )}
+
+        {/* ── Success Modal ── */}
+        {showSuccessModal && (
+            <div className={styles.modalOverlay}>
+                <div className={`${styles.modal} ${styles.modalCenter}`}>
+                    <div className={styles.successIcon}>
+                        <CheckCircle2 size={48} />
+                    </div>
+                    <h3 className={styles.successTitle}>Order Placed!</h3>
+                    <p className={styles.successMsg}>
+                        Your order has been placed successfully. The seller will prepare your item for shipping.
+                    </p>
+                    <button className={styles.modalConfirmBtn} onClick={() => router.push('/orders')}>
+                        View My Orders
+                    </button>
+                </div>
+            </div>
+        )}
+
+        {/* ── Error Modal ── */}
+        {showErrorModal && (
+            <div className={styles.modalOverlay}>
+                <div className={`${styles.modal} ${styles.modalCenter}`}>
+                    <button className={styles.modalClose} onClick={() => setShowErrorModal(false)}>
+                        <X size={20} />
+                    </button>
+                    <div className={styles.errorIcon}>
+                        <AlertCircle size={48} />
+                    </div>
+                    <h3 className={styles.errorTitle}>Something went wrong</h3>
+                    <p className={styles.errorMsg}>{modalError}</p>
+                    <button className={styles.modalDismissBtn} onClick={() => setShowErrorModal(false)}>
+                        OK, Got it
+                    </button>
+                </div>
+            </div>
+        )}
+        </>
     );
 }

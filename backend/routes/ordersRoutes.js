@@ -6,7 +6,12 @@ import {
     updateOrderStatus,
     getAuctionWinsByUser,
     processAuctionPayment,
-    getAuctionSeller
+    getAuctionSeller,
+    getSellerOrders,
+    getSellerOrderDetail,
+    confirmPayment,
+    shipOrder,
+    confirmDelivery
 } from '../controllers/ordersController.js';
 
 const router = express.Router();
@@ -21,5 +26,12 @@ router.patch('/:order_id/status', updateOrderStatus);
 // Auction-specific routes
 router.post('/auction/:auction_id/pay', processAuctionPayment);
 router.get('/auction/:auction_id/seller', getAuctionSeller);
+
+// Seller order management
+router.get('/seller/:seller_id', getSellerOrders);
+router.get('/seller/detail/:order_id', getSellerOrderDetail);
+router.put('/:order_id/confirm-payment', confirmPayment);
+router.put('/:order_id/ship', shipOrder);
+router.put('/:order_id/confirm-delivery', confirmDelivery);
 
 export default router;

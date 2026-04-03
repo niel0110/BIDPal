@@ -154,6 +154,7 @@ import notificationsRoutes from './routes/notificationsRoutes.js'
 import agoraRoutes from './routes/agoraRoutes.js'
 import priceRecommendationRoutes from './routes/priceRecommendationRoutes.js'
 import violationsRoutes from './routes/violationsRoutes.js'
+import reviewsRoutes from './routes/reviewsRoutes.js'
 
 app.get('/', (req, res) => {
   res.json({ message: 'Backend running' })
@@ -179,6 +180,7 @@ app.use('/api/notifications', notificationsRoutes)
 app.use('/api/agora', agoraRoutes)
 app.use('/api', priceRecommendationRoutes)
 app.use('/api/violations', violationsRoutes)
+app.use('/api/reviews', reviewsRoutes)
 
 httpServer.listen(process.env.PORT, '0.0.0.0', () => {
   console.log(`Server running on port ${process.env.PORT}`)

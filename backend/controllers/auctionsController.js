@@ -28,8 +28,12 @@ export const getSellerAuctions = async (req, res) => {
 
     // Filter by status if provided
     if (status && status !== 'all') {
-      const dbStatus = status === 'completed' ? 'ended' : status;
-      query = query.eq('status', dbStatus);
+      if (status === 'completed') {
+        // 'ended' = auction finished (awaiting/processing payment), 'completed' = order done
+        query = query.in('status', ['ended', 'completed']);
+      } else {
+        query = query.eq('status', status);
+      }
     }
 
     // Add pagination (we'll apply it after search filtering for now)
@@ -39,20 +43,21 @@ export const getSellerAuctions = async (req, res) => {
 
     if (auctionsError) {
       console.error('Error fetching auctions:', auctionsError);
-      return res.status(500).json({ error: auctionsError.message });
+      return res.status(500).json({ error: auctionsError.message || 'Failed to fetch auctions' });
+    }
+
+    if (!auctionsData || auctionsData.length === 0) {
+      return res.json({ count: 0, data: [] });
     }
 
     // If search query is provided, first get matching product IDs
     let searchProductIds = null;
     if (search && search.trim()) {
       const searchLower = `%${search.toLowerCase().trim()}%`;
-
-      // Query products using ILIKE for case-insensitive search
       const { data: matchingProducts } = await supabase
         .from('Products')
         .select('products_id')
         .or(`name.ilike.${searchLower},description.ilike.${searchLower}`);
-
       if (matchingProducts) {
         searchProductIds = new Set(matchingProducts.map(p => p.products_id));
       }
@@ -61,34 +66,66 @@ export const getSellerAuctions = async (req, res) => {
     // Fetch product details for each auction
     let transformedData = await Promise.all(
       auctionsData.map(async (auction) => {
-        // Fetch product details from the view
-        const { data: productData } = await supabase
-          .from('vw_product_details')
-          .select('*')
-          .eq('products_id', auction.products_id)
-          .maybeSingle();
+        try {
+          // Try view first, fall back to Products table directly
+          let productData = null;
+          const { data: viewData, error: viewError } = await supabase
+            .from('vw_product_details')
+            .select('*')
+            .eq('products_id', auction.products_id)
+            .maybeSingle();
 
-        const images = productData?.images || [];
-        const primaryImage = images.find(img => img.is_primary) || images[0];
+          if (!viewError && viewData) {
+            productData = viewData;
+          } else if (auction.products_id) {
+            // Fallback: query Products + Product_Images directly
+            const { data: prodData } = await supabase
+              .from('Products')
+              .select('products_id, name, description, Product_Images(image_url, is_primary)')
+              .eq('products_id', auction.products_id)
+              .maybeSingle();
+            if (prodData) {
+              productData = {
+                ...prodData,
+                images: prodData.Product_Images || []
+              };
+            }
+          }
 
-        return {
-          auction_id: auction.auction_id,
-          product_id: auction.products_id,
-          product_name: productData?.name || 'Unknown Product',
-          product_description: productData?.description,
-          product_image: primaryImage?.image_url || null,
-          start_time: auction.start_time,
-          end_time: auction.end_time,
-          buy_now_price: auction.buy_now_price || 0,
-          reserve_price: auction.reserve_price || 0,
-          current_price: auction.current_price || auction.reserve_price || 0,
-          status: auction.status,
-          created_at: auction.created_at,
-        };
+          const images = productData?.images || [];
+          const primaryImage = images.find(img => img.is_primary) || images[0];
+
+          return {
+            auction_id: auction.auction_id,
+            product_id: auction.products_id,
+            product_name: productData?.name || 'Unknown Product',
+            product_description: productData?.description,
+            product_image: primaryImage?.image_url || null,
+            start_time: auction.start_time,
+            end_time: auction.end_time,
+            live_ended_at: auction.live_ended_at,
+            buy_now_price: auction.buy_now_price || 0,
+            reserve_price: auction.reserve_price || 0,
+            current_price: auction.current_price || auction.reserve_price || 0,
+            final_price: auction.final_price || null,
+            status: auction.status,
+            created_at: auction.created_at,
+          };
+        } catch (mapErr) {
+          console.error('Error mapping auction', auction.auction_id, mapErr);
+          return {
+            auction_id: auction.auction_id,
+            product_id: auction.products_id,
+            product_name: 'Unknown Product',
+            product_image: null,
+            status: auction.status,
+            created_at: auction.created_at,
+          };
+        }
       })
     );
 
-    // Apply search filter if provided (filter by product IDs that matched search)
+    // Apply search filter if provided
     if (searchProductIds !== null) {
       transformedData = transformedData.filter(auction =>
         searchProductIds.has(auction.product_id)
@@ -98,7 +135,7 @@ export const getSellerAuctions = async (req, res) => {
     res.json({ count: transformedData.length, data: transformedData });
   } catch (err) {
     console.error('Unexpected error fetching auctions:', err);
-    res.status(500).json({ error: err.message });
+    res.status(500).json({ error: err.message || 'Unexpected server error' });
   }
 };
 
@@ -437,10 +474,11 @@ export const endAuction = async (req, res) => {
         .from('Orders')
         .insert([{
           user_id: winningBid.user_id,
+          seller_id: auction.seller_id,
           total_amount: winningBid.bid_amount,
-          status: 'pending_payment', // Awaiting payment
+          status: 'pending_payment',
           order_type: 'auction',
-          auction_id: id // Link to auction
+          auction_id: id
         }])
         .select('order_id')
         .single();
@@ -860,7 +898,7 @@ export const getAuctionWinner = async (req, res) => {
 
     if (auctionError) throw auctionError;
 
-    if (auction.status !== 'ended') {
+    if (!['ended', 'completed'].includes(auction.status)) {
       return res.status(400).json({
         error: 'Auction has not ended yet',
         status: auction.status
@@ -890,15 +928,14 @@ export const getAuctionWinner = async (req, res) => {
       .eq('products_id', auction.products_id)
       .maybeSingle();
 
-    // Find associated order
-    const { data: orderData } = await supabase
+    // Find associated order — match by auction_id for accuracy
+    // Use select('*') so missing optional columns don't break the query
+    const { data: orderData, error: orderFetchError } = await supabase
       .from('Orders')
-      .select('order_id, status, total_amount, placed_at')
-      .eq('user_id', auction.winner_user_id)
-      .eq('order_type', 'auction')
-      .order('placed_at', { ascending: false })
-      .limit(1)
+      .select('*')
+      .eq('auction_id', id)
       .maybeSingle();
+    if (orderFetchError) console.error('Order fetch error in getAuctionWinner:', orderFetchError.message);
 
     const winnerName = winningBid.bidder ?
       `${winningBid.bidder.Fname || ''} ${winningBid.bidder.Lname || ''}`.trim() ||
@@ -924,10 +961,14 @@ export const getAuctionWinner = async (req, res) => {
         images: productData?.images || []
       },
       order: orderData ? {
-        order_id: orderData.order_id,
-        status: orderData.status,
-        total_amount: orderData.total_amount,
-        placed_at: orderData.placed_at
+        order_id:             orderData.order_id,
+        status:               orderData.status,
+        total_amount:         orderData.total_amount,
+        placed_at:            orderData.placed_at,
+        tracking_number:      orderData.tracking_number   || null,
+        courier:              orderData.courier            || null,
+        payment_confirmed:    orderData.payment_confirmed  ?? false,
+        payment_confirmed_at: orderData.payment_confirmed_at || null,
       } : null,
       reserve_met: auction.final_price >= (auction.reserve_price || 0)
     });

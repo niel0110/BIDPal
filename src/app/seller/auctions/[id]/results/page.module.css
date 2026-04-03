@@ -545,8 +545,30 @@
     color: #9ca3af;
 }
 
-/* Order Management */
-.orderManagement {
+/* Contact Buyer Button */
+.contactBuyerBtn {
+    display: flex;
+    align-items: center;
+    gap: 0.5rem;
+    padding: 0.6rem 1.1rem;
+    background: white;
+    border: 1.5px solid #673AB7;
+    color: #673AB7;
+    border-radius: 8px;
+    font-size: 0.85rem;
+    font-weight: 600;
+    cursor: pointer;
+    transition: all 0.2s;
+    flex-shrink: 0;
+}
+
+.contactBuyerBtn:hover {
+    background: #673AB7;
+    color: white;
+}
+
+/* Order Process */
+.orderProcess {
     margin-top: 1.5rem;
     padding: 1.25rem;
     background: #f9fafb;
@@ -554,19 +576,84 @@
     border: 1px solid #e5e7eb;
 }
 
-.orderStatusSection {
-    display: flex;
-    justify-content: space-between;
-    align-items: center;
-    flex-wrap: wrap;
-    gap: 1rem;
-    margin-bottom: 1rem;
+.processTitle {
+    font-size: 0.95rem;
+    font-weight: 700;
+    color: #374151;
+    margin: 0 0 1.25rem 0;
 }
 
-.statusBadgeContainer {
+/* Timeline */
+.timeline {
+    display: flex;
+    align-items: center;
+    gap: 0;
+    margin-bottom: 1.25rem;
+    overflow-x: auto;
+    padding-bottom: 0.25rem;
+}
+
+.timelineStep {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 0.4rem;
+    flex-shrink: 0;
+}
+
+.stepIcon {
+    width: 36px;
+    height: 36px;
+    border-radius: 50%;
+    background: #e5e7eb;
+    color: #9ca3af;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    transition: all 0.3s;
+}
+
+.stepLabel {
+    font-size: 0.7rem;
+    font-weight: 600;
+    color: #9ca3af;
+    text-align: center;
+    max-width: 72px;
+    line-height: 1.3;
+    transition: color 0.3s;
+}
+
+.timelineStep.stepDone .stepIcon {
+    background: linear-gradient(135deg, #673AB7, #9C27B0);
+    color: white;
+    box-shadow: 0 2px 8px rgba(103, 58, 183, 0.3);
+}
+
+.timelineStep.stepDone .stepLabel {
+    color: #673AB7;
+    font-weight: 700;
+}
+
+.timelineLine {
+    flex: 1;
+    height: 3px;
+    background: #e5e7eb;
+    min-width: 30px;
+    margin-bottom: 1.35rem;
+    transition: background 0.3s;
+}
+
+.timelineLine.lineDone {
+    background: linear-gradient(90deg, #673AB7, #9C27B0);
+}
+
+/* Current Status Row */
+.currentStatusRow {
     display: flex;
     align-items: center;
     gap: 0.75rem;
+    flex-wrap: wrap;
+    margin-bottom: 1rem;
 }
 
 .statusLabel {
@@ -578,7 +665,7 @@
 .statusBadge {
     padding: 0.4rem 0.85rem;
     border-radius: 6px;
-    font-size: 0.85rem;
+    font-size: 0.82rem;
     font-weight: 700;
     text-transform: uppercase;
     letter-spacing: 0.3px;
@@ -614,17 +701,89 @@
     border: 1px solid #ef4444;
 }
 
-.orderDetails {
-    font-size: 0.85rem;
+.orderId {
+    font-size: 0.8rem;
     color: #9ca3af;
+    margin-left: auto;
 }
 
-.orderActions {
+/* Tracking Info */
+.trackingInfo {
     display: flex;
-    gap: 0.75rem;
+    align-items: flex-start;
+    gap: 0.85rem;
+    padding: 1rem 1.1rem;
+    background: #ede9fe;
+    border-radius: 8px;
+    border: 1px solid #c4b5fd;
+    margin-bottom: 1rem;
 }
 
-.updateStatusBtn {
+.trackingIcon {
+    color: #7c3aed;
+    margin-top: 2px;
+    flex-shrink: 0;
+}
+
+.trackingLabel {
+    font-size: 0.8rem;
+    font-weight: 700;
+    color: #5b21b6;
+    text-transform: uppercase;
+    letter-spacing: 0.4px;
+    margin-bottom: 0.35rem;
+}
+
+.trackingDetail {
+    font-size: 0.9rem;
+    color: #374151;
+    margin-bottom: 0.2rem;
+}
+
+.trackingField {
+    font-weight: 600;
+    color: #6b7280;
+    margin-right: 0.35rem;
+}
+
+.trackingNumber {
+    font-family: monospace;
+    font-size: 0.95rem;
+    font-weight: 700;
+    color: #1e1b4b;
+    letter-spacing: 0.5px;
+}
+
+/* Action Section */
+.actionSection {
+    margin-top: 0.75rem;
+}
+
+.confirmPayBtn {
+    display: flex;
+    align-items: center;
+    gap: 0.5rem;
+    padding: 0.75rem 1.5rem;
+    background: linear-gradient(135deg, #059669, #10b981);
+    color: white;
+    border: none;
+    border-radius: 8px;
+    font-size: 0.9rem;
+    font-weight: 700;
+    cursor: pointer;
+    transition: all 0.2s;
+    margin-bottom: 0.5rem;
+}
+.confirmPayBtn:hover:not(:disabled) {
+    transform: translateY(-2px);
+    box-shadow: 0 8px 20px rgba(5, 150, 105, 0.3);
+}
+.confirmPayBtn:disabled { opacity: 0.6; cursor: not-allowed; }
+
+.shipBtn {
+    display: flex;
+    align-items: center;
+    gap: 0.5rem;
     padding: 0.75rem 1.5rem;
     background: linear-gradient(135deg, #673AB7, #9C27B0);
     color: white;
@@ -634,19 +793,166 @@
     font-weight: 700;
     cursor: pointer;
     transition: all 0.2s;
-    display: flex;
-    align-items: center;
-    gap: 0.5rem;
 }
 
-.updateStatusBtn:hover:not(:disabled) {
+.shipBtn:hover {
     transform: translateY(-2px);
     box-shadow: 0 8px 20px rgba(103, 58, 183, 0.3);
 }
 
-.updateStatusBtn:disabled {
-    opacity: 0.5;
+/* Ship Form */
+.shipForm {
+    background: white;
+    border: 1.5px solid #ddd6fe;
+    border-radius: 10px;
+    padding: 1.25rem;
+    display: flex;
+    flex-direction: column;
+    gap: 0.9rem;
+}
+
+.shipFormTitle {
+    font-size: 0.95rem;
+    font-weight: 700;
+    color: #374151;
+    margin: 0 0 0.25rem 0;
+}
+
+.formGroup {
+    display: flex;
+    flex-direction: column;
+    gap: 0.35rem;
+}
+
+.formGroup label {
+    font-size: 0.82rem;
+    font-weight: 600;
+    color: #6b7280;
+    text-transform: uppercase;
+    letter-spacing: 0.4px;
+}
+
+.formGroup select,
+.formGroup input {
+    padding: 0.65rem 0.85rem;
+    border: 1.5px solid #e5e7eb;
+    border-radius: 8px;
+    font-size: 0.92rem;
+    font-family: inherit;
+    color: #111;
+    outline: none;
+    transition: border-color 0.2s;
+    background: white;
+}
+
+.formGroup select:focus,
+.formGroup input:focus {
+    border-color: #673AB7;
+    box-shadow: 0 0 0 3px rgba(103, 58, 183, 0.08);
+}
+
+.shipError {
+    display: flex;
+    align-items: center;
+    gap: 0.4rem;
+    font-size: 0.85rem;
+    color: #dc2626;
+    background: #fef2f2;
+    border: 1px solid #fecaca;
+    border-radius: 6px;
+    padding: 0.5rem 0.75rem;
+}
+
+.shipFormActions {
+    display: flex;
+    gap: 0.75rem;
+    justify-content: flex-end;
+    margin-top: 0.25rem;
+}
+
+.cancelShipBtn {
+    padding: 0.65rem 1.25rem;
+    background: white;
+    border: 1.5px solid #e5e7eb;
+    border-radius: 8px;
+    font-size: 0.9rem;
+    font-weight: 600;
+    color: #6b7280;
+    cursor: pointer;
+    transition: all 0.2s;
+}
+
+.cancelShipBtn:hover {
+    border-color: #9ca3af;
+    color: #374151;
+}
+
+.submitShipBtn {
+    display: flex;
+    align-items: center;
+    gap: 0.5rem;
+    padding: 0.65rem 1.4rem;
+    background: linear-gradient(135deg, #673AB7, #9C27B0);
+    color: white;
+    border: none;
+    border-radius: 8px;
+    font-size: 0.9rem;
+    font-weight: 700;
+    cursor: pointer;
+    transition: all 0.2s;
+}
+
+.submitShipBtn:hover:not(:disabled) {
+    transform: translateY(-1px);
+    box-shadow: 0 6px 16px rgba(103, 58, 183, 0.3);
+}
+
+.submitShipBtn:disabled {
+    opacity: 0.6;
     cursor: not-allowed;
+}
+
+/* Status banners */
+.waitingBuyer {
+    display: flex;
+    align-items: center;
+    gap: 0.6rem;
+    padding: 0.85rem 1rem;
+    background: #ecfdf5;
+    border: 1px solid #a7f3d0;
+    border-radius: 8px;
+    font-size: 0.9rem;
+    font-weight: 600;
+    color: #065f46;
+    margin-top: 0.75rem;
+}
+
+.completedBanner {
+    display: flex;
+    align-items: center;
+    gap: 0.6rem;
+    padding: 0.85rem 1rem;
+    background: #d1fae5;
+    border: 1px solid #6ee7b7;
+    border-radius: 8px;
+    font-size: 0.9rem;
+    font-weight: 700;
+    color: #065f46;
+    margin-top: 0.75rem;
+}
+
+.cancelledBanner {
+    display: flex;
+    align-items: center;
+    gap: 0.6rem;
+    padding: 0.85rem 1rem;
+    background: #fee2e2;
+    border: 1px solid #fca5a5;
+    border-radius: 8px;
+    font-size: 0.9rem;
+    font-weight: 700;
+    color: #991b1b;
+    margin-top: 0.75rem;
 }
 
 @media (max-width: 768px) {

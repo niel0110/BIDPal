@@ -89,6 +89,10 @@ export const getOrdersByUser = async (req, res) => {
     // Format for frontend - enrich with auction data if needed
     const formattedData = await Promise.all(data.map(async (order) => {
       const isAuction = order.order_type === 'auction';
+      const shippingFields = {
+        tracking_number: order.tracking_number || null,
+        courier: order.courier || null,
+      };
 
       // For auction orders, fetch auction details separately
       if (isAuction && order.auction_id) {
@@ -116,6 +120,7 @@ export const getOrdersByUser = async (req, res) => {
             total: order.total_amount,
             order_type: 'auction',
             auction_id: order.auction_id,
+            ...shippingFields,
             items: [{
               name: auctionData?.Products?.name || 'Auction Item',
               qty: 1,
@@ -126,7 +131,6 @@ export const getOrdersByUser = async (req, res) => {
           };
         } catch (err) {
           console.error('Error fetching auction data:', err);
-          // Fallback for auction orders
           return {
             id: order.order_id,
             date: new Date(order.placed_at).toLocaleDateString('en-US', {
@@ -138,6 +142,7 @@ export const getOrdersByUser = async (req, res) => {
             total: order.total_amount,
             order_type: 'auction',
             auction_id: order.auction_id,
+            ...shippingFields,
             items: [{
               name: 'Auction Item',
               qty: 1,
@@ -160,6 +165,7 @@ export const getOrdersByUser = async (req, res) => {
         status: order.status,
         total: order.total_amount,
         order_type: 'regular',
+        ...shippingFields,
         items: order.Order_items?.map(item => ({
           name: item.Products?.name || 'Unknown Product',
           qty: item.quantity,
@@ -207,7 +213,7 @@ export const getOrderById = async (req, res) => {
 // Create new order
 export const createOrder = async (req, res) => {
   try {
-    const { buyer_id: user_id, address_id, total_amount, items, payment_method = 'cod' } = req.body;
+    const { buyer_id: user_id, address_id, total_amount, items } = req.body;
 
     if (!user_id || !items || items.length === 0) {
       return res.status(400).json({ error: 'Missing required fields' });
@@ -283,7 +289,7 @@ export const processAuctionPayment = async (req, res) => {
     // 1. Verify the user is the winner
     const { data: auction, error: auctionError } = await supabase
       .from('Auctions')
-      .select('*, Products(products_id, name)')
+      .select('*, Products(products_id, name), seller_id')
       .eq('auction_id', auction_id)
       .eq('winner_user_id', user_id)
       .single();
@@ -308,6 +314,7 @@ export const processAuctionPayment = async (req, res) => {
       await supabase
         .from('Orders')
         .update({
+          seller_id: auction.seller_id,
           status: 'processing',
           payment_method: payment_method || 'cash_on_delivery',
           shipping_address_id: shipping_address_id || null,
@@ -321,6 +328,7 @@ export const processAuctionPayment = async (req, res) => {
         .from('Orders')
         .insert([{
           user_id,
+          seller_id: auction.seller_id,
           total_amount: total_amount || auction.final_price,
           status: 'processing',
           order_type: 'auction',
@@ -334,7 +342,7 @@ export const processAuctionPayment = async (req, res) => {
 
       if (orderError) {
         console.error('Error creating order:', orderError);
-        return res.status(500).json({ error: 'Failed to create order' });
+        return res.status(500).json({ error: orderError.message || 'Failed to create order' });
       }
 
       orderId = newOrder.order_id;
@@ -388,6 +396,376 @@ export const processAuctionPayment = async (req, res) => {
 
   } catch (err) {
     console.error('Error processing payment:', err);
+    res.status(500).json({ error: err.message });
+  }
+};
+
+// Full transaction detail for a single order (seller view)
+export const getSellerOrderDetail = async (req, res) => {
+  try {
+    const { order_id } = req.params;
+
+    // Order + buyer info
+    const { data: order, error: orderError } = await supabase
+      .from('Orders')
+      .select(`
+        *,
+        User!user_id (
+          user_id, Fname, Lname, email, Avatar
+        ),
+        Auctions!auction_id (
+          auction_id,
+          final_price,
+          live_ended_at,
+          winning_bid_id,
+          Products (
+            products_id,
+            name,
+            description,
+            Product_Images ( image_url )
+          )
+        )
+      `)
+      .eq('order_id', order_id)
+      .single();
+
+    if (orderError || !order) {
+      return res.status(404).json({ error: 'Order not found' });
+    }
+
+    // Winning bid (to show bid amount vs final price)
+    let winningBid = null;
+    if (order.Auctions?.winning_bid_id) {
+      const { data: bid } = await supabase
+        .from('Bids')
+        .select('bid_amount, placed_at')
+        .eq('bid_id', order.Auctions.winning_bid_id)
+        .single();
+      winningBid = bid;
+    }
+
+    // Review for this order
+    const { data: review } = await supabase
+      .from('Reviews')
+      .select('review_id, rating, comment, created_at')
+      .eq('order_id', order_id)
+      .maybeSingle();
+
+    // Shipping address details
+    let shippingAddress = null;
+    if (order.shipping_address_id) {
+      const { data: addr } = await supabase
+        .from('Addresses')
+        .select('*')
+        .eq('address_id', order.shipping_address_id)
+        .single();
+      shippingAddress = addr;
+    }
+
+    const product   = order.Auctions?.Products;
+    const auctionAt = order.Auctions?.live_ended_at;
+
+    res.json({
+      order_id:       order.order_id,
+      status:         order.status,
+      placed_at:      order.placed_at,
+      auction_id:     order.auction_id,
+      auction_ended_at: auctionAt,
+      payment_method: order.payment_method,
+      shipping_fee:   order.shipping_fee,
+      total_amount:   order.total_amount,
+      tracking_number:      order.tracking_number,
+      courier:              order.courier,
+      payment_confirmed:    order.payment_confirmed || false,
+      payment_confirmed_at: order.payment_confirmed_at || null,
+      buyer: order.User ? {
+        user_id: order.User.user_id,
+        name:    `${order.User.Fname || ''} ${order.User.Lname || ''}`.trim(),
+        email:   order.User.email,
+        avatar:  order.User.Avatar
+      } : null,
+      product: product ? {
+        products_id: product.products_id,
+        name:        product.name,
+        description: product.description,
+        image:       product.Product_Images?.[0]?.image_url || null
+      } : null,
+      winning_bid:     winningBid,
+      final_price:     order.Auctions?.final_price,
+      shipping_address: shippingAddress,
+      review:          review || null
+    });
+  } catch (err) {
+    console.error('Error fetching seller order detail:', err);
+    res.status(500).json({ error: err.message });
+  }
+};
+
+// Get all orders for a seller's auctions
+export const getSellerOrders = async (req, res) => {
+  try {
+    const { seller_id } = req.params;
+
+    // Get all auction IDs for this seller
+    const { data: sellerAuctions, error: auctionError } = await supabase
+      .from('Auctions')
+      .select('auction_id')
+      .eq('seller_id', seller_id);
+
+    if (auctionError) return res.status(500).json({ error: auctionError.message });
+    if (!sellerAuctions.length) return res.json([]);
+
+    const auctionIds = sellerAuctions.map(a => a.auction_id);
+
+    // Fetch orders for those auctions
+    const { data, error } = await supabase
+      .from('Orders')
+      .select(`
+        order_id,
+        auction_id,
+        user_id,
+        status,
+        total_amount,
+        payment_method,
+        shipping_fee,
+        tracking_number,
+        courier,
+        placed_at,
+        payment_confirmed,
+        payment_confirmed_at,
+        User!user_id (
+          user_id,
+          Fname,
+          Lname,
+          email,
+          Avatar
+        ),
+        Auctions!auction_id (
+          auction_id,
+          final_price,
+          Products (
+            products_id,
+            name,
+            Product_Images ( image_url )
+          )
+        )
+      `)
+      .in('auction_id', auctionIds)
+      .order('placed_at', { ascending: false });
+
+    if (error) return res.status(500).json({ error: error.message });
+
+    const formatted = data.map(order => ({
+      order_id: order.order_id,
+      auction_id: order.auction_id,
+      status: order.status,
+      total_amount: order.total_amount,
+      payment_method: order.payment_method,
+      shipping_fee: order.shipping_fee,
+      tracking_number:      order.tracking_number,
+      courier:              order.courier,
+      payment_confirmed:    order.payment_confirmed || false,
+      payment_confirmed_at: order.payment_confirmed_at || null,
+      placed_at: order.placed_at,
+      buyer: order.User ? {
+        user_id: order.User.user_id,
+        name: `${order.User.Fname || ''} ${order.User.Lname || ''}`.trim(),
+        email: order.User.email,
+        avatar: order.User.Avatar
+      } : null,
+      product: {
+        products_id: order.Auctions?.Products?.products_id,
+        name: order.Auctions?.Products?.name || 'Auction Item',
+        image: order.Auctions?.Products?.Product_Images?.[0]?.image_url || null,
+        final_price: order.Auctions?.final_price
+      }
+    }));
+
+    res.json(formatted);
+  } catch (err) {
+    console.error('Error fetching seller orders:', err);
+    res.status(500).json({ error: err.message });
+  }
+};
+
+// Seller confirms payment received — unlocks shipping
+export const confirmPayment = async (req, res) => {
+  try {
+    const { order_id } = req.params;
+
+    const { data: order, error: fetchError } = await supabase
+      .from('Orders')
+      .select('order_id, status, user_id, auction_id, payment_confirmed')
+      .eq('order_id', order_id)
+      .single();
+
+    if (fetchError || !order) return res.status(404).json({ error: 'Order not found' });
+
+    if (order.status !== 'processing') {
+      return res.status(400).json({ error: `Order must be in processing state to confirm payment (current: ${order.status})` });
+    }
+
+    if (order.payment_confirmed) {
+      return res.status(409).json({ error: 'Payment already confirmed' });
+    }
+
+    const { error: updateError } = await supabase
+      .from('Orders')
+      .update({
+        payment_confirmed: true,
+        payment_confirmed_at: new Date().toISOString()
+      })
+      .eq('order_id', order_id);
+
+    if (updateError) return res.status(500).json({ error: updateError.message });
+
+    // Notify buyer that payment was confirmed and seller is preparing the item
+    let productName = 'your item';
+    if (order.auction_id) {
+      const { data: auctionData } = await supabase
+        .from('Auctions')
+        .select('Products(name)')
+        .eq('auction_id', order.auction_id)
+        .single();
+      productName = auctionData?.Products?.name || productName;
+    }
+
+    await supabase
+      .from('Notifications')
+      .insert([{
+        user_id: order.user_id,
+        type: 'order_update',
+        title: '✅ Payment Confirmed',
+        message: `The seller has confirmed your payment for ${productName}. Your item is being prepared for shipping.`,
+        reference_id: order_id,
+        reference_type: 'order'
+      }]);
+
+    res.json({ success: true, message: 'Payment confirmed. You can now proceed with shipping.' });
+  } catch (err) {
+    console.error('Error confirming payment:', err);
+    res.status(500).json({ error: err.message });
+  }
+};
+
+// Seller marks order as shipped with tracking info
+export const shipOrder = async (req, res) => {
+  try {
+    const { order_id } = req.params;
+    const { tracking_number, courier } = req.body;
+
+    if (!tracking_number || !courier) {
+      return res.status(400).json({ error: 'Tracking number and courier are required' });
+    }
+
+    // Verify order is in 'processing' state (payment received)
+    const { data: order, error: fetchError } = await supabase
+      .from('Orders')
+      .select('order_id, status, user_id, auction_id, payment_confirmed')
+      .eq('order_id', order_id)
+      .single();
+
+    if (fetchError || !order) return res.status(404).json({ error: 'Order not found' });
+    if (order.status !== 'processing') {
+      return res.status(400).json({ error: `Cannot ship order with status: ${order.status}. Order must be in processing state.` });
+    }
+    if (!order.payment_confirmed) {
+      return res.status(400).json({ error: 'You must confirm payment received before marking the order as shipped.' });
+    }
+
+    // Update order with tracking info and change status to shipped
+    const { data: updated, error: updateError } = await supabase
+      .from('Orders')
+      .update({ status: 'shipped', tracking_number, courier })
+      .eq('order_id', order_id)
+      .select('*')
+      .single();
+
+    if (updateError) return res.status(500).json({ error: updateError.message });
+
+    // Get product name for notification
+    let productName = 'your item';
+    if (order.auction_id) {
+      const { data: auctionData } = await supabase
+        .from('Auctions')
+        .select('Products(name)')
+        .eq('auction_id', order.auction_id)
+        .single();
+      productName = auctionData?.Products?.name || productName;
+    }
+
+    // Notify buyer
+    await supabase
+      .from('Notifications')
+      .insert([{
+        user_id: order.user_id,
+        type: 'order_update',
+        title: '🚚 Your order has been shipped!',
+        message: `${productName} is on its way. Courier: ${courier}, Tracking: ${tracking_number}`,
+        reference_id: order_id,
+        reference_type: 'order'
+      }]);
+
+    res.json({ success: true, message: 'Order marked as shipped', order: updated });
+  } catch (err) {
+    console.error('Error shipping order:', err);
+    res.status(500).json({ error: err.message });
+  }
+};
+
+// Buyer confirms order received (marks as completed)
+export const confirmDelivery = async (req, res) => {
+  try {
+    const { order_id } = req.params;
+    const { user_id } = req.body;
+
+    // Verify order belongs to user and is in 'shipped' state
+    const { data: order, error: fetchError } = await supabase
+      .from('Orders')
+      .select('order_id, status, user_id, auction_id')
+      .eq('order_id', order_id)
+      .eq('user_id', user_id)
+      .single();
+
+    if (fetchError || !order) return res.status(404).json({ error: 'Order not found' });
+    if (order.status !== 'shipped') {
+      return res.status(400).json({ error: `Cannot confirm delivery for order with status: ${order.status}` });
+    }
+
+    // Mark as completed
+    await supabase
+      .from('Orders')
+      .update({ status: 'completed' })
+      .eq('order_id', order_id);
+
+    // Get seller user_id to notify them
+    if (order.auction_id) {
+      const { data: auctionData } = await supabase
+        .from('Auctions')
+        .select('Products(name, Seller(user_id))')
+        .eq('auction_id', order.auction_id)
+        .single();
+
+      const sellerUserId = auctionData?.Products?.Seller?.user_id;
+      const productName = auctionData?.Products?.name || 'your item';
+
+      if (sellerUserId) {
+        await supabase
+          .from('Notifications')
+          .insert([{
+            user_id: sellerUserId,
+            type: 'order_update',
+            title: '✅ Order Completed',
+            message: `Buyer confirmed receipt of ${productName}. Order is now complete.`,
+            reference_id: order_id,
+            reference_type: 'order'
+          }]);
+      }
+    }
+
+    res.json({ success: true, message: 'Order marked as completed' });
+  } catch (err) {
+    console.error('Error confirming delivery:', err);
     res.status(500).json({ error: err.message });
   }
 };

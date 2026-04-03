@@ -84,9 +84,21 @@ export const login = async (req, res) => {
   if (!validPassword) {
     return res.status(401).json({ error: 'Invalid email or password.' });
   }
+
+  // Fetch seller_id if user is a seller
+  let seller_id = null;
+  if (data.role?.toLowerCase() === 'seller') {
+    const { data: sellerRow } = await supabase
+      .from('Seller')
+      .select('seller_id')
+      .eq('user_id', data.user_id)
+      .maybeSingle();
+    seller_id = sellerRow?.seller_id || null;
+  }
+
   // Generate JWT
   const token = jwt.sign({ user_id: data.user_id, email: data.email }, process.env.JWT_SECRET, { expiresIn: '1d' });
-  res.json({ message: 'Login successful', user: { user_id: data.user_id, email: data.email, Fname: data.Fname, Mname: data.Mname, Lname: data.Lname, role: data.role, contact_num: data.contact_num, Avatar: data.Avatar }, token });
+  res.json({ message: 'Login successful', user: { user_id: data.user_id, email: data.email, Fname: data.Fname, Mname: data.Mname, Lname: data.Lname, role: data.role, contact_num: data.contact_num, Avatar: data.Avatar, seller_id }, token });
 };
 
 // Google OAuth login (with token verification)
@@ -166,9 +178,20 @@ export const googleLogin = async (req, res) => {
       user = data;
     }
 
+    // Fetch seller_id if user is a seller
+    let seller_id = null;
+    if (user.role?.toLowerCase() === 'seller') {
+      const { data: sellerRow } = await supabase
+        .from('Seller')
+        .select('seller_id')
+        .eq('user_id', user.user_id)
+        .maybeSingle();
+      seller_id = sellerRow?.seller_id || null;
+    }
+
     // Generate JWT
     const token = jwt.sign({ user_id: user.user_id, email: user.email }, process.env.JWT_SECRET, { expiresIn: '1d' });
-    res.json({ message: 'Login successful', user, token });
+    res.json({ message: 'Login successful', user: { ...user, seller_id }, token });
   } catch (err) {
     console.error('Unexpected error in googleLogin controller:', err);
     res.status(500).json({ error: err.message });
@@ -236,9 +259,20 @@ export const socialLogin = async (req, res) => {
       user = data;
     }
 
+    // Fetch seller_id if user is a seller
+    let seller_id = null;
+    if (user.role?.toLowerCase() === 'seller') {
+      const { data: sellerRow } = await supabase
+        .from('Seller')
+        .select('seller_id')
+        .eq('user_id', user.user_id)
+        .maybeSingle();
+      seller_id = sellerRow?.seller_id || null;
+    }
+
     // Generate JWT
     const token = jwt.sign({ user_id: user.user_id, email: user.email }, process.env.JWT_SECRET, { expiresIn: '1d' });
-    res.json({ message: 'Login successful', user, token });
+    res.json({ message: 'Login successful', user: { ...user, seller_id }, token });
   } catch (err) {
     console.error('Unexpected error in socialLogin controller:', err);
     res.status(500).json({ error: err.message });

@@ -3,7 +3,7 @@
 import { useState, useEffect, useCallback } from 'react';
 import Link from 'next/link';
 import { useRouter } from 'next/navigation';
-import { ChevronLeft, Search, Package, Truck, CreditCard, Clock, CheckCircle2, XCircle, Loader2, Gavel, Ban } from 'lucide-react';
+import { ChevronLeft, Search, Package, Truck, CreditCard, Clock, CheckCircle2, XCircle, Loader2, Gavel, Ban, MapPin, Star, X } from 'lucide-react';
 import { useAuth } from '@/context/AuthContext';
 import PaymentCountdown from '@/components/PaymentCountdown';
 import CancellationModal from '@/components/CancellationModal';
@@ -22,6 +22,16 @@ export default function OrdersPage() {
     const [showCancellationModal, setShowCancellationModal] = useState(false);
     const [orderToCancel, setOrderToCancel] = useState(null);
 
+    // Review state
+    const [reviewTarget, setReviewTarget] = useState(null);   // order being reviewed
+    const [reviewRating, setReviewRating] = useState(0);
+    const [reviewHover, setReviewHover] = useState(0);
+    const [reviewComment, setReviewComment] = useState('');
+    const [reviewSubmitting, setReviewSubmitting] = useState(false);
+    const [reviewError, setReviewError] = useState('');
+    const [existingReviews, setExistingReviews] = useState({}); // { order_id: review }
+    const [actionError, setActionError] = useState('');
+
     const tabs = [
         { id: 'all', label: 'All', icon: <Package size={18} /> },
         { id: 'pay', label: 'To Pay', icon: <CreditCard size={18} /> },
@@ -32,50 +42,15 @@ export default function OrdersPage() {
     ];
 
     const fetchOrders = useCallback(async () => {
-        if (!user) {
-            console.log('❌ No user found');
-            return;
-        }
-
-        console.log('👤 Current user:', user);
-        console.log('🔑 User ID:', user.user_id);
-
+        if (!user) return;
         try {
             const apiUrl = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:5000';
-
-            // Fetch regular orders
-            const ordersUrl = `${apiUrl}/api/orders/user/${user.user_id}`;
-            console.log('📡 Fetching regular orders from:', ordersUrl);
-
-            const ordersRes = await fetch(ordersUrl);
-            console.log('📊 Orders response status:', ordersRes.status);
-
-            let regularOrders = [];
-            if (ordersRes.ok) {
-                regularOrders = await ordersRes.json();
-                console.log('✅ Regular orders received:', regularOrders.length);
+            const res = await fetch(`${apiUrl}/api/orders/user/${user.user_id}`);
+            if (res.ok) {
+                setOrders(await res.json());
             }
-
-            // Fetch auction wins
-            const winsUrl = `${apiUrl}/api/orders/user/${user.user_id}/auction-wins`;
-            console.log('🏆 Fetching auction wins from:', winsUrl);
-
-            const winsRes = await fetch(winsUrl);
-            console.log('📊 Auction wins response status:', winsRes.status);
-
-            let auctionWins = [];
-            if (winsRes.ok) {
-                auctionWins = await winsRes.json();
-                console.log('🎉 Auction wins received:', auctionWins.length);
-            }
-
-            // Combine both arrays
-            const allOrders = [...auctionWins, ...regularOrders];
-            console.log('📦 Total orders (wins + regular):', allOrders.length);
-
-            setOrders(allOrders);
         } catch (err) {
-            console.error('❌ Error fetching orders:', err);
+            console.error('Error fetching orders:', err);
         } finally {
             setLoading(false);
         }
@@ -140,35 +115,84 @@ export default function OrdersPage() {
         fetchCancellationLimit();
     }, [user]);
 
-    // Fetch payment windows for auction wins
+    // Build 24-hour payment deadline for pending auction orders
     useEffect(() => {
-        const fetchPaymentWindows = async () => {
-            if (!orders.length) return;
-
-            const auctionOrders = orders.filter(o => o.order_type === 'auction' && o.status === 'pending_payment');
-            if (!auctionOrders.length) return;
-
-            try {
-                const apiUrl = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:5000';
-                const windows = {};
-
-                for (const order of auctionOrders) {
-                    // Fetch payment window from backend
-                    // For now, calculate 24 hours from order date
-                    const orderDate = new Date(order.date);
-                    const deadline = new Date(orderDate);
-                    deadline.setHours(deadline.getHours() + 24);
-                    windows[order.id] = deadline.toISOString();
-                }
-
-                setPaymentWindows(windows);
-            } catch (err) {
-                console.error('Error fetching payment windows:', err);
-            }
-        };
-
-        fetchPaymentWindows();
+        const pending = orders.filter(o => o.order_type === 'auction' && o.status === 'pending_payment');
+        if (!pending.length) return;
+        const windows = {};
+        for (const order of pending) {
+            const base = new Date(order.date);
+            base.setHours(base.getHours() + 24);
+            windows[order.id] = base.toISOString();
+        }
+        setPaymentWindows(windows);
     }, [orders]);
+
+    // Fetch existing reviews for completed orders
+    useEffect(() => {
+        const fetchReviews = async () => {
+            const completedOrders = orders.filter(o => o.status === 'completed');
+            if (!completedOrders.length) return;
+            const apiUrl = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:5000';
+            const map = {};
+            await Promise.all(completedOrders.map(async (order) => {
+                try {
+                    const res = await fetch(`${apiUrl}/api/reviews/order/${order.id}`);
+                    if (res.ok) {
+                        const data = await res.json();
+                        map[order.id] = data; // null if no review yet
+                    }
+                } catch { /* ignore */ }
+            }));
+            setExistingReviews(map);
+        };
+        fetchReviews();
+    }, [orders]);
+
+    const openReviewModal = (order) => {
+        setReviewTarget(order);
+        setReviewRating(0);
+        setReviewHover(0);
+        setReviewComment('');
+        setReviewError('');
+    };
+
+    const handleSubmitReview = async () => {
+        if (!reviewRating) { setReviewError('Please select a star rating.'); return; }
+        if (!user || !reviewTarget) return;
+        setReviewSubmitting(true);
+        setReviewError('');
+        try {
+            const apiUrl = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:5000';
+            // Fetch seller_id from auction
+            const sellerRes = await fetch(`${apiUrl}/api/orders/auction/${reviewTarget.auction_id}/seller`);
+            if (!sellerRes.ok) throw new Error('Could not find seller info');
+            const sellerData = await sellerRes.json();
+
+            const res = await fetch(`${apiUrl}/api/reviews`, {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({
+                    order_id: reviewTarget.id,
+                    seller_id: sellerData.seller_id,
+                    user_id: user.user_id,
+                    rating: reviewRating,
+                    comment: reviewComment.trim() || null
+                })
+            });
+            const data = await res.json();
+            if (res.ok) {
+                setExistingReviews(prev => ({ ...prev, [reviewTarget.id]: data.review }));
+                setReviewTarget(null);
+            } else {
+                setReviewError(data.error || 'Failed to submit review.');
+            }
+        } catch (err) {
+            setReviewError(err.message);
+        } finally {
+            setReviewSubmitting(false);
+        }
+    };
 
     const handleCancelOrder = (order) => {
         if (!user) return;
@@ -207,31 +231,16 @@ export default function OrdersPage() {
             const data = await res.json();
 
             if (res.ok) {
-                if (data.triggered_violation) {
-                    alert(`⚠️ Order cancelled, but a strike has been issued to your account for exceeding the weekly cancellation limit.`);
-                } else {
-                    alert(`✅ Order cancelled successfully.\n\nRemaining cancellations this week: ${data.remaining_cancellations}`);
-                }
-
-                // Close modal
                 setShowCancellationModal(false);
                 setOrderToCancel(null);
-
-                // Refresh orders
                 fetchOrders();
-
-                // Refresh cancellation limit
                 const limitRes = await fetch(`${apiUrl}/api/violations/user/${user.user_id}/cancellation-limit`);
-                if (limitRes.ok) {
-                    const limitData = await limitRes.json();
-                    setCancellationLimit(limitData);
-                }
+                if (limitRes.ok) setCancellationLimit(await limitRes.json());
             } else {
-                alert(`❌ Error: ${data.error || 'Failed to cancel order'}`);
+                setActionError(data.error || 'Failed to cancel order.');
             }
         } catch (err) {
-            console.error('Error cancelling order:', err);
-            alert('❌ Error cancelling order. Please try again.');
+            setActionError('Network error. Please try again.');
         } finally {
             setCancellingOrder(null);
         }
@@ -241,6 +250,27 @@ export default function OrdersPage() {
         if (!order.auction_id) return;
         // Redirect to checkout page with auction_id
         router.push(`/checkout?auction_id=${order.auction_id}`);
+    };
+
+    const handleConfirmDelivery = async (order) => {
+        if (!user) return;
+        setActionError('');
+        try {
+            const apiUrl = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:5000';
+            const res = await fetch(`${apiUrl}/api/orders/${order.id}/confirm-delivery`, {
+                method: 'PUT',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ user_id: user.user_id })
+            });
+            if (res.ok) {
+                fetchOrders();
+            } else {
+                const data = await res.json();
+                setActionError(data.error || 'Failed to confirm delivery.');
+            }
+        } catch (err) {
+            setActionError('Network error. Please try again.');
+        }
     };
 
     const handleContactSeller = async (order) => {
@@ -315,6 +345,12 @@ export default function OrdersPage() {
                     ))}
                 </nav>
 
+                {actionError && (
+                    <div className={styles.actionErrorBanner} onClick={() => setActionError('')}>
+                        <XCircle size={16} /> {actionError}
+                    </div>
+                )}
+
                 <div className={styles.ordersList}>
                     {filteredOrders.length > 0 ? (
                         filteredOrders.map(order => (
@@ -386,6 +422,17 @@ export default function OrdersPage() {
                                     </div>
                                 )}
 
+                                {/* Tracking Info (shipped orders) */}
+                                {order.status === 'shipped' && order.tracking_number && (
+                                    <div className={styles.trackingBanner}>
+                                        <Truck size={16} />
+                                        <span>
+                                            <strong>{order.courier}</strong> — Tracking #: <span className={styles.trackingNum}>{order.tracking_number}</span>
+                                        </span>
+                                        <MapPin size={14} className={styles.trackingPin} />
+                                    </div>
+                                )}
+
                                 <div className={styles.orderActions}>
                                     {order.status === 'pending_payment' && order.order_type === 'auction' ? (
                                         <>
@@ -413,8 +460,28 @@ export default function OrdersPage() {
                                                 )}
                                             </button>
                                         </>
+                                    ) : order.status === 'shipped' ? (
+                                        <button
+                                            className={styles.receivedBtn}
+                                            onClick={() => handleConfirmDelivery(order)}
+                                        >
+                                            <CheckCircle2 size={16} />
+                                            Order Received
+                                        </button>
                                     ) : order.status === 'completed' ? (
-                                        <button className={styles.secondaryBtn}>Buy Again</button>
+                                        existingReviews[order.id] ? (
+                                            <div className={styles.reviewedChip}>
+                                                {[1,2,3,4,5].map(s => (
+                                                    <Star key={s} size={14} fill={s <= existingReviews[order.id].rating ? '#f59e0b' : 'none'} stroke={s <= existingReviews[order.id].rating ? '#f59e0b' : '#d1d5db'} />
+                                                ))}
+                                                <span>Reviewed</span>
+                                            </div>
+                                        ) : (
+                                            <button className={styles.reviewBtn} onClick={() => openReviewModal(order)}>
+                                                <Star size={15} />
+                                                Leave a Review
+                                            </button>
+                                        )
                                     ) : (
                                         <button className={styles.secondaryBtn}>Order Details</button>
                                     )}
@@ -438,6 +505,99 @@ export default function OrdersPage() {
                     )}
                 </div>
             </div>
+
+            {/* Review Modal */}
+            {reviewTarget && (
+                <div className={styles.modalOverlay} onClick={() => setReviewTarget(null)}>
+                    <div className={styles.reviewModal} onClick={e => e.stopPropagation()}>
+                        <div className={styles.reviewModalHead}>
+                            <Star size={20} className={styles.reviewModalIcon} />
+                            <h3>Leave a Review</h3>
+                            <button className={styles.reviewModalClose} onClick={() => setReviewTarget(null)}>
+                                <X size={18} />
+                            </button>
+                        </div>
+
+                        <div className={styles.reviewModalBody}>
+                            {/* Product */}
+                            <div className={styles.reviewProduct}>
+                                <img
+                                    src={reviewTarget.items[0]?.image || 'https://placehold.co/52x52?text=Item'}
+                                    alt={reviewTarget.items[0]?.name}
+                                />
+                                <div>
+                                    <p className={styles.reviewProductName}>{reviewTarget.items[0]?.name}</p>
+                                    <p className={styles.reviewProductSub}>Auction Win</p>
+                                </div>
+                            </div>
+
+                            {/* Star selector */}
+                            <div className={styles.starRow}>
+                                <span className={styles.starLabel}>Your rating</span>
+                                <div className={styles.stars}>
+                                    {[1,2,3,4,5].map(star => (
+                                        <button
+                                            key={star}
+                                            type="button"
+                                            className={styles.starBtn}
+                                            onMouseEnter={() => setReviewHover(star)}
+                                            onMouseLeave={() => setReviewHover(0)}
+                                            onClick={() => setReviewRating(star)}
+                                        >
+                                            <Star
+                                                size={32}
+                                                fill={(reviewHover || reviewRating) >= star ? '#f59e0b' : 'none'}
+                                                stroke={(reviewHover || reviewRating) >= star ? '#f59e0b' : '#d1d5db'}
+                                            />
+                                        </button>
+                                    ))}
+                                </div>
+                                {reviewRating > 0 && (
+                                    <span className={styles.ratingLabel}>
+                                        {['','Poor','Fair','Good','Very Good','Excellent'][reviewRating]}
+                                    </span>
+                                )}
+                            </div>
+
+                            {/* Comment */}
+                            <div className={styles.reviewCommentGroup}>
+                                <label>Comments <span>(optional)</span></label>
+                                <textarea
+                                    rows={4}
+                                    placeholder="Share your experience with this seller and product..."
+                                    value={reviewComment}
+                                    onChange={e => setReviewComment(e.target.value)}
+                                    maxLength={500}
+                                />
+                                <span className={styles.charCount}>{reviewComment.length}/500</span>
+                            </div>
+
+                            {reviewError && (
+                                <div className={styles.reviewError}>
+                                    <XCircle size={14} /> {reviewError}
+                                </div>
+                            )}
+                        </div>
+
+                        <div className={styles.reviewModalFoot}>
+                            <button className={styles.reviewCancelBtn} onClick={() => setReviewTarget(null)}>
+                                Cancel
+                            </button>
+                            <button
+                                className={styles.reviewSubmitBtn}
+                                onClick={handleSubmitReview}
+                                disabled={reviewSubmitting || !reviewRating}
+                            >
+                                {reviewSubmitting ? (
+                                    <><Loader2 size={15} className={styles.spin} /> Submitting...</>
+                                ) : (
+                                    <><Star size={15} /> Submit Review</>
+                                )}
+                            </button>
+                        </div>
+                    </div>
+                </div>
+            )}
 
             {/* Cancellation Modal */}
             <CancellationModal
