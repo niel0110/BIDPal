@@ -15,7 +15,7 @@ const steps = [
     { id: 'photos', name: 'Photos', icon: <Camera size={18} /> },
 ];
 
-const conditionOptions = ['New', 'Like New', 'Good', 'Fair', 'Poor'];
+const conditionOptions = ['Brand New', 'Like New', 'Lightly Used', 'Used', 'Heavily Used', 'For Parts'];
 
 const categoriesData = [
     {
@@ -108,6 +108,9 @@ export default function AddProductPage() {
     const [isSubmitting, setIsSubmitting] = useState(false);
     const [images, setImages] = useState([]);
     const [previewUrls, setPreviewUrls] = useState([]);
+    const [imageErrors, setImageErrors] = useState([]);
+    const [isScanning, setIsScanning] = useState(false);
+    const [scanSlots, setScanSlots] = useState([]);
     const [formData, setFormData] = useState({
         name: '',
         description: '',
@@ -135,18 +138,117 @@ export default function AddProductPage() {
         });
     };
 
-    const handleFileSelect = (e) => {
-        const files = Array.from(e.target.files);
-        if (files.length + images.length > 10) {
-            alert('Max 10 images allowed');
+    const ALLOWED_TYPES = ['image/jpeg', 'image/png', 'image/gif', 'image/webp'];
+    const MAX_SIZE_BYTES = 25 * 1024 * 1024;
+
+    const validateImage = (file) => new Promise((resolve) => {
+        if (!ALLOWED_TYPES.includes(file.type)) {
+            resolve({ valid: false, error: `"${file.name}" is not a supported type. Use JPG, PNG, GIF, or WEBP.` });
             return;
         }
-        
-        setImages(prev => [...prev, ...files]);
-        
-        const newPreviews = files.map(file => URL.createObjectURL(file));
-        setPreviewUrls(prev => [...prev, ...newPreviews]);
+        if (file.size > MAX_SIZE_BYTES) {
+            resolve({ valid: false, error: `"${file.name}" is too large (${(file.size / 1024 / 1024).toFixed(1)} MB). Max is 25 MB.` });
+            return;
+        }
+        const url = URL.createObjectURL(file);
+        const img = new Image();
+        img.onload = () => { URL.revokeObjectURL(url); resolve({ valid: true, url }); };
+        img.onerror = () => { URL.revokeObjectURL(url); resolve({ valid: false, error: `"${file.name}" could not be read. The file may be corrupted.` }); };
+        img.src = url;
+    });
+
+    const checkImageContent = async (file) => {
+        try {
+            const base64 = await new Promise((resolve, reject) => {
+                const img = new Image();
+                const url = URL.createObjectURL(file);
+                img.onload = () => {
+                    const MAX = 800;
+                    const scale = Math.min(1, MAX / Math.max(img.width, img.height));
+                    const canvas = document.createElement('canvas');
+                    canvas.width = Math.round(img.width * scale);
+                    canvas.height = Math.round(img.height * scale);
+                    canvas.getContext('2d').drawImage(img, 0, 0, canvas.width, canvas.height);
+                    URL.revokeObjectURL(url);
+                    resolve(canvas.toDataURL('image/jpeg', 0.85).split(',')[1]);
+                };
+                img.onerror = reject;
+                img.src = url;
+            });
+
+            const apiUrl = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:5000';
+            const res = await fetch(`${apiUrl}/api/image-moderation/check`, {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ imageBase64: base64, mimeType: 'image/jpeg' })
+            });
+
+            if (!res.ok) return { allowed: true };
+
+            const data = await res.json();
+            if (data.safe === false) {
+                return { allowed: false, error: `"${file.name}" was rejected: ${data.reason}` };
+            }
+            return { allowed: true };
+        } catch {
+            return { allowed: true };
+        }
+    };
+
+    const handleFileSelect = async (e) => {
+        const files = Array.from(e.target.files);
         e.target.value = null;
+
+        if (files.length + images.length > 10) {
+            setImageErrors(['You can upload a maximum of 10 images.']);
+            return;
+        }
+
+        setImageErrors([]);
+        setIsScanning(true);
+
+        const slots = files.map(file => ({
+            file,
+            url: URL.createObjectURL(file),
+            status: 'scanning',
+            error: null
+        }));
+        setScanSlots(slots);
+
+        const errors = [];
+        const validFiles = [];
+        const validPreviews = [];
+
+        for (let i = 0; i < slots.length; i++) {
+            const { file, url } = slots[i];
+
+            const result = await validateImage(file);
+            if (!result.valid) {
+                setScanSlots(prev => prev.map((s, idx) => idx === i ? { ...s, status: 'rejected' } : s));
+                errors.push(result.error);
+                continue;
+            }
+
+            const contentCheck = await checkImageContent(file);
+            if (!contentCheck.allowed) {
+                setScanSlots(prev => prev.map((s, idx) => idx === i ? { ...s, status: 'rejected' } : s));
+                errors.push(contentCheck.error);
+                continue;
+            }
+
+            setScanSlots(prev => prev.map((s, idx) => idx === i ? { ...s, status: 'ok' } : s));
+            validFiles.push(file);
+            validPreviews.push(url);
+        }
+
+        setIsScanning(false);
+        setTimeout(() => setScanSlots([]), 2500);
+
+        if (errors.length > 0) setImageErrors(errors);
+        if (validFiles.length > 0) {
+            setImages(prev => [...prev, ...validFiles]);
+            setPreviewUrls(prev => [...prev, ...validPreviews]);
+        }
     };
 
     const removeImage = (index) => {
@@ -326,15 +428,6 @@ export default function AddProductPage() {
                             </div>
                         </div>
 
-                        <div className={styles.inputGroup}>
-                            <label>Initial price</label>
-                            <input
-                                type="text"
-                                placeholder="Product price"
-                                value={formData.price}
-                                onChange={(e) => setFormData({ ...formData, price: e.target.value })}
-                            />
-                        </div>
                     </div>
                 )}
 
@@ -458,14 +551,23 @@ export default function AddProductPage() {
                 {currentStep === 4 && (
                     <div className={styles.stepContent}>
                         <h2 className={styles.stepTitle}>Add product photos (max 10)</h2>
+
+                        {imageErrors.length > 0 && (
+                            <div className={styles.imageErrorBox}>
+                                {imageErrors.map((err, i) => <p key={i}>⚠ {err}</p>)}
+                                <button className={styles.imageErrorDismiss} onClick={() => setImageErrors([])}>Dismiss</button>
+                            </div>
+                        )}
+
                         <div className={styles.photoGridDetailed}>
-                            <label className={styles.uploadCard} style={{cursor: 'pointer'}}>
-                                <input 
-                                    type="file" 
-                                    hidden 
-                                    multiple 
-                                    accept="image/jpeg, image/png, image/gif, image/webp" 
+                            <label className={styles.uploadCard} style={{cursor: isScanning ? 'not-allowed' : 'pointer', opacity: isScanning ? 0.5 : 1}}>
+                                <input
+                                    type="file"
+                                    hidden
+                                    multiple
+                                    accept="image/jpeg, image/png, image/gif, image/webp"
                                     onChange={handleFileSelect}
+                                    disabled={isScanning}
                                 />
                                 <div className={styles.uploadInner}>
                                     <Upload size={32} color="#00A3FF" strokeWidth={1.5} />
@@ -473,11 +575,39 @@ export default function AddProductPage() {
                                 </div>
                                 <div className={styles.uploadMeta}>
                                     <span>Max size - 25Mb.</span>
-                                    <span>Jpg, Png, Gif</span>
+                                    <span>Jpg, Png, Gif, Webp</span>
+                                    <span>Content is scanned automatically</span>
                                 </div>
                             </label>
 
-                            {previewUrls.map((url, idx) => (
+                            {scanSlots.map((slot, idx) => (
+                                <div key={`scan-${idx}`} className={styles.photoCard}>
+                                    <div className={styles.photoPreview} style={{position:'relative'}}>
+                                        <img src={slot.url} alt={slot.file.name} style={{filter: slot.status === 'rejected' ? 'brightness(0.4)' : 'none'}} />
+                                        {slot.status === 'scanning' && (
+                                            <div className={styles.scanOverlay}>
+                                                <div className={styles.scanningSpinner} />
+                                                <span>Scanning...</span>
+                                            </div>
+                                        )}
+                                        {slot.status === 'ok' && (
+                                            <div className={styles.scanOverlayOk}>✓</div>
+                                        )}
+                                        {slot.status === 'rejected' && (
+                                            <div className={styles.scanOverlayRejected}>
+                                                <span style={{fontSize:'1.8rem'}}>✕</span>
+                                                <span style={{fontSize:'0.7rem',textAlign:'center',padding:'0 8px'}}>Rejected</span>
+                                            </div>
+                                        )}
+                                    </div>
+                                    <div className={styles.photoInfoDetailed}>
+                                        <strong style={{overflow:'hidden',textOverflow:'ellipsis',whiteSpace:'nowrap',maxWidth:'100px',display:'inline-block'}}>{slot.file.name}</strong>
+                                        <span>{(slot.file.size / (1024 * 1024)).toFixed(2)} Mb</span>
+                                    </div>
+                                </div>
+                            ))}
+
+                            {scanSlots.length === 0 && previewUrls.map((url, idx) => (
                               <div key={idx} className={styles.photoCard}>
                                   <div className={styles.photoPreview}>
                                       <img src={url} alt={`preview ${idx}`} />
@@ -488,7 +618,7 @@ export default function AddProductPage() {
                                       </div>
                                   </div>
                                   <div className={styles.photoInfoDetailed}>
-                                      <strong style={{overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap', maxWidth: '100px', display: 'inline-block'}} title={images[idx]?.name}>{images[idx]?.name || `Image ${idx + 1}`}</strong>
+                                      <strong style={{overflow:'hidden',textOverflow:'ellipsis',whiteSpace:'nowrap',maxWidth:'100px',display:'inline-block'}} title={images[idx]?.name}>{images[idx]?.name || `Image ${idx + 1}`}</strong>
                                       <span>{images[idx]?.size ? (images[idx].size / (1024 * 1024)).toFixed(2) : 0} Mb</span>
                                   </div>
                               </div>

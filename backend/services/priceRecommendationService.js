@@ -111,7 +111,7 @@ export async function generatePriceRecommendation(productData) {
         const prompt = buildPricePrompt(productData, historicalData, marketData, productInfo, comparableItems, basePrice, mlPriceEstimate);
 
         // Call Gemini API
-        const model = genAI.getGenerativeModel({ model: 'gemini-flash-latest' });
+        const model = genAI.getGenerativeModel({ model: 'gemini-2.0-flash' });
         const result = await model.generateContent(prompt);
         const response = result.response.text();
 
@@ -168,7 +168,7 @@ async function fetchHistoricalData(category, brand) {
                     description,
                     condition
                 ),
-                bids:Bids (amount)
+                bids:Bids (bid_amount)
             `)
             .in('status', ['ended', 'active', 'completed'])
             .gte('created_at', new Date(Date.now() - 90 * 24 * 60 * 60 * 1000).toISOString())
@@ -189,7 +189,7 @@ async function fetchHistoricalData(category, brand) {
 
         const processedAuctions = similar.map(a => {
             const highestBid = a.bids && a.bids.length > 0 
-                ? Math.max(...a.bids.map(b => b.amount)) 
+                ? Math.max(...a.bids.map(b => b.bid_amount)) 
                 : 0;
             return {
                 ...a,
@@ -349,11 +349,14 @@ ANALYSIS REQUIRED:
 7. Assign a confidence level (High/Medium/Low)
 
 IMPORTANT GUIDELINES:
-- Reserve price should protect seller's interest and align with market data
-- Starting bid should be 60-80% of reserve price to encourage bidding
+- All items listed are SECONDHAND. Condition scale: Brand New (1.0x) > Like New (0.85x) > Lightly Used (0.70x) > Used (0.55x) > Heavily Used (0.35x) > For Parts (0.15x)
+- Apply the appropriate depreciation multiplier to the base price before recommending prices
+- Reserve price should protect the seller's interest; align with secondhand market data
+- Starting bid should be 60-80% of reserve price to encourage early bidding
 - Bid increment should be 5-10% of starting bid
-- Consider condition depreciation rates from dataset
-- Consider brand value and market demand from comparable items
+- "For Parts" items should have very low reserve prices — buyers expect non-functional or incomplete goods
+- "Brand New" secondhand items (still sealed/unused) can price close to retail market value
+- Consider brand value and demand from comparable items
 - Philippine Peso (₱) currency
 - Be conservative but competitive
 - The calculated base price (₱${basePrice.toLocaleString()}) is data-informed and should heavily influence your recommendation

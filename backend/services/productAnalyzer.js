@@ -15,7 +15,7 @@ export function extractProductInfo(product) {
         model: extractModel(name),
         specs: extractSpecs(combined, category),
         keywords: extractKeywords(combined),
-        condition: condition || 'Good',
+        condition: condition || 'Used',
         category: category || detectCategory(combined)
     };
 }

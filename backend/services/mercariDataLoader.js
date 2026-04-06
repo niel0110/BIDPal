@@ -160,17 +160,17 @@ function processRawData() {
 
 /**
  * Map Mercari condition ID to readable condition
- * 1 = New, 2 = Like New, 3 = Good, 4 = Fair, 5 = Poor
+ * 1 = Brand New, 2 = Like New, 3 = Lightly Used, 4 = Used, 5 = Heavily Used
  */
 function mapCondition(conditionId) {
     const conditionMap = {
-        1: 'New',
+        1: 'Brand New',
         2: 'Like New',
-        3: 'Good',
-        4: 'Fair',
-        5: 'Poor'
+        3: 'Lightly Used',
+        4: 'Used',
+        5: 'Heavily Used'
     };
-    return conditionMap[conditionId] || 'Good';
+    return conditionMap[conditionId] || 'Used';
 }
 
 /**
@@ -235,7 +235,7 @@ export function getMercariMarketStats(products, category, brand = null) {
 
     // Condition-based pricing
     const conditionPrices = {};
-    ['New', 'Like New', 'Good', 'Fair', 'Poor'].forEach(condition => {
+    ['Brand New', 'Like New', 'Lightly Used', 'Used', 'Heavily Used', 'For Parts'].forEach(condition => {
         const conditionItems = filtered.filter(p => p.condition === condition);
         if (conditionItems.length > 0) {
             conditionPrices[condition] = {
@@ -263,15 +263,15 @@ export function getMercariMarketStats(products, category, brand = null) {
  * Calculate depreciation rates relative to "New" condition
  */
 function calculateDepreciation(conditionPrices) {
-    const newPrice = conditionPrices['New']?.avg;
+    const newPrice = conditionPrices['Brand New']?.avg;
     if (!newPrice) {
-        // Fallback to default depreciation
         return {
-            'New': 1.0,
+            'Brand New': 1.0,
             'Like New': 0.85,
-            'Good': 0.70,
-            'Fair': 0.50,
-            'Poor': 0.30
+            'Lightly Used': 0.70,
+            'Used': 0.55,
+            'Heavily Used': 0.35,
+            'For Parts': 0.15
         };
     }
 

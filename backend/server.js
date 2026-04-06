@@ -137,7 +137,7 @@ app.locals.getViewerCount = getViewerCount
 
 
 app.use(cors())
-app.use(express.json())
+app.use(express.json({ limit: '20mb' }))
 
 import userRoutes from './routes/userRoutes.js'
 import authRoutes from './routes/authRoutes.js'
@@ -155,6 +155,7 @@ import agoraRoutes from './routes/agoraRoutes.js'
 import priceRecommendationRoutes from './routes/priceRecommendationRoutes.js'
 import violationsRoutes from './routes/violationsRoutes.js'
 import reviewsRoutes from './routes/reviewsRoutes.js'
+import imageModerationRoutes from './routes/imageModerationRoutes.js'
 
 app.get('/', (req, res) => {
   res.json({ message: 'Backend running' })
@@ -181,6 +182,7 @@ app.use('/api/agora', agoraRoutes)
 app.use('/api', priceRecommendationRoutes)
 app.use('/api/violations', violationsRoutes)
 app.use('/api/reviews', reviewsRoutes)
+app.use('/api/image-moderation', imageModerationRoutes)
 
 httpServer.listen(process.env.PORT, '0.0.0.0', () => {
   console.log(`Server running on port ${process.env.PORT}`)

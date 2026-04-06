@@ -27,11 +27,12 @@ const CATEGORY_MAP = {
 };
 
 const CONDITION_MAP = {
-    'New': 5,
-    'Like New': 4,
-    'Good': 3,
-    'Fair': 2,
-    'Poor': 1
+    'Brand New': 6,
+    'Like New': 5,
+    'Lightly Used': 4,
+    'Used': 3,
+    'Heavily Used': 2,
+    'For Parts': 1
 };
 
 // Common brand encoding (top brands from Mercari dataset)
