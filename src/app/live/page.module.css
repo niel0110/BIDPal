@@ -483,6 +483,31 @@
     margin-bottom: 0.25rem;
 }
 
+/* Modal right-side product header */
+.modalProductHeader {
+    display: flex;
+    flex-direction: column;
+    padding-bottom: 1rem;
+    border-bottom: 1px solid #f0f0f0;
+}
+
+.modalProductName {
+    font-size: 1.1rem;
+    font-weight: 700;
+    color: #1a1a1a;
+    margin: 0;
+    line-height: 1.3;
+}
+
+.modalStatusBadge {
+    display: inline-block;
+    padding: 3px 10px;
+    border-radius: 20px;
+    font-size: 0.72rem;
+    font-weight: 700;
+    letter-spacing: 0.02em;
+}
+
 .shortDesc {
     font-size: 0.9rem;
     color: #666;
@@ -1055,3 +1080,189 @@
         gap: 2rem;
     }
 }@keyframes spin { from { transform: rotate(0deg); } to { transform: rotate(360deg); } } .loaderContainer { display: flex; flex-direction: column; align-items: center; justify-content: center; min-height: 400px; gap: 1rem; color: #666; } .spinner { animation: spin 1s linear infinite; color: #D32F2F; } .errorContainer { display: flex; flex-direction: column; align-items: center; justify-content: center; min-height: 400px; gap: 1.5rem; text-align: center; padding: 2rem; } .errorContainer h2 { color: #D32F2F; font-size: 1.5rem; } .backBtn { background-color: #D32F2F; color: white; border: none; padding: 0.75rem 2rem; border-radius: 8px; font-weight: 600; cursor: pointer; } .emptyBids { padding: 2rem; text-align: center; color: #999; font-style: italic; background: #f9f9f9; border-radius: 8px; }
+
+/* Scheduled Layout: video left, panel right */
+.scheduledLayout {
+    display: grid;
+    grid-template-columns: 3fr 2fr;
+    gap: 1.25rem;
+    align-items: stretch;
+    margin-bottom: 1.5rem;
+}
+
+@media (max-width: 900px) {
+    .scheduledLayout {
+        grid-template-columns: 1fr;
+    }
+}
+
+/* Shrunk video in scheduled layout — fills same height as right card */
+.videoWrapperSmall {
+    aspect-ratio: unset !important;
+    margin-bottom: 0 !important;
+    height: 100%;
+    border-radius: 14px;
+}
+
+/* Scheduled Auction Panel (buyer view) — right column */
+.scheduledPanel {
+    display: flex;
+    flex-direction: column;
+    gap: 1rem;
+    padding: 1.25rem;
+    background: #fff;
+    border-radius: 16px;
+    box-shadow: 0 2px 16px rgba(0,0,0,0.07);
+}
+
+.scheduledLeft {
+    display: flex;
+    flex-direction: column;
+    gap: 1rem;
+}
+
+.scheduledProductRow {
+    display: flex;
+    gap: 1rem;
+    align-items: center;
+}
+
+.scheduledThumb {
+    width: 80px;
+    height: 80px;
+    border-radius: 10px;
+    object-fit: cover;
+    border: 1px solid #eee;
+    flex-shrink: 0;
+}
+
+.scheduledProductName {
+    font-size: 1rem;
+    font-weight: 700;
+    margin: 0 0 0.25rem;
+    color: #1a1a1a;
+}
+
+.scheduledMeta {
+    font-size: 0.8rem;
+    color: #666;
+    margin: 0.15rem 0;
+}
+
+.scheduledMeta strong {
+    color: #D32F2F;
+    font-size: 0.95rem;
+}
+
+.scheduledInfoBox {
+    background: #f8f8f8;
+    border-radius: 10px;
+    padding: 0.85rem 1rem;
+    display: flex;
+    flex-direction: column;
+    gap: 0.5rem;
+    border: 1px solid #eee;
+}
+
+.scheduledInfoItem {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    font-size: 0.82rem;
+}
+
+.scheduledInfoLabel {
+    color: #888;
+}
+
+.scheduledInfoValue {
+    font-weight: 600;
+    color: #1a1a1a;
+}
+
+/* Right panel — separator from product info */
+.scheduledRight {
+    display: flex;
+    flex-direction: column;
+    gap: 0.85rem;
+    padding-top: 1rem;
+    border-top: 1px solid #f0f0f0;
+}
+
+.scheduledReminderTitle {
+    font-size: 1.05rem;
+    font-weight: 700;
+    color: #1a1a1a;
+    margin: 0;
+}
+
+.scheduledReminderDesc {
+    font-size: 0.83rem;
+    color: #666;
+    margin: 0;
+    line-height: 1.5;
+}
+
+.scheduledReminderBtn {
+    display: flex;
+    align-items: center;
+    gap: 0.5rem;
+    background: #D32F2F;
+    color: #fff;
+    border: none;
+    border-radius: 10px;
+    padding: 0.75rem 1.2rem;
+    font-size: 0.88rem;
+    font-weight: 600;
+    cursor: pointer;
+    transition: background 0.18s;
+    width: fit-content;
+}
+
+.scheduledReminderBtn:hover {
+    background: #b71c1c;
+}
+
+.scheduledReminderBtn:disabled {
+    background: #e57373;
+    cursor: not-allowed;
+}
+
+.scheduledReminderDone {
+    display: flex;
+    align-items: center;
+    gap: 0.5rem;
+    font-size: 0.88rem;
+    font-weight: 600;
+    color: #2e7d32;
+    background: #e8f5e9;
+    border-radius: 10px;
+    padding: 0.75rem 1.2rem;
+    width: fit-content;
+}
+
+.scheduledShareRow {
+    display: flex;
+    align-items: center;
+    gap: 0.5rem;
+    margin-top: 0.25rem;
+}
+
+.scheduledShareBtn {
+    display: flex;
+    align-items: center;
+    gap: 0.4rem;
+    background: transparent;
+    border: 1px solid #ddd;
+    border-radius: 8px;
+    padding: 0.5rem 1rem;
+    font-size: 0.8rem;
+    color: #555;
+    cursor: pointer;
+    transition: background 0.15s, border-color 0.15s;
+}
+
+.scheduledShareBtn:hover {
+    background: #f5f5f5;
+    border-color: #bbb;
+}

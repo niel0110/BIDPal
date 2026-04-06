@@ -294,9 +294,9 @@ export const scheduleAuction = async (req, res) => {
       const endDateTimeStr = `${end_date}T${end_time}:00`;
       end_timestamp = new Date(endDateTimeStr).toISOString();
     } else {
-      // Default end time to 7 days after start if not provided
+      // Default: end at 23:59:59 of the same day as the start
       const d = new Date(startDateTimeStr);
-      d.setDate(d.getDate() + 7);
+      d.setHours(23, 59, 59, 0);
       end_timestamp = d.toISOString();
     }
 
@@ -654,6 +654,30 @@ export const getAuctionById = async (req, res) => {
 
     if (error) throw error;
     if (!auction) return res.status(404).json({ error: 'Auction not found' });
+
+    const now = new Date();
+
+    // Auto-transition: scheduled → active when start_time passes
+    if (auction.status === 'scheduled' && auction.start_time && new Date(auction.start_time) <= now) {
+      const { data: updated } = await supabase
+        .from('Auctions')
+        .update({ status: 'active', start_time: now.toISOString() })
+        .eq('auction_id', id)
+        .select()
+        .maybeSingle();
+      if (updated) Object.assign(auction, updated);
+    }
+
+    // Auto-expire: active → ended if end_time has passed
+    if (auction.status === 'active' && auction.end_time && new Date(auction.end_time) <= now) {
+      const { data: updated } = await supabase
+        .from('Auctions')
+        .update({ status: 'ended' })
+        .eq('auction_id', id)
+        .select()
+        .maybeSingle();
+      if (updated) Object.assign(auction, updated);
+    }
 
     // Get product details — use view, then enrich with all images directly
     const { data: productData } = await supabase
@@ -1125,3 +1149,52 @@ export const deleteAuction = async (req, res) => {
     res.status(500).json({ error: 'Internal server error occurred during deletion.' });
   }
 };
+
+/**
+ * POST /api/auctions/:id/remind
+ * Saves a notification reminder for a buyer for a scheduled auction.
+ */
+export const setAuctionReminder = async (req, res) => {
+  try {
+    const { id } = req.params;
+    const { user_id } = req.body;
+
+    if (!user_id) return res.status(400).json({ error: 'user_id is required' });
+
+    const { data: auction } = await supabase
+      .from('Auctions')
+      .select('auction_id, start_time, products_id')
+      .eq('auction_id', id)
+      .maybeSingle();
+
+    if (!auction) return res.status(404).json({ error: 'Auction not found' });
+
+    // Get product name for the notification message
+    const { data: product } = await supabase
+      .from('Products')
+      .select('name')
+      .eq('products_id', auction.products_id)
+      .maybeSingle();
+
+    const startFormatted = new Date(auction.start_time).toLocaleString('en-PH', {
+      weekday: 'short', month: 'short', day: 'numeric',
+      hour: '2-digit', minute: '2-digit'
+    });
+
+    // Insert a notification (will appear in the user's notification bell)
+    await supabase.from('Notifications').insert([{
+      user_id,
+      type: 'auction_reminder',
+      title: '🔔 Auction Reminder Set',
+      message: `You'll be notified before "${product?.name || 'an auction'}" starts on ${startFormatted}.`,
+      reference_type: 'auction',
+      reference_id: id
+    }]);
+
+    return res.json({ success: true });
+  } catch (err) {
+    console.error('setAuctionReminder error:', err);
+    res.status(500).json({ error: err.message });
+  }
+};
+

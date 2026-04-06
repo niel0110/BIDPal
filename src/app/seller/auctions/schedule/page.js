@@ -22,6 +22,15 @@ export default function ScheduleAuctionPage() {
     
     const [productDetails, setProductDetails] = useState(null);
     const [loadingDetails, setLoadingDetails] = useState(true);
+    const [toast, setToast] = useState(null); // { type: 'success'|'error', message: string }
+
+    const showToast = (type, message, redirectTo = null) => {
+        setToast({ type, message });
+        setTimeout(() => {
+            setToast(null);
+            if (redirectTo) router.push(redirectTo);
+        }, 2200);
+    };
 
     useEffect(() => {
         const fetchProduct = async () => {
@@ -88,27 +97,72 @@ export default function ScheduleAuctionPage() {
                 const data = await res.json();
                 if (!res.ok) {
                     const errorMessage = data.error || 'Failed to schedule auction';
-                    alert(errorMessage);
-
-                    // If product is already scheduled, redirect to My Auctions
-                    if (errorMessage.includes('already has a')) {
-                        router.push('/seller/auctions');
-                    }
+                    const redirectTo = errorMessage.includes('already has a') ? '/seller/auctions' : null;
+                    showToast('error', errorMessage, redirectTo);
                     return;
                 }
 
                 console.log('Successfully scheduled:', data);
-                alert('Auction scheduled successfully!');
-                router.push('/seller/auctions');
+                showToast('success', 'Auction scheduled successfully!', '/seller/auctions');
             } catch (err) {
                 console.error(err);
-                alert('An error occurred while scheduling the auction.');
+                showToast('error', 'An error occurred while scheduling the auction.');
             }
         });
     };
 
     return (
         <div className={styles.container}>
+
+            {/* Toast notification */}
+            {toast && (
+                <div style={{
+                    position: 'fixed',
+                    bottom: '2rem',
+                    left: '50%',
+                    transform: 'translateX(-50%)',
+                    zIndex: 9999,
+                    display: 'flex',
+                    alignItems: 'center',
+                    gap: '0.75rem',
+                    padding: '0.9rem 1.4rem',
+                    borderRadius: '12px',
+                    background: toast.type === 'success' ? '#1a1a2e' : '#2d1b1b',
+                    border: `1px solid ${toast.type === 'success' ? '#4ade80' : '#f87171'}`,
+                    boxShadow: '0 8px 32px rgba(0,0,0,0.25)',
+                    minWidth: '280px',
+                    maxWidth: '420px',
+                    animation: 'slideUp 0.3s ease',
+                }}>
+                    <div style={{
+                        width: '32px',
+                        height: '32px',
+                        borderRadius: '50%',
+                        background: toast.type === 'success' ? 'rgba(74,222,128,0.15)' : 'rgba(248,113,113,0.15)',
+                        display: 'flex',
+                        alignItems: 'center',
+                        justifyContent: 'center',
+                        flexShrink: 0,
+                        fontSize: '1rem',
+                    }}>
+                        {toast.type === 'success' ? '✓' : '✕'}
+                    </div>
+                    <div>
+                        <p style={{ margin: 0, fontWeight: 600, fontSize: '0.9rem', color: toast.type === 'success' ? '#4ade80' : '#f87171' }}>
+                            {toast.type === 'success' ? 'Success' : 'Error'}
+                        </p>
+                        <p style={{ margin: 0, fontSize: '0.82rem', color: '#ccc', marginTop: '1px' }}>{toast.message}</p>
+                    </div>
+                </div>
+            )}
+
+            <style>{`
+                @keyframes slideUp {
+                    from { opacity: 0; transform: translateX(-50%) translateY(16px); }
+                    to   { opacity: 1; transform: translateX(-50%) translateY(0); }
+                }
+            `}</style>
+
             <header className={styles.header}>
                 <button className={styles.backBtn} onClick={handleBack}>
                     <ChevronLeft size={24} />

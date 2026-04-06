@@ -36,6 +36,9 @@ export default function LivePage() {
     const [stats, setStats] = useState({ likes: 0, shares: 0, viewers: 0 });
     const [isLiked, setIsLiked] = useState(false);
     const [minBid, setMinBid] = useState(null); // The minimum required next bid amount
+    const [countdown, setCountdown] = useState(null); // { days, hours, minutes, seconds } or null
+    const [reminderSet, setReminderSet] = useState(false);
+    const [reminderLoading, setReminderLoading] = useState(false);
 
     // Permission and Stream State
     const [permissionStatus, setPermissionStatus] = useState('idle'); // idle, requesting, granted, denied
@@ -261,7 +264,49 @@ export default function LivePage() {
         };
 
         fetchAuctionDetails();
+
+        // Poll every 30s while auction is active but stream hasn't started
+        const poll = setInterval(async () => {
+            if (streamReady || hasStarted) return;
+            try {
+                const r = await fetch(`${apiUrl}/api/auctions/${auctionId}`);
+                const d = await r.json();
+                if (d.auction_id) setAuction(d);
+            } catch {}
+        }, 30000);
+
+        return () => clearInterval(poll);
     }, [auctionId, apiUrl]);
+
+    // ── Countdown timer for scheduled auctions ────────────────────────────────
+    useEffect(() => {
+        if (!auction || auction.status !== 'scheduled' || !auction.start_time) {
+            setCountdown(null);
+            return;
+        }
+
+        const tick = () => {
+            const diff = new Date(auction.start_time) - new Date();
+            if (diff <= 0) {
+                setCountdown(null);
+                // Refetch to pick up the auto-transition to active
+                fetch(`${apiUrl}/api/auctions/${auctionId}`)
+                    .then(r => r.json())
+                    .then(data => { if (data.auction_id) setAuction(data); })
+                    .catch(() => {});
+                return;
+            }
+            const days    = Math.floor(diff / 86400000);
+            const hours   = Math.floor((diff % 86400000) / 3600000);
+            const minutes = Math.floor((diff % 3600000) / 60000);
+            const seconds = Math.floor((diff % 60000) / 1000);
+            setCountdown({ days, hours, minutes, seconds });
+        };
+
+        tick();
+        const timer = setInterval(tick, 1000);
+        return () => clearInterval(timer);
+    }, [auction?.status, auction?.start_time]);
 
     // ── Agora setup (runs after auction is loaded so isHost is known) ─────────
     useEffect(() => {
@@ -719,6 +764,7 @@ export default function LivePage() {
     }
 
     const { product, seller_info } = auction;
+    const isScheduledBuyer = auction.status === 'scheduled' && !isHost;
 
     return (
         <main>
@@ -726,8 +772,11 @@ export default function LivePage() {
 
             <div className={styles.container}>
 
+                {/* VIDEO + SCHEDULED PANEL LAYOUT WRAPPER */}
+                <div className={isScheduledBuyer ? styles.scheduledLayout : undefined}>
+
                 {/* VIDEO SECTION */}
-                <section className={styles.videoWrapper}>
+                <section className={`${styles.videoWrapper}${isScheduledBuyer ? ' ' + styles.videoWrapperSmall : ''}`}>
                     <div className={styles.videoPlaceholder} style={{ position: 'relative', background: '#000' }}>
                         {/* Agora video containers */}
                         <div
@@ -819,11 +868,87 @@ export default function LivePage() {
                                             </>
                                         )}
                                     </>
+                                ) : auction?.status === 'scheduled' ? (
+                                    <div style={{ textAlign: 'center', padding: '0 2rem' }}>
+                                        <Clock size={48} color="white" style={{ marginBottom: '1rem', opacity: 0.85 }} />
+                                        <h2 style={{ color: 'white', fontSize: '1.4rem', fontWeight: 700, marginBottom: '0.5rem' }}>Auction Starting Soon</h2>
+                                        <p style={{ color: '#ddd', fontSize: '0.95rem', marginBottom: '1.5rem' }}>
+                                            {new Date(auction.start_time).toLocaleDateString('en-PH', { weekday: 'long', year: 'numeric', month: 'long', day: 'numeric' })}
+                                            {' at '}
+                                            {new Date(auction.start_time).toLocaleTimeString('en-PH', { hour: '2-digit', minute: '2-digit' })}
+                                        </p>
+                                        {countdown && (
+                                            <div style={{ display: 'flex', gap: '1rem', justifyContent: 'center' }}>
+                                                {[
+                                                    { label: 'Days',    value: countdown.days },
+                                                    { label: 'Hours',   value: countdown.hours },
+                                                    { label: 'Minutes', value: countdown.minutes },
+                                                    { label: 'Seconds', value: countdown.seconds },
+                                                ].map(({ label, value }) => (
+                                                    <div key={label} style={{ background: 'rgba(255,255,255,0.15)', borderRadius: '10px', padding: '12px 18px', minWidth: '64px' }}>
+                                                        <div style={{ color: 'white', fontSize: '2rem', fontWeight: 800, lineHeight: 1 }}>{String(value).padStart(2, '0')}</div>
+                                                        <div style={{ color: '#ccc', fontSize: '0.7rem', marginTop: '4px', textTransform: 'uppercase', letterSpacing: '0.05em' }}>{label}</div>
+                                                    </div>
+                                                ))}
+                                            </div>
+                                        )}
+                                    </div>
+                                ) : (auction?.status === 'ended' || auction?.status === 'completed') ||
+                                    (auction?.status === 'active' && auction?.end_time && new Date(auction.end_time) <= new Date()) ? (
+                                    <div style={{ textAlign: 'center', padding: '0 2rem' }}>
+                                        <CheckCircle size={48} color="white" style={{ marginBottom: '1rem', opacity: 0.85 }} />
+                                        <h2 style={{ color: 'white', fontSize: '1.4rem', fontWeight: 700, marginBottom: '0.5rem' }}>Auction Has Ended</h2>
+                                        <p style={{ color: '#ddd', fontSize: '0.95rem' }}>This auction is no longer available.</p>
+                                    </div>
                                 ) : (
-                                    <>
-                                        <Loader2 size={40} color="white" className={styles.spinner} />
-                                        <p style={{ color: 'white', marginTop: '1rem', fontWeight: 600 }}>Waiting for host to go live...</p>
-                                    </>
+                                    <div style={{ textAlign: 'center', padding: '0 2rem', maxWidth: '480px' }}>
+                                        <div style={{ marginBottom: '1.2rem' }}>
+                                            <Loader2 size={44} color="white" className={styles.spinner} />
+                                        </div>
+                                        <h2 style={{ color: 'white', fontSize: '1.3rem', fontWeight: 700, marginBottom: '0.4rem' }}>
+                                            Host hasn&apos;t gone live yet
+                                        </h2>
+                                        <p style={{ color: '#ddd', fontSize: '0.9rem', marginBottom: '1.2rem' }}>
+                                            The seller will start the stream shortly. This page updates automatically.
+                                        </p>
+                                        {(() => {
+                                            const startMs = new Date(auction.start_time).getTime();
+                                            const now = Date.now();
+                                            const isPast = startMs < now;
+                                            if (isPast) {
+                                                const diffMs = now - startMs;
+                                                const diffMins = Math.floor(diffMs / 60000);
+                                                const diffHrs  = Math.floor(diffMs / 3600000);
+                                                const diffDays = Math.floor(diffMs / 86400000);
+                                                const waitLabel = diffDays >= 1
+                                                    ? `${diffDays} day${diffDays > 1 ? 's' : ''} ago`
+                                                    : diffHrs >= 1
+                                                    ? `${diffHrs} hour${diffHrs > 1 ? 's' : ''} ago`
+                                                    : `${diffMins} minute${diffMins !== 1 ? 's' : ''} ago`;
+                                                return (
+                                                    <div style={{ background: 'rgba(255,255,255,0.12)', borderRadius: '10px', padding: '12px 18px', display: 'inline-block' }}>
+                                                        <p style={{ color: '#ccc', fontSize: '0.75rem', marginBottom: '2px', textTransform: 'uppercase', letterSpacing: '0.05em' }}>Was scheduled</p>
+                                                        <p style={{ color: 'white', fontWeight: 700, fontSize: '1rem', margin: 0 }}>
+                                                            {new Date(auction.start_time).toLocaleDateString('en-PH', { weekday: 'short', month: 'short', day: 'numeric', year: 'numeric' })}
+                                                            {' · '}
+                                                            {new Date(auction.start_time).toLocaleTimeString('en-PH', { hour: '2-digit', minute: '2-digit' })}
+                                                        </p>
+                                                        <p style={{ color: '#FFB74D', fontSize: '0.8rem', marginTop: '4px', margin: '4px 0 0' }}>Started {waitLabel}</p>
+                                                    </div>
+                                                );
+                                            }
+                                            return (
+                                                <div style={{ background: 'rgba(255,255,255,0.12)', borderRadius: '10px', padding: '12px 18px', display: 'inline-block' }}>
+                                                    <p style={{ color: '#ccc', fontSize: '0.75rem', marginBottom: '2px', textTransform: 'uppercase', letterSpacing: '0.05em' }}>Scheduled start</p>
+                                                    <p style={{ color: 'white', fontWeight: 700, fontSize: '1rem', margin: 0 }}>
+                                                        {new Date(auction.start_time).toLocaleDateString('en-PH', { weekday: 'short', month: 'short', day: 'numeric', year: 'numeric' })}
+                                                        {' · '}
+                                                        {new Date(auction.start_time).toLocaleTimeString('en-PH', { hour: '2-digit', minute: '2-digit' })}
+                                                    </p>
+                                                </div>
+                                            );
+                                        })()}
+                                    </div>
                                 )}
                             </div>
                         )}
@@ -961,8 +1086,102 @@ export default function LivePage() {
                     </div>
                 </section>
 
+                {/* ── SCHEDULED BUYER: info + reminder panel (right column) ── */}
+                {isScheduledBuyer && (
+                    <div className={styles.scheduledPanel}>
+                        <div className={styles.scheduledLeft}>
+                            <div className={styles.scheduledProductRow}>
+                                <img
+                                    src={product?.images?.[0]?.image_url || 'https://placehold.co/80x80'}
+                                    alt={product?.name}
+                                    className={styles.scheduledThumb}
+                                    style={{ cursor: 'pointer' }}
+                                    onClick={() => { setActiveModalImg(product?.images?.[0]?.image_url || null); setShowProductModal(true); }}
+                                />
+                                <div>
+                                    <h3
+                                        className={styles.scheduledProductName}
+                                        style={{ cursor: 'pointer', textDecoration: 'underline', textDecorationColor: '#ccc' }}
+                                        onClick={() => { setActiveModalImg(product?.images?.[0]?.image_url || null); setShowProductModal(true); }}
+                                    >{product?.name}</h3>
+                                    <p className={styles.scheduledMeta}>Starting bid: <strong>₱{Number(auction.reserve_price || 0).toLocaleString('en-PH')}</strong></p>
+                                    <p className={styles.scheduledMeta}>Sold by <strong>{auction.seller_info?.store_name || 'Seller'}</strong></p>
+                                </div>
+                            </div>
+
+                            <div className={styles.scheduledInfoBox}>
+                                <div className={styles.scheduledInfoItem}>
+                                    <span className={styles.scheduledInfoLabel}>Date</span>
+                                    <span className={styles.scheduledInfoValue}>
+                                        {new Date(auction.start_time).toLocaleDateString('en-PH', { weekday: 'long', month: 'long', day: 'numeric', year: 'numeric' })}
+                                    </span>
+                                </div>
+                                <div className={styles.scheduledInfoItem}>
+                                    <span className={styles.scheduledInfoLabel}>Time</span>
+                                    <span className={styles.scheduledInfoValue}>
+                                        {new Date(auction.start_time).toLocaleTimeString('en-PH', { hour: '2-digit', minute: '2-digit' })}
+                                    </span>
+                                </div>
+                                <div className={styles.scheduledInfoItem}>
+                                    <span className={styles.scheduledInfoLabel}>Bidding</span>
+                                    <span className={styles.scheduledInfoValue}>Live auction — highest bid wins</span>
+                                </div>
+                            </div>
+                        </div>
+
+                        <div className={styles.scheduledRight}>
+                            <h4 className={styles.scheduledReminderTitle}>Don't miss this auction</h4>
+                            <p className={styles.scheduledReminderDesc}>
+                                Set a reminder and we'll notify you when this auction is about to start.
+                            </p>
+                            {reminderSet ? (
+                                <div className={styles.scheduledReminderDone}>
+                                    <span style={{ fontSize: '1.5rem' }}>🔔</span>
+                                    <div>
+                                        <p style={{ margin: 0, fontWeight: 700, color: '#2e7d32' }}>Reminder set!</p>
+                                        <p style={{ margin: 0, fontSize: '0.82rem', color: '#555' }}>We'll notify you before the auction starts.</p>
+                                    </div>
+                                </div>
+                            ) : (
+                                <button
+                                    className={styles.scheduledReminderBtn}
+                                    disabled={reminderLoading || !user}
+                                    onClick={async () => {
+                                        if (!user) return;
+                                        setReminderLoading(true);
+                                        try {
+                                            await fetch(`${apiUrl}/api/auctions/${auctionId}/remind`, {
+                                                method: 'POST',
+                                                headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${localStorage.getItem('bidpal_token')}` },
+                                                body: JSON.stringify({ user_id: user.user_id || user.id })
+                                            });
+                                            setReminderSet(true);
+                                        } catch { setReminderSet(true); }
+                                        setReminderLoading(false);
+                                    }}
+                                >
+                                    {reminderLoading ? 'Setting...' : '🔔 Notify Me When It Starts'}
+                                </button>
+                            )}
+                            {!user && <p style={{ fontSize: '0.78rem', color: '#888', marginTop: '0.5rem' }}>Log in to set a reminder.</p>}
+
+                            <div className={styles.scheduledShareRow}>
+                                <p style={{ margin: 0, fontSize: '0.82rem', color: '#888' }}>Share this auction</p>
+                                <button
+                                    className={styles.scheduledShareBtn}
+                                    onClick={() => { navigator.clipboard.writeText(window.location.href); }}
+                                >
+                                    <Share2 size={14} /> Copy Link
+                                </button>
+                            </div>
+                        </div>
+                    </div>
+                )}
+
+                </div>{/* end scheduledLayout wrapper */}
+
                 {/* BOTTOM CONTENT */}
-                <div className={styles.bottomSection}>
+                <div className={styles.bottomSection} style={{ display: isScheduledBuyer ? 'none' : undefined }}>
 
                     {/* LEFT: AUCTION & BIDS */}
                     <div className={styles.auctionControl}>
@@ -1161,37 +1380,48 @@ export default function LivePage() {
                                 </div>
                             )}
 
-                            <div className={styles.productBasics}>
-                                <div>
-                                    <h2>{product?.name}</h2>
-                                    <div className={styles.bidSummary}>
-                                        <p>Current Bid ({bids.length} bids)</p>
-                                        <p style={{ color: '#D32F2F' }}>{auction.status === 'active' ? 'LIVE' : 'Starts Soon'}</p>
-                                    </div>
-                                </div>
-                                <div style={{ textAlign: 'right' }}>
-                                    {/* Only show strikethrough reserve if there's an active higher bid */}
-                                    {bids.length > 0 && bids[0]?.amount > auction.reserve_price && (
-                                        <div style={{ fontSize: '0.9rem', color: '#999', textDecoration: 'line-through' }}>
-                                            ₱{Number(auction.reserve_price).toLocaleString('en-PH')}
-                                        </div>
-                                    )}
-                                    <div style={{ fontSize: '1.25rem', fontWeight: 700 }}>
-                                        ₱{Number(bids[0]?.amount || auction.current_price || auction.reserve_price).toLocaleString('en-PH')}
-                                    </div>
-                                </div>
-                            </div>
                         </div>
 
                         {/* Right Side */}
                         <div className={styles.detailRight}>
-                            <div className={styles.shippingInfo}>
-                                <Truck size={24} color="#666" />
-                                <div className={styles.shippingText}>
-                                    <strong>Estimated Shipping</strong>
-                                    Shipping fee: ₱ 125.00
+                            {/* Product header — name, status badge, then price below */}
+                            <div className={styles.modalProductHeader}>
+                                <h2 className={styles.modalProductName}>{product?.name}</h2>
+                                <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', marginTop: '0.3rem' }}>
+                                    <span className={styles.modalStatusBadge} style={{
+                                        background: auction.status === 'active' ? '#ffebee' : '#fff8e1',
+                                        color: auction.status === 'active' ? '#D32F2F' : '#f57c00',
+                                        border: `1px solid ${auction.status === 'active' ? '#ffcdd2' : '#ffe0b2'}`,
+                                    }}>
+                                        {auction.status === 'active' ? '🔴 LIVE' : '🕐 Starts Soon'}
+                                    </span>
+                                    {bids.length > 0 && (
+                                        <span style={{ fontSize: '0.78rem', color: '#888' }}>{bids.length} bid{bids.length !== 1 ? 's' : ''}</span>
+                                    )}
+                                </div>
+                                <div style={{ marginTop: '0.6rem', display: 'flex', alignItems: 'baseline', gap: '0.5rem' }}>
+                                    {bids.length > 0 && bids[0]?.amount > auction.reserve_price && (
+                                        <span style={{ fontSize: '0.85rem', color: '#bbb', textDecoration: 'line-through' }}>
+                                            ₱{Number(auction.reserve_price).toLocaleString('en-PH')}
+                                        </span>
+                                    )}
+                                    <span style={{ fontSize: '1.5rem', fontWeight: 800, color: '#D32F2F' }}>
+                                        ₱{Number(bids[0]?.amount || auction.current_price || auction.reserve_price).toLocaleString('en-PH')}
+                                    </span>
+                                    <span style={{ fontSize: '0.75rem', color: '#999' }}>
+                                        {auction.status === 'scheduled' ? 'starting bid' : 'current bid'}
+                                    </span>
                                 </div>
                             </div>
+                            {auction.status !== 'scheduled' && (
+                                <div className={styles.shippingInfo}>
+                                    <Truck size={24} color="#666" />
+                                    <div className={styles.shippingText}>
+                                        <strong>Estimated Shipping</strong>
+                                        Shipping fee: ₱ 125.00
+                                    </div>
+                                </div>
+                            )}
 
                             <div className={styles.specSection}>
                                 <h3>Item Specifications</h3>
@@ -1199,6 +1429,13 @@ export default function LivePage() {
                                     {product?.specifications || 'No detailed specifications provided for this product.'}
                                 </div>
                             </div>
+
+                            {product?.description && (
+                                <div className={styles.specSection}>
+                                    <h3>Description</h3>
+                                    <div className={styles.specText}>{product.description}</div>
+                                </div>
+                            )}
 
                             <div className={styles.sellerCard}>
                                 <div className={styles.sellerHead}>
@@ -1223,20 +1460,22 @@ export default function LivePage() {
                                 </div>
                             </div>
 
-                            <div className={styles.actionRow}>
-                                <button
-                                    className={styles.mainBidBtn}
-                                    onClick={() => {
-                                        setShowProductModal(false);
-                                        setShowModal(true);
-                                    }}
-                                >
-                                    Bid Now
-                                </button>
-                                <button className={styles.wishlistBtn}>
-                                    <Heart size={24} />
-                                </button>
-                            </div>
+                            {auction.status !== 'scheduled' && (
+                                <div className={styles.actionRow}>
+                                    <button
+                                        className={styles.mainBidBtn}
+                                        onClick={() => {
+                                            setShowProductModal(false);
+                                            setShowModal(true);
+                                        }}
+                                    >
+                                        Join Bid
+                                    </button>
+                                    <button className={styles.wishlistBtn}>
+                                        <Heart size={24} />
+                                    </button>
+                                </div>
+                            )}
                         </div>
                     </div>
                 </div>
