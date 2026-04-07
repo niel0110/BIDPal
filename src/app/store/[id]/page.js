@@ -165,8 +165,10 @@ export default function StorePage() {
                 </div>
                 
                 <div className={styles.storeBasicInfo}>
-                    <div className={styles.handle}>@{store.store_handle || 'seller'}</div>
-                    <h1 className={styles.storeName}>{store.store_name}</h1>
+                    <div className={styles.storeNameRow}>
+                        <h1 className={styles.storeName}>{store.store_name}</h1>
+                        <span className={styles.handle}>@{store.store_handle || 'seller'}</span>
+                    </div>
                     
                     <div className={styles.statsBar}>
                         <div className={styles.statItem}>

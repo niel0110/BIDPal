@@ -28,13 +28,13 @@
 .headerContent {
     max-width: 1200px;
     margin: 0 auto;
-    padding: 0 2rem;
+    padding: 1.5rem 2rem;
     position: relative;
-    margin-top: -80px;
     display: flex;
-    align-items: flex-end;
+    align-items: flex-start;
     gap: 2rem;
-    z-index: 10;
+    background: white;
+    border-bottom: 1px solid #eee;
 }
 
 .logoWrapper {
@@ -45,6 +45,8 @@
     padding: 8px;
     box-shadow: 0 4px 20px rgba(0,0,0,0.1);
     flex-shrink: 0;
+    margin-top: -80px;
+    align-self: flex-start;
 }
 
 .logo {
@@ -55,8 +57,14 @@
 }
 
 .storeBasicInfo {
-    padding-bottom: 20px;
     flex: 1;
+}
+
+.storeNameRow {
+    display: flex;
+    align-items: baseline;
+    gap: 0.75rem;
+    flex-wrap: wrap;
 }
 
 .storeName {
@@ -71,7 +79,6 @@
     font-size: 1.1rem;
     color: #cc2b41;
     font-weight: 600;
-    margin-bottom: 0.5rem;
 }
 
 .statsBar {
@@ -101,7 +108,8 @@
 .followActions {
     display: flex;
     gap: 1rem;
-    margin-bottom: 20px;
+    align-items: center;
+    margin-top: 0.5rem;
 }
 
 .followBtn {
