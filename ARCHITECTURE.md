@@ -90,11 +90,12 @@ APPLICATION LAYER
 ├── File Upload Service            → Multer
 ├── Price Intelligence Service     → Google Gemini AI + Random Forest ML
 ├── Stream Token Service           → Agora RTC / RTM
+├── Rule-Based Fraud Detection     → Strike Engine + Violation Service + Cancellation Service
+├── Background Job Processors      → Payment Window Checker (cron) / BullMQ Workers (planned)
 ├── Notification Dispatcher        → Transactional Email + SMS (planned)
 ├── Webhook Handler                → Receives updates from Veriff, Logistics (planned)
 ├── ID Verification Service        → Veriff (planned)
-├── Admin & Moderation Service     → Custom (planned)
-└── Background Job Processors      → BullMQ Workers (planned)
+└── Admin & Moderation Service     → Custom (planned)
 ```
 
 ### API Server (`/backend/server.js`)
@@ -133,7 +134,10 @@ APPLICATION LAYER
 | Price Recommendation | `priceRecommendationService.js` | ML + Gemini AI price analysis |
 | Random Forest Model | `modelTrainingService.js` | Mercari dataset training (1.4M records) |
 | Agora Token Generation | (in controller) | RTC + RTM token generation |
-| Payment Window Checker | `jobs/` | Checks payment deadlines, triggers violations |
+| **Strike Engine** | `strikeEngine.js` | Three-strike escalation — issues warnings, restrictions, suspensions |
+| **Violation Service** | `violationService.js` | Detects and records bogus bidding and joy reserving behavior |
+| **Cancellation Service** | `cancellationService.js` | Enforces cancellation limits (4+ per week triggers a strike) |
+| **Payment Window Checker** | `jobs/paymentWindowChecker.js` | Hourly cron — flags expired 24h payment windows, triggers strikes |
 | **Veriff Verification** *(planned)* | `veriffService.js` | Session creation, webhook handling, ID status |
 | **Notification Dispatcher** *(planned)* | `notificationService.js` | Sends transactional emails and SMS alerts |
 | **Logistics Service** *(planned)* | `logisticsService.js` | Books shipments, tracks delivery status via courier API |
@@ -145,6 +149,46 @@ APPLICATION LAYER
 |-----------|---------|
 | `authMiddleware.js` | JWT validation, user identity on protected routes |
 | **Admin Middleware** *(planned)* | Role check — restricts routes to admin users only |
+
+### Rule-Based Fraud Detection Engine (Implemented)
+
+**How it works — bid placement flow:**
+
+```
+Buyer clicks "Place Bid"
+        ↓
+REST API receives request
+        ↓
+violationService.js checks bidding eligibility   ← BEFORE saving bid
+        ↓
+┌── PASS → bid accepted, saved to DB
+└── FAIL → bid rejected, reason shown to buyer
+```
+
+**Anti-Bogus Bidding & Joy Reserving Rules:**
+
+| Behavior | Threshold | Detection Method | Consequence |
+|----------|-----------|-----------------|-------------|
+| Missed payment | 24h after auction end | Hourly cron job (`paymentWindowChecker.js`) | Strike 1 — Warning |
+| Repeated missed payment | 2nd missed payment | Cron job + violation history check | Strike 2 — Pre-authorization required before bidding |
+| Repeated missed payment | 3rd missed payment | Cron job + violation history check | Strike 3 — Account suspended, moderation case created |
+| Excessive cancellations | 4+ cancellations per week | Real-time check on each cancellation (`cancellationService.js`) | Strike triggered |
+| Seller reports bogus buyer | Manual report | Seller submits report via violations route | Moderation review initiated |
+| 3 strikes total | Any combination | `strikeEngine.js` evaluates cumulative strikes | Permanent ban + SHA-256 identity hash blocks re-registration |
+
+**Strike Escalation (strikeEngine.js):**
+
+```
+Strike 1 → Warning notification sent to buyer
+Strike 2 → Pre-authorization required before placing any new bid
+Strike 3 → Account suspended + moderation case opened
+3 Strikes → Permanent ban + SHA-256 hash of identity stored
+             (blocks re-registration using same identity)
+```
+
+**Frontend Enforcement:**
+- `src/app/orders/page.js` — visual warnings when approaching payment deadline
+- `src/components/CancellationModal.js` — warns user when nearing cancellation limit, blocks action when restricted
 
 ### Socket.IO Events (real-time)
 
@@ -222,13 +266,15 @@ DATA LAYER
 | `Notifications` | id, user_id, type, content, is_read, created_at | In-app notifications |
 | `Live_Comments` | id, auction_id, user_id, comment, created_at | Real-time auction chat |
 
-#### Moderation
+#### Moderation & Fraud Detection
 
 | Table | Key Columns | Notes |
 |-------|-------------|-------|
-| `Violation_Records` | id, user_id, type, strike_count, status | 3-strike system |
-| `Appeals` | id, violation_id, user_id, reason, status, resolved_at | User appeal requests |
-| `Moderation_Cases` | id, reporter_id, target_id, type, status | Reported content/users |
+| `Violation_Records` | id, user_id, type, strike_count, status | 3-strike system — tracks bogus bidding and joy reserving |
+| `Appeals` | id, violation_id, user_id, reason, status, resolved_at | User appeal requests against strikes |
+| `Moderation_Cases` | id, reporter_id, target_id, type, status | Seller-reported bogus buyers, flagged accounts |
+| `Cancellation_Logs` | id, user_id, order_id, reason, cancelled_at | Tracks weekly cancellation count per user |
+| `Identity_Hashes` | id, sha256_hash, banned_at | SHA-256 hashes of permanently banned identities — blocks re-registration |
 
 #### Verification *(planned)*
 
@@ -307,7 +353,67 @@ DATA LAYER
 
 ---
 
-## 5. Veriff Integration Plan *(Planned)*
+## 5. Rule-Based Fraud Detection System (Implemented)
+
+### Purpose
+Prevents two specific fraud behaviors in BIDPal:
+- **Bogus Bidding** — fake or malicious bids intended to disrupt auctions
+- **Joy Reserving** — winning auctions with no intent to pay
+
+### Component Map
+
+```
+Tier 1: Presentation
+  ├── orders/page.js              ← payment deadline warnings
+  └── CancellationModal.js        ← cancellation limit warnings + blocks
+
+Tier 2: Application
+  ├── violationService.js         ← detects violations, checks bid eligibility
+  ├── strikeEngine.js             ← escalates strikes (warn → restrict → ban)
+  ├── cancellationService.js      ← enforces weekly cancellation limits
+  └── jobs/paymentWindowChecker.js ← hourly cron, auto-flags expired payments
+
+Tier 3: Data
+  ├── Violation_Records           ← strike history per user
+  ├── Moderation_Cases            ← seller-reported bogus buyers
+  ├── Cancellation_Logs           ← weekly cancellation tracking
+  └── Identity_Hashes             ← SHA-256 hashes of permanently banned users
+```
+
+### Enforcement Flow
+
+```
+[Automated — every hour]
+paymentWindowChecker.js
+  └── finds orders unpaid after 24h
+        └── violationService.js records violation
+              └── strikeEngine.js escalates:
+                    Strike 1 → Warning
+                    Strike 2 → Pre-authorization required before bidding
+                    Strike 3 → Account suspended + moderation case opened
+                    3 total  → Permanent ban + SHA-256 hash stored
+
+[Real-time — on each cancellation]
+cancellationService.js
+  └── counts cancellations this week
+        └── 4+ → strikeEngine.js triggered
+
+[Manual — seller reports]
+violation.routes.js → violationService.js
+  └── moderation case created → admin reviews
+```
+
+### No AI Needed (Phase 1)
+The rule-based engine is sufficient for current scale. Rules are:
+- Predictable and explainable to users
+- Fast — no model inference overhead
+- Easy for admin to adjust thresholds
+
+**Future Phase:** When enough fraud history accumulates in `Violation_Records` and `Cancellation_Logs`, an ML anomaly detection model can be trained on top of the same data without changing the database structure.
+
+---
+
+## 6. Veriff Integration Plan *(Planned)*
 
 **Where it fits:**
 
@@ -419,10 +525,16 @@ Next.js Frontend (src/)
 Express API (backend/server.js :5000)
   ├─ Auth Middleware validates JWT
   ├─ Router matches endpoint
+  ├─ Violation Service checks bid eligibility (rule-based)  ← before bid is saved
   ├─ Controller handles business logic
+  ├─ Strike Engine escalates violations (warn → restrict → suspend → ban)
   ├─ Service handles complex operations (AI, ML, Veriff, Logistics)
   ├─ Redis Cache checked before hitting database (planned)
   └─ Supabase client executes DB queries
+        │
+        ▼ (background, every hour)
+Payment Window Checker (cron job)
+  └─ Flags unpaid orders → triggers strikeEngine.js → updates Violation_Records
         │
         ▼
 Data Layer
