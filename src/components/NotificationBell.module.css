@@ -156,11 +156,12 @@
 }
 
 .item.unread {
-    background: #fffbf0;
+    background: #eff6ff;
+    border-left: 3px solid #3b82f6;
 }
 
 .item.unread:hover {
-    background: #fff8e6;
+    background: #dbeafe;
 }
 
 .iconWrap {
@@ -203,6 +204,11 @@
 .iconWrap.order_update {
     background: #fdf4ff;
     color: #a855f7;
+}
+
+.iconWrap.auction_upcoming {
+    background: #fff7ed;
+    color: #f97316;
 }
 
 .itemContent {

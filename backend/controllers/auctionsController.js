@@ -1,4 +1,5 @@
 import { supabase } from '../config/supabase.js';
+import { createNotification } from './notificationsController.js';
 
 // Get all auctions for a seller
 export const getSellerAuctions = async (req, res) => {
@@ -37,7 +38,7 @@ export const getSellerAuctions = async (req, res) => {
     }
 
     // Add pagination (we'll apply it after search filtering for now)
-    query = query.range(offset, offset + parseInt(limit) - 1);
+    query = query.range(parseInt(offset), parseInt(offset) + parseInt(limit) - 1);
 
     const { data: auctionsData, error: auctionsError } = await query;
 
@@ -134,8 +135,9 @@ export const getSellerAuctions = async (req, res) => {
 
     res.json({ count: transformedData.length, data: transformedData });
   } catch (err) {
-    console.error('Unexpected error fetching auctions:', err);
-    res.status(500).json({ error: err.message || 'Unexpected server error' });
+    const msg = err?.message || err?.details || err?.hint || (typeof err === 'string' ? err : null) || JSON.stringify(err) || 'Unexpected server error';
+    console.error('getSellerAuctions error:', JSON.stringify(err), err?.stack);
+    res.status(500).json({ error: msg });
   }
 };
 
@@ -1150,24 +1152,216 @@ export const deleteAuction = async (req, res) => {
   }
 };
 
+// ── Helper: fetch all auction_reminder notifications for a user, filter in JS ─
+// We avoid JSONB .contains() queries because PostgREST JSONB containment
+// is unreliable for lookup; instead we pull all of the user's auction reminders
+// and match client-side.
+const getUserReminders = async (user_id) => {
+  const { data } = await supabase
+    .from('Notifications')
+    .select('notification_id, payload')
+    .eq('user_id', user_id)
+    .eq('type', 'auction_reminder');
+  return data || [];
+};
+
+// Count all reminders for a given auction across all users (pull & filter in JS)
+const countReminders = async (auctionId) => {
+  const { data } = await supabase
+    .from('Notifications')
+    .select('payload')
+    .eq('type', 'auction_reminder');
+  return (data || []).filter(n => n.payload?.auction_id === auctionId).length;
+};
+
+/**
+ * GET /api/auctions/:id/reminder-count
+ */
+export const getAuctionReminderCount = async (req, res) => {
+  try {
+    const count = await countReminders(req.params.id);
+    return res.json({ count });
+  } catch (err) {
+    res.status(500).json({ error: err.message });
+  }
+};
+
+/**
+ * GET /api/auctions/:id/remind
+ * Check whether the current user already set a reminder.
+ */
+export const checkAuctionReminder = async (req, res) => {
+  try {
+    const { id } = req.params;
+    // Always read user_id from the verified JWT — never trust the client-supplied value
+    const user_id = req.user?.user_id;
+    if (!user_id) return res.status(401).json({ error: 'Not authenticated' });
+
+    const reminders = await getUserReminders(user_id);
+    const exists = reminders.some(n => n.payload?.auction_id === id);
+    return res.json({ reminder_set: exists });
+  } catch (err) {
+    res.status(500).json({ error: err.message });
+  }
+};
+
 /**
  * POST /api/auctions/:id/remind
- * Saves a notification reminder for a buyer for a scheduled auction.
+ * Save buyer reminder, notify seller, broadcast count via Socket.IO.
  */
 export const setAuctionReminder = async (req, res) => {
   try {
     const { id } = req.params;
-    const { user_id } = req.body;
+    // Always read user_id from the verified JWT — never trust the client-supplied value
+    const user_id = req.user?.user_id;
+    if (!user_id) return res.status(401).json({ error: 'Not authenticated' });
 
-    if (!user_id) return res.status(400).json({ error: 'user_id is required' });
-
-    const { data: auction } = await supabase
+    // Fetch auction
+    const { data: auction, error: auctionErr } = await supabase
       .from('Auctions')
-      .select('auction_id, start_time, products_id')
+      .select('auction_id, start_time, products_id, status, seller_id')
       .eq('auction_id', id)
       .maybeSingle();
 
+    if (auctionErr) throw auctionErr;
     if (!auction) return res.status(404).json({ error: 'Auction not found' });
+    if (auction.status !== 'scheduled') return res.status(400).json({ error: 'Auction is no longer scheduled' });
+
+    // Check duplicate (client-side filter — avoids JSONB contains quirks)
+    const existingReminders = await getUserReminders(user_id);
+    const alreadySet = existingReminders.some(n => n.payload?.auction_id === id);
+    if (alreadySet) {
+      const count = await countReminders(id);
+      return res.json({ success: true, already_set: true, reminderCount: count });
+    }
+
+    // Fetch product name and buyer name (non-critical, failures won't block the reminder)
+    const [{ data: product }, { data: buyer }] = await Promise.all([
+      supabase.from('Products').select('name').eq('products_id', auction.products_id).maybeSingle(),
+      supabase.from('User').select('Fname, Lname').eq('user_id', user_id).maybeSingle()
+    ]);
+
+    const productName = product?.name || 'an auction';
+    const buyerName = buyer ? `${buyer.Fname || ''} ${buyer.Lname || ''}`.trim() || 'A buyer' : 'A buyer';
+    const startFormatted = new Date(auction.start_time).toLocaleString('en-PH', {
+      weekday: 'short', month: 'short', day: 'numeric',
+      hour: '2-digit', minute: '2-digit'
+    });
+
+    // Save buyer reminder — insert directly so errors are not swallowed
+    const { error: insertError } = await supabase
+      .from('Notifications')
+      .insert([{
+        user_id,
+        type: 'auction_reminder',
+        payload: {
+          auction_id: id,
+          title: '🔔 Reminder Set!',
+          message: `We'll notify you before "${productName}" starts on ${startFormatted}.`
+        },
+        created_at: new Date().toISOString(),
+        read_at: '2099-12-31T23:59:59.000Z' // far-future = unread sentinel
+      }]);
+
+    if (insertError) {
+      console.error('Notification insert failed:', JSON.stringify(insertError));
+      return res.status(500).json({ error: `DB insert failed: ${insertError.message || insertError.code || JSON.stringify(insertError)}` });
+    }
+
+    const newCount = await countReminders(id);
+
+    // Notify seller (non-blocking — a failure here should not fail the request)
+    try {
+      const { data: seller } = await supabase
+        .from('Seller')
+        .select('user_id')
+        .eq('seller_id', auction.seller_id)
+        .maybeSingle();
+
+      if (seller?.user_id) {
+        await createNotification(seller.user_id, 'auction_interest', {
+          auction_id: id,
+          title: '👥 New Buyer Interested',
+          message: `${buyerName} set a reminder for "${productName}". Total interested: ${newCount}.`
+        });
+      }
+    } catch (sellerErr) {
+      console.error('Seller notification error (non-fatal):', sellerErr);
+    }
+
+    // Broadcast real-time count to the auction room
+    const io = req.app.locals.io;
+    if (io) io.to(`auction:${id}`).emit('reminder-count-update', { auction_id: id, count: newCount });
+
+    return res.json({ success: true, already_set: false, reminderCount: newCount });
+  } catch (err) {
+    console.error('setAuctionReminder error:', err);
+    res.status(500).json({ error: err.message });
+  }
+};
+
+/**
+ * GET /api/auctions/:id/promoted
+ * Check whether the authenticated seller already promoted this auction.
+ */
+export const checkAuctionPromoted = async (req, res) => {
+  try {
+    const { id } = req.params;
+    const user_id = req.user?.user_id;
+    if (!user_id) return res.status(401).json({ error: 'Not authenticated' });
+
+    const { data } = await supabase
+      .from('Notifications')
+      .select('notification_id')
+      .eq('user_id', user_id)
+      .eq('type', 'auction_promoted')
+      .eq('reference_id', id)
+      .maybeSingle();
+
+    return res.json({ promoted: !!data });
+  } catch (err) {
+    res.status(500).json({ error: err?.message || 'Server error' });
+  }
+};
+
+/**
+ * POST /api/auctions/:id/promote
+ * Notify all followers of this seller about the upcoming scheduled auction.
+ * Can only be promoted once per auction (tracked via Notifications type='auction_promoted').
+ */
+export const promoteAuction = async (req, res) => {
+  try {
+    const { id } = req.params;
+    const user_id = req.user?.user_id;
+    if (!user_id) return res.status(401).json({ error: 'Not authenticated' });
+
+    // Get the auction + seller info
+    const { data: auction, error: auctionErr } = await supabase
+      .from('Auctions')
+      .select('auction_id, status, seller_id, products_id, start_time, Seller(user_id, store_name)')
+      .eq('auction_id', id)
+      .maybeSingle();
+
+    if (auctionErr || !auction) return res.status(404).json({ error: 'Auction not found' });
+    if (auction.status !== 'scheduled') return res.status(400).json({ error: 'Only scheduled auctions can be promoted' });
+
+    // Verify the requester owns this auction
+    if (auction.Seller?.user_id !== user_id) {
+      return res.status(403).json({ error: 'You do not own this auction' });
+    }
+
+    // Check if already promoted (look for an existing auction_promoted tracking record)
+    const { data: existing } = await supabase
+      .from('Notifications')
+      .select('notification_id')
+      .eq('user_id', user_id)
+      .eq('type', 'auction_promoted')
+      .eq('reference_id', id)
+      .maybeSingle();
+
+    if (existing) {
+      return res.json({ success: false, already_promoted: true, notified: 0 });
+    }
 
     // Get product name for the notification message
     const { data: product } = await supabase
@@ -1176,25 +1370,61 @@ export const setAuctionReminder = async (req, res) => {
       .eq('products_id', auction.products_id)
       .maybeSingle();
 
-    const startFormatted = new Date(auction.start_time).toLocaleString('en-PH', {
-      weekday: 'short', month: 'short', day: 'numeric',
-      hour: '2-digit', minute: '2-digit'
+    const productName = product?.name || 'an item';
+    const storeName = auction.Seller?.store_name || 'A seller';
+    const startDate = new Date(auction.start_time).toLocaleString('en-PH', {
+      month: 'short', day: 'numeric', hour: 'numeric', minute: '2-digit', hour12: true
     });
 
-    // Insert a notification (will appear in the user's notification bell)
+    // Fetch all followers of this seller
+    const { data: followers, error: followErr } = await supabase
+      .from('Follows')
+      .select('follower_id')
+      .eq('followed_seller_id', auction.seller_id);
+
+    if (followErr) throw followErr;
+
+    const followerIds = (followers || []).map(f => f.follower_id);
+
+    // Send notification to each follower
+    if (followerIds.length > 0) {
+      const now = new Date().toISOString();
+      const UNREAD_SENTINEL = '2099-12-31T23:59:59.000Z';
+      const notifRows = followerIds.map(fid => ({
+        user_id: fid,
+        type: 'auction_upcoming',
+        reference_id: id,
+        payload: {
+          auction_id: id,
+          seller_name: storeName,
+          item_name: productName,
+          start_time: auction.start_time,
+          title: `🔔 Upcoming Auction: ${productName}`,
+          message: `${storeName} is going live with "${productName}" on ${startDate}. Don't miss it!`,
+        },
+        created_at: now,
+        read_at: UNREAD_SENTINEL
+      }));
+
+      const { error: bulkErr } = await supabase.from('Notifications').insert(notifRows);
+      if (bulkErr) throw bulkErr;
+    }
+
+    // Record that this auction was promoted (so we can block duplicate promotions)
+    const UNREAD_SENTINEL = '2099-12-31T23:59:59.000Z';
     await supabase.from('Notifications').insert([{
       user_id,
-      type: 'auction_reminder',
-      title: '🔔 Auction Reminder Set',
-      message: `You'll be notified before "${product?.name || 'an auction'}" starts on ${startFormatted}.`,
-      reference_type: 'auction',
-      reference_id: id
+      type: 'auction_promoted',
+      reference_id: id,
+      payload: { auction_id: id, notified_count: followerIds.length },
+      created_at: new Date().toISOString(),
+      read_at: UNREAD_SENTINEL
     }]);
 
-    return res.json({ success: true });
+    return res.json({ success: true, already_promoted: false, notified: followerIds.length });
   } catch (err) {
-    console.error('setAuctionReminder error:', err);
-    res.status(500).json({ error: err.message });
+    console.error('promoteAuction error:', err);
+    res.status(500).json({ error: err?.message || JSON.stringify(err) });
   }
 };
 

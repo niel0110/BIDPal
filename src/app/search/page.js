@@ -1,5 +1,6 @@
 'use client';
 
+import BIDPalLoader from '@/components/BIDPalLoader';
 import { useState, useEffect } from 'react';
 import { useSearchParams } from 'next/navigation';
 import Header from '@/components/layout/Header';
@@ -119,9 +120,7 @@ export default function SearchPage() {
                     </div>
                 )}
 
-                {loading && (
-                    <div className={styles.loading}>Searching...</div>
-                )}
+                {loading && <BIDPalLoader size="section" />}
 
                 {!loading && query && totalResults === 0 && (
                     <div className={styles.empty}>

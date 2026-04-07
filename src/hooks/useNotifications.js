@@ -5,6 +5,9 @@ import { useAuth } from '@/context/AuthContext';
 
 const API_URL = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:5000';
 const POLL_INTERVAL = 10000; // 10 seconds
+const UNREAD_SENTINEL = '2099-12-31T23:59:59.000Z'; // far-future = unread
+
+export const isUnread = (n) => n.read_at === UNREAD_SENTINEL;
 
 export function useNotifications() {
     const { user } = useAuth();
@@ -17,22 +20,22 @@ export function useNotifications() {
         try {
             const token = localStorage.getItem('bidpal_token');
             const [notifRes, msgRes] = await Promise.all([
-                fetch(`${API_URL}/api/notifications`, { headers: { 'Authorization': `Bearer ${token}` } }),
-                fetch(`${API_URL}/api/messages/unread-count`, { headers: { 'Authorization': `Bearer ${token}` } })
+                fetch(`${API_URL}/api/notifications`, { headers: { Authorization: `Bearer ${token}` } }),
+                fetch(`${API_URL}/api/messages/unread-count`, { headers: { Authorization: `Bearer ${token}` } })
             ]);
 
             if (notifRes.ok) {
                 const data = await notifRes.json();
                 const list = Array.isArray(data) ? data : [];
                 setNotifications(list);
-                setUnreadCount(list.filter(n => !n.read_at).length);
+                setUnreadCount(list.filter(isUnread).length);
             }
             if (msgRes.ok) {
                 const data = await msgRes.json();
                 setUnreadMsgCount(data.count || 0);
             }
         } catch (err) {
-            // Silent fail — network hiccup shouldn't crash the UI
+            // Silent fail
         }
     }, [user]);
 
@@ -42,34 +45,52 @@ export function useNotifications() {
         return () => clearInterval(interval);
     }, [fetchNotifications]);
 
+    // Mark a single notification as read in Supabase — real-time
     const markRead = async (notificationId) => {
         try {
             const token = localStorage.getItem('bidpal_token');
             await fetch(`${API_URL}/api/notifications/${notificationId}/read`, {
                 method: 'PATCH',
-                headers: { 'Authorization': `Bearer ${token}` }
+                headers: { Authorization: `Bearer ${token}` }
             });
             setNotifications(prev =>
-                prev.map(n => n.notification_id === notificationId ? { ...n, read_at: new Date().toISOString() } : n)
+                prev.map(n => n.notification_id === notificationId
+                    ? { ...n, read_at: new Date().toISOString() }
+                    : n)
             );
             setUnreadCount(prev => Math.max(0, prev - 1));
         } catch (err) {}
     };
 
+    // Mark all as read in Supabase
     const markAllRead = async () => {
         try {
             const token = localStorage.getItem('bidpal_token');
             await fetch(`${API_URL}/api/notifications/read-all`, {
                 method: 'PATCH',
-                headers: { 'Authorization': `Bearer ${token}` }
+                headers: { Authorization: `Bearer ${token}` }
             });
             const now = new Date().toISOString();
-            setNotifications(prev => prev.map(n => ({ ...n, read_at: n.read_at || now })));
+            setNotifications(prev => prev.map(n => ({ ...n, read_at: isUnread(n) ? now : n.read_at })));
             setUnreadCount(0);
+        } catch (err) {}
+    };
+
+    // Called when the bell opens — marks all unread as read in Supabase
+    const markAllSeen = async () => {
+        setUnreadCount(0);
+        const now = new Date().toISOString();
+        setNotifications(prev => prev.map(n => ({ ...n, read_at: isUnread(n) ? now : n.read_at })));
+        try {
+            const token = localStorage.getItem('bidpal_token');
+            await fetch(`${API_URL}/api/notifications/mark-seen`, {
+                method: 'PATCH',
+                headers: { Authorization: `Bearer ${token}` }
+            });
         } catch (err) {}
     };
 
     const totalUnreadCount = unreadCount + unreadMsgCount;
 
-    return { notifications, unreadCount, unreadMsgCount, totalUnreadCount, markRead, markAllRead, refresh: fetchNotifications };
+    return { notifications, unreadCount, unreadMsgCount, totalUnreadCount, markRead, markAllRead, markAllSeen, refresh: fetchNotifications };
 }

@@ -2,6 +2,7 @@
 
 import { useState, useEffect } from 'react';
 import { useRouter, useSearchParams } from 'next/navigation';
+import BackButton from '@/components/BackButton';
 import { ChevronLeft, Gavel, Tag, Calendar, Clock, Info, DollarSign } from 'lucide-react';
 import { useSubmitLock } from '@/hooks/useSubmitLock';
 import styles from './page.module.css';
@@ -164,10 +165,7 @@ export default function ScheduleAuctionPage() {
             `}</style>
 
             <header className={styles.header}>
-                <button className={styles.backBtn} onClick={handleBack}>
-                    <ChevronLeft size={24} />
-                    <span>Schedule Item</span>
-                </button>
+                <BackButton label="Schedule Item" />
             </header>
 
             <div className={styles.scheduleCard}>

@@ -1,5 +1,7 @@
 'use client';
 
+import BIDPalLoader from '@/components/BIDPalLoader';
+import BackButton from '@/components/BackButton';
 import { useState, useEffect, useCallback } from 'react';
 import Link from 'next/link';
 import { useRouter } from 'next/navigation';
@@ -293,12 +295,7 @@ export default function OrdersPage() {
         }
     };
 
-    if (loading) return (
-        <div className={styles.loadingContainer}>
-            <Loader2 className={styles.spinner} size={40} />
-            <p>Loading your orders...</p>
-        </div>
-    );
+    if (loading) return <BIDPalLoader />;
 
     if (!user) return (
         <div className={styles.ordersContainer}>
@@ -314,10 +311,7 @@ export default function OrdersPage() {
         <div className={styles.ordersContainer}>
             <div className={styles.ordersContent}>
                 <header className={styles.ordersHeader}>
-                    <button className={styles.backBtn} onClick={() => router.push('/')}>
-                        <ChevronLeft size={20} />
-                        <span>Back to Marketplace</span>
-                    </button>
+                    <BackButton label="Back" />
                     <div className={styles.titleRow}>
                         <h1>My Orders</h1>
                         <div className={styles.searchBar}>

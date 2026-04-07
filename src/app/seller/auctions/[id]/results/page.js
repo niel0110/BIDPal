@@ -1,5 +1,7 @@
 'use client';
 
+import BIDPalLoader from '@/components/BIDPalLoader';
+import BackButton from '@/components/BackButton';
 import { useState, useEffect } from 'react';
 import { useParams, useRouter } from 'next/navigation';
 import {
@@ -168,11 +170,7 @@ export default function AuctionResultsPage() {
         return steps[status] || 0;
     };
 
-    if (loading) return (
-        <div className={styles.container}>
-            <div className={styles.loading}>Loading auction results...</div>
-        </div>
-    );
+    if (loading) return <BIDPalLoader />;
 
     if (!auctionData) return (
         <div className={styles.container}>
@@ -188,10 +186,7 @@ export default function AuctionResultsPage() {
         <div className={styles.container}>
             {/* Header */}
             <div className={styles.header}>
-                <button className={styles.backBtn} onClick={() => router.back()}>
-                    <ChevronLeft size={20} />
-                    Back
-                </button>
+                <BackButton label="Back" />
                 <h1 className={styles.title}>Auction Results</h1>
             </div>
 

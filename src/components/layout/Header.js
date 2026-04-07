@@ -17,6 +17,7 @@ export default function Header() {
   const [isMenuOpen, setIsMenuOpen] = useState(false);
   const [searchQuery, setSearchQuery] = useState('');
   const router = useRouter();
+  const pathname = usePathname();
 
   const handleSearch = () => {
     const q = searchQuery.trim();
@@ -139,8 +140,8 @@ export default function Header() {
           <Logo />
         </div>
 
-        {/* Only show search bar for buyers, not sellers */}
-        {user && user.role?.toLowerCase() === 'seller' ? null : (
+        {/* Only show search bar on the buyer home page */}
+        {(!user || user.role?.toLowerCase() !== 'seller') && pathname === '/' && (
           <div className={styles.searchSection}>
             <div className={styles.searchWrapper}>
               <Search size={20} className={styles.searchIcon} color="#333" style={{ cursor: 'pointer' }} onClick={handleSearch} />

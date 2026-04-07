@@ -1447,21 +1447,59 @@ input:checked+.slider:before {
     color: #111;
 }
 
+.wishlistDesc {
+    font-size: 0.78rem;
+    color: #999;
+    margin: 0.25rem 0 0;
+    display: -webkit-box;
+    -webkit-line-clamp: 2;
+    line-clamp: 2;
+    -webkit-box-orient: vertical;
+    overflow: hidden;
+    line-height: 1.4;
+}
+
+.wishlistScheduleRow {
+    display: flex;
+    align-items: center;
+    gap: 0.4rem;
+    background: #f0f6ff;
+    border-radius: 8px;
+    padding: 0.4rem 0.75rem;
+    font-size: 0.78rem;
+}
+
+.wishlistScheduleLabel {
+    color: #1976D2;
+    font-weight: 700;
+    text-transform: uppercase;
+    font-size: 0.7rem;
+    letter-spacing: 0.05em;
+}
+
+.wishlistScheduleValue {
+    color: #333;
+    font-weight: 600;
+}
+
 .viewAuctionBtn {
-    padding: 0.75rem 1.25rem;
+    padding: 0.65rem 1.1rem;
     background: #111;
     color: white;
     border: none;
-    border-radius: 14px;
-    font-size: 0.85rem;
+    border-radius: 12px;
+    font-size: 0.82rem;
     font-weight: 700;
     cursor: pointer;
     transition: all 0.2s;
+    white-space: nowrap;
+    flex-shrink: 0;
 }
 
 .viewAuctionBtn:hover {
-    background: #333;
-    transform: translateX(4px);
+    opacity: 0.88;
+    transform: translateY(-1px);
+    box-shadow: 0 4px 12px rgba(0,0,0,0.18);
 }
 
 /* Empty State */

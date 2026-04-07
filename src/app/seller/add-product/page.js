@@ -2,6 +2,7 @@
 
 import { useState } from 'react';
 import { useRouter } from 'next/navigation';
+import BackButton from '@/components/BackButton';
 import { Info, Grid, Camera, X, Trash2, Upload, ChevronLeft, Package, DollarSign } from 'lucide-react';
 import styles from './page.module.css';
 import { useAuth } from '@/context/AuthContext';
@@ -348,6 +349,7 @@ export default function AddProductPage() {
             <div className={styles.pageHeader}>
                 <button className={styles.backBtn} onClick={handleBack} aria-label="Go back">
                     <ChevronLeft size={20} />
+                    <span>{currentStep > 0 ? 'Previous' : 'Back'}</span>
                 </button>
                 <h1 className={styles.pageTitle}>Add New Product</h1>
             </div>

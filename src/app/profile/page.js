@@ -1,5 +1,7 @@
 'use client';
 
+import BIDPalLoader from '@/components/BIDPalLoader';
+import BackButton from '@/components/BackButton';
 import { useState, Suspense, useEffect, useRef } from 'react';
 import dynamic from 'next/dynamic';
 import {
@@ -39,7 +41,8 @@ import {
     ArrowDownRight,
     ShoppingBag,
     Users,
-    DollarSign
+    DollarSign,
+    ChevronLeft
 } from 'lucide-react';
 import styles from './page.module.css';
 import { useAuth } from '@/context/AuthContext';
@@ -392,7 +395,7 @@ function StoreProfileSection() {
     if (loading) {
         return (
             <div className={styles.section}>
-                <div className={styles.loadingPlaceholder}><p>Loading store profile...</p></div>
+                <BIDPalLoader size="section" />
             </div>
         );
     }
@@ -1359,7 +1362,7 @@ function AddressSection({ state, setState }) {
                 </header>
 
             {fetchingAddresses ? (
-                <div className={styles.loadingPlaceholder}><p>Loading your addresses...</p></div>
+                <BIDPalLoader size="section" />
             ) : addresses.length === 0 ? (
                 <div className={styles.noResults}><p>No addresses saved yet.</p></div>
             ) : (
@@ -2001,7 +2004,7 @@ function SellerAddressSection({ state, setState }) {
                 </header>
 
                 {fetchingAddresses ? (
-                    <div className={styles.loadingPlaceholder}><p>Loading your pickup addresses...</p></div>
+                    <BIDPalLoader size="section" />
                 ) : addresses.length === 0 ? (
                     <div className={styles.noResults}><p>No pickup address saved yet.</p></div>
                 ) : (
@@ -2284,9 +2287,7 @@ function WishlistSection() {
                 <header className={styles.sectionHeader}>
                     <h1>My Wishlist</h1>
                 </header>
-                <div className={styles.loadingPlaceholder}>
-                    <p>Loading your wishlist...</p>
-                </div>
+                <BIDPalLoader size="section" />
             </div>
         );
     }
@@ -2324,9 +2325,38 @@ function WishlistSection() {
         );
     }
 
+    const getBadgeLabel = (status) => {
+        switch (status?.toLowerCase()) {
+            case 'active': return '🔴 Live Now';
+            case 'scheduled': return '🕐 Scheduled';
+            case 'ended': return 'Ended';
+            case 'completed': return 'Completed';
+            default: return status;
+        }
+    };
+
+    const getButtonStyle = (status) => {
+        switch (status?.toLowerCase()) {
+            case 'active': return { background: '#D32F2F' };
+            case 'scheduled': return { background: '#1976D2' };
+            default: return { background: '#555' };
+        }
+    };
+
+    const getButtonLabel = (status) => {
+        switch (status?.toLowerCase()) {
+            case 'active': return 'Bid Now →';
+            case 'scheduled': return 'View Auction →';
+            default: return 'View Detail →';
+        }
+    };
+
     return (
         <div className={styles.section}>
             <header className={styles.sectionHeader}>
+                <div style={{ marginBottom: '0.5rem' }}>
+                    <BackButton label="Back" />
+                </div>
                 <h1>My Wishlist</h1>
                 <p>You have {items.length} item{items.length !== 1 ? 's' : ''} in your wishlist.</p>
             </header>
@@ -2336,7 +2366,7 @@ function WishlistSection() {
                     <div
                         key={item.auction_id}
                         className={styles.wishlistCard}
-                        onClick={() => router.push(`/live/${item.auction_id}`)}
+                        onClick={() => router.push(`/live?id=${item.auction_id}`)}
                     >
                         <div className={styles.wishlistImageWrapper}>
                             <img
@@ -2345,14 +2375,14 @@ function WishlistSection() {
                                 className={styles.wishlistImage}
                             />
                             <div className={`${styles.wishlistBadge} ${getStatusBadgeClass(item.status)}`}>
-                                {item.status === 'active' ? 'Live Now' : item.status}
+                                {getBadgeLabel(item.status)}
                             </div>
                             <button
                                 className={styles.wishlistHeartBtn}
                                 onClick={(e) => handleToggleLike(e, item.auction_id)}
                                 title="Remove from wishlist"
                             >
-                                <Heart size={20} fill="#D32F2F" color="#D32F2F" />
+                                <Heart size={18} fill="#D32F2F" color="#D32F2F" />
                             </button>
                         </div>
 
@@ -2360,7 +2390,21 @@ function WishlistSection() {
                             <div className={styles.wishlistHeader}>
                                 <span className={styles.wishlistSeller}>{item.seller}</span>
                                 <h3 className={styles.wishlistName}>{item.title}</h3>
+                                {item.description && (
+                                    <p className={styles.wishlistDesc}>{item.description}</p>
+                                )}
                             </div>
+
+                            {item.status === 'scheduled' && item.start_time && (
+                                <div className={styles.wishlistScheduleRow}>
+                                    <span className={styles.wishlistScheduleLabel}>Starts</span>
+                                    <span className={styles.wishlistScheduleValue}>
+                                        {new Date(item.start_time).toLocaleDateString('en-PH', { month: 'short', day: 'numeric', year: 'numeric' })}
+                                        {' · '}
+                                        {new Date(item.start_time).toLocaleTimeString('en-PH', { hour: '2-digit', minute: '2-digit' })}
+                                    </span>
+                                </div>
+                            )}
 
                             <div className={styles.wishlistPriceRow}>
                                 <div>
@@ -2368,11 +2412,15 @@ function WishlistSection() {
                                         {item.status === 'active' ? 'Current Bid' : 'Starting Price'}
                                     </span>
                                     <span className={styles.priceValue}>
-                                        ₱{item.current_price?.toLocaleString('en-PH')}
+                                        ₱{Number(item.current_price || 0).toLocaleString('en-PH')}
                                     </span>
                                 </div>
-                                <button className={styles.viewAuctionBtn}>
-                                    {item.status === 'active' ? 'Bid Now' : 'View Detail'}
+                                <button
+                                    className={styles.viewAuctionBtn}
+                                    style={getButtonStyle(item.status)}
+                                    onClick={(e) => { e.stopPropagation(); router.push(`/live?id=${item.auction_id}`); }}
+                                >
+                                    {getButtonLabel(item.status)}
                                 </button>
                             </div>
                         </div>

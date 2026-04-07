@@ -309,6 +309,9 @@ export default function SellerDashboard() {
     // Check if there are products available (queue + active)
     const hasProducts = dashboardData.queue.length > 0 || activeItem !== null;
 
+    // Seller is "new" when they have no auction history at all
+    const isNewSeller = !activeItem && dashboardData.queue.length === 0 && dashboardData.completed.length === 0;
+
     const startAgoraStream = async (auctionId, cancelled = { val: false }) => {
         try {
             console.log('🎥 Starting live stream setup...');
@@ -720,10 +723,12 @@ export default function SellerDashboard() {
                         <div className={styles.emptyState}>
                             <Radio size={64} color="#ddd" strokeWidth={1.5} />
                             <h2>No Active Auction</h2>
-                            <p>Start selling by adding products to your inventory</p>
-                            <Link href="/seller/add-product" className={styles.emptyStateBtn}>
-                                <Plus size={20} /> Add Your First Product
-                            </Link>
+                            <p>{isNewSeller ? 'Start selling by adding products to your inventory' : 'No auction is currently live. Schedule one to get started.'}</p>
+                            {isNewSeller && (
+                                <Link href="/seller/add-product" className={styles.emptyStateBtn}>
+                                    <Plus size={20} /> Add Your First Product
+                                </Link>
+                            )}
                         </div>
                     )}
 

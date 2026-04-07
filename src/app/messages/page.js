@@ -1,5 +1,6 @@
 'use client';
 
+import BackButton from '@/components/BackButton';
 import { useState, useEffect, useRef, useCallback } from 'react';
 import { useRouter } from 'next/navigation';
 import {
@@ -252,10 +253,7 @@ export default function MessagesPage() {
         <div className={styles.messagesContainer}>
             <div className={styles.messagesContent}>
                 <header className={styles.messagesHeader}>
-                    <button className={styles.backBtn} onClick={() => router.push(isSeller ? '/seller' : '/')}>
-                        <ChevronLeft size={20} />
-                        <span>{isSeller ? 'Back to Seller Hub' : 'Back to Marketplace'}</span>
-                    </button>
+                    <BackButton label="Back" />
                     <h1>{isSeller ? 'Merchant Messages' : 'My Messages'}</h1>
                 </header>
 

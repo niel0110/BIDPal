@@ -1,9 +1,10 @@
 'use client';
 
+import BIDPalLoader from '@/components/BIDPalLoader';
 import { useState, useEffect, useRef } from 'react';
 import { useSearchParams } from 'next/navigation';
 import Header from '@/components/layout/Header';
-import { Clock, Eye, Heart, Send, X, Star, Truck, Pencil, CheckCircle, Loader2, Mic, MicOff, Video, VideoOff, Share2 } from 'lucide-react';
+import { Clock, Eye, Heart, Send, X, Star, Truck, Pencil, CheckCircle, Loader2, Mic, MicOff, Video, VideoOff, Share2, Users } from 'lucide-react';
 import styles from './page.module.css';
 import { io } from 'socket.io-client';
 import { useAuth } from '@/context/AuthContext';
@@ -39,6 +40,9 @@ export default function LivePage() {
     const [countdown, setCountdown] = useState(null); // { days, hours, minutes, seconds } or null
     const [reminderSet, setReminderSet] = useState(false);
     const [reminderLoading, setReminderLoading] = useState(false);
+    const [reminderError, setReminderError] = useState(null);
+    const [reminderCount, setReminderCount] = useState(0);
+    const [copied, setCopied] = useState(false);
 
     // Permission and Stream State
     const [permissionStatus, setPermissionStatus] = useState('idle'); // idle, requesting, granted, denied
@@ -138,6 +142,11 @@ export default function LivePage() {
 
         socket.on('share-update', (count) => {
             setStats(prev => ({ ...prev, shares: count }));
+        });
+
+        // Listen for reminder count updates (buyer clicked notify)
+        socket.on('reminder-count-update', ({ count }) => {
+            setReminderCount(count); // always relevant since we're in this auction's room
         });
 
         // Listen for auction-ended event
@@ -277,6 +286,28 @@ export default function LivePage() {
 
         return () => clearInterval(poll);
     }, [auctionId, apiUrl]);
+
+    // ── Fetch initial reminder count (for seller) + check buyer's own reminder ─
+    useEffect(() => {
+        if (!auction || auction.status !== 'scheduled') return;
+
+        // Always fetch the count (visible to the seller)
+        fetch(`${apiUrl}/api/auctions/${auctionId}/reminder-count`)
+            .then(r => r.json())
+            .then(d => { if (typeof d.count === 'number') setReminderCount(d.count); })
+            .catch(() => {});
+
+        // Check if the current buyer already set a reminder
+        if (!user) return;
+        const token = localStorage.getItem('bidpal_token');
+        if (!token) return;
+        fetch(`${apiUrl}/api/auctions/${auctionId}/remind`, {
+            headers: { Authorization: `Bearer ${token}` }
+        })
+            .then(r => r.json())
+            .then(d => { if (d.reminder_set) setReminderSet(true); })
+            .catch(() => {});
+    }, [auction?.auction_id, user?.user_id, user?.id]);
 
     // ── Countdown timer for scheduled auctions ────────────────────────────────
     useEffect(() => {
@@ -741,10 +772,7 @@ export default function LivePage() {
         return (
             <main>
                 <Header />
-                <div className={styles.loaderContainer}>
-                    <Loader2 className={styles.spinner} size={48} />
-                    <p>Loading live stream...</p>
-                </div>
+                <BIDPalLoader />
             </main>
         );
     }
@@ -820,8 +848,20 @@ export default function LivePage() {
                                     <>
                                         {!hasStarted && permissionStatus === 'idle' && (
                                             <div style={{ textAlign: 'center' }}>
-                                                <h2 style={{ color: 'white', marginBottom: '1rem', fontSize: '1.5rem' }}>Ready to Go Live?</h2>
-                                                <p style={{ color: '#ddd', marginBottom: '1.5rem' }}>Start your live auction for {product?.name}</p>
+                                                <h2 style={{ color: 'white', marginBottom: '0.75rem', fontSize: '1.5rem' }}>Ready to Go Live?</h2>
+                                                <p style={{ color: '#ddd', marginBottom: '1rem' }}>Start your live auction for {product?.name}</p>
+                                                {auction.status === 'scheduled' && (
+                                                    <div style={{
+                                                        display: 'inline-flex', alignItems: 'center', gap: '0.6rem',
+                                                        background: 'rgba(255,255,255,0.1)', borderRadius: '50px',
+                                                        padding: '0.5rem 1.2rem', marginBottom: '1.5rem',
+                                                        border: '1px solid rgba(255,255,255,0.2)'
+                                                    }}>
+                                                        <Users size={16} color="#fbbf24" strokeWidth={2} />
+                                                        <span style={{ color: 'white', fontSize: '1.05rem', fontWeight: 800, lineHeight: 1 }}>{reminderCount}</span>
+                                                    </div>
+                                                )}
+                                                <br />
                                                 <button
                                                     onClick={requestPermissionsAndStart}
                                                     style={{
@@ -1134,6 +1174,11 @@ export default function LivePage() {
                             <p className={styles.scheduledReminderDesc}>
                                 Set a reminder and we'll notify you when this auction is about to start.
                             </p>
+                            {reminderError && (
+                                <div style={{ background: '#ffebee', border: '1px solid #ef9a9a', borderRadius: '8px', padding: '0.6rem 0.9rem', marginBottom: '0.75rem', fontSize: '0.82rem', color: '#c62828', fontWeight: 600 }}>
+                                    ⚠ {reminderError}
+                                </div>
+                            )}
                             {reminderSet ? (
                                 <div className={styles.scheduledReminderDone}>
                                     <span style={{ fontSize: '1.5rem' }}>🔔</span>
@@ -1150,13 +1195,22 @@ export default function LivePage() {
                                         if (!user) return;
                                         setReminderLoading(true);
                                         try {
-                                            await fetch(`${apiUrl}/api/auctions/${auctionId}/remind`, {
+                                            setReminderError(null);
+                                            const res = await fetch(`${apiUrl}/api/auctions/${auctionId}/remind`, {
                                                 method: 'POST',
                                                 headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${localStorage.getItem('bidpal_token')}` },
-                                                body: JSON.stringify({ user_id: user.user_id || user.id })
+                                                body: JSON.stringify({})
                                             });
-                                            setReminderSet(true);
-                                        } catch { setReminderSet(true); }
+                                            const data = await res.json();
+                                            if (res.ok) {
+                                                setReminderSet(true);
+                                                if (typeof data.reminderCount === 'number') setReminderCount(data.reminderCount);
+                                            } else {
+                                                setReminderError(data.error || `Error ${res.status}`);
+                                            }
+                                        } catch (err) {
+                                            setReminderError(err.message || 'Network error');
+                                        }
                                         setReminderLoading(false);
                                     }}
                                 >
@@ -1169,9 +1223,14 @@ export default function LivePage() {
                                 <p style={{ margin: 0, fontSize: '0.82rem', color: '#888' }}>Share this auction</p>
                                 <button
                                     className={styles.scheduledShareBtn}
-                                    onClick={() => { navigator.clipboard.writeText(window.location.href); }}
+                                    style={copied ? { background: '#e8f5e9', borderColor: '#a5d6a7', color: '#2e7d32' } : undefined}
+                                    onClick={() => {
+                                        navigator.clipboard.writeText(window.location.href);
+                                        setCopied(true);
+                                        setTimeout(() => setCopied(false), 2000);
+                                    }}
                                 >
-                                    <Share2 size={14} /> Copy Link
+                                    <Share2 size={14} /> {copied ? 'Copied!' : 'Copy Link'}
                                 </button>
                             </div>
                         </div>

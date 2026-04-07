@@ -1,5 +1,6 @@
 'use client';
 
+import BIDPalLoader from '@/components/BIDPalLoader';
 import { useState, useEffect } from 'react';
 import { useParams, useRouter } from 'next/navigation';
 import Header from '@/components/layout/Header';
@@ -124,7 +125,7 @@ export default function StorePage() {
     if (loading) return (
         <div className={styles.main}>
             <Header />
-            <div className={styles.loading}>Loading Storefront...</div>
+            <BIDPalLoader />
         </div>
     );
 
@@ -165,10 +166,8 @@ export default function StorePage() {
                 </div>
                 
                 <div className={styles.storeBasicInfo}>
-                    <div className={styles.storeNameRow}>
-                        <h1 className={styles.storeName}>{store.store_name}</h1>
-                        <span className={styles.handle}>@{store.store_handle || 'seller'}</span>
-                    </div>
+                    <div className={styles.handle}>@{store.store_handle || 'seller'}</div>
+                    <h1 className={styles.storeName}>{store.store_name}</h1>
                     
                     <div className={styles.statsBar}>
                         <div className={styles.statItem}>

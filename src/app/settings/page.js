@@ -1,5 +1,6 @@
 'use client';
 
+import BackButton from '@/components/BackButton';
 import { useState } from 'react';
 import { useRouter } from 'next/navigation';
 import {
@@ -37,10 +38,7 @@ export default function SettingsPage() {
 
     return (
         <div className={styles.container}>
-            <button className={styles.globalBack} onClick={() => router.push('/')}>
-                <ArrowLeft size={16} />
-                <span>Back to Marketplace</span>
-            </button>
+            <BackButton label="Back" />
 
             <header className={styles.headerWrap}>
                 <div className={styles.titleMain}>

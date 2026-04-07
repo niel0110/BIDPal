@@ -1,5 +1,7 @@
 'use client';
 
+import BIDPalLoader from '@/components/BIDPalLoader';
+import BackButton from '@/components/BackButton';
 import { useState, useEffect } from 'react';
 import { useParams, useRouter } from 'next/navigation';
 import {
@@ -117,19 +119,12 @@ export default function SellerOrderDetailPage() {
     };
 
     /* ── Loading / error ── */
-    if (loading) return (
-        <div className={styles.centered}>
-            <div className={styles.spinner} />
-            Loading order…
-        </div>
-    );
+    if (loading) return <BIDPalLoader />;
     if (error || !order) return (
         <div className={styles.centered}>
             <AlertCircle size={40} color="#ef4444" />
             <p>{error || 'Order not found'}</p>
-            <button className={styles.backBtn} onClick={() => router.push('/seller/orders')}>
-                <ChevronLeft size={16} /> Back to Orders
-            </button>
+            <BackButton label="Back" />
         </div>
     );
 
@@ -142,9 +137,7 @@ export default function SellerOrderDetailPage() {
 
             {/* ── Top bar ── */}
             <div className={styles.topBar}>
-                <button className={styles.backBtn} onClick={() => router.push('/seller/orders')}>
-                    <ChevronLeft size={18} /> All Orders
-                </button>
+                <BackButton label="All Orders" />
                 <div className={styles.topBarRight}>
                     <span className={`${styles.statusPill} ${styles[`pill_${order.status}`]}`}>
                         {STATUS_LABEL[order.status] || order.status}

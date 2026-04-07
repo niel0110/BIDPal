@@ -1,5 +1,7 @@
 'use client';
 
+import BIDPalLoader from '@/components/BIDPalLoader';
+import BackButton from '@/components/BackButton';
 import { useState, useEffect, useCallback } from 'react';
 import Link from 'next/link';
 import { useRouter } from 'next/navigation';
@@ -62,12 +64,7 @@ export default function CartPage() {
         }
     };
 
-    if (loading) return (
-        <div className={styles.loadingContainer}>
-            <Loader2 className={styles.spinner} size={40} />
-            <p>Loading your cart...</p>
-        </div>
-    );
+    if (loading) return <BIDPalLoader />;
 
     if (!user) return (
         <div className={styles.cartContainer}>
@@ -83,10 +80,7 @@ export default function CartPage() {
         <div className={styles.cartContainer}>
             <div className={styles.cartContent}>
                 <header className={styles.cartHeader}>
-                    <button className={styles.backBtn} onClick={() => router.push('/')}>
-                        <ChevronLeft size={20} />
-                        <span>Continue Shopping</span>
-                    </button>
+                    <BackButton label="Continue Shopping" />
                     <h1>Your Shopping Cart</h1>
                     <div className={styles.itemCount}>
                         {cartItems.length} {cartItems.length === 1 ? 'Item' : 'Items'}

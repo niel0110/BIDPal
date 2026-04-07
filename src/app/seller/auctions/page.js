@@ -1,5 +1,6 @@
 'use client';
 
+import BIDPalLoader from '@/components/BIDPalLoader';
 import { useState, useEffect, useRef } from 'react';
 import {
     Plus,
@@ -15,17 +16,22 @@ import {
     AlertTriangle,
     CheckCircle2,
     Info,
-    AlertOctagon
+    AlertOctagon,
+    Users
 } from 'lucide-react';
 import Link from 'next/link';
 import { useAuth } from '@/context/AuthContext';
 import styles from './page.module.css';
 import ConfirmationModal from '@/components/ui/ConfirmationModal';
+import { io } from 'socket.io-client';
 
 export default function MyAuctions() {
     const { user } = useAuth();
     const [activeTab, setActiveTab] = useState('all');
     const [auctions, setAuctions] = useState([]);
+    const [reminderCounts, setReminderCounts] = useState({}); // { auction_id: count }
+    const [promotedAuctions, setPromotedAuctions] = useState({}); // { auction_id: true } once promoted
+    const [promotingId, setPromotingId] = useState(null);
     const [draftProducts, setDraftProducts] = useState([]);
     const [loading, setLoading] = useState(true);
     const [searchQuery, setSearchQuery] = useState('');
@@ -60,6 +66,35 @@ export default function MyAuctions() {
             extraContent: config.extraContent || null,
             onConfirm: config.onConfirm || null
         });
+    };
+
+    const handlePromote = async (auctionId) => {
+        const apiUrl = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:5000';
+        const token = localStorage.getItem('bidpal_token');
+        setPromotingId(auctionId);
+        try {
+            const res = await fetch(`${apiUrl}/api/auctions/${auctionId}/promote`, {
+                method: 'POST',
+                headers: { Authorization: `Bearer ${token}`, 'Content-Type': 'application/json' }
+            });
+            const data = await res.json();
+            if (!res.ok) {
+                showModal({ title: 'Promote Failed', message: data.error || 'Could not promote auction.', type: 'error', showCancel: false });
+            } else if (data.already_promoted) {
+                showModal({ title: 'Already Promoted', message: 'You already promoted this auction. Your followers were notified earlier.', type: 'info', showCancel: false });
+                setPromotedAuctions(prev => ({ ...prev, [auctionId]: true }));
+            } else {
+                const msg = data.notified === 0
+                    ? 'Auction promoted! You have no followers yet, but the auction is ready to attract buyers.'
+                    : `Auction promoted! ${data.notified} follower${data.notified === 1 ? '' : 's'} have been notified.`;
+                showModal({ title: '🚀 Promotion Sent!', message: msg, type: 'success', showCancel: false });
+                setPromotedAuctions(prev => ({ ...prev, [auctionId]: true }));
+            }
+        } catch {
+            showModal({ title: 'Error', message: 'Network error. Please try again.', type: 'error', showCancel: false });
+        } finally {
+            setPromotingId(null);
+        }
     };
 
     // Close dropdown when clicking outside
@@ -134,8 +169,36 @@ export default function MyAuctions() {
 
                     if (res.ok) {
                         const data = await res.json();
-                        setAuctions(data.data || []);
+                        const auctionList = data.data || [];
+                        setAuctions(auctionList);
                         setDraftProducts([]);
+
+                        // Fetch reminder counts + promoted status for scheduled auctions
+                        const scheduled = auctionList.filter(a => a.status === 'scheduled');
+                        if (scheduled.length > 0) {
+                            const [counts, promotedStatuses] = await Promise.all([
+                                Promise.all(
+                                    scheduled.map(a =>
+                                        fetch(`${apiUrl}/api/auctions/${a.auction_id}/reminder-count`)
+                                            .then(r => r.ok ? r.json() : { count: 0 })
+                                            .then(d => [a.auction_id, d.count || 0])
+                                            .catch(() => [a.auction_id, 0])
+                                    )
+                                ),
+                                Promise.all(
+                                    scheduled.map(a =>
+                                        fetch(`${apiUrl}/api/auctions/${a.auction_id}/promoted`, {
+                                            headers: token ? { Authorization: `Bearer ${token}` } : {}
+                                        })
+                                            .then(r => r.ok ? r.json() : { promoted: false })
+                                            .then(d => [a.auction_id, d.promoted || false])
+                                            .catch(() => [a.auction_id, false])
+                                    )
+                                )
+                            ]);
+                            setReminderCounts(Object.fromEntries(counts));
+                            setPromotedAuctions(Object.fromEntries(promotedStatuses));
+                        }
                     } else {
                         const errorData = await res.json();
                         console.error('Failed to fetch auctions:', res.status, errorData);
@@ -155,6 +218,31 @@ export default function MyAuctions() {
             setLoading(false);
         }
     }, [user, activeTab, debouncedSearch]);
+
+    // ── Real-time reminder count updates via Socket.IO ───────────────────────
+    useEffect(() => {
+        const scheduled = auctions.filter(a => a.status === 'scheduled');
+        if (scheduled.length === 0) return;
+
+        const apiUrl = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:5000';
+        const socket = io(apiUrl, { transports: ['websocket', 'polling'] });
+
+        socket.on('connect', () => {
+            // Join each scheduled auction room to receive count updates
+            scheduled.forEach(a => socket.emit('join-auction', a.auction_id));
+        });
+
+        socket.on('reminder-count-update', ({ auction_id, count }) => {
+            if (auction_id) {
+                setReminderCounts(prev => ({ ...prev, [auction_id]: count }));
+            }
+        });
+
+        return () => {
+            scheduled.forEach(a => socket.emit('leave-auction', a.auction_id));
+            socket.disconnect();
+        };
+    }, [auctions]);
 
     // Clear selections when changing tabs
     useEffect(() => {
@@ -640,8 +728,8 @@ export default function MyAuctions() {
 
             <div className={styles.auctionGrid}>
                 {loading ? (
-                    <div style={{ gridColumn: '1 / -1', textAlign: 'center', padding: '4rem 2rem', color: '#888' }}>
-                        <p>Loading {activeTab === 'drafts' ? 'draft products' : 'auctions'}...</p>
+                    <div style={{ gridColumn: '1 / -1' }}>
+                        <BIDPalLoader size="section" />
                     </div>
                 ) : activeTab === 'drafts' ? (
                     // Show draft products
@@ -860,7 +948,27 @@ export default function MyAuctions() {
                             </div>
 
                             <div className={styles.cardActions}>
-                                {auction.status === 'scheduled' && <button className={styles.primaryBtn}>Promote</button>}
+                                {auction.status === 'scheduled' && (
+                                    <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', width: '100%', justifyContent: 'space-between' }}>
+                                        <button
+                                            className={styles.primaryBtn}
+                                            onClick={() => handlePromote(auction.auction_id)}
+                                            disabled={promotingId === auction.auction_id || promotedAuctions[auction.auction_id]}
+                                            style={promotedAuctions[auction.auction_id] ? { opacity: 0.6, cursor: 'default' } : {}}
+                                        >
+                                            {promotingId === auction.auction_id ? 'Sending...' : promotedAuctions[auction.auction_id] ? 'Promoted' : 'Promote'}
+                                        </button>
+                                        <div style={{
+                                            display: 'flex', alignItems: 'center', gap: '0.4rem',
+                                            background: '#ede9fe', borderRadius: '20px',
+                                            padding: '0.3rem 0.75rem', border: '1px solid #c4b5fd',
+                                            fontSize: '0.78rem', fontWeight: 700, color: '#5b21b6'
+                                        }}>
+                                            <Users size={13} strokeWidth={2.5} />
+                                            <span style={{ fontSize: '0.9rem' }}>{reminderCounts[auction.auction_id] ?? 0}</span>
+                                        </div>
+                                    </div>
+                                )}
                                 {auction.status === 'active' && <Link href="/seller" className={styles.primaryBtn}>Control Hub</Link>}
                                 {(auction.status === 'completed' || auction.status === 'ended') && (
                                     <Link href={`/seller/auctions/${auction.auction_id}/results`} className={styles.primaryBtn}>

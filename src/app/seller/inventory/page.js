@@ -2,6 +2,7 @@
 
 import { useState, useEffect } from 'react';
 import Link from 'next/link';
+import BackButton from '@/components/BackButton';
 import { ChevronLeft, Plus, Trash2 } from 'lucide-react';
 import styles from './page.module.css';
 import { useAuth } from '@/context/AuthContext';
@@ -93,10 +94,7 @@ export default function InventoryPage() {
     return (
         <div className={styles.container}>
             <header className={styles.header}>
-                <Link href="/seller" className={styles.backLink}>
-                    <ChevronLeft size={24} />
-                    <span>Products</span>
-                </Link>
+                <BackButton label="Back" />
                 <div>
                     <h1 className={styles.title}>My Products</h1>
                     <p style={{ color: '#999', fontSize: '0.9rem', marginTop: '0.5rem' }}>

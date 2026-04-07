@@ -1,5 +1,7 @@
 'use client';
 
+import BIDPalLoader from '@/components/BIDPalLoader';
+import BackButton from '@/components/BackButton';
 import { useState, useEffect, useCallback } from 'react';
 import { useRouter, useSearchParams } from 'next/navigation';
 import { ChevronLeft, MapPin, Plus, CreditCard, Truck, CheckCircle2, Loader2, AlertCircle, X, ShoppingBag } from 'lucide-react';
@@ -173,14 +175,7 @@ export default function CheckoutPage() {
         return parts.join(', ');
     };
 
-    if (loading) {
-        return (
-            <div className={styles.loadingContainer}>
-                <Loader2 className={styles.spinner} size={40} />
-                <p>Loading checkout...</p>
-            </div>
-        );
-    }
+    if (loading) return <BIDPalLoader />;
 
     if (!user) {
         return (
@@ -189,9 +184,7 @@ export default function CheckoutPage() {
                     <AlertCircle size={48} color="#f44336" />
                     <h2>Please sign in</h2>
                     <p>You need to be logged in to checkout.</p>
-                    <button onClick={() => router.push('/')} className={styles.backBtn}>
-                        Go to Login
-                    </button>
+                    <BackButton label="Go Back" />
                 </div>
             </div>
         );
@@ -204,9 +197,7 @@ export default function CheckoutPage() {
                     <AlertCircle size={48} color="#f44336" />
                     <h2>Unable to process checkout</h2>
                     <p>{error || 'Order not found'}</p>
-                    <button onClick={() => router.push('/orders')} className={styles.backBtn}>
-                        Back to Orders
-                    </button>
+                    <BackButton label="Back to Orders" />
                 </div>
             </div>
         );
@@ -220,10 +211,7 @@ export default function CheckoutPage() {
         <div className={styles.checkoutContainer}>
             <div className={styles.checkoutContent}>
                 <header className={styles.checkoutHeader}>
-                    <button className={styles.backBtn} onClick={() => router.push('/orders')}>
-                        <ChevronLeft size={20} />
-                        <span>Back to Orders</span>
-                    </button>
+                    <BackButton label="Back" />
                     <h1>Checkout</h1>
                 </header>
 

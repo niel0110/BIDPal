@@ -2,8 +2,8 @@
 
 import { useState, useRef, useEffect } from 'react';
 import { useRouter } from 'next/navigation';
-import { Bell, MessageCircle, Gavel, Package, X, CheckCheck } from 'lucide-react';
-import { useNotifications } from '@/hooks/useNotifications';
+import { Bell, MessageCircle, Gavel, Package, X, CheckCheck, Users } from 'lucide-react';
+import { useNotifications, isUnread } from '@/hooks/useNotifications';
 import styles from './NotificationBell.module.css';
 
 function timeAgo(dateStr) {
@@ -23,6 +23,9 @@ function getNotificationIcon(type) {
         case 'auction_sold': return <Package size={16} />;
         case 'auction_reserve_not_met': return <Gavel size={16} />;
         case 'order_update': return <Package size={16} />;
+        case 'auction_reminder': return <Bell size={16} />;
+        case 'auction_interest': return <Users size={16} />;
+        case 'auction_upcoming': return <Bell size={16} />;
         default: return <Bell size={16} />;
     }
 }
@@ -56,12 +59,15 @@ function getNotificationTarget(notification) {
     if (type === 'order_update' && meta?.order_id) {
         return `/orders`;
     }
+    if (type === 'auction_upcoming' && reference_id) {
+        return `/live?id=${reference_id}`;
+    }
     return '/';
 }
 
 export default function NotificationBell() {
     const router = useRouter();
-    const { notifications, unreadCount, markRead, markAllRead } = useNotifications();
+    const { notifications, unreadCount, markRead, markAllRead, markAllSeen } = useNotifications();
     const [open, setOpen] = useState(false);
     const ref = useRef(null);
 
@@ -75,7 +81,7 @@ export default function NotificationBell() {
     }, []);
 
     const handleNotificationClick = async (notification) => {
-        if (!notification.read_at) await markRead(notification.notification_id);
+        if (isUnread(notification)) await markRead(notification.notification_id);
         const target = getNotificationTarget(notification);
         setOpen(false);
         router.push(target);
@@ -85,7 +91,11 @@ export default function NotificationBell() {
         <div className={styles.wrapper} ref={ref}>
             <button
                 className={styles.bellBtn}
-                onClick={() => setOpen(o => !o)}
+                onClick={() => {
+                    const opening = !open;
+                    setOpen(opening);
+                    if (opening) markAllSeen();
+                }}
                 aria-label="Notifications"
                 title="Notifications"
             >
@@ -121,7 +131,7 @@ export default function NotificationBell() {
                             notifications.slice(0, 20).map(n => (
                                 <div
                                     key={n.notification_id}
-                                    className={`${styles.item} ${!n.read_at ? styles.unread : ''}`}
+                                    className={`${styles.item} ${isUnread(n) ? styles.unread : ''}`}
                                     onClick={() => handleNotificationClick(n)}
                                 >
                                     <div className={`${styles.iconWrap} ${styles[n.type] || ''}`}>
@@ -153,7 +163,7 @@ export default function NotificationBell() {
                                         </p>
                                         <span className={styles.itemTime}>{timeAgo(n.created_at)}</span>
                                     </div>
-                                    {!n.read_at && <div className={styles.unreadDot} />}
+                                    {isUnread(n) && <div className={styles.unreadDot} />}
                                 </div>
                             ))
                         )}
