@@ -12,6 +12,11 @@ export default function AuctionCard({ data }) {
     const router = useRouter();
     const [isLiked, setIsLiked] = useState(data.is_liked || false);
     const [isLiking, setIsLiking] = useState(false);
+    const [isFollowing, setIsFollowing] = useState(data.isFollowing || false);
+    const [isFollowLoading, setIsFollowLoading] = useState(false);
+    const [interestedCount, setInterestedCount] = useState(
+        data.status === 'scheduled' ? (data.reminder_count ?? 0) : (data.bids_count ?? 0)
+    );
 
     // All images — deduplicate and filter nulls
     const allImages = data.images?.length
@@ -25,6 +30,25 @@ export default function AuctionCard({ data }) {
     }, [data.is_liked]);
 
     useEffect(() => {
+        setInterestedCount(
+            data.status === 'scheduled' ? (data.reminder_count ?? 0) : (data.bids_count ?? 0)
+        );
+    }, [data.reminder_count, data.bids_count, data.status]);
+
+    // Check follow status once user is known
+    useEffect(() => {
+        if (!user || !data.seller_id) return;
+        const apiUrl = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:5000';
+        const token = localStorage.getItem('bidpal_token');
+        fetch(`${apiUrl}/api/follows/check/${data.seller_id}`, {
+            headers: { Authorization: `Bearer ${token}` }
+        })
+            .then(r => r.ok ? r.json() : null)
+            .then(d => { if (d) setIsFollowing(d.is_following); })
+            .catch(() => {});
+    }, [user, data.seller_id]);
+
+    useEffect(() => {
         const imgs = data.images?.length
             ? [...new Set(data.images)]
             : (data.image ? [data.image] : []);
@@ -33,6 +57,29 @@ export default function AuctionCard({ data }) {
 
     const handleCardClick = () => {
         router.push(`/live?id=${data.id}`);
+    };
+
+    const handleToggleFollow = async (e) => {
+        e.preventDefault();
+        e.stopPropagation();
+        if (!user) { router.push('/signin'); return; }
+        if (isFollowLoading) return;
+        const apiUrl = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:5000';
+        const token = localStorage.getItem('bidpal_token');
+        setIsFollowLoading(true);
+        const endpoint = isFollowing ? '/api/follows/unfollow' : '/api/follows/follow';
+        try {
+            const res = await fetch(`${apiUrl}${endpoint}`, {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${token}` },
+                body: JSON.stringify({ followed_seller_id: data.seller_id })
+            });
+            if (res.ok) setIsFollowing(prev => !prev);
+        } catch (err) {
+            console.error('Follow toggle error:', err);
+        } finally {
+            setIsFollowLoading(false);
+        }
     };
 
     const handleToggleLike = async (e) => {
@@ -87,7 +134,7 @@ export default function AuctionCard({ data }) {
 
                     <div className={`${styles.overlayBadge} ${styles.redBadge}`}>
                         <User size={12} />
-                        <span>{data.viewers}</span>
+                        <span>{interestedCount}</span>
                         <span>|</span>
                         <span>{data.timeLeft}</span>
                     </div>
@@ -126,10 +173,11 @@ export default function AuctionCard({ data }) {
                             </div>
                         </Link>
                         <button
-                            className={styles.followBtn}
-                            onClick={e => { e.preventDefault(); e.stopPropagation(); }}
+                            className={`${styles.followBtn} ${isFollowing ? styles.followingBtn : ''}`}
+                            onClick={handleToggleFollow}
+                            disabled={isFollowLoading}
                         >
-                            {data.isFollowing ? 'Following' : '+ Follow'}
+                            {isFollowLoading ? '...' : isFollowing ? 'Following' : '+ Follow'}
                         </button>
                     </div>
 
@@ -139,7 +187,11 @@ export default function AuctionCard({ data }) {
                             <span className={styles.priceText}>₱{Number(data.price || 0).toLocaleString('en-PH')}</span>
                         </div>
                         <div className={styles.bidRow}>
-                            <span>Current Bid ({data.bids_count ?? 0} bids)</span>
+                            <span>
+                                {data.status === 'scheduled'
+                                    ? `Starting Bid`
+                                    : `Current Bid (${data.bids_count ?? 0} bids)`}
+                            </span>
                             <span className={styles.bidValue}>₱{Number(data.currentBid || 0).toLocaleString('en-PH')}</span>
                         </div>
                     </div>

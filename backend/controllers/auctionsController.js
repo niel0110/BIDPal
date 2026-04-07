@@ -173,6 +173,25 @@ export const getAllAuctions = async (req, res) => {
 
     if (auctionsError) throw auctionsError;
 
+    const auctionIds = auctionsData.map(a => a.auction_id);
+
+    // Batch fetch: bid counts + reminder counts in parallel
+    const [{ data: allBids }, { data: allReminders }] = await Promise.all([
+      supabase.from('Bids').select('auction_id').in('auction_id', auctionIds),
+      supabase.from('Notifications').select('payload').eq('type', 'auction_reminder')
+    ]);
+
+    // Build lookup maps in JS
+    const bidCountMap = {};
+    for (const b of allBids || []) {
+      bidCountMap[b.auction_id] = (bidCountMap[b.auction_id] || 0) + 1;
+    }
+    const reminderCountMap = {};
+    for (const n of allReminders || []) {
+      const aid = n.payload?.auction_id;
+      if (aid) reminderCountMap[aid] = (reminderCountMap[aid] || 0) + 1;
+    }
+
     // Fetch product details for each auction
     const transformedData = await Promise.all(
       auctionsData.map(async (auction) => {
@@ -184,6 +203,8 @@ export const getAllAuctions = async (req, res) => {
 
         const images = productData?.images || [];
         const primaryImage = images.find(img => img.is_primary) || images[0];
+        const bids_count = bidCountMap[auction.auction_id] || 0;
+        const reminder_count = reminderCountMap[auction.auction_id] || 0;
 
         return {
           id: auction.auction_id,
@@ -194,7 +215,8 @@ export const getAllAuctions = async (req, res) => {
           seller: auction.Seller?.store_name || 'Unknown Seller',
           seller_avatar: auction.Seller?.logo_url || auction.Seller?.User?.Avatar,
           seller_banner: auction.Seller?.banner_url,
-          viewers: Math.floor(Math.random() * 100),
+          bids_count,
+          reminder_count,
           timeLeft: auction.status === 'active' ? 'Active Now' : new Date(auction.start_time).toLocaleString(),
           image: primaryImage?.image_url || null,
           images: images.map(img => img.image_url).filter(Boolean),

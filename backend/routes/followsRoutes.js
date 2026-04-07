@@ -1,5 +1,5 @@
 import express from 'express';
-import { followSeller, unfollowSeller, getFollowers, getFollowing } from '../controllers/followsController.js';
+import { followSeller, unfollowSeller, getFollowers, getFollowing, checkFollow } from '../controllers/followsController.js';
 import { authenticateToken } from '../middleware/authMiddleware.js';
 
 const router = express.Router();
@@ -8,8 +8,9 @@ const router = express.Router();
 router.get('/followers/:seller_id', getFollowers);
 router.get('/following/:user_id', getFollowing);
 
-// Protected routes for following/unfollowing
+// Protected routes
 router.use(authenticateToken);
+router.get('/check/:seller_id', checkFollow);
 router.post('/follow', followSeller);
 router.post('/unfollow', unfollowSeller);
 

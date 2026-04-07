@@ -81,6 +81,26 @@ export const getFollowers = async (req, res) => {
   }
 };
 
+// Check if the logged-in user follows a specific seller
+export const checkFollow = async (req, res) => {
+  try {
+    const { seller_id } = req.params;
+    const { user_id } = req.user;
+
+    const { data, error } = await supabase
+      .from('Follows')
+      .select('follower_id')
+      .eq('follower_id', user_id)
+      .eq('followed_seller_id', seller_id)
+      .maybeSingle();
+
+    if (error) return res.status(500).json({ error: error.message });
+    res.json({ is_following: !!data });
+  } catch (err) {
+    res.status(500).json({ error: err.message });
+  }
+};
+
 // Get sellers followed by a user
 export const getFollowing = async (req, res) => {
   try {

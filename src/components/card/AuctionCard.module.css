@@ -167,6 +167,19 @@
     transform: scale(1.05);
 }
 
+.followingBtn {
+    background: rgba(255, 255, 255, 0.9);
+    color: #4f46e5;
+    border-color: transparent;
+    font-weight: 700;
+}
+
+.followingBtn:hover {
+    background: #fee2e2;
+    color: #dc2626;
+    border-color: transparent;
+}
+
 .itemInfo {
     display: flex;
     flex-direction: column;
