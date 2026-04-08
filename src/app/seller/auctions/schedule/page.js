@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, useEffect } from 'react';
+import { useState, useEffect, Suspense } from 'react';
 import { useRouter, useSearchParams } from 'next/navigation';
 import BackButton from '@/components/BackButton';
 import { ChevronLeft, Gavel, Tag, Calendar, Clock, Info, DollarSign } from 'lucide-react';
@@ -8,7 +8,7 @@ import { useSubmitLock } from '@/hooks/useSubmitLock';
 import styles from './page.module.css';
 import { useAuth } from '@/context/AuthContext';
 
-export default function ScheduleAuctionPage() {
+function ScheduleAuctionPageInner() {
     const router = useRouter();
     const searchParams = useSearchParams();
     const productId = searchParams.get('id');
@@ -316,5 +316,13 @@ export default function ScheduleAuctionPage() {
                 )}
             </div>
         </div>
+    );
+}
+
+export default function ScheduleAuctionPage() {
+    return (
+        <Suspense fallback={<div style={{ minHeight: '100vh' }} />}>
+            <ScheduleAuctionPageInner />
+        </Suspense>
     );
 }

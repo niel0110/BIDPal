@@ -1,7 +1,7 @@
 'use client';
 
 import BackButton from '@/components/BackButton';
-import { useState, useEffect, useRef, useCallback } from 'react';
+import { useState, useEffect, useRef, useCallback, Suspense } from 'react';
 import { useRouter } from 'next/navigation';
 import {
     ChevronLeft,
@@ -34,7 +34,7 @@ function avatarFallback(e) {
     e.target.src = 'https://placehold.co/48x48?text=?';
 }
 
-export default function MessagesPage() {
+function MessagesPageInner() {
     const router = useRouter();
     const { user, loading: authLoading } = useAuth();
     const isSeller = user?.role?.toLowerCase() === 'seller';
@@ -436,5 +436,13 @@ export default function MessagesPage() {
                 </div>
             </div>
         </div>
+    );
+}
+
+export default function MessagesPage() {
+    return (
+        <Suspense fallback={<div style={{ minHeight: '100vh' }} />}>
+            <MessagesPageInner />
+        </Suspense>
     );
 }
