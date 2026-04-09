@@ -18,6 +18,14 @@ const io = new SocketIOServer(httpServer, {
   }
 })
 
+app.use(cors({
+  origin: [
+    'https://bid-pal-pink.vercel.app',  // replace with your actual Vercel URL
+    'http://localhost:5000'               // for local development
+  ],
+  credentials: true
+}))
+
 // Expose io to routes via app.locals
 app.locals.io = io
 
