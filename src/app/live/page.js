@@ -1,7 +1,7 @@
 'use client';
 
 import BIDPalLoader from '@/components/BIDPalLoader';
-import { useState, useEffect, useRef } from 'react';
+import { useState, useEffect, useRef, Suspense } from 'react';
 import { useSearchParams } from 'next/navigation';
 import Header from '@/components/layout/Header';
 import { Clock, Eye, Heart, Send, X, Star, Truck, Pencil, CheckCircle, Loader2, Mic, MicOff, Video, VideoOff, Share2, Users } from 'lucide-react';
@@ -12,7 +12,7 @@ import { useAuth } from '@/context/AuthContext';
 // Dynamically import Agora to avoid SSR issues
 let AgoraRTC = null;
 
-export default function LivePage() {
+function LivePageInner() {
     const searchParams = useSearchParams();
     const auctionId = searchParams.get('id');
     const { user } = useAuth();
@@ -1673,5 +1673,14 @@ export default function LivePage() {
                 </div>
             )}
         </main>
+    );
+}
+
+
+export default function LivePage() {
+    return (
+        <Suspense fallback={<BIDPalLoader />}>
+            <LivePageInner />
+        </Suspense>
     );
 }

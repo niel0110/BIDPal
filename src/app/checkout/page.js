@@ -2,7 +2,7 @@
 
 import BIDPalLoader from '@/components/BIDPalLoader';
 import BackButton from '@/components/BackButton';
-import { useState, useEffect, useCallback } from 'react';
+import { useState, useEffect, useCallback, Suspense } from 'react';
 import { useRouter, useSearchParams } from 'next/navigation';
 import { ChevronLeft, MapPin, Plus, CreditCard, Truck, CheckCircle2, Loader2, AlertCircle, X, ShoppingBag } from 'lucide-react';
 import { useAuth } from '@/context/AuthContext';
@@ -10,7 +10,7 @@ import styles from './page.module.css';
 
 const API_URL = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:5000';
 
-export default function CheckoutPage() {
+function CheckoutPageInner() {
     const router = useRouter();
     const searchParams = useSearchParams();
     const { user } = useAuth();
@@ -520,5 +520,13 @@ export default function CheckoutPage() {
             </div>
         )}
         </>
+    );
+}
+
+export default function CheckoutPage() {
+    return (
+        <Suspense fallback={<BIDPalLoader />}>
+            <CheckoutPageInner />
+        </Suspense>
     );
 }

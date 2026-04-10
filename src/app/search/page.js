@@ -1,7 +1,7 @@
 'use client';
 
 import BIDPalLoader from '@/components/BIDPalLoader';
-import { useState, useEffect } from 'react';
+import { useState, useEffect, Suspense } from 'react';
 import { useSearchParams } from 'next/navigation';
 import Header from '@/components/layout/Header';
 import AuctionCard from '@/components/card/AuctionCard';
@@ -10,7 +10,7 @@ import { useAuth } from '@/context/AuthContext';
 import { Gavel, Package } from 'lucide-react';
 import styles from './page.module.css';
 
-export default function SearchPage() {
+function SearchPageInner() {
     const searchParams = useSearchParams();
     const query = searchParams.get('q') || '';
 
@@ -167,5 +167,13 @@ export default function SearchPage() {
                 )}
             </div>
         </main>
+    );
+}
+
+export default function SearchPage() {
+    return (
+        <Suspense fallback={<BIDPalLoader />}>
+            <SearchPageInner />
+        </Suspense>
     );
 }

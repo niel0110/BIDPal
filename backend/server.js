@@ -1,11 +1,11 @@
+import dotenv from 'dotenv'
+dotenv.config()
+
 import express from 'express'
 import cors from 'cors'
-import dotenv from 'dotenv'
 import { createServer } from 'http'
 import { Server as SocketIOServer } from 'socket.io'
 import { supabase } from './config/supabase.js'
-
-dotenv.config()
 
 const app = express()
 const httpServer = createServer(app)
@@ -17,6 +17,14 @@ const io = new SocketIOServer(httpServer, {
     methods: ['GET', 'POST']
   }
 })
+
+app.use(cors({
+  origin: [
+    'https://bid-pal-pink.vercel.app',  // replace with your actual Vercel URL
+    'http://localhost:5000'               // for local development
+  ],
+  credentials: true
+}))
 
 // Expose io to routes via app.locals
 app.locals.io = io
