@@ -93,26 +93,20 @@ export default function SignIn() {
                     </h1>
 
                     <form onSubmit={handleSignIn} className={styles.mainForm}>
-                        <input 
-                            type="email" 
-                            placeholder="Email address" 
-                            value={email} 
-                            onChange={(e) => {
-                                console.log('Email changed:', e.target.value);
-                                setEmail(e.target.value);
-                            }}
-                            style={{ width: '100%', padding: '10px', marginBottom: '1rem', border: '1px solid #ccc', borderRadius: '4px' }}
+                        <input
+                            type="email"
+                            placeholder="Email address"
+                            value={email}
+                            onChange={(e) => setEmail(e.target.value)}
+                            className={styles.input}
                         />
-                        <div style={{ marginTop: '1rem' }}>
+                        <div className={styles.inputGroup}>
                             <input
                                 type={showPassword ? "text" : "password"}
                                 placeholder="Password"
                                 value={password}
-                                onChange={(e) => {
-                                    console.log('Password changed:', e.target.value);
-                                    setPassword(e.target.value);
-                                }}
-                                style={{ width: '100%', padding: '10px', border: '1px solid #ccc', borderRadius: '4px' }}
+                                onChange={(e) => setPassword(e.target.value)}
+                                className={styles.input}
                             />
                             <Link href="/forgot-password" className={styles.forgotPassword}>
                                 Forgot password?

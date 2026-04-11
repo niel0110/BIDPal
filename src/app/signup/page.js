@@ -144,31 +144,22 @@ export default function SignUp() {
                             type="email"
                             placeholder="Email address"
                             value={email}
-                            onChange={(e) => {
-                                console.log('Email changed:', e.target.value);
-                                setEmail(e.target.value);
-                            }}
-                            style={{ width: '100%', padding: '10px', marginBottom: '1rem', border: '1px solid #ccc', borderRadius: '4px' }}
+                            onChange={(e) => setEmail(e.target.value)}
+                            className={styles.input}
                         />
                         <input
                             type={showPassword ? 'text' : 'password'}
                             placeholder="Password"
                             value={password}
-                            onChange={(e) => {
-                                console.log('Password changed:', e.target.value);
-                                setPassword(e.target.value);
-                            }}
-                            style={{ width: '100%', padding: '10px', marginBottom: '1rem', border: '1px solid #ccc', borderRadius: '4px' }}
+                            onChange={(e) => setPassword(e.target.value)}
+                            className={`${styles.input} ${styles.inputGroup}`}
                         />
                         <input
                             type="password"
                             placeholder="Confirm password"
                             value={confirmPassword}
-                            onChange={(e) => {
-                                console.log('Confirm password changed:', e.target.value);
-                                setConfirmPassword(e.target.value);
-                            }}
-                            style={{ width: '100%', padding: '10px', marginBottom: '1rem', border: '1px solid #ccc', borderRadius: '4px' }}
+                            onChange={(e) => setConfirmPassword(e.target.value)}
+                            className={`${styles.input} ${styles.inputGroup}`}
                         />
                         {error && <div style={{ color: 'red', marginTop: 8 }}>{error}</div>}
 

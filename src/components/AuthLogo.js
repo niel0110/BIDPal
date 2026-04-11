@@ -1,21 +1,20 @@
 export default function AuthLogo({ className = '' }) {
     return (
-        <div className={`${className}`} style={{ 
-            display: 'flex', 
+        <div className={`${className}`} style={{
+            display: 'flex',
             flexDirection: 'row',
-            alignItems: 'center', 
-            gap: '1rem',
-            marginBottom: '2rem'
+            alignItems: 'center',
+            gap: '0.75rem',
         }}>
-            <img 
-                src="/BIDPaL Logo.png" 
-                alt="BIDPal Logo" 
-                style={{ height: '120px', width: 'auto' }}
+            <img
+                src="/BIDPaL Logo.png"
+                alt="BIDPal Logo"
+                style={{ height: '80px', width: 'auto' }}
             />
-            <span style={{ 
-                fontSize: '4.5rem', 
-                fontWeight: '800', 
-                letterSpacing: '-0.02em', 
+            <span style={{
+                fontSize: '3rem',
+                fontWeight: '800',
+                letterSpacing: '-0.02em',
                 lineHeight: 1
             }}>
                 <span style={{ color: '#d02440' }}>B</span>
