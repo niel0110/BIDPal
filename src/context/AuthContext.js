@@ -66,6 +66,7 @@ export function AuthProvider({ children }) {
     const logout = () => {
         setUser(null);
         localStorage.removeItem('bidpal_user');
+        localStorage.removeItem('bidpal_token');
     };
 
     return (

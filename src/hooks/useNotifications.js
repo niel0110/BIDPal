@@ -10,7 +10,7 @@ const UNREAD_SENTINEL = '2099-12-31T23:59:59.000Z'; // far-future = unread
 export const isUnread = (n) => n.read_at === UNREAD_SENTINEL;
 
 export function useNotifications() {
-    const { user } = useAuth();
+    const { user, logout } = useAuth();
     const [notifications, setNotifications] = useState([]);
     const [unreadCount, setUnreadCount] = useState(0);
     const [unreadMsgCount, setUnreadMsgCount] = useState(0);
@@ -23,6 +23,13 @@ export function useNotifications() {
                 fetch(`${API_URL}/api/notifications`, { headers: { Authorization: `Bearer ${token}` } }),
                 fetch(`${API_URL}/api/messages/unread-count`, { headers: { Authorization: `Bearer ${token}` } })
             ]);
+
+            // If session expired or token invalid, logout to clear state and stop polling
+            if (notifRes.status === 401 || notifRes.status === 403 || msgRes.status === 401 || msgRes.status === 403) {
+                console.warn("Notification session expired. Logging out.");
+                logout();
+                return;
+            }
 
             if (notifRes.ok) {
                 const data = await notifRes.json();
@@ -37,7 +44,7 @@ export function useNotifications() {
         } catch (err) {
             // Silent fail
         }
-    }, [user]);
+    }, [user, logout]);
 
     useEffect(() => {
         fetchNotifications();

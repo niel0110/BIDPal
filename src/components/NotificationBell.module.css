@@ -17,6 +17,16 @@
     transition: background 0.2s, color 0.2s;
 }
 
+@media (max-width: 768px) {
+    .bellBtn {
+        width: 34px;
+        height: 34px;
+        border-radius: 8px;
+        background: #F5F5F5;
+        color: #333;
+    }
+}
+
 .bellBtn:hover {
     background: #f5f5f5;
     color: #111;

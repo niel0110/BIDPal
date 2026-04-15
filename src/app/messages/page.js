@@ -2,7 +2,6 @@
 
 import BackButton from '@/components/BackButton';
 import { useState, useEffect, useRef, useCallback, Suspense } from 'react';
-import { useRouter } from 'next/navigation';
 import {
     ChevronLeft,
     Search,
@@ -35,8 +34,7 @@ function avatarFallback(e) {
 }
 
 function MessagesPageInner() {
-    const router = useRouter();
-    const { user, loading: authLoading } = useAuth();
+    const { user } = useAuth();
     const isSeller = user?.role?.toLowerCase() === 'seller';
 
     const searchParams = useSearchParams();
@@ -51,6 +49,7 @@ function MessagesPageInner() {
     const [loading, setLoading] = useState(true);
     const [messagesLoading, setMessagesLoading] = useState(false);
     const [sending, setSending] = useState(false);
+    const [mobileShowChat, setMobileShowChat] = useState(false);
     const messagesEndRef = useRef(null);
     const pollRef = useRef(null);
 
@@ -247,6 +246,7 @@ function MessagesPageInner() {
     const handleSelectChat = (chatId) => {
         setSelectedChat(chatId);
         markAsRead(chatId);
+        setMobileShowChat(true);
     };
 
     return (
@@ -257,7 +257,7 @@ function MessagesPageInner() {
                     <h1>{isSeller ? 'Merchant Messages' : 'My Messages'}</h1>
                 </header>
 
-                <div className={styles.chatWrapper}>
+                <div className={`${styles.chatWrapper} ${mobileShowChat ? styles.mobileShowChat : ''}`}>
                     {/* Sidebar / Inbox */}
                     <aside className={styles.inboxSidebar}>
                         <div className={styles.searchBox}>
@@ -305,7 +305,7 @@ function MessagesPageInner() {
                                     {pendingReceiver && !chats.some(c => c.otherUser?.id === pendingReceiver.id) && (
                                         <div
                                             className={`${styles.chatItem} ${selectedChat === `pending-${pendingReceiver.id}` ? styles.activeChat : ''}`}
-                                            onClick={() => setSelectedChat(`pending-${pendingReceiver.id}`)}
+                                            onClick={() => { setSelectedChat(`pending-${pendingReceiver.id}`); setMobileShowChat(true); }}
                                         >
                                             <div className={styles.avatarWrapper}>
                                                 <img
@@ -342,6 +342,13 @@ function MessagesPageInner() {
                         {currentChat ? (
                             <>
                                 <header className={styles.chatHeader}>
+                                    <button
+                                        className={styles.mobileBackBtn}
+                                        onClick={() => setMobileShowChat(false)}
+                                        title="Back to inbox"
+                                    >
+                                        <ChevronLeft size={20} />
+                                    </button>
                                     <div className={styles.chatInfo}>
                                         <img
                                             src={currentChat.avatar || 'https://placehold.co/36x36?text=?'}

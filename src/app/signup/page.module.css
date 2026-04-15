@@ -170,6 +170,11 @@
     background-color: #f9f9f9;
 }
 
+/* Mobile logo hidden on desktop — authLeft panel already shows it */
+.mobileLogo {
+    display: none;
+}
+
 @media (max-width: 768px) {
     .authContainer {
         flex-direction: column;
@@ -179,8 +184,8 @@
     .authLeft {
         display: flex;
         min-height: unset;
-        padding: 1.25rem 1.5rem 0.75rem;
-        justify-content: flex-start;
+        padding: 2rem 1.5rem 1.5rem;
+        justify-content: center;
         align-items: center;
         background-color: white;
     }
@@ -195,24 +200,30 @@
 
     .authRight {
         flex: 1;
-        padding: 1.25rem 1.5rem 2rem;
+        padding: 1.5rem 1.5rem 2rem;
         align-items: flex-start;
         justify-content: flex-start;
     }
 
     .authFormWrapper {
         max-width: 100%;
-        padding-top: 0;
+        width: 100%;
     }
 
     .authTitle {
         font-size: 1.75rem;
         margin-bottom: 1.5rem;
+        text-align: center;
+    }
+
+    .mainForm {
+        width: 100%;
     }
 
     .roleGrid {
         gap: 0.75rem;
         margin-bottom: 1.5rem;
+        width: 100%;
     }
 
     .roleOption {
@@ -229,7 +240,7 @@
 
     .input {
         padding: 11px 12px;
-        font-size: 0.9rem;
+        font-size: 1rem;
     }
 
     .inputGroup {

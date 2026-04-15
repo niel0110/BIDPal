@@ -5,7 +5,7 @@ import BackButton from '@/components/BackButton';
 import { useState, useEffect, useCallback } from 'react';
 import Link from 'next/link';
 import { useRouter } from 'next/navigation';
-import { ChevronLeft, Search, Package, Truck, CreditCard, Clock, CheckCircle2, XCircle, Loader2, Gavel, Ban, MapPin, Star, X } from 'lucide-react';
+import { Search, Package, Truck, CreditCard, Clock, CheckCircle2, XCircle, Loader2, Gavel, Ban, MapPin, Star, X } from 'lucide-react';
 import { useAuth } from '@/context/AuthContext';
 import PaymentCountdown from '@/components/PaymentCountdown';
 import CancellationModal from '@/components/CancellationModal';
@@ -334,7 +334,7 @@ export default function OrdersPage() {
                             onClick={() => setActiveTab(tab.id)}
                         >
                             <span className={styles.tabIcon}>{tab.icon}</span>
-                            <span>{tab.label}</span>
+                            <span className={styles.tabLabel}>{tab.label}</span>
                         </button>
                     ))}
                 </nav>

@@ -2,6 +2,7 @@
   min-height: 100vh;
   background-color: #F8F9FA;
   padding-bottom: 4rem;
+  overflow-x: hidden;
 }
 
 .section {
@@ -91,6 +92,88 @@
   display: grid;
   grid-template-columns: repeat(auto-fill, minmax(280px, 1fr));
   gap: 1.5rem;
+}
+
+/* ── Search results ── */
+.searchResultsHeader {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  padding: 1.25rem 2rem 0.5rem;
+  max-width: 1440px;
+  margin: 0 auto;
+}
+
+.searchResultsTitle {
+  font-size: 1.25rem;
+  font-weight: 700;
+  color: #1a1a1a;
+  margin-bottom: 0.25rem;
+}
+
+.searchResultsCount {
+  font-size: 0.875rem;
+  color: #666;
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+}
+
+.sortChip {
+  background: #FFF5F5;
+  color: #D32F2F;
+  font-size: 0.72rem;
+  font-weight: 600;
+  padding: 2px 8px;
+  border-radius: 20px;
+  border: 1px solid #FFCDD2;
+}
+
+.clearSearch {
+  display: flex;
+  align-items: center;
+  gap: 0.3rem;
+  font-size: 0.8rem;
+  color: #888;
+  text-decoration: none;
+  border: 1px solid #ddd;
+  border-radius: 20px;
+  padding: 0.3rem 0.75rem;
+  transition: all 0.15s;
+  white-space: nowrap;
+}
+
+.clearSearch:hover {
+  color: #D32F2F;
+  border-color: #D32F2F;
+}
+
+.searchLoading {
+  text-align: center;
+  padding: 3rem;
+  color: #999;
+  font-size: 0.9rem;
+}
+
+.noResults {
+  text-align: center;
+  padding: 3rem 1.5rem;
+  color: #444;
+}
+
+.noResultsSub {
+  margin-top: 0.4rem;
+  font-size: 0.85rem;
+  color: #999;
+}
+
+.productGrid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(200px, 1fr));
+  gap: 1rem;
+  padding: 0 2rem;
+  max-width: 1440px;
+  margin: 0 auto;
 }
 
 /* Auth Container (Reusing logic/styles) */
@@ -188,6 +271,23 @@
   font-weight: 500;
 }
 
+.authInput {
+  width: 100%;
+  padding: 0.875rem 1rem;
+  border: 1px solid #ddd;
+  border-radius: 8px;
+  font-family: inherit;
+  font-size: 0.95rem;
+  transition: border-color 0.2s, box-shadow 0.2s;
+  background-color: #fff;
+}
+
+.authInput:focus {
+  outline: none;
+  border-color: var(--color-primary);
+  box-shadow: 0 0 0 3px rgba(211, 47, 47, 0.1);
+}
+
 .mainForm {
   width: 100%;
   display: flex;
@@ -215,6 +315,10 @@
 .toggleLink {
   color: #d02440;
   font-weight: 700;
+  text-decoration: none;
+}
+
+.toggleLink:hover {
   text-decoration: underline;
 }
 
@@ -253,6 +357,55 @@
 }
 
 @media (max-width: 768px) {
+  .searchResultsHeader {
+    padding: 1rem 0.875rem 0.5rem;
+  }
+
+  .searchResultsTitle {
+    font-size: 1.05rem;
+  }
+
+  .productGrid {
+    grid-template-columns: repeat(auto-fill, minmax(150px, 1fr));
+    padding: 0 0.875rem;
+    gap: 0.75rem;
+  }
+
+  .section {
+    padding: 0 1rem;
+    margin: 1.25rem auto;
+  }
+
+  .sectionHeader {
+    margin-bottom: 1rem;
+  }
+
+  .sectionTitle {
+    font-size: 1.05rem;
+    letter-spacing: -0.01em;
+  }
+
+  .viewAll {
+    font-size: 0.72rem;
+    gap: 0.2rem;
+  }
+
+  .viewAll svg {
+    width: 14px;
+    height: 14px;
+  }
+
+  .horizontalScroll {
+    gap: 1rem;
+    padding: 0 0 1.25rem 0;
+    margin: 0;
+  }
+
+  .emptyState {
+    font-size: 0.78rem;
+    color: #888;
+  }
+
   .authContainer {
     flex-direction: column;
     align-items: stretch;
@@ -261,8 +414,8 @@
   .authLeft {
     display: flex;
     min-height: unset;
-    padding: 1.25rem 1.5rem 0.75rem;
-    justify-content: flex-start;
+    padding: 2.5rem 1.5rem 1rem;
+    justify-content: center;
     align-items: center;
     background-color: white;
   }
@@ -288,8 +441,9 @@
   }
 
   .authTitle {
-    font-size: 1.75rem;
-    margin-bottom: 1.5rem;
+    font-size: 2rem;
+    margin-bottom: 1.75rem;
+    text-align: left;
   }
 
   .roleGrid {
@@ -303,9 +457,10 @@
 
   .formFooter {
     margin-top: 1.25rem;
+    align-items: flex-start;
   }
 
   .toggleAuth {
-    margin-top: 1rem;
+    margin: 1.5rem 0 0;
   }
 }

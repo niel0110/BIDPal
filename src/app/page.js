@@ -1,22 +1,26 @@
 'use client';
 
-import { useState, useEffect, useRef } from 'react';
+import { useState, useEffect, useRef, Suspense } from 'react';
 import Link from 'next/link';
 import { useAuth } from '@/context/AuthContext';
-import { useRouter } from 'next/navigation';
+import { useRouter, useSearchParams } from 'next/navigation';
 import Header from '@/components/layout/Header';
 import CategoryNav from '@/components/home/CategoryNav';
 import HeroBanner from '@/components/home/HeroBanner';
 import AuctionCard from '@/components/card/AuctionCard';
+import ProductCard from '@/components/card/ProductCard';
 import Button from '@/components/ui/Button';
 import AuthLogo from '@/components/AuthLogo';
 import { useSubmitLock } from '@/hooks/useSubmitLock';
-import { ChevronRight } from 'lucide-react';
+import { ChevronRight, X } from 'lucide-react';
 import styles from './page.module.css';
 
-
-export default function Home() {
+function HomeInner() {
   const { user, loading, login, register } = useAuth();
+  const searchParams = useSearchParams();
+  const searchQuery = searchParams.get('q') || '';
+  const sortParam   = searchParams.get('sort') || 'recent';
+
   const [isLogin, setIsLogin] = useState(true);
   const [selectedRole, setSelectedRole] = useState('buyer');
   const [showPassword, setShowPassword] = useState(false);
@@ -25,10 +29,15 @@ export default function Home() {
   const [password, setPassword] = useState('');
   const [confirmPassword, setConfirmPassword] = useState('');
   const [error, setError] = useState('');
-  
+
   const [allAuctions, setAllAuctions] = useState([]);
   const [loadingContent, setLoadingContent] = useState(true);
   const [selectedCategory, setSelectedCategory] = useState('all');
+
+  // Search results state
+  const [searchAuctions, setSearchAuctions] = useState([]);
+  const [searchProducts, setSearchProducts] = useState([]);
+  const [searchLoading, setSearchLoading] = useState(false);
 
   const { isSubmitting, runWithLock } = useSubmitLock();
   const router = useRouter();
@@ -88,6 +97,40 @@ export default function Home() {
 
     fetchData();
   }, [user?.user_id]);
+
+  // Fetch search results when query or sort changes
+  useEffect(() => {
+    if (!searchQuery) {
+      setSearchAuctions([]);
+      setSearchProducts([]);
+      return;
+    }
+    const fetchSearch = async () => {
+      setSearchLoading(true);
+      try {
+        const apiUrl = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:5000';
+        const q = encodeURIComponent(searchQuery);
+        const [auctionRes, productRes] = await Promise.all([
+          fetch(`${apiUrl}/api/auctions?search=${q}&limit=20`),
+          fetch(`${apiUrl}/api/products?search=${q}&sort=${sortParam}&limit=20`),
+        ]);
+        const auctionJson = await auctionRes.json();
+        const productJson = await productRes.json();
+        const lq = searchQuery.toLowerCase();
+        setSearchAuctions((auctionJson.data || []).filter(a =>
+          a.title?.toLowerCase().includes(lq) ||
+          a.seller?.toLowerCase().includes(lq) ||
+          a.category?.toLowerCase().includes(lq)
+        ));
+        setSearchProducts(productJson.data || []);
+      } catch (err) {
+        console.error('Search failed:', err);
+      } finally {
+        setSearchLoading(false);
+      }
+    };
+    fetchSearch();
+  }, [searchQuery, sortParam]);
 
   const handleScroll = (e) => {
     const element = e.target;
@@ -243,9 +286,9 @@ export default function Home() {
                   console.log('Email changed:', e.target.value);
                   setEmail(e.target.value);
                 }}
-                style={{ width: '100%', padding: '10px', border: '1px solid #ccc', borderRadius: '4px' }}
+                className={styles.authInput}
               />
-              <div style={{ marginTop: '1rem' }}>
+              <div className={styles.inputGroup} style={{ marginTop: '1.25rem' }}>
                 <input
                   type={showPassword ? 'text' : 'password'}
                   placeholder="Password"
@@ -254,7 +297,7 @@ export default function Home() {
                     console.log('Password changed:', e.target.value);
                     setPassword(e.target.value);
                   }}
-                  style={{ width: '100%', padding: '10px', border: '1px solid #ccc', borderRadius: '4px' }}
+                  className={styles.authInput}
                 />
                 {isLogin && (
                   <Link href="/forgot-password" className={styles.forgotPassword}>
@@ -263,7 +306,7 @@ export default function Home() {
                 )}
               </div>
               {!isLogin && (
-                <div style={{ marginTop: '1rem' }}>
+                <div style={{ marginTop: '1.25rem' }}>
                   <input
                     type="password"
                     placeholder="Confirm password"
@@ -272,7 +315,7 @@ export default function Home() {
                       console.log('Confirm password changed:', e.target.value);
                       setConfirmPassword(e.target.value);
                     }}
-                    style={{ width: '100%', padding: '10px', marginBottom: '1rem', border: '1px solid #ccc', borderRadius: '4px' }}
+                    className={styles.authInput}
                   />
                 </div>
               )}
@@ -312,52 +355,112 @@ export default function Home() {
     <main className={styles.main}>
       <Header />
       <CategoryNav activeId={selectedCategory} onSelect={setSelectedCategory} />
-      <HeroBanner />
 
-      <section className={styles.section}>
-        <div className={styles.sectionHeader}>
-          <h2 className={styles.sectionTitle}>
-            {selectedCategory === 'all' ? <>Live <span className={styles.redText}>Auctions</span></> : <><span className={styles.redText} style={{ textTransform: 'capitalize' }}>{selectedCategory}</span> Live</>}
-          </h2>
-          <Link href="/live" className={styles.viewAll}>View all <ChevronRight size={16} /></Link>
-          <div className={styles.scrollIndicator}>
-            <div
-              className={styles.scrollThumb}
-              style={{
-                left: `${scrollProgress * 100}%`,
-                transform: `translateX(-${scrollProgress * 100}%)`
-              }}
-            />
+      {/* ── Search results view ── */}
+      {searchQuery ? (
+        <>
+          <div className={styles.searchResultsHeader}>
+            <div>
+              <h2 className={styles.searchResultsTitle}>
+                Results for <span className={styles.redText}>"{searchQuery}"</span>
+              </h2>
+              <p className={styles.searchResultsCount}>
+                {searchLoading ? 'Searching…' : `${searchAuctions.length + searchProducts.length} result${searchAuctions.length + searchProducts.length !== 1 ? 's' : ''} found`}
+                {sortParam !== 'recent' && (
+                  <span className={styles.sortChip}>
+                    {{ price_asc: 'Price ↑', price_desc: 'Price ↓', popular: 'Popular', name_asc: 'A–Z' }[sortParam]}
+                  </span>
+                )}
+              </p>
+            </div>
+            <Link href="/" className={styles.clearSearch}>
+              <X size={14} /> Clear
+            </Link>
           </div>
-        </div>
-        <div className={styles.horizontalScroll} onScroll={handleScroll}>
-          {liveAuctions.length > 0 ? (
-            liveAuctions.map(item => (
-              <AuctionCard key={item.id} data={item} />
-            ))
-          ) : (
-            <div className={styles.emptyState}>No live auctions at the moment.</div>
-          )}
-        </div>
-      </section>
 
-      <section className={styles.section}>
-        <div className={`${styles.sectionHeader} ${styles.staticIndicator}`}>
-          <h2 className={styles.sectionTitle}>
-            {selectedCategory === 'all' ? <>Scheduled <span className={styles.redText}>Auctions</span></> : <><span className={styles.redText} style={{ textTransform: 'capitalize' }}>{selectedCategory}</span> Scheduled</>}
-          </h2>
-          <Link href="/auctions" className={styles.viewAll}>View all <ChevronRight size={16} /></Link>
-        </div>
-        <div className={styles.horizontalScroll}>
-          {scheduledAuctions.length > 0 ? (
-            scheduledAuctions.map(item => (
-              <AuctionCard key={item.id} data={item} />
-            ))
-          ) : (
-            <div className={styles.emptyState}>No scheduled auctions at the moment.</div>
+          {searchLoading && <div className={styles.searchLoading}>Searching…</div>}
+
+          {!searchLoading && searchAuctions.length > 0 && (
+            <section className={styles.section}>
+              <div className={`${styles.sectionHeader} ${styles.staticIndicator}`}>
+                <h2 className={styles.sectionTitle}>Auctions</h2>
+              </div>
+              <div className={styles.horizontalScroll}>
+                {searchAuctions.map(item => <AuctionCard key={item.id} data={item} />)}
+              </div>
+            </section>
           )}
-        </div>
-      </section>
+
+          {!searchLoading && searchProducts.length > 0 && (
+            <section className={styles.section}>
+              <div className={`${styles.sectionHeader} ${styles.staticIndicator}`}>
+                <h2 className={styles.sectionTitle}>Products</h2>
+              </div>
+              <div className={styles.productGrid}>
+                {searchProducts.map(item => (
+                  <ProductCard key={item.products_id} data={{
+                    ...item,
+                    title: item.name,
+                    image: item.images?.[0]?.image_url,
+                    wishlistCount: item.wishlist_count || 0,
+                  }} />
+                ))}
+              </div>
+            </section>
+          )}
+
+          {!searchLoading && searchAuctions.length === 0 && searchProducts.length === 0 && (
+            <div className={styles.noResults}>
+              <p>No results for <strong>"{searchQuery}"</strong></p>
+              <p className={styles.noResultsSub}>Try different keywords or browse below.</p>
+            </div>
+          )}
+        </>
+      ) : (
+        /* ── Normal home view ── */
+        <>
+          <HeroBanner />
+
+          <section className={styles.section}>
+            <div className={styles.sectionHeader}>
+              <h2 className={styles.sectionTitle}>
+                {selectedCategory === 'all' ? <>Live <span className={styles.redText}>Auctions</span></> : <><span className={styles.redText} style={{ textTransform: 'capitalize' }}>{selectedCategory}</span> Live</>}
+              </h2>
+              <Link href="/live" className={styles.viewAll}>View all <ChevronRight size={16} /></Link>
+              <div className={styles.scrollIndicator}>
+                <div className={styles.scrollThumb} style={{ left: `${scrollProgress * 100}%`, transform: `translateX(-${scrollProgress * 100}%)` }} />
+              </div>
+            </div>
+            <div className={styles.horizontalScroll} onScroll={handleScroll}>
+              {liveAuctions.length > 0
+                ? liveAuctions.map(item => <AuctionCard key={item.id} data={item} />)
+                : <div className={styles.emptyState}>No live auctions at the moment.</div>}
+            </div>
+          </section>
+
+          <section className={styles.section}>
+            <div className={`${styles.sectionHeader} ${styles.staticIndicator}`}>
+              <h2 className={styles.sectionTitle}>
+                {selectedCategory === 'all' ? <>Scheduled <span className={styles.redText}>Auctions</span></> : <><span className={styles.redText} style={{ textTransform: 'capitalize' }}>{selectedCategory}</span> Scheduled</>}
+              </h2>
+              <Link href="/auctions" className={styles.viewAll}>View all <ChevronRight size={16} /></Link>
+            </div>
+            <div className={styles.horizontalScroll}>
+              {scheduledAuctions.length > 0
+                ? scheduledAuctions.map(item => <AuctionCard key={item.id} data={item} />)
+                : <div className={styles.emptyState}>No scheduled auctions at the moment.</div>}
+            </div>
+          </section>
+        </>
+      )}
     </main>
+  );
+}
+
+export default function Home() {
+  return (
+    <Suspense fallback={null}>
+      <HomeInner />
+    </Suspense>
   );
 }

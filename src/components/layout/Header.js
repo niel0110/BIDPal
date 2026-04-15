@@ -2,7 +2,7 @@
 
 import { useState } from 'react';
 import Link from 'next/link';
-import { Menu, Search, AlignJustify, User, ShoppingCart, Home, Heart, MessageCircle, LogOut, LayoutDashboard, Package, Gavel, BarChart3, Settings, ClipboardList } from 'lucide-react';
+import { Search, SlidersHorizontal, User, ShoppingCart, Home, Heart, MessageCircle, LogOut, LayoutDashboard, Package, Gavel, BarChart3, Settings, ClipboardList, AlignJustify, X } from 'lucide-react';
 import { useAuth } from '@/context/AuthContext';
 import { useRouter, usePathname } from 'next/navigation';
 
@@ -15,13 +15,32 @@ export default function Header() {
   const { user, logout } = useAuth();
   const { totalUnreadCount, unreadMsgCount } = useNotifications();
   const [isMenuOpen, setIsMenuOpen] = useState(false);
+  const [showFilter, setShowFilter] = useState(false);
+  const [isMobileSearchOpen, setIsMobileSearchOpen] = useState(false);
   const [searchQuery, setSearchQuery] = useState('');
+  const [activeSort, setActiveSort] = useState('recent');
   const router = useRouter();
   const pathname = usePathname();
 
+  const SORT_OPTIONS = [
+    { id: 'recent',     label: 'Most Recent' },
+    { id: 'price_asc',  label: 'Price: Low to High' },
+    { id: 'price_desc', label: 'Price: High to Low' },
+    { id: 'popular',    label: 'Most Popular' },
+    { id: 'name_asc',   label: 'Name A–Z' },
+  ];
+
+  const applyFilter = (sortId) => {
+    setActiveSort(sortId);
+    setShowFilter(false);
+    const q = searchQuery.trim();
+    const base = q ? `/?q=${encodeURIComponent(q)}&` : `/?`;
+    router.push(`${base}sort=${sortId}`);
+  };
+
   const handleSearch = () => {
     const q = searchQuery.trim();
-    if (q) router.push(`/search?q=${encodeURIComponent(q)}`);
+    if (q) router.push(`/?q=${encodeURIComponent(q)}&sort=${activeSort}`);
   };
 
   const handleSearchKeyDown = (e) => {
@@ -42,7 +61,7 @@ export default function Header() {
             className={styles.menuBtn}
             onClick={() => setIsMenuOpen(!isMenuOpen)}
           >
-            <AlignJustify size={24} color="#666" />
+            <AlignJustify size={20} color="#666" />
           </button>
 
           {isMenuOpen && (
@@ -142,7 +161,7 @@ export default function Header() {
 
         {/* Only show search bar on the buyer home page */}
         {(!user || user.role?.toLowerCase() !== 'seller') && pathname === '/' && (
-          <div className={styles.searchSection}>
+          <div className={styles.searchSection} style={{ position: 'relative' }}>
             <div className={styles.searchWrapper}>
               <Search size={20} className={styles.searchIcon} color="#333" style={{ cursor: 'pointer' }} onClick={handleSearch} />
               <input
@@ -153,20 +172,50 @@ export default function Header() {
                 onChange={(e) => setSearchQuery(e.target.value)}
                 onKeyDown={handleSearchKeyDown}
               />
-              <AlignJustify size={20} className={styles.filterIcon} style={{ transform: 'rotate(90deg)' }} />
+              <SlidersHorizontal
+                size={18}
+                className={styles.filterIcon}
+                onClick={() => setShowFilter(!showFilter)}
+                style={{ cursor: 'pointer', color: showFilter ? '#D32F2F' : '#666' }}
+              />
             </div>
+
+            {showFilter && (
+              <div className={styles.filterPanel}>
+                <p className={styles.filterLabel}>Sort by</p>
+                {SORT_OPTIONS.map(opt => (
+                  <button
+                    key={opt.id}
+                    className={`${styles.filterOption} ${activeSort === opt.id ? styles.filterOptionActive : ''}`}
+                    onClick={() => applyFilter(opt.id)}
+                  >
+                    {opt.label}
+                    {activeSort === opt.id && <span className={styles.filterCheck}>✓</span>}
+                  </button>
+                ))}
+              </div>
+            )}
           </div>
         )}
 
         <div className={styles.rightSection}>
+          {(!user || user.role?.toLowerCase() !== 'seller') && pathname === '/' && (
+            <button
+              className={styles.mobileSearchToggle}
+              onClick={() => setIsMobileSearchOpen(!isMobileSearchOpen)}
+            >
+              {isMobileSearchOpen ? <X size={20} /> : <Search size={20} />}
+            </button>
+          )}
+
           {user && user.role?.toLowerCase() === 'seller' ? null : (
             <>
               <Link href="/orders" className={styles.navItem}>
-                <ClipboardList size={20} className={styles.navIcon} color="#673AB7" />
+                <ClipboardList size={18} className={styles.navIcon} color="#673AB7" />
                 <span>Orders</span>
               </Link>
               <Link href="/cart" className={styles.navItem}>
-                <ShoppingCart size={20} className={styles.cartIcon} color="#D32F2F" />
+                <ShoppingCart size={18} className={styles.cartIcon} color="#D32F2F" />
                 <span>Cart</span>
               </Link>
             </>
@@ -177,18 +226,53 @@ export default function Header() {
 
           {user ? (
             <Link href="/settings" className={styles.navItem}>
-              <Settings size={20} className={styles.navIcon} color="#FBC02D" />
+              <Settings size={18} className={styles.navIcon} color="#FBC02D" />
               <span>Settings</span>
             </Link>
           ) : (
             <Link href="/" className={styles.navItem}>
-              <User size={20} className={styles.navIcon} color="#FBC02D" />
+              <User size={18} className={styles.navIcon} color="#FBC02D" />
               <span>Sign Up/Sign In</span>
             </Link>
           )}
         </div>
-
       </header >
+
+      {/* Mobile Search Bar Row */}
+      {isMobileSearchOpen && (!user || user.role?.toLowerCase() !== 'seller') && pathname === '/' && (
+        <div className={styles.mobileSearchRow}>
+          <div className={styles.searchWrapper}>
+            <Search size={18} color="#333" onClick={handleSearch} />
+            <input
+              type="text"
+              placeholder="Search..."
+              className={styles.searchInput}
+              value={searchQuery}
+              onChange={(e) => setSearchQuery(e.target.value)}
+              onKeyDown={handleSearchKeyDown}
+              autoFocus
+            />
+            <SlidersHorizontal
+              size={18}
+              onClick={() => setShowFilter(!showFilter)}
+              style={{ color: showFilter ? '#D32F2F' : '#666' }}
+            />
+          </div>
+          {showFilter && (
+            <div className={styles.mobileFilterPanel}>
+              {SORT_OPTIONS.map(opt => (
+                <button
+                  key={opt.id}
+                  className={`${styles.filterOption} ${activeSort === opt.id ? styles.filterOptionActive : ''}`}
+                  onClick={() => applyFilter(opt.id)}
+                >
+                  {opt.label}
+                </button>
+              ))}
+            </div>
+          )}
+        </div>
+      )}
     </div >
   );
 }

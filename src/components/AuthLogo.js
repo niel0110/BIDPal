@@ -1,7 +1,7 @@
 export default function AuthLogo({ className = '' }) {
     return (
         <div className={`${className}`} style={{
-            display: 'flex',
+            display: 'inline-flex',
             flexDirection: 'row',
             alignItems: 'center',
             gap: '0.75rem',

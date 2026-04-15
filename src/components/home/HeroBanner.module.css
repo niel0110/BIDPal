@@ -171,61 +171,80 @@
 /* ── Mobile ─────────────────────────────────────────────── */
 @media (max-width: 768px) {
     .heroContainer {
-        padding: 0 1rem;
-        margin: 1rem auto;
+        padding: 0 0.75rem;
+        margin: 0.75rem auto;
     }
 
     .slider {
-        height: 220px;
-        border-radius: 12px;
+        height: 260px;
+        border-radius: 14px;
     }
 
     .overlay {
-        background: rgba(0, 0, 0, 0.4);
+        background: linear-gradient(
+            to right,
+            rgba(0, 0, 0, 0.65) 0%,
+            rgba(0, 0, 0, 0.3) 70%,
+            transparent 100%
+        );
     }
 
     .content {
-        padding: 0 1.25rem;
-        max-width: 100%;
+        padding: 0 1.5rem;
+        max-width: 90%;
+        justify-content: center;
+        padding-bottom: 0;
     }
 
     .title {
-        font-size: 1.25rem;
+        font-size: 1.45rem;
+        font-weight: 800;
         margin-bottom: 0.4rem;
+        line-height: 1.15;
+        text-shadow: 0 2px 10px rgba(0, 0, 0, 0.4);
     }
 
     .subtitle {
         font-size: 0.8rem;
-        margin-bottom: 0.9rem;
-        display: -webkit-box;
-        -webkit-line-clamp: 2;
-        line-clamp: 2;
-        -webkit-box-orient: vertical;
-        overflow: hidden;
+        margin-bottom: 1.1rem;
+        line-height: 1.45;
+        opacity: 0.95;
+        max-width: 240px;
     }
 
     .cta {
-        font-size: 0.8rem;
-        padding: 0.5rem 1.2rem;
+        font-size: 0.78rem;
+        font-weight: 700;
+        padding: 0.6rem 1.4rem;
+        border-radius: 50px;
+        box-shadow: 0 4px 12px rgba(0, 0, 0, 0.15);
     }
 
     .arrow {
-        width: 34px;
-        height: 34px;
-        font-size: 1.8rem;
+        display: none !important;
     }
 
-    .arrowLeft  { left: 0.5rem; }
-    .arrowRight { right: 0.5rem; }
+    .dots {
+        bottom: 1rem;
+    }
 }
 
 /* ── Very small screens ─────────────────────────────────── */
 @media (max-width: 480px) {
     .slider {
-        height: 180px;
+        height: 250px;
     }
 
-    .arrow {
-        display: none;
+    .content {
+        max-width: 90%;
+    }
+
+    .title {
+        font-size: 1.6rem;
+    }
+
+    .subtitle {
+        font-size: 0.8rem;
+        margin-bottom: 1.1rem;
     }
 }

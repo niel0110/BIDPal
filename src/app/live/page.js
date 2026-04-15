@@ -4,7 +4,7 @@ import BIDPalLoader from '@/components/BIDPalLoader';
 import { useState, useEffect, useRef, Suspense } from 'react';
 import { useSearchParams } from 'next/navigation';
 import Header from '@/components/layout/Header';
-import { Clock, Eye, Heart, Send, X, Star, Truck, Pencil, CheckCircle, Loader2, Mic, MicOff, Video, VideoOff, Share2, Users } from 'lucide-react';
+import { Clock, Eye, Heart, Send, X, Truck, Pencil, CheckCircle, Loader2, Mic, MicOff, Video, VideoOff, Share2, Users } from 'lucide-react';
 import styles from './page.module.css';
 import { io } from 'socket.io-client';
 import { useAuth } from '@/context/AuthContext';
@@ -1123,6 +1123,94 @@ function LivePageInner() {
                             </div>
                         </div>
                         <button className={styles.followBtn}>+ Follow</button>
+                    </div>
+
+                    {/* Mobile-only: TikTok/IG-Live style overlay */}
+                    <div className={styles.mobileChatOverlay}>
+
+                        {/* TOP BAR: seller left + viewers right */}
+                        <div className={styles.mobileOverlayTop}>
+                            <div className={styles.mobileStoreInfo}>
+                                <div className={styles.mobileStoreAvatar} style={{
+                                    backgroundImage: seller_info.avatar ? `url(${seller_info.avatar})` : 'none',
+                                    backgroundColor: '#888',
+                                    backgroundSize: 'cover'
+                                }} />
+                                <div className={styles.mobileStoreText}>
+                                    <span className={styles.mobileStoreName}>{seller_info.store_name}</span>
+                                    <span className={styles.mobileStoreFollowers}>
+                                        <Heart size={9} fill="white" /> {Math.floor(Math.random() * 5000) + 1000}
+                                    </span>
+                                </div>
+                                <button className={styles.mobileFollowBtn}>+ Follow</button>
+                            </div>
+                            <div className={styles.mobileViewerCount}>
+                                <Users size={13} />
+                                <span>{stats.viewers || viewerCount}</span>
+                            </div>
+                        </div>
+
+                        {/* MIDDLE: chat messages (left side) */}
+                        <div className={styles.mobileOverlayMiddle}>
+                            <div className={styles.mobileChatMessages}>
+                                {comments.map(msg => (
+                                    <div key={msg.id} className={styles.mobileChatMsg}>
+                                        <span className={styles.mobileChatUser}>{msg.user}</span>
+                                        <span className={styles.mobileChatText}>{msg.text}</span>
+                                    </div>
+                                ))}
+                                <div ref={commentsEndRef} />
+                            </div>
+                        </div>
+
+                        {/* BOTTOM: product card + input */}
+                        <div className={styles.mobileOverlayBottom}>
+                            {/* Product card */}
+                            <div className={styles.mobileProductCard}>
+                                <img
+                                    src={product?.images?.[0]?.image_url || 'https://placehold.co/56x56'}
+                                    alt={product?.name}
+                                    className={styles.mobileProductThumb}
+                                />
+                                <div className={styles.mobileProductInfo}>
+                                    <span className={styles.mobileProductName}>{product?.name}</span>
+                                    <span className={styles.mobileProductBidLabel}>Current Bid ({bids.length} Bids)</span>
+                                    <div className={styles.mobileProductPriceRow}>
+                                        <span className={styles.mobileProductOriginal}>₱{Number(auction.reserve_price || 0).toLocaleString('en-PH')}</span>
+                                        <span className={styles.mobileProductPrice}>₱{Number(bids[0]?.amount || auction.current_price || auction.reserve_price || 0).toLocaleString('en-PH')}</span>
+                                    </div>
+                                    {countdown && (
+                                        <span className={styles.mobileCountdown}>
+                                            {String(countdown.hours).padStart(2,'0')}h: {String(countdown.minutes).padStart(2,'0')}m: {String(countdown.seconds).padStart(2,'0')}s
+                                        </span>
+                                    )}
+                                </div>
+                                <button
+                                    className={styles.mobileBidBtn}
+                                    onClick={() => { if (minBid) setBidAmount(minBid); setShowModal(true); }}
+                                >
+                                    Bid
+                                </button>
+                            </div>
+
+                            {/* Chat input */}
+                            <div className={styles.mobileChatInput}>
+                                <input
+                                    type="text"
+                                    placeholder="Type..."
+                                    value={inputValue}
+                                    onChange={(e) => setInputValue(e.target.value)}
+                                    onKeyDown={(e) => e.key === 'Enter' && handleSendMessage()}
+                                />
+                                <button
+                                    onClick={handleSendMessage}
+                                    disabled={!inputValue.trim()}
+                                    style={{ opacity: inputValue.trim() ? 1 : 0.4 }}
+                                >
+                                    <Send size={15} color="white" />
+                                </button>
+                            </div>
+                        </div>
                     </div>
                 </section>
 

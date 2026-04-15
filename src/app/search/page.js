@@ -7,12 +7,13 @@ import Header from '@/components/layout/Header';
 import AuctionCard from '@/components/card/AuctionCard';
 import ProductCard from '@/components/card/ProductCard';
 import { useAuth } from '@/context/AuthContext';
-import { Gavel, Package } from 'lucide-react';
+import { Gavel, Package, ArrowUpDown } from 'lucide-react';
 import styles from './page.module.css';
 
 function SearchPageInner() {
     const searchParams = useSearchParams();
     const query = searchParams.get('q') || '';
+    const sort  = searchParams.get('sort') || 'recent';
 
     const [auctions, setAuctions] = useState([]);
     const [products, setProducts] = useState([]);
@@ -21,17 +22,21 @@ function SearchPageInner() {
     const { user } = useAuth();
 
     useEffect(() => {
-        if (!query) return;
-
         const fetchResults = async () => {
             setLoading(true);
             try {
                 const apiUrl = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:5000';
                 const q = encodeURIComponent(query);
+                const productUrl = query
+                    ? `${apiUrl}/api/products?search=${q}&sort=${sort}&limit=20`
+                    : `${apiUrl}/api/products?sort=${sort}&limit=20`;
+                const auctionUrl = query
+                    ? `${apiUrl}/api/auctions?search=${q}&limit=20`
+                    : null;
 
                 const [auctionRes, productRes] = await Promise.all([
-                    fetch(`${apiUrl}/api/auctions?search=${q}&limit=20`),
-                    fetch(`${apiUrl}/api/products?search=${q}&limit=20`),
+                    auctionUrl ? fetch(auctionUrl) : Promise.resolve({ json: () => ({ data: [] }) }),
+                    fetch(productUrl),
                 ]);
 
                 const auctionJson = await auctionRes.json();
@@ -77,7 +82,7 @@ function SearchPageInner() {
         };
 
         fetchResults();
-    }, [query, user?.user_id]);
+    }, [query, sort, user?.user_id]);
 
     const totalResults = auctions.length + products.length;
 
@@ -97,8 +102,16 @@ function SearchPageInner() {
                     ) : (
                         <h1 className={styles.title}>Search</h1>
                     )}
-                    {!loading && query && (
-                        <p className={styles.count}>{totalResults} result{totalResults !== 1 ? 's' : ''} found</p>
+                    {!loading && (
+                        <p className={styles.count}>
+                            {query ? `${totalResults} result${totalResults !== 1 ? 's' : ''} found` : 'Browsing products'}
+                            {sort !== 'recent' && (
+                                <span className={styles.sortBadge}>
+                                    <ArrowUpDown size={12} />
+                                    {{ price_asc: 'Price ↑', price_desc: 'Price ↓', popular: 'Popular', name_asc: 'A–Z' }[sort]}
+                                </span>
+                            )}
+                        </p>
                     )}
                 </div>
 

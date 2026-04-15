@@ -123,3 +123,44 @@
 .instruments {
     background-color: #4A148C;
 }
+
+@media (max-width: 768px) {
+    .navContainer {
+        padding: 0.5rem 0 0.85rem 0;
+    }
+
+    .scrollWrapper {
+        gap: 1rem;
+        padding: 0 1rem 8px 1rem;
+        justify-content: flex-start;
+    }
+
+    .iconCircle {
+        width: 36px;
+        height: 36px;
+    }
+
+    .iconCircle svg {
+        width: 16px;
+        height: 16px;
+    }
+
+    .categoryItem {
+        min-width: 44px;
+        gap: 0.25rem;
+    }
+
+    .label {
+        font-size: 0.65rem;
+        font-weight: 600;
+        letter-spacing: -0.01em;
+    }
+
+    .activeLine {
+        height: 3px;
+        bottom: -6px;
+        border-radius: 10px;
+        left: 20%;
+        right: 20%;
+    }
+}

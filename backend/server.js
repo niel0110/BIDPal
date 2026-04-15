@@ -20,8 +20,9 @@ const io = new SocketIOServer(httpServer, {
 
 app.use(cors({
   origin: [
-    'https://bid-pal-pink.vercel.app',  // replace with your actual Vercel URL
-    'http://localhost:5000'               // for local development
+    'https://bid-pal-pink.vercel.app',
+    'http://localhost:3000',
+    'http://localhost:5000'
   ],
   credentials: true
 }))

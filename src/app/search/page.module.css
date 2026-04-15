@@ -28,6 +28,23 @@
     margin-top: 0.25rem;
     font-size: 0.9rem;
     color: #666;
+    display: flex;
+    align-items: center;
+    gap: 0.5rem;
+    flex-wrap: wrap;
+}
+
+.sortBadge {
+    display: inline-flex;
+    align-items: center;
+    gap: 4px;
+    background: #FFF5F5;
+    color: #D32F2F;
+    font-size: 0.75rem;
+    font-weight: 600;
+    padding: 2px 8px;
+    border-radius: 20px;
+    border: 1px solid #FFCDD2;
 }
 
 .tabs {

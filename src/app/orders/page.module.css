@@ -85,8 +85,8 @@
     border-radius: 16px;
     padding: 0.5rem;
     margin-bottom: 2rem;
-    overflow-x: auto;
     gap: 0.25rem;
+    flex-wrap: nowrap;
 }
 
 .tabItem {
@@ -95,13 +95,13 @@
     align-items: center;
     justify-content: center;
     gap: 0.5rem;
-    padding: 0.75rem 1rem;
+    padding: 0.6rem 0.9rem;
     border: none;
     background: none;
     color: #666;
     font-weight: 650;
     cursor: pointer;
-    border-radius: 12px;
+    border-radius: 10px;
     transition: all 0.2s;
     white-space: nowrap;
 }
@@ -114,6 +114,7 @@
 .activeTab {
     background: #111 !important;
     color: white !important;
+    border-radius: 10px;
 }
 
 .ordersList {
@@ -334,20 +335,134 @@
 }
 
 @media (max-width: 768px) {
+    .ordersContainer {
+        padding-top: 1rem;
+        padding-bottom: 4rem;
+    }
+
+    .ordersContent {
+        padding: 0 14px;
+    }
+
+    .ordersHeader {
+        margin-bottom: 1rem;
+    }
+
+    .ordersHeader h1 {
+        font-size: 1.5rem;
+    }
+
     .titleRow {
         flex-direction: column;
         align-items: flex-start;
-        gap: 1rem;
+        gap: 0.6rem;
     }
 
     .searchBar {
         max-width: 100%;
+        width: 100%;
     }
 
+    .searchBar input {
+        padding: 0.6rem 0.75rem 0.6rem 2.4rem;
+        font-size: 0.85rem;
+        border-radius: 10px;
+    }
+
+    /* Tabs — icons only, single row */
+    .tabsNav {
+        display: flex;
+        padding: 0.25rem;
+        margin-bottom: 1rem;
+        gap: 0.15rem;
+        border-radius: 12px;
+    }
+
+    .tabItem {
+        flex: 1;
+        flex-direction: row;
+        padding: 0.55rem 0;
+        gap: 0;
+        border-radius: 8px;
+        justify-content: center;
+        align-items: center;
+    }
+
+    .tabLabel {
+        display: none;
+    }
+
+    .activeTab {
+        border-radius: 8px;
+    }
+
+    .tabItem svg {
+        width: 16px;
+        height: 16px;
+    }
+
+    /* Cards */
+    .ordersList {
+        gap: 0.85rem;
+    }
+
+    .orderCard {
+        padding: 1rem;
+        border-radius: 14px;
+    }
+
+    .orderCardHeader {
+        padding-bottom: 0.75rem;
+        margin-bottom: 0.75rem;
+    }
+
+    .sellerInfo {
+        font-size: 0.85rem;
+    }
+
+    .statusBadge {
+        padding: 0.3rem 0.65rem;
+        font-size: 0.72rem;
+    }
+
+    /* Items */
+    .orderItem {
+        gap: 0.75rem;
+        margin-bottom: 0.75rem;
+    }
+
+    .itemImage {
+        width: 56px;
+        height: 56px;
+        border-radius: 8px;
+    }
+
+    .itemMeta h3 {
+        font-size: 0.88rem;
+    }
+
+    .itemMeta p {
+        font-size: 0.78rem;
+    }
+
+    .itemPrice {
+        font-size: 0.88rem;
+    }
+
+    /* Footer */
     .orderCardFooter {
         flex-direction: column;
         align-items: flex-start;
-        gap: 1rem;
+        gap: 0.6rem;
+        padding: 0.75rem 0;
+    }
+
+    .orderId {
+        font-size: 0.78rem;
+    }
+
+    .orderDate {
+        font-size: 0.78rem;
     }
 
     .orderTotal {
@@ -355,12 +470,62 @@
         justify-content: space-between;
     }
 
+    .orderTotal span:first-child {
+        font-size: 0.85rem;
+    }
+
+    .totalAmount {
+        font-size: 1rem;
+    }
+
+    /* Actions */
     .orderActions {
         width: 100%;
+        gap: 0.6rem;
     }
 
     .orderActions button {
         flex: 1;
+        padding: 0.6rem 0.75rem;
+        font-size: 0.82rem;
+    }
+
+    .payNowBtn,
+    .cancelBtn,
+    .receivedBtn,
+    .primaryBtn,
+    .secondaryBtn {
+        padding: 0.6rem 0.75rem;
+        font-size: 0.82rem;
+        border-radius: 8px;
+    }
+
+    .reviewBtn {
+        padding: 0.55rem 0.9rem;
+        font-size: 0.8rem;
+    }
+
+    /* Tracking */
+    .trackingBanner {
+        font-size: 0.78rem;
+        padding: 0.6rem 0.75rem;
+    }
+
+    /* Empty state */
+    .emptyState {
+        padding: 4rem 1.5rem;
+    }
+
+    .emptyState h2 {
+        font-size: 1.25rem;
+    }
+
+    /* Loading dots on mobile */
+    .mobileLoader {
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        min-height: 40vh;
     }
 }
 
@@ -531,6 +696,64 @@
     box-shadow: 0 24px 60px rgba(0,0,0,0.18);
     animation: modalIn 0.2s ease;
     overflow: hidden;
+}
+
+@media (max-width: 768px) {
+    .reviewModal {
+        border-radius: 14px;
+        max-width: 100%;
+    }
+
+    .reviewModalHead {
+        padding: 0.75rem 1rem;
+    }
+
+    .reviewModalHead h3 {
+        font-size: 0.95rem;
+    }
+
+    .reviewModalBody {
+        padding: 0.85rem 1rem;
+        gap: 0.75rem;
+    }
+
+    .reviewProduct {
+        padding: 0.5rem;
+    }
+
+    .reviewProduct img {
+        width: 40px;
+        height: 40px;
+    }
+
+    .reviewProductName {
+        font-size: 0.82rem;
+    }
+
+    .stars {
+        gap: 0.15rem;
+    }
+
+    .starBtn svg {
+        width: 26px;
+        height: 26px;
+    }
+
+    .reviewCommentGroup textarea {
+        min-height: 70px;
+        font-size: 0.85rem;
+    }
+
+    .reviewModalFoot {
+        padding: 0.75rem 1rem;
+        gap: 0.5rem;
+    }
+
+    .reviewCancelBtn,
+    .reviewSubmitBtn {
+        padding: 0.55rem 1rem;
+        font-size: 0.82rem;
+    }
 }
 
 @keyframes modalIn {

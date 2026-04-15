@@ -3,20 +3,52 @@ import { supabase } from '../config/supabase.js';
 // Fetch all products (with optional filters)
 export const getAllProducts = async (req, res) => {
   try {
-    const { status, seller_id, condition, limit = 50, offset = 0 } = req.query;
-    let query = supabase.from('vw_product_details').select('*');
+    const {
+      status,
+      seller_id,
+      condition,
+      category,
+      search,
+      sort = 'recent',
+      limit = 50,
+      offset = 0
+    } = req.query;
 
-    // Apply filters
-    if (status) query = query.eq('status', status);
+    let query = supabase.from('vw_product_details').select('*', { count: 'exact' });
+
+    // Filters
+    if (status)    query = query.eq('status', status);
     if (seller_id) query = query.eq('seller_id', seller_id);
     if (condition) query = query.eq('condition', condition);
+    if (category)  query = query.ilike('category', `%${category}%`);
+    if (search)    query = query.or(`name.ilike.%${search}%,description.ilike.%${search}%`);
 
-    // Add pagination
-    query = query.range(offset, offset + parseInt(limit) - 1);
+    // Sorting
+    switch (sort) {
+      case 'price_asc':
+        query = query.order('price', { ascending: true });
+        break;
+      case 'price_desc':
+        query = query.order('price', { ascending: false });
+        break;
+      case 'name_asc':
+        query = query.order('name', { ascending: true });
+        break;
+      case 'popular':
+        query = query.order('wishlist_count', { ascending: false, nullsFirst: false });
+        break;
+      case 'recent':
+      default:
+        query = query.order('created_at', { ascending: false });
+        break;
+    }
+
+    // Pagination
+    query = query.range(Number(offset), Number(offset) + parseInt(limit) - 1);
 
     const { data, error, count } = await query;
     if (error) return res.status(500).json({ error: error.message });
-    
+
     res.json({ count, data });
   } catch (err) {
     res.status(500).json({ error: err.message });

@@ -28,7 +28,7 @@ export default function CategoryNav({ activeId = 'all', onSelect }) {
                         onClick={() => onSelect?.(cat.id)}
                     >
                         <div className={`${styles.iconCircle} ${styles[cat.colorClass]}`}>
-                            <cat.icon size={24} />
+                            <cat.icon size={20} />
                         </div>
                         <span className={styles.label}>{cat.label}</span>
                         {activeId === cat.id && <div className={styles.activeLine} />}
