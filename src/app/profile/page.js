@@ -55,7 +55,7 @@ const MapComponent = dynamic(() => import('@/components/map/MapComponent'), {
 });
 
 function AccountContent() {
-    const { user, logout } = useAuth();
+    const { user, logout, updateUser } = useAuth();
     const router = useRouter();
     const searchParams = useSearchParams();
     const tabParam = searchParams.get('tab');
@@ -66,11 +66,18 @@ function AccountContent() {
     const [sellerAddressState, setSellerAddressState] = useState('list'); // 'list' or 'add'
     const [avatarLoading, setAvatarLoading] = useState(false);
     const [avatarMessage, setAvatarMessage] = useState('');
+    const [mobileView, setMobileView] = useState('menu'); // 'menu' | 'content'
+
+    const handleNavClick = (tabId) => {
+        setActiveTab(tabId);
+        setMobileView('content');
+    };
 
     useEffect(() => {
         const validTabs = ['profile', 'address', 'notifications', 'payment', 'wishlist', 'security', 'privacy', 'help', 'invite', 'merchant-insights', 'store-profile', 'pickup-address'];
         if (tabParam && validTabs.includes(tabParam)) {
             setActiveTab(tabParam);
+            setMobileView('content');
         }
     }, [tabParam]);
 
@@ -101,6 +108,16 @@ function AccountContent() {
         const file = e.target.files?.[0];
         if (!file || !user) return;
 
+        // Client-side validation
+        if (file.size > 5 * 1024 * 1024) {
+            setAvatarMessage({ type: 'error', text: 'Image must be under 5MB.' });
+            return;
+        }
+        if (!['image/jpeg', 'image/png', 'image/gif', 'image/jpg'].includes(file.type)) {
+            setAvatarMessage({ type: 'error', text: 'Only JPG, PNG or GIF images allowed.' });
+            return;
+        }
+
         setAvatarLoading(true);
         setAvatarMessage('');
 
@@ -109,32 +126,31 @@ function AccountContent() {
             formData.append('avatar', file);
 
             const apiUrl = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:5000';
+            const token = localStorage.getItem('bidpal_token');
             const res = await fetch(`${apiUrl}/api/users/${user.user_id}/avatar`, {
                 method: 'POST',
+                headers: { Authorization: `Bearer ${token}` },
                 body: formData
             });
 
             const data = await res.json();
 
             if (!res.ok) {
-                setAvatarMessage({ type: 'error', text: 'Error uploading avatar. Please try again.' });
+                setAvatarMessage({ type: 'error', text: data.error || 'Upload failed. Please try again.' });
                 return;
             }
 
-            // Update local storage with new avatar
-            const updatedUser = { ...user, Avatar: data.avatarUrl };
-            localStorage.setItem('bidpal_user', JSON.stringify(updatedUser));
-
-            setAvatarMessage({ type: 'success', text: '✓ Avatar updated successfully!' });
+            // Update user state in context + localStorage without page reload
+            updateUser({ Avatar: data.avatarUrl });
+            setAvatarMessage({ type: 'success', text: '✓ Profile photo updated!' });
             setTimeout(() => setAvatarMessage(''), 3000);
-
-            // Refresh the page to show updated avatar
-            window.location.reload();
         } catch (err) {
-            setAvatarMessage({ type: 'error', text: 'Error uploading avatar. Please try again.' });
-            console.error('Error:', err);
+            setAvatarMessage({ type: 'error', text: 'Network error. Please try again.' });
+            console.error('Avatar upload error:', err);
         } finally {
             setAvatarLoading(false);
+            // Reset file input so the same file can be re-selected if needed
+            e.target.value = '';
         }
     };
 
@@ -177,8 +193,8 @@ function AccountContent() {
     };
 
     return (
-        <div className={styles.container}>
-            {/* Sidebar - Desktop */}
+        <div className={`${styles.container} ${mobileView === 'content' ? styles.mobileShowContent : ''}`}>
+            {/* Sidebar / Menu */}
             {activeTab !== 'wishlist' && (
                 <aside className={styles.sidebar}>
                     <button className={styles.globalBack} onClick={() => router.push(isSeller ? '/seller' : '/')}>
@@ -207,28 +223,26 @@ function AccountContent() {
                                 onChange={handleAvatarUpload}
                                 disabled={avatarLoading}
                             />
-                            <label htmlFor="avatarInput" className={styles.editAvatarLabel}>
-                                <button
-                                    className={styles.editAvatar}
-                                    type="button"
-                                    title="Upload profile picture"
-                                    disabled={avatarLoading}
-                                >
+                            <label
+                                htmlFor="avatarInput"
+                                className={`${styles.editAvatarLabel} ${avatarLoading ? styles.editAvatarDisabled : ''}`}
+                                title="Upload profile picture"
+                            >
+                                <span className={styles.editAvatar}>
                                     <Camera size={14} />
-                                </button>
+                                </span>
                             </label>
                         </div>
                         <h2 className={styles.userName}>{getUserDisplayName()}</h2>
                         <p className={styles.userRole}>{getUserRole()} Member</p>
                     </div>
 
-
                     <nav className={styles.nav}>
                         {menuItems.map(item => (
                             <button
                                 key={item.id}
                                 className={`${styles.navItem} ${activeTab === item.id ? styles.activeNav : ''}`}
-                                onClick={() => setActiveTab(item.id)}
+                                onClick={() => handleNavClick(item.id)}
                             >
                                 <div className={styles.navIcon}>{item.icon}</div>
                                 <span>{item.label}</span>
@@ -237,18 +251,17 @@ function AccountContent() {
                         ))}
                     </nav>
 
-                    <button className={styles.logoutNavBtn} onClick={() => {
-                        logout();
-                        router.push('/signin');
-                    }}>
-                        <div className={styles.navIcon}><LogOut size={20} /></div>
-                        <span>Logout</span>
-                    </button>
                 </aside>
             )}
 
             {/* Main Content Area */}
             <main className={`${styles.content} ${activeTab === 'wishlist' ? styles.fullWidth : ''}`}>
+                {/* Mobile back-to-menu button */}
+                <button className={styles.mobileMenuBack} onClick={() => setMobileView('menu')}>
+                    <ChevronLeft size={16} />
+                    <span>Back</span>
+                </button>
+
                 {activeTab === 'profile' && <ProfileSection />}
                 {activeTab === 'address' && <AddressSection state={addressState} setState={setAddressState} />}
                 {activeTab === 'notifications' && <NotificationSection />}
@@ -2354,7 +2367,7 @@ function WishlistSection() {
     return (
         <div className={styles.section}>
             <header className={styles.sectionHeader}>
-                <div style={{ marginBottom: '0.5rem' }}>
+                <div className={styles.wishlistBack}>
                     <BackButton label="Back" />
                 </div>
                 <h1>My Wishlist</h1>

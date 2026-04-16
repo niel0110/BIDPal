@@ -15,6 +15,10 @@
     margin-bottom: 3rem;
 }
 
+.headerBack {
+    margin-bottom: 1.5rem;
+}
+
 .backBtn {
     background: none;
     border: none;
@@ -329,19 +333,139 @@
     }
 }
 
-@media (max-width: 640px) {
-    .cartItem {
-        flex-direction: column;
-        gap: 1rem;
+@media (max-width: 768px) {
+    .cartContainer {
+        padding-top: 1rem;
+        padding-bottom: 3rem;
     }
 
-    .itemImageWrapper {
-        width: 100%;
-        height: 200px;
+    .cartContent {
+        padding: 0 14px;
+    }
+
+    .cartHeader {
+        margin-bottom: 1rem;
+    }
+
+    .headerBack {
+        margin-bottom: 1rem;
     }
 
     .cartHeader h1 {
-        font-size: 1.75rem;
+        font-size: 1.5rem;
+        margin-bottom: 0.25rem;
+    }
+
+    .itemCount {
+        font-size: 0.9rem;
+    }
+
+    .cartMain {
+        gap: 1.25rem;
+    }
+
+    .itemsList {
+        gap: 0.85rem;
+    }
+
+    .cartItem {
+        flex-direction: row;
+        gap: 0.85rem;
+        padding: 0.85rem;
+        border-radius: 14px;
+    }
+
+    .itemImageWrapper {
+        width: 80px;
+        height: 80px;
+        border-radius: 10px;
+        flex-shrink: 0;
+    }
+
+    .itemDetails {
+        gap: 0.5rem;
+    }
+
+    .itemMainInfo h3 {
+        font-size: 0.9rem;
+        margin-bottom: 0.15rem;
+    }
+
+    .sellerName {
+        font-size: 0.78rem;
+    }
+
+    .itemCondition {
+        font-size: 0.65rem;
+        padding: 0.18rem 0.55rem;
+        margin-top: 0.3rem;
+    }
+
+    .priceInfo {
+        gap: 0.75rem;
+    }
+
+    .itemPrice {
+        font-size: 1rem;
+    }
+
+    .removeBtn {
+        padding: 0.3rem;
+    }
+
+    .summaryCard {
+        padding: 1.25rem;
+        border-radius: 16px;
+    }
+
+    .summaryCard h2 {
+        font-size: 1.1rem;
+        margin-bottom: 1rem;
+    }
+
+    .summaryRow {
+        font-size: 0.88rem;
+        margin-bottom: 0.75rem;
+    }
+
+    .summaryDivider {
+        margin: 1rem 0;
+    }
+
+    .totalRow {
+        font-size: 1.1rem;
+        margin-bottom: 1.25rem;
+    }
+
+    .checkoutBtn {
+        padding: 0.9rem;
+        font-size: 0.95rem;
+        border-radius: 10px;
+    }
+
+    .securePrompt {
+        font-size: 0.75rem;
+        margin-top: 0.85rem;
+    }
+
+    .emptyCart {
+        padding: 4rem 1.5rem;
+        border-radius: 20px;
+    }
+
+    .emptyCart h2 {
+        font-size: 1.4rem;
+        margin: 1rem 0 0.4rem;
+    }
+
+    .emptyCart p {
+        font-size: 0.88rem;
+        margin-bottom: 1.75rem;
+    }
+
+    .exploreBtn {
+        padding: 0.75rem 2rem;
+        font-size: 0.9rem;
     }
 }
 
@@ -369,4 +493,23 @@
 @keyframes spin {
     from { transform: rotate(0deg); }
     to { transform: rotate(360deg); }
+}
+
+@media (max-width: 360px) {
+    .cartContent { padding: 0 10px; }
+    .cartHeader h1 { font-size: 1.35rem; }
+    .itemCount { font-size: 0.82rem; }
+    .cartItem { padding: 0.7rem; gap: 0.65rem; border-radius: 12px; }
+    .itemImageWrapper { width: 68px; height: 68px; border-radius: 8px; }
+    .itemMainInfo h3 { font-size: 0.82rem; }
+    .itemPrice { font-size: 0.88rem; }
+    .summaryCard { padding: 1rem; border-radius: 12px; }
+    .summaryCard h2 { font-size: 1rem; margin-bottom: 0.75rem; }
+    .summaryRow { font-size: 0.82rem; margin-bottom: 0.6rem; }
+    .totalRow { font-size: 1rem; margin-bottom: 1rem; }
+    .checkoutBtn { font-size: 0.82rem; padding: 0.6rem 0.75rem; border-radius: 8px; }
+    .emptyCart { padding: 3rem 1rem; border-radius: 14px; }
+    .emptyCart h2 { font-size: 1.25rem; margin: 0.75rem 0 0.35rem; }
+    .emptyCart p { font-size: 0.82rem; margin-bottom: 1.25rem; }
+    .exploreBtn { padding: 0.6rem 1.5rem; font-size: 0.82rem; }
 }

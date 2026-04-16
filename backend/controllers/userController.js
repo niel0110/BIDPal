@@ -46,21 +46,44 @@ export const deleteUser = async (req, res) => {
 export const uploadAvatar = async (req, res) => {
   try {
     const { user_id } = req.params;
-    
+
+    // Ensure the requesting user can only update their own avatar
+    if (String(req.user?.user_id) !== String(user_id)) {
+      return res.status(403).json({ error: 'Forbidden' });
+    }
+
     if (!req.file) {
       return res.status(400).json({ error: 'No file uploaded' });
     }
 
-    // Generate a unique filename
-    const timestamp = Date.now();
-    const fileName = `${user_id}-${timestamp}-${req.file.originalname}`;
-    const filePath = `avatars/${fileName}`;
+    // Delete the old avatar from storage if one exists
+    const { data: existingUser } = await supabase
+      .from('User')
+      .select('Avatar')
+      .eq('user_id', user_id)
+      .single();
 
-    // Upload file to Supabase Storage
-    const { data, error: uploadError } = await supabase.storage
+    if (existingUser?.Avatar) {
+      // Extract the storage path from the public URL
+      const url = existingUser.Avatar;
+      const bucketMarker = '/user-avatars/';
+      const bucketIndex = url.indexOf(bucketMarker);
+      if (bucketIndex !== -1) {
+        const oldPath = url.slice(bucketIndex + bucketMarker.length);
+        await supabase.storage.from('user-avatars').remove([oldPath]);
+      }
+    }
+
+    // Generate a unique filename using user_id + timestamp
+    const ext = req.file.originalname.split('.').pop().toLowerCase();
+    const filePath = `avatars/${user_id}-${Date.now()}.${ext}`;
+
+    // Upload to Supabase Storage
+    const { error: uploadError } = await supabase.storage
       .from('user-avatars')
       .upload(filePath, req.file.buffer, {
         contentType: req.file.mimetype,
+        upsert: false,
       });
 
     if (uploadError) {
@@ -74,22 +97,19 @@ export const uploadAvatar = async (req, res) => {
 
     const avatarUrl = urlData.publicUrl;
 
-    // Update user with avatar URL
+    // Update user record
     const { data: updatedUser, error: updateError } = await supabase
       .from('User')
       .update({ Avatar: avatarUrl })
       .eq('user_id', user_id)
-      .select('*');
+      .select('*')
+      .single();
 
     if (updateError) {
       return res.status(400).json({ error: updateError.message });
     }
 
-    res.json({
-      success: true,
-      avatarUrl,
-      user: updatedUser[0]
-    });
+    res.json({ success: true, avatarUrl, user: updatedUser });
   } catch (err) {
     res.status(500).json({ error: err.message });
   }

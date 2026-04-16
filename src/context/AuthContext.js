@@ -63,6 +63,14 @@ export function AuthProvider({ children }) {
         }
     };
 
+    const updateUser = (updates) => {
+        setUser(prev => {
+            const updated = { ...prev, ...updates };
+            localStorage.setItem('bidpal_user', JSON.stringify(updated));
+            return updated;
+        });
+    };
+
     const logout = () => {
         setUser(null);
         localStorage.removeItem('bidpal_user');
@@ -70,7 +78,7 @@ export function AuthProvider({ children }) {
     };
 
     return (
-        <AuthContext.Provider value={{ user, loading, login, register, logout }}>
+        <AuthContext.Provider value={{ user, loading, login, register, logout, updateUser }}>
             {children}
         </AuthContext.Provider>
     );

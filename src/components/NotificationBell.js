@@ -32,36 +32,16 @@ function getNotificationIcon(type) {
 
 function getNotificationTarget(notification) {
     const { type, reference_id, metadata } = notification;
-
-    // Parse metadata if it's a string
     let meta = metadata;
     if (typeof metadata === 'string') {
-        try {
-            meta = JSON.parse(metadata);
-        } catch (e) {
-            meta = {};
-        }
+        try { meta = JSON.parse(metadata); } catch (e) { meta = {}; }
     }
-
-    if (type === 'new_message') {
-        return `/messages`;
-    }
-    if (type === 'auction_won') {
-        // Redirect to orders page, filtered to "To Pay" tab
-        return `/orders`;
-    }
-    if (type === 'auction_sold' && reference_id) {
-        return `/seller/auctions/${reference_id}/results`;
-    }
-    if (type === 'auction_reserve_not_met' && reference_id) {
-        return `/live?id=${reference_id}`;
-    }
-    if (type === 'order_update' && meta?.order_id) {
-        return `/orders`;
-    }
-    if (type === 'auction_upcoming' && reference_id) {
-        return `/live?id=${reference_id}`;
-    }
+    if (type === 'new_message') return `/messages`;
+    if (type === 'auction_won') return `/orders`;
+    if (type === 'auction_sold' && reference_id) return `/seller/auctions/${reference_id}/results`;
+    if (type === 'auction_reserve_not_met' && reference_id) return `/live?id=${reference_id}`;
+    if (type === 'order_update' && meta?.order_id) return `/orders`;
+    if (type === 'auction_upcoming' && reference_id) return `/live?id=${reference_id}`;
     return '/';
 }
 
@@ -70,6 +50,32 @@ export default function NotificationBell() {
     const { notifications, unreadCount, markRead, markAllRead, markAllSeen } = useNotifications();
     const [open, setOpen] = useState(false);
     const ref = useRef(null);
+
+    // Drag state (mobile only)
+    const [isMobile, setIsMobile] = useState(false);
+    const [dragPos, setDragPos] = useState({ x: 0, y: 58 });
+    const isDragging = useRef(false);
+    const dragOffset = useRef({ x: 0, y: 0 });
+
+    useEffect(() => {
+        const checkMobile = () => {
+            const mobile = window.innerWidth <= 768;
+            setIsMobile(mobile);
+            if (mobile) {
+                setDragPos({ x: window.innerWidth - 173, y: 58 });
+            }
+        };
+        checkMobile();
+        window.addEventListener('resize', checkMobile);
+        return () => window.removeEventListener('resize', checkMobile);
+    }, []);
+
+    // Reset position when opened
+    useEffect(() => {
+        if (open && isMobile) {
+            setDragPos({ x: window.innerWidth - 173, y: 58 });
+        }
+    }, [open, isMobile]);
 
     // Close on outside click
     useEffect(() => {
@@ -80,12 +86,44 @@ export default function NotificationBell() {
         return () => document.removeEventListener('mousedown', handler);
     }, []);
 
+    const handlePointerDown = (e) => {
+        if (!isMobile) return;
+        isDragging.current = true;
+        dragOffset.current = {
+            x: e.clientX - dragPos.x,
+            y: e.clientY - dragPos.y,
+        };
+        e.currentTarget.setPointerCapture(e.pointerId);
+        e.preventDefault();
+    };
+
+    const handlePointerMove = (e) => {
+        if (!isDragging.current || !isMobile) return;
+        const newX = e.clientX - dragOffset.current.x;
+        const newY = e.clientY - dragOffset.current.y;
+        // Keep within viewport bounds
+        const maxX = window.innerWidth - 173;
+        const maxY = window.innerHeight - 100;
+        setDragPos({
+            x: Math.max(0, Math.min(newX, maxX)),
+            y: Math.max(0, Math.min(newY, maxY)),
+        });
+    };
+
+    const handlePointerUp = () => {
+        isDragging.current = false;
+    };
+
     const handleNotificationClick = async (notification) => {
         if (isUnread(notification)) await markRead(notification.notification_id);
         const target = getNotificationTarget(notification);
         setOpen(false);
         router.push(target);
     };
+
+    const mobileStyle = isMobile
+        ? { left: dragPos.x, top: dragPos.y, right: 'auto' }
+        : {};
 
     return (
         <div className={styles.wrapper} ref={ref}>
@@ -104,10 +142,17 @@ export default function NotificationBell() {
                     <span className={styles.badge}>{unreadCount > 99 ? '99+' : unreadCount}</span>
                 )}
             </button>
+            <span className={styles.bellLabel}>Notifications</span>
 
             {open && (
-                <div className={styles.dropdown}>
-                    <div className={styles.dropdownHeader}>
+                <div className={styles.dropdown} style={mobileStyle}>
+                    <div
+                        className={styles.dropdownHeader}
+                        onPointerDown={handlePointerDown}
+                        onPointerMove={handlePointerMove}
+                        onPointerUp={handlePointerUp}
+                        style={isMobile ? { cursor: isDragging.current ? 'grabbing' : 'grab' } : {}}
+                    >
                         <h3>Notifications</h3>
                         <div className={styles.headerActions}>
                             {unreadCount > 0 && (

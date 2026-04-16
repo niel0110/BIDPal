@@ -2,7 +2,7 @@
 
 import { useState } from 'react';
 import Link from 'next/link';
-import { Search, SlidersHorizontal, User, ShoppingCart, Home, Heart, MessageCircle, LogOut, LayoutDashboard, Package, Gavel, BarChart3, Settings, ClipboardList, AlignJustify, X } from 'lucide-react';
+import { Search, SlidersHorizontal, User, ShoppingCart, Home, Heart, MessageCircle, LogOut, LayoutDashboard, Package, Gavel, BarChart3, ClipboardList, AlignJustify, X } from 'lucide-react';
 import { useAuth } from '@/context/AuthContext';
 import { useRouter, usePathname } from 'next/navigation';
 
@@ -224,12 +224,7 @@ export default function Header() {
           {/* Notification Bell - Shows for all logged-in users */}
           {user && <NotificationBell />}
 
-          {user ? (
-            <Link href="/settings" className={styles.navItem}>
-              <Settings size={18} className={styles.navIcon} color="#FBC02D" />
-              <span>Settings</span>
-            </Link>
-          ) : (
+          {!user && (
             <Link href="/" className={styles.navItem}>
               <User size={18} className={styles.navIcon} color="#FBC02D" />
               <span>Sign Up/Sign In</span>

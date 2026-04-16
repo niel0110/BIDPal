@@ -130,7 +130,7 @@ export default function OrdersPage() {
         setPaymentWindows(windows);
     }, [orders]);
 
-    // Fetch existing reviews for completed orders
+    // Fetch existing reviews for completed orders from Supabase
     useEffect(() => {
         const fetchReviews = async () => {
             const completedOrders = orders.filter(o => o.status === 'completed');
@@ -142,7 +142,7 @@ export default function OrdersPage() {
                     const res = await fetch(`${apiUrl}/api/reviews/order/${order.id}`);
                     if (res.ok) {
                         const data = await res.json();
-                        map[order.id] = data; // null if no review yet
+                        map[order.id] = data; // null = no review yet, object = reviewed
                     }
                 } catch { /* ignore */ }
             }));
@@ -184,7 +184,18 @@ export default function OrdersPage() {
             });
             const data = await res.json();
             if (res.ok) {
-                setExistingReviews(prev => ({ ...prev, [reviewTarget.id]: data.review }));
+                const review = data.review || { rating: reviewRating, comment: reviewComment.trim() || null };
+                setExistingReviews(prev => ({ ...prev, [reviewTarget.id]: review }));
+                setReviewTarget(null);
+            } else if (res.status === 409) {
+                // Already in DB — re-fetch the saved review from Supabase
+                try {
+                    const existing = await fetch(`${apiUrl}/api/reviews/order/${reviewTarget.id}`);
+                    const existingData = existing.ok ? await existing.json() : null;
+                    setExistingReviews(prev => ({ ...prev, [reviewTarget.id]: existingData || { rating: reviewRating } }));
+                } catch {
+                    setExistingReviews(prev => ({ ...prev, [reviewTarget.id]: { rating: reviewRating } }));
+                }
                 setReviewTarget(null);
             } else {
                 setReviewError(data.error || 'Failed to submit review.');
@@ -311,7 +322,9 @@ export default function OrdersPage() {
         <div className={styles.ordersContainer}>
             <div className={styles.ordersContent}>
                 <header className={styles.ordersHeader}>
-                    <BackButton label="Back" />
+                    <div className={styles.headerBack}>
+                        <BackButton label="Back" />
+                    </div>
                     <div className={styles.titleRow}>
                         <h1>My Orders</h1>
                         <div className={styles.searchBar}>
@@ -466,9 +479,8 @@ export default function OrdersPage() {
                                         existingReviews[order.id] ? (
                                             <div className={styles.reviewedChip}>
                                                 {[1,2,3,4,5].map(s => (
-                                                    <Star key={s} size={14} fill={s <= existingReviews[order.id].rating ? '#f59e0b' : 'none'} stroke={s <= existingReviews[order.id].rating ? '#f59e0b' : '#d1d5db'} />
+                                                    <Star key={s} size={13} fill={s <= existingReviews[order.id].rating ? '#f59e0b' : 'none'} stroke={s <= existingReviews[order.id].rating ? '#f59e0b' : '#d1d5db'} />
                                                 ))}
-                                                <span>Reviewed</span>
                                             </div>
                                         ) : (
                                             <button className={styles.reviewBtn} onClick={() => openReviewModal(order)}>

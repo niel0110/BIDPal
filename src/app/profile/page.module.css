@@ -125,16 +125,17 @@
     transition: all 0.2s;
 }
 
-.editAvatar:hover {
+.editAvatarLabel:hover .editAvatar {
     transform: scale(1.1);
     box-shadow: 0 4px 14px rgba(211, 47, 47, 0.4);
 }
 
-.editAvatar:disabled {
+.editAvatarDisabled {
+    pointer-events: none;
     opacity: 0.6;
     cursor: not-allowed;
-    transform: none;
 }
+
 
 .userName {
     font-size: 1.25rem;
@@ -231,12 +232,16 @@
     max-width: 1000px;
 }
 
+.wishlistBack {
+    margin-bottom: 1.5rem;
+}
+
 .sectionHeader {
     margin-bottom: 3rem;
 }
 
 .sectionHeader h1 {
-    font-size: 2rem;
+    font-size: 2.25rem;
     font-weight: 800;
     margin: 0 0 0.75rem 0;
     color: #111;
@@ -1248,6 +1253,12 @@ input:checked+.slider:before {
     font-weight: 600;
 }
 
+.policyContent p {
+    font-size: 0.95rem;
+    color: #555;
+    line-height: 1.7;
+}
+
 .brandLi {
     color: var(--color-primary);
     font-weight: 800;
@@ -1932,7 +1943,7 @@ input:checked+.slider:before {
     }
 }
 
-@media (max-width: 1024px) {
+@media (min-width: 769px) and (max-width: 1024px) {
 
     .container {
         flex-direction: column;
@@ -2661,6 +2672,516 @@ input:checked+.slider:before {
     background: #333;
 }
 
+/* ── Mobile menu back button — hidden on desktop ── */
+.mobileMenuBack {
+    display: none;
+}
+
+/* ── Profile page mobile layout ── */
+@media (max-width: 768px) {
+    .container {
+        flex-direction: column;
+        padding: 0;
+        gap: 0;
+        background: #f5f5f5;
+        min-height: 100svh;
+    }
+
+    /* Sidebar is the full-screen menu on mobile */
+    .sidebar {
+        width: 100%;
+        border-radius: 0;
+        padding: 1.25rem 1rem 1.5rem;
+        position: static;
+        border: none;
+        border-bottom: 1px solid #f0f0f0;
+        box-shadow: none;
+    }
+
+    .globalBack {
+        font-size: 0.82rem;
+        padding: 0.55rem 0.85rem;
+        margin-bottom: 1.25rem;
+        border-radius: 10px;
+    }
+
+    .userBrief {
+        margin-bottom: 1.5rem;
+        padding-bottom: 1.25rem;
+    }
+
+    .avatarWrapper {
+        width: 80px;
+        height: 80px;
+        margin-bottom: 1rem;
+    }
+
+    .editAvatar {
+        width: 26px;
+        height: 26px;
+    }
+
+    .userName {
+        font-size: 1rem;
+        margin-bottom: 0.3rem;
+    }
+
+    .userRole {
+        font-size: 0.8rem;
+    }
+
+    .navItem {
+        padding: 0.75rem 1rem;
+        border-radius: 10px;
+        font-size: 0.9rem;
+    }
+
+    .navIcon {
+        width: 30px;
+        height: 30px;
+        border-radius: 8px;
+    }
+
+    /* Content hidden by default on mobile; shown when mobileShowContent */
+    .content {
+        display: none;
+        padding: 1.25rem 1rem;
+        border-radius: 0;
+        border: none;
+        min-height: 100svh;
+    }
+
+    /* Mobile back-to-menu button visible */
+    .mobileMenuBack {
+        display: inline-flex;
+        align-items: center;
+        gap: 0.35rem;
+        background: #f4f4f5;
+        border: 1px solid #e4e4e7;
+        border-radius: 10px;
+        padding: 0.45rem 0.85rem 0.45rem 0.55rem;
+        cursor: pointer;
+        color: #3f3f46;
+        font-size: 0.875rem;
+        font-weight: 600;
+        margin-bottom: 1.25rem;
+        transition: background 0.15s;
+    }
+
+    .mobileMenuBack:hover {
+        background: #e4e4e7;
+    }
+
+    /* When mobileShowContent: hide sidebar, show content */
+    .mobileShowContent .sidebar {
+        display: none;
+    }
+
+    .mobileShowContent .content {
+        display: block;
+    }
+
+    /* Wishlist is always full-width (no sidebar) */
+    .fullWidth {
+        display: block;
+    }
+}
+
+@media (max-width: 360px) {
+    .sidebar {
+        padding: 1rem 0.85rem 1.25rem;
+    }
+
+    .globalBack {
+        font-size: 0.78rem;
+        padding: 0.45rem 0.75rem;
+        margin-bottom: 1rem;
+    }
+
+    .avatarWrapper {
+        width: 68px;
+        height: 68px;
+    }
+
+    .userName { font-size: 0.92rem; }
+    .userRole { font-size: 0.75rem; }
+
+    .navItem {
+        padding: 0.65rem 0.85rem;
+        font-size: 0.82rem;
+        border-radius: 8px;
+    }
+
+    .navIcon {
+        width: 26px;
+        height: 26px;
+        border-radius: 7px;
+    }
+
+    .content {
+        padding: 1rem 0.75rem;
+    }
+
+    .mobileMenuBack {
+        font-size: 0.8rem;
+        padding: 0.4rem 0.75rem 0.4rem 0.5rem;
+        margin-bottom: 1rem;
+    }
+}
+
+/* ── Content sections mobile ── */
+@media (max-width: 768px) {
+
+    /* Section header */
+    .section {
+        max-width: 100%;
+    }
+
+    /* Forms */
+    .profileForm,
+    .addressForm {
+        gap: 1rem;
+    }
+
+    .formGroup label {
+        font-size: 0.82rem;
+    }
+
+    .formGroup input,
+    .formGroup select,
+    .formGroup textarea {
+        padding: 0.75rem 0.9rem;
+        font-size: 0.88rem;
+        border-radius: 10px;
+    }
+
+    .primaryBtn {
+        padding: 0.9rem;
+        font-size: 0.9rem;
+        border-radius: 10px;
+        margin-top: 0.5rem;
+    }
+
+    .secondaryBtn {
+        padding: 0.9rem;
+        font-size: 0.9rem;
+        border-radius: 10px;
+    }
+
+    .buttonGroup {
+        gap: 0.75rem;
+        padding-top: 0.75rem;
+    }
+
+    .secondaryBtnLarge {
+        padding: 0.9rem;
+        font-size: 0.9rem;
+        border-radius: 12px;
+    }
+
+    .messageBox {
+        padding: 0.85rem 1rem;
+        font-size: 0.85rem;
+        border-radius: 10px;
+        margin-bottom: 1.25rem;
+    }
+
+    /* Address */
+    .addressCard {
+        padding: 1rem;
+        border-radius: 14px;
+        gap: 0.85rem;
+    }
+
+    .addressIcon {
+        width: 38px;
+        height: 38px;
+        border-radius: 10px;
+        flex-shrink: 0;
+    }
+
+    .addressTypeLine h3 {
+        font-size: 0.95rem;
+    }
+
+    .addressInfo p {
+        font-size: 0.82rem;
+    }
+
+    .addressActions {
+        flex-direction: column;
+        gap: 0.4rem;
+        align-items: flex-end;
+    }
+
+    .setDefaultBtn,
+    .unsetDefaultBtn {
+        font-size: 0.7rem;
+        padding: 0.35rem 0.65rem;
+    }
+
+    .editBtn,
+    .deleteBtn {
+        width: 30px;
+        height: 30px;
+        border-radius: 8px;
+    }
+
+    .addFullBtn {
+        padding: 0.9rem;
+        font-size: 0.88rem;
+        border-radius: 12px;
+    }
+
+    /* Toggles / Notifications */
+    .toggleItem,
+    .navActionItem {
+        padding: 0.9rem 1rem;
+        border-radius: 12px;
+        font-size: 0.88rem;
+    }
+
+    /* Payment */
+    .paymentCard {
+        padding: 1rem;
+        border-radius: 14px;
+    }
+
+    .paymentName {
+        font-size: 0.9rem;
+    }
+
+    .paymentDetail {
+        font-size: 0.78rem;
+    }
+
+    .connectionStatus {
+        font-size: 0.82rem;
+    }
+
+    /* Security */
+    .buttonStack {
+        margin-top: 1.5rem;
+        gap: 0.75rem;
+    }
+
+    /* Help Center */
+    .subTabs {
+        gap: 1rem;
+        margin-top: 0.5rem;
+    }
+
+    .subTab {
+        font-size: 0.9rem;
+        padding: 0.75rem 0;
+    }
+
+    .helpView {
+        padding-top: 1.25rem;
+    }
+
+    .categoryScroll {
+        gap: 0.5rem;
+        margin-bottom: 1.25rem;
+    }
+
+    .catChip {
+        padding: 0.5rem 1rem;
+        font-size: 0.8rem;
+    }
+
+    .searchBox {
+        padding: 0.75rem 0.9rem;
+        font-size: 0.88rem;
+        border-radius: 10px;
+        margin-bottom: 1.25rem;
+    }
+
+    .faqItem {
+        border-radius: 12px;
+        margin-bottom: 0.75rem;
+    }
+
+    .faqQuestion {
+        padding: 1rem;
+        font-size: 0.88rem;
+    }
+
+    .faqAnswer {
+        padding: 0 1rem 1rem;
+        font-size: 0.85rem;
+    }
+
+    .contactCard {
+        padding: 1rem;
+        border-radius: 14px;
+        gap: 0.85rem;
+    }
+
+    .contactIcon {
+        width: 38px;
+        height: 38px;
+        border-radius: 10px;
+    }
+
+    /* Invite Friends */
+    .friendCard {
+        padding: 0.85rem 1rem;
+        border-radius: 14px;
+        gap: 0.85rem;
+    }
+
+    .friendAvatar {
+        width: 44px;
+        height: 44px;
+    }
+
+    .friendInfo h3 {
+        font-size: 0.9rem;
+    }
+
+    .friendInfo p {
+        font-size: 0.78rem;
+    }
+
+    .inviteBtn {
+        padding: 0.5rem 1.1rem;
+        font-size: 0.8rem;
+    }
+
+    .geolocationBtn {
+        padding: 0.75rem 1rem;
+        font-size: 0.85rem;
+        border-radius: 10px;
+    }
+
+    .formGrid2 {
+        grid-template-columns: 1fr;
+        gap: 0;
+    }
+
+    /* Privacy / policy text */
+    .policyContent p {
+        font-size: 0.82rem;
+        line-height: 1.6;
+    }
+
+    .policyContent {
+        margin-top: -0.5rem;
+    }
+
+    /* Help Center — contact cards */
+    .contactCard {
+        padding: 0.85rem 1rem;
+        border-radius: 12px;
+        gap: 0.75rem;
+        font-size: 0.88rem;
+    }
+
+    .contactIcon {
+        width: 34px;
+        height: 34px;
+        border-radius: 8px;
+        flex-shrink: 0;
+    }
+
+    .contactIcon svg {
+        width: 18px;
+        height: 18px;
+    }
+
+    .contactList {
+        gap: 0.65rem;
+    }
+
+    /* Invite Friends — Generate Invite Link button */
+    .primaryBtn {
+        font-size: 0.88rem;
+        padding: 0.75rem 1.25rem;
+        border-radius: 10px;
+        width: fit-content;
+    }
+
+    /* Security — Update Password button */
+    .secondaryBtnLarge {
+        padding: 0.8rem;
+        font-size: 0.88rem;
+        border-radius: 10px;
+        margin-top: 0;
+    }
+
+    .buttonStack {
+        margin-top: 1rem;
+        gap: 0.65rem;
+    }
+
+    /* Addresses */
+    .addressCard {
+        flex-wrap: wrap;
+        gap: 0.75rem;
+    }
+
+    .addressActions {
+        flex-direction: row;
+        flex-wrap: wrap;
+        gap: 0.35rem;
+        justify-content: flex-end;
+    }
+}
+
+@media (max-width: 360px) {
+    /* Forms */
+    .formGroup input,
+    .formGroup select,
+    .formGroup textarea {
+        padding: 0.65rem 0.75rem;
+        font-size: 0.82rem;
+        border-radius: 8px;
+    }
+
+    .formGroup label { font-size: 0.78rem; }
+
+    .primaryBtn,
+    .secondaryBtn {
+        padding: 0.75rem;
+        font-size: 0.82rem;
+        border-radius: 8px;
+    }
+
+    .addressCard { padding: 0.75rem; border-radius: 12px; }
+    .addressTypeLine h3 { font-size: 0.88rem; }
+    .addressInfo p { font-size: 0.75rem; }
+
+    .toggleItem,
+    .navActionItem {
+        padding: 0.75rem 0.85rem;
+        font-size: 0.82rem;
+        border-radius: 10px;
+    }
+
+    .paymentCard { padding: 0.75rem; border-radius: 12px; }
+    .paymentName { font-size: 0.82rem; }
+
+    .faqQuestion { padding: 0.85rem; font-size: 0.82rem; }
+    .faqAnswer { padding: 0 0.85rem 0.85rem; font-size: 0.78rem; }
+
+    .contactCard { padding: 0.65rem 0.85rem; border-radius: 10px; font-size: 0.82rem; }
+    .contactIcon { width: 30px; height: 30px; border-radius: 7px; }
+    .contactList { gap: 0.5rem; }
+
+    .secondaryBtnLarge { padding: 0.7rem; font-size: 0.82rem; }
+    .buttonStack { margin-top: 0.75rem; gap: 0.5rem; }
+
+    .friendCard { padding: 0.75rem 0.85rem; border-radius: 12px; }
+    .friendAvatar { width: 38px; height: 38px; }
+    .friendInfo h3 { font-size: 0.82rem; }
+    .inviteBtn { padding: 0.45rem 0.9rem; font-size: 0.75rem; }
+
+    .subTab { font-size: 0.82rem; }
+    .catChip { padding: 0.4rem 0.85rem; font-size: 0.75rem; }
+    .addFullBtn { padding: 0.75rem; font-size: 0.82rem; }
+}
+
 /* ── Wishlist Mobile ── */
 @media (max-width: 768px) {
     .fullWidth .section {
@@ -2680,8 +3201,8 @@ input:checked+.slider:before {
     }
 
     .wishlistImageWrapper {
-        width: 120px;
-        min-width: 120px;
+        width: 105px;
+        min-width: 105px;
         aspect-ratio: unset;
         flex-shrink: 0;
         border-radius: 0;
@@ -2710,6 +3231,8 @@ input:checked+.slider:before {
         padding: 0.85rem 1rem;
         gap: 0.4rem;
         justify-content: space-between;
+        min-width: 0;
+        overflow: hidden;
     }
 
     .wishlistSeller {
@@ -2755,8 +3278,17 @@ input:checked+.slider:before {
     }
 
     /* Header */
+    .sectionHeader {
+        margin-bottom: 1rem;
+    }
+
+    .wishlistBack {
+        margin-bottom: 1rem;
+    }
+
     .sectionHeader h1 {
         font-size: 1.5rem;
+        margin-bottom: 0.25rem;
     }
 
     .sectionHeader p {
@@ -2783,5 +3315,85 @@ input:checked+.slider:before {
     .emptyWishlist p {
         font-size: 0.85rem;
     }
+}
+
+@media (max-width: 360px) {
+    .container { padding: 0.5rem; gap: 0.5rem; }
+    .content { padding: 0.75rem; }
+
+    .wishlistGrid { gap: 0.65rem; }
+
+    .wishlistCard {
+        border-radius: 12px;
+    }
+
+    .wishlistImageWrapper {
+        width: 90px;
+        min-width: 90px;
+    }
+
+    .wishlistHeartBtn {
+        width: 26px;
+        height: 26px;
+        top: 0.35rem;
+        right: 0.35rem;
+    }
+
+    .wishlistBadge {
+        font-size: 0.58rem;
+        padding: 0.2rem 0.45rem;
+        top: 0.4rem;
+        left: 0.4rem;
+    }
+
+    .wishlistInfo {
+        padding: 0.5rem 0.6rem;
+        gap: 0.2rem;
+        min-width: 0;
+        overflow: hidden;
+    }
+
+    .wishlistSeller {
+        font-size: 0.62rem;
+        white-space: nowrap;
+        overflow: hidden;
+        text-overflow: ellipsis;
+    }
+
+    .wishlistName {
+        font-size: 0.76rem;
+        font-weight: 700;
+        white-space: nowrap;
+        overflow: hidden;
+        text-overflow: ellipsis;
+    }
+
+    .wishlistDesc {
+        font-size: 0.62rem;
+        -webkit-line-clamp: 1;
+        overflow: hidden;
+        white-space: nowrap;
+        text-overflow: ellipsis;
+    }
+
+    .priceLabel { font-size: 0.6rem; }
+    .priceValue { font-size: 0.88rem; }
+
+    .wishlistPriceRow { gap: 0.3rem; padding-top: 0.3rem; }
+
+    .viewAuctionBtn {
+        padding: 0.4rem 0.6rem;
+        font-size: 0.7rem;
+        border-radius: 7px;
+    }
+
+    .sectionHeader { margin-bottom: 0.85rem; }
+    .sectionHeader h1 { font-size: 1.35rem; }
+    .sectionHeader p { font-size: 0.78rem; }
+
+    .emptyWishlist { padding: 2.5rem 1rem; }
+    .emptyIconWrapper { width: 60px; height: 60px; }
+    .emptyWishlist h2 { font-size: 1.1rem; }
+    .emptyWishlist p { font-size: 0.78rem; }
 }
 

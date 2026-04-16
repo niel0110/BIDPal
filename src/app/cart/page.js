@@ -80,7 +80,9 @@ export default function CartPage() {
         <div className={styles.cartContainer}>
             <div className={styles.cartContent}>
                 <header className={styles.cartHeader}>
-                    <BackButton label="Continue Shopping" />
+                    <div className={styles.headerBack}>
+                        <BackButton label="Continue Shopping" />
+                    </div>
                     <h1>Your Shopping Cart</h1>
                     <div className={styles.itemCount}>
                         {cartItems.length} {cartItems.length === 1 ? 'Item' : 'Items'}

@@ -26,13 +26,13 @@ export const submitReview = async (req, res) => {
     }
 
     // Prevent duplicate review for the same order
-    const { data: existing } = await supabase
+    const { data: existingRows } = await supabase
       .from('Reviews')
-      .select('review_id')
+      .select('order_id')
       .eq('order_id', order_id)
-      .maybeSingle();
+      .limit(1);
 
-    if (existing) {
+    if (existingRows && existingRows.length > 0) {
       return res.status(409).json({ error: 'You have already reviewed this order' });
     }
 
@@ -78,6 +78,10 @@ export const submitReview = async (req, res) => {
 
     if (insertError) {
       console.error('Review insert error:', insertError);
+      // Unique constraint violation — already reviewed
+      if (insertError.code === '23505') {
+        return res.status(409).json({ error: 'You have already reviewed this order' });
+      }
       return res.status(500).json({ error: insertError.message });
     }
 
@@ -113,13 +117,18 @@ export const getReviewByOrder = async (req, res) => {
 
     const { data, error } = await supabase
       .from('Reviews')
-      .select('review_id, rating, comment, created_at')
+      .select('rating, comment, created_at')
       .eq('order_id', order_id)
-      .maybeSingle();
+      .limit(1);
 
-    if (error) return res.status(500).json({ error: error.message });
-    res.json(data || null);
+    if (error) {
+      console.error('[getReviewByOrder] error:', error.code, error.message);
+      return res.status(500).json({ error: error.message });
+    }
+
+    res.json(data?.[0] ?? null);
   } catch (err) {
+    console.error('[getReviewByOrder] unexpected:', err.message);
     res.status(500).json({ error: err.message });
   }
 };
@@ -132,7 +141,6 @@ export const getSellerReviews = async (req, res) => {
     const { data, error } = await supabase
       .from('Reviews')
       .select(`
-        review_id,
         rating,
         comment,
         created_at,

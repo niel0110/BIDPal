@@ -274,6 +274,7 @@ button.dropdownItem {
 
     .menuBtn {
         padding: 0.4rem;
+        background: none;
     }
 
     .dropdownMenu {
@@ -315,7 +316,7 @@ button.dropdownItem {
     .navItem {
         gap: 0;
         padding: 0.4rem;
-        background: #F5F5F5;
+        background: none;
         border-radius: 8px;
         min-width: 34px;
         min-height: 34px;
@@ -326,7 +327,7 @@ button.dropdownItem {
     }
 
     .navItem:hover {
-        background: #EBEBEB;
+        background: #F5F5F5;
     }
 
     .mobileSearchToggle {
@@ -335,7 +336,7 @@ button.dropdownItem {
         display: flex;
         align-items: center;
         justify-content: center;
-        background: #F5F5F5;
+        background: none;
         border: none;
         padding: 0.4rem;
         border-radius: 8px;
@@ -345,7 +346,7 @@ button.dropdownItem {
     }
 
     .mobileSearchToggle:hover {
-        background: #EBEBEB;
+        background: #F5F5F5;
     }
 
     .mobileSearchRow {
@@ -386,5 +387,38 @@ button.dropdownItem {
     .mobileSearchToggle,
     .mobileSearchRow {
         display: none;
+    }
+}
+
+@media (max-width: 360px) {
+    .mainHeader {
+        padding: 0.5rem 0.65rem;
+    }
+
+    .leftSection {
+        gap: 0.3rem;
+    }
+
+    .menuBtn {
+        padding: 0.3rem;
+        border-radius: 7px;
+    }
+
+    .rightSection {
+        gap: 0.2rem;
+    }
+
+    .navItem {
+        min-width: 28px;
+        min-height: 28px;
+        padding: 0.3rem;
+        border-radius: 7px;
+    }
+
+    .mobileSearchToggle {
+        min-width: 28px;
+        min-height: 28px;
+        padding: 0.3rem;
+        border-radius: 7px;
     }
 }

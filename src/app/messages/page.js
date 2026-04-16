@@ -51,15 +51,32 @@ function MessagesPageInner() {
     const [sending, setSending] = useState(false);
     const [mobileShowChat, setMobileShowChat] = useState(false);
     const messagesEndRef = useRef(null);
+    const messageAreaRef = useRef(null);
     const pollRef = useRef(null);
+    const prevMsgCount = useRef(0);
 
     const getToken = () => localStorage.getItem('bidpal_token');
 
-    const scrollToBottom = () => {
-        messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' });
+    const isNearBottom = () => {
+        const el = messageAreaRef.current;
+        if (!el) return true;
+        return el.scrollHeight - el.scrollTop - el.clientHeight < 120;
     };
 
-    useEffect(() => { scrollToBottom(); }, [messages]);
+    const scrollToBottom = (behavior = 'instant') => {
+        messagesEndRef.current?.scrollIntoView({ behavior });
+    };
+
+    useEffect(() => {
+        const prev = prevMsgCount.current;
+        const curr = messages.length;
+        prevMsgCount.current = curr;
+        if (curr === 0) return;
+        // Initial load or chat switch → jump instantly
+        if (prev === 0) { scrollToBottom('instant'); return; }
+        // New message arrived → smooth scroll only if already near bottom
+        if (curr > prev && isNearBottom()) scrollToBottom('smooth');
+    }, [messages]);
 
     const fetchConversations = useCallback(async (isInitial = false) => {
         try {
@@ -365,7 +382,7 @@ function MessagesPageInner() {
                                     </div>
                                 </header>
 
-                                <div className={styles.messageArea}>
+                                <div className={styles.messageArea} ref={messageAreaRef}>
                                     {messagesLoading ? (
                                         <div style={{ padding: '2rem', textAlign: 'center', color: '#aaa' }}>
                                             Loading messages...
@@ -413,7 +430,7 @@ function MessagesPageInner() {
                                     </div>
                                     <textarea
                                         className={styles.messageTextbox}
-                                        placeholder="Type a message... (Enter to send)"
+                                        placeholder="Type a message..."
                                         value={messageInput}
                                         onChange={(e) => setMessageInput(e.target.value)}
                                         onKeyDown={handleKeyDown}
