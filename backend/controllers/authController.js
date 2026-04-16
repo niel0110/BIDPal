@@ -55,7 +55,7 @@ export const register = async (req, res) => {
 
     console.log('User created successfully, generating token...');
     // Generate JWT
-    const token = jwt.sign({ user_id: data[0].user_id, email: data[0].email }, process.env.JWT_SECRET, { expiresIn: '1d' });
+    const token = jwt.sign({ user_id: data[0].user_id, email: data[0].email, role: data[0].role }, process.env.JWT_SECRET, { expiresIn: '1d' });
     res.status(201).json({ message: 'User registered successfully', user: data[0], token });
   } catch (err) {
     console.error('Unexpected error in register controller:', err);
@@ -97,7 +97,7 @@ export const login = async (req, res) => {
   }
 
   // Generate JWT
-  const token = jwt.sign({ user_id: data.user_id, email: data.email }, process.env.JWT_SECRET, { expiresIn: '1d' });
+  const token = jwt.sign({ user_id: data.user_id, email: data.email, role: data.role }, process.env.JWT_SECRET, { expiresIn: '1d' });
   res.json({ message: 'Login successful', user: { user_id: data.user_id, email: data.email, Fname: data.Fname, Mname: data.Mname, Lname: data.Lname, role: data.role, contact_num: data.contact_num, Avatar: data.Avatar, seller_id }, token });
 };
 
@@ -190,7 +190,7 @@ export const googleLogin = async (req, res) => {
     }
 
     // Generate JWT
-    const token = jwt.sign({ user_id: user.user_id, email: user.email }, process.env.JWT_SECRET, { expiresIn: '1d' });
+    const token = jwt.sign({ user_id: user.user_id, email: user.email, role: user.role }, process.env.JWT_SECRET, { expiresIn: '1d' });
     res.json({ message: 'Login successful', user: { ...user, seller_id }, token });
   } catch (err) {
     console.error('Unexpected error in googleLogin controller:', err);
@@ -271,7 +271,7 @@ export const socialLogin = async (req, res) => {
     }
 
     // Generate JWT
-    const token = jwt.sign({ user_id: user.user_id, email: user.email }, process.env.JWT_SECRET, { expiresIn: '1d' });
+    const token = jwt.sign({ user_id: user.user_id, email: user.email, role: user.role }, process.env.JWT_SECRET, { expiresIn: '1d' });
     res.json({ message: 'Login successful', user: { ...user, seller_id }, token });
   } catch (err) {
     console.error('Unexpected error in socialLogin controller:', err);

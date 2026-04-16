@@ -52,6 +52,7 @@ export default function SellerDashboard() {
     const [isVideoOff, setIsVideoOff] = useState(false);
     const [liveDuration, setLiveDuration] = useState({ hours: 0, minutes: 0, seconds: 0 });
     const [auctionEndModal, setAuctionEndModal] = useState({ show: false, hasWinner: false, winner: null });
+    const [mobileTab, setMobileTab] = useState('live');
 
     // Agora refs
     const agoraClientRef = useRef(null);
@@ -603,7 +604,7 @@ export default function SellerDashboard() {
 
     return (
         <>
-            {/* Header Section */}
+            {/* Header */}
             <header className={styles.header}>
                 <div className={styles.titleInfo}>
                     <h1 className={styles.title}>Seller Hub</h1>
@@ -613,28 +614,44 @@ export default function SellerDashboard() {
                     </div>
                 </div>
                 <div className={styles.headerActions}>
-                    <Link href="/seller/add-product" className={styles.addBtnSmall}>
-                        <Plus size={18} /> Add Product
-                    </Link>
                     <button
                         className={`${styles.liveControlBtn} ${isLive ? styles.stop : styles.start} ${!hasProducts && !isLive ? styles.disabled : ''}`}
                         onClick={handleGoLive}
                         disabled={!hasProducts && !isLive}
-                        title={!hasProducts ? 'Add products to start live auction' : ''}
+                        title={!hasProducts ? 'Add products to your queue first' : ''}
                     >
-                        {isLive ? <Square size={18} fill="currentColor" /> : <Play size={18} fill="currentColor" />}
+                        {isLive ? <Square size={16} fill="currentColor" /> : <Play size={16} fill="currentColor" />}
                         {isLive ? 'End Stream' : 'Go Live'}
                     </button>
                 </div>
             </header>
 
+            {/* Mobile Tab Bar — Live | Queue */}
+            <nav className={styles.mobileTabBar}>
+                <button
+                    className={`${styles.mobileTab} ${mobileTab === 'live' ? styles.mobileTabActive : ''}`}
+                    onClick={() => setMobileTab('live')}
+                >
+                    <Radio size={15} />
+                    <span>Live</span>
+                </button>
+                <button
+                    className={`${styles.mobileTab} ${mobileTab === 'queue' ? styles.mobileTabActive : ''}`}
+                    onClick={() => setMobileTab('queue')}
+                >
+                    <Clock size={15} />
+                    <span>Queue</span>
+                </button>
+            </nav>
+
             <div className={styles.controlRoom}>
-                {/* Left Column: Live Controls & Monitoring */}
-                <div className={styles.mainWorkArea}>
-                    {/* Live Auction Display - No Card Container */}
+
+                {/* ── LEFT / MAIN: Video → Product Info → Bids → Chat ── */}
+                <div className={`${styles.mainWorkArea} ${mobileTab !== 'live' ? styles.tabSectionHidden : ''}`}>
+
+                    {/* Video section (with stats + camera controls overlaid) */}
                     {activeItem ? (
                         <div className={styles.liveAuctionArea}>
-                            {/* Live Badge */}
                             {isLive && (
                                 <div className={styles.livePulseBadge}>
                                     <div className={styles.livePulseDot}></div>
@@ -642,78 +659,70 @@ export default function SellerDashboard() {
                                 </div>
                             )}
 
-                            {/* Fullscreen Video Container */}
                             <div className={styles.videoContainer}>
                                 {streamReady ? (
-                                    <>
-                                        {/* Live Camera Feed */}
-                                        <div
-                                            id="seller-camera-preview"
-                                            style={{
-                                                width: '100%',
-                                                height: '100%',
-                                                position: 'absolute',
-                                                inset: 0,
-                                                objectFit: 'cover'
-                                            }}
-                                        />
-                                        {/* Camera Controls */}
-                                        <div className={styles.cameraControls}>
-                                            <button
-                                                onClick={toggleMic}
-                                                className={`${styles.controlBtn} ${isMuted ? styles.controlBtnDanger : ''}`}
-                                                title={isMuted ? 'Unmute' : 'Mute'}
-                                            >
-                                                {isMuted ? <MicOff size={20} /> : <Mic size={20} />}
-                                            </button>
-                                            <button
-                                                onClick={toggleVideo}
-                                                className={`${styles.controlBtn} ${isVideoOff ? styles.controlBtnDanger : ''}`}
-                                                title={isVideoOff ? 'Turn on camera' : 'Turn off camera'}
-                                            >
-                                                {isVideoOff ? <VideoOff size={20} /> : <Video size={20} />}
-                                            </button>
-                                        </div>
-                                    </>
+                                    <div
+                                        id="seller-camera-preview"
+                                        style={{ width: '100%', height: '100%', position: 'absolute', inset: 0, objectFit: 'cover' }}
+                                    />
                                 ) : (
                                     <>
                                         <img src={activeItem.image} alt={activeItem.title} className={styles.videoPlaceholder} />
                                         {isLive && (
                                             <div className={styles.cameraStartOverlay}>
-                                                <button
-                                                    onClick={() => startAgoraStream(activeItem.id)}
-                                                    className={styles.startCameraBtn}
-                                                >
-                                                    <Video size={24} />
-                                                    Start Camera
+                                                <button onClick={() => startAgoraStream(activeItem.id)} className={styles.startCameraBtn}>
+                                                    <Video size={22} /> Start Camera
                                                 </button>
                                             </div>
                                         )}
                                     </>
                                 )}
-                            </div>
 
-                            {/* Product Details Below Video */}
-                            <div className={styles.productDetailsSection}>
-                                <div className={styles.productHeader}>
-                                    <div className={styles.productTitleArea}>
-                                        <Radio size={18} color="#D32F2F" className={styles.productIcon} />
-                                        <h1 className={styles.productTitle}>{activeItem.title}</h1>
+                                {/* Stats overlay — always visible over video */}
+                                <div className={styles.videoStatsOverlay}>
+                                    <div className={styles.videoStat}>
+                                        <Eye size={13} />
+                                        <span>{dashboardData.stats.viewers}</span>
+                                    </div>
+                                    <div className={styles.videoStat}>
+                                        <Heart size={13} />
+                                        <span>{dashboardData.stats.likes}</span>
+                                    </div>
+                                    <div className={styles.videoStat}>
+                                        <Share2 size={13} />
+                                        <span>{dashboardData.stats.shares}</span>
                                     </div>
                                 </div>
 
+                                {/* Camera controls */}
+                                {streamReady && (
+                                    <div className={styles.cameraControls}>
+                                        <button onClick={toggleMic} className={`${styles.controlBtn} ${isMuted ? styles.controlBtnDanger : ''}`} title={isMuted ? 'Unmute' : 'Mute'}>
+                                            {isMuted ? <MicOff size={18} /> : <Mic size={18} />}
+                                        </button>
+                                        <button onClick={toggleVideo} className={`${styles.controlBtn} ${isVideoOff ? styles.controlBtnDanger : ''}`} title={isVideoOff ? 'Camera on' : 'Camera off'}>
+                                            {isVideoOff ? <VideoOff size={18} /> : <Video size={18} />}
+                                        </button>
+                                    </div>
+                                )}
+                            </div>
+
+                            {/* Product info strip */}
+                            <div className={styles.productDetailsSection}>
+                                <div className={styles.productTitleArea}>
+                                    <Radio size={14} color="#D32F2F" className={styles.productIcon} />
+                                    <h1 className={styles.productTitle}>{activeItem.title}</h1>
+                                </div>
                                 <div className={styles.productStatsGrid}>
                                     <div className={styles.statCard}>
                                         <div className={styles.statCardLabel}>Current Bid</div>
                                         <div className={styles.statCardValue}>₱{activeItem.currentBid.toLocaleString()}</div>
                                     </div>
                                     <div className={styles.statCard}>
-                                        <div className={styles.statCardLabel}>Live Duration</div>
+                                        <div className={styles.statCardLabel}>Duration</div>
                                         <div className={styles.statCardValue}>
-                                            <Clock size={20} />
-                                            {String(liveDuration.hours).padStart(2, '0')}:
-                                            {String(liveDuration.minutes).padStart(2, '0')}:
-                                            {String(liveDuration.seconds).padStart(2, '0')}
+                                            <Clock size={14} />
+                                            {String(liveDuration.hours).padStart(2, '0')}:{String(liveDuration.minutes).padStart(2, '0')}:{String(liveDuration.seconds).padStart(2, '0')}
                                         </div>
                                     </div>
                                 </div>
@@ -721,131 +730,65 @@ export default function SellerDashboard() {
                         </div>
                     ) : (
                         <div className={styles.emptyState}>
-                            <Radio size={64} color="#ddd" strokeWidth={1.5} />
+                            <Radio size={48} color="#ddd" strokeWidth={1.5} />
                             <h2>No Active Auction</h2>
-                            <p>{isNewSeller ? 'Start selling by adding products to your inventory' : 'No auction is currently live. Schedule one to get started.'}</p>
+                            <p>{isNewSeller ? 'Add products to your queue, then hit Go Live.' : 'No auction live. Add products to the Queue tab and hit Go Live.'}</p>
                             {isNewSeller && (
                                 <Link href="/seller/add-product" className={styles.emptyStateBtn}>
-                                    <Plus size={20} /> Add Your First Product
+                                    <Plus size={16} /> Add Your First Product
                                 </Link>
                             )}
                         </div>
                     )}
 
-                    {/* Recent Bids Card */}
+                    {/* Recent Bids — directly below video */}
                     <section className={styles.card}>
                         <div className={styles.cardHeader}>
                             <div className={styles.cardTitleGroup}>
-                                <Gavel size={20} />
-                                <div>
+                                <Gavel size={16} color="#111" />
+                                <div className={styles.cardHeaderText}>
                                     <h2>Recent Bids</h2>
                                     <p>Live bidding activity</p>
                                 </div>
                             </div>
-                            {activeItem && bidderCount > 0 && (
+                            {bidderCount > 0 && (
                                 <div className={styles.biddersCount}>
-                                    <Users size={16} /> {bidderCount} Bidder{bidderCount !== 1 ? 's' : ''}
+                                    <Users size={13} /> {bidderCount} bidder{bidderCount !== 1 ? 's' : ''}
                                 </div>
                             )}
                         </div>
                         <div className={styles.bidsList}>
                             {recentBids.length > 0 ? recentBids.map((bid, index) => (
                                 <div key={bid.bid_id || index} className={styles.bidRow}>
-                                    <div>
-                                        <div className={styles.bidderName}>{bid.bidder_name}</div>
-                                        <div className={styles.bidTimestamp}>{bid.timeAgo}</div>
+                                    <div className={styles.bidderAvatar}>
+                                        {(bid.bidder_name || 'B').charAt(0).toUpperCase()}
                                     </div>
-                                    <span className={styles.bidPrice}>₱{bid.amount.toLocaleString()}</span>
+                                    <div className={styles.bidInfo}>
+                                        <span className={styles.bidderName}>{bid.bidder_name || 'Anonymous'}</span>
+                                        <span className={styles.bidTimestamp}>{bid.timeAgo || 'just now'}</span>
+                                    </div>
+                                    <span className={styles.bidPrice}>₱{Number(bid.amount).toLocaleString()}</span>
                                 </div>
                             )) : (
                                 <div className={styles.emptyBids}>
-                                    <Gavel size={48} color="#eee" strokeWidth={1.5} />
+                                    <Gavel size={32} color="#eee" strokeWidth={1.5} />
                                     <p>No bids yet</p>
                                 </div>
                             )}
                         </div>
                     </section>
 
-                    {/* Product Queue */}
-                    <section className={styles.card}>
-                        <div className={styles.cardHeader}>
-                            <div className={styles.cardHeaderText}>
-                                <h2>Auction Queue</h2>
-                                <p>Next items to be showcased</p>
-                            </div>
-                            {/* Dynamic Scroll Indicator */}
-                            <div className={styles.scrollIndicator}>
-                                <div
-                                    className={styles.scrollThumb}
-                                    style={{
-                                        left: `${queueProgress * 100}%`,
-                                        transform: `translateX(-${queueProgress * 100}%)`
-                                    }}
-                                />
-                            </div>
-                            <Link href="/seller/inventory" className={styles.viewInventoryBtn}>View All</Link>
-                        </div>
-                        <div className={styles.queueList} onScroll={handleQueueScroll}>
-                            {dashboardData.queue.length > 0 ? dashboardData.queue.map(item => (
-                                <div key={item.auction_id} className={styles.queueItem}>
-                                    <img src={item.products?.images?.[0]?.image_url || "https://placehold.co/100x100?text=No+Image"} alt={item.products?.name} />
-                                    <div className={styles.queueMeta}>
-                                        <h4>{item.products?.name}</h4>
-                                        <span>Starts at ₱ {item.reserve_price?.toLocaleString() || item.buy_now_price?.toLocaleString()}</span>
-                                    </div>
-                                    <button className={styles.setNextBtn}>Set Next</button>
-                                </div>
-                            )) : (
-                                <div className={styles.emptyQueue}>
-                                    <p>Your auction queue is empty.</p>
-                                    <Link href="/seller/inventory">Add products to queue</Link>
-                                </div>
-                            )}
-                        </div>
-                    </section>
-
-                </div>
-
-                {/* Right Column: Interaction & Metrics */}
-                <aside className={styles.interactionPanel}>
-                    {/* Live Insights */}
+                    {/* Live Chat — directly below bids */}
                     <section className={styles.card}>
                         <div className={styles.cardHeader}>
                             <div className={styles.cardTitleGroup}>
-                                <TrendingUp size={20} color="#111" />
-                                <h2>Hub Insights</h2>
+                                <MessageSquare size={16} color="#111" />
+                                <div className={styles.cardHeaderText}>
+                                    <h2>Live Chat</h2>
+                                    <p>Buyer comments</p>
+                                </div>
                             </div>
-                        </div>
-                        <div className={styles.metricsGrid}>
-                            <div className={styles.metricItem}>
-                                <div className={styles.metricIcon}><Eye size={18} /></div>
-                                <span className={styles.metricLabel}>Live Viewers</span>
-                                <span className={styles.metricValue}>{dashboardData.stats.viewers}</span>
-                            </div>
-                            <div className={styles.metricItem}>
-                                <div className={styles.metricIcon}><Share2 size={18} /></div>
-                                <span className={styles.metricLabel}>Shares</span>
-                                <span className={styles.metricValue}>{dashboardData.stats.shares}</span>
-                            </div>
-                            <div className={styles.metricItem}>
-                                <div className={styles.metricIcon}><Heart size={18} /></div>
-                                <span className={styles.metricLabel}>Likes</span>
-                                <span className={styles.metricValue}>{dashboardData.stats.likes}</span>
-                            </div>
-                        </div>
-                    </section>
-
-                    {/* Live Engagement / Messages Preview */}
-                    <section className={`${styles.card} ${styles.chatCard}`}>
-                        <div className={styles.cardHeader}>
-                            <div className={styles.cardTitleGroup}>
-                                <MessageSquare size={18} color="#111" />
-                                <h2>Live Comments</h2>
-                            </div>
-                            <button 
-                                onClick={() => setComments([])} 
-                                style={{ fontSize: '0.8rem', color: '#888', fontWeight: 600, background: 'none', border: 'none', cursor: 'pointer' }}
-                            >
+                            <button onClick={() => setComments([])} className={styles.clearChatBtn}>
                                 Clear
                             </button>
                         </div>
@@ -854,9 +797,7 @@ export default function SellerDashboard() {
                                 {comments.length > 0 ? comments.map(msg => (
                                     <div key={msg.id} className={styles.comment}>
                                         <div className={styles.commentHeader}>
-                                            <span className={styles.userName}>
-                                                {msg.user}
-                                            </span>
+                                            <span className={styles.userName}>{msg.user}</span>
                                             <span className={styles.commentTime}>
                                                 {new Date(msg.sent_at || Date.now()).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
                                             </span>
@@ -865,13 +806,13 @@ export default function SellerDashboard() {
                                     </div>
                                 )) : (
                                     <p className={styles.emptyChat}>
-                                        {isLive ? 'No comments yet. Start the conversation!' : 'Comments will appear here when you go live.'}
+                                        {isLive ? 'No comments yet.' : 'Go live to see buyer comments.'}
                                     </p>
                                 )}
                             </div>
                             <div className={styles.chatInputArea}>
                                 <textarea
-                                    placeholder={isLive ? "Type a comment..." : "Go live to comment"}
+                                    placeholder={isLive ? 'Type an announcement…' : 'Go live to comment'}
                                     className={styles.announcementInput}
                                     value={messageInput}
                                     onChange={(e) => setMessageInput(e.target.value)}
@@ -888,14 +829,48 @@ export default function SellerDashboard() {
                                     className={styles.chatSendBtn}
                                     onClick={handleSendComment}
                                     disabled={!isLive || !messageInput.trim()}
-                                    title="Send Comment"
+                                    title="Send"
                                 >
-                                    <Send size={18} />
+                                    <Send size={16} />
                                 </button>
                             </div>
                         </div>
                     </section>
+
+                </div>
+
+                {/* ── RIGHT / QUEUE TAB: Product Queue ── */}
+                <aside className={`${styles.interactionPanel} ${mobileTab !== 'queue' ? styles.tabSectionHidden : ''}`}>
+                    <section className={styles.card}>
+                        <div className={styles.cardHeader}>
+                            <div className={styles.cardHeaderText}>
+                                <h2>Product Queue</h2>
+                                <p>Up next in the auction</p>
+                            </div>
+                            <Link href="/seller/add-product" className={styles.addQueueBtn}>
+                                <Plus size={13} /> Add
+                            </Link>
+                        </div>
+                        <div className={styles.queueGrid}>
+                            {dashboardData.queue.length > 0 ? dashboardData.queue.map(item => (
+                                <div key={item.auction_id} className={styles.queueGridItem}>
+                                    <img src={item.products?.images?.[0]?.image_url || 'https://placehold.co/100x100?text=No+Image'} alt={item.products?.name} />
+                                    <div className={styles.queueGridMeta}>
+                                        <h4>{item.products?.name}</h4>
+                                        <span>Starts at ₱{item.reserve_price?.toLocaleString() || item.buy_now_price?.toLocaleString()}</span>
+                                    </div>
+                                    <button className={styles.setNextBtn}>Set Next</button>
+                                </div>
+                            )) : (
+                                <div className={styles.emptyQueue}>
+                                    <p>Queue is empty.</p>
+                                    <Link href="/seller/add-product">+ Add a product</Link>
+                                </div>
+                            )}
+                        </div>
+                    </section>
                 </aside>
+
             </div>
 
             {/* Auction End Modal */}

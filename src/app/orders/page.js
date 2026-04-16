@@ -5,7 +5,7 @@ import BackButton from '@/components/BackButton';
 import { useState, useEffect, useCallback } from 'react';
 import Link from 'next/link';
 import { useRouter } from 'next/navigation';
-import { Search, Package, Truck, CreditCard, Clock, CheckCircle2, XCircle, Loader2, Gavel, Ban, MapPin, Star, X } from 'lucide-react';
+import { Search, Package, Truck, CreditCard, Clock, CheckCircle2, XCircle, Loader2, Gavel, Ban, MapPin, Star, X, MessageCircle } from 'lucide-react';
 import { useAuth } from '@/context/AuthContext';
 import PaymentCountdown from '@/components/PaymentCountdown';
 import CancellationModal from '@/components/CancellationModal';
@@ -32,6 +32,7 @@ export default function OrdersPage() {
     const [reviewSubmitting, setReviewSubmitting] = useState(false);
     const [reviewError, setReviewError] = useState('');
     const [existingReviews, setExistingReviews] = useState({}); // { order_id: review }
+    const [viewReviewTarget, setViewReviewTarget] = useState(null); // { order, review }
     const [actionError, setActionError] = useState('');
 
     const tabs = [
@@ -477,11 +478,13 @@ export default function OrdersPage() {
                                         </button>
                                     ) : order.status === 'completed' ? (
                                         existingReviews[order.id] ? (
-                                            <div className={styles.reviewedChip}>
-                                                {[1,2,3,4,5].map(s => (
-                                                    <Star key={s} size={13} fill={s <= existingReviews[order.id].rating ? '#f59e0b' : 'none'} stroke={s <= existingReviews[order.id].rating ? '#f59e0b' : '#d1d5db'} />
-                                                ))}
-                                            </div>
+                                            <button
+                                                className={styles.viewReviewBtn}
+                                                onClick={() => setViewReviewTarget({ order, review: existingReviews[order.id] })}
+                                            >
+                                                <Star size={13} fill="#FBC02D" stroke="#FBC02D" />
+                                                Reviewed
+                                            </button>
                                         ) : (
                                             <button className={styles.reviewBtn} onClick={() => openReviewModal(order)}>
                                                 <Star size={15} />
@@ -496,6 +499,7 @@ export default function OrdersPage() {
                                             className={styles.primaryBtn}
                                             onClick={() => handleContactSeller(order)}
                                         >
+                                            <MessageCircle size={14} />
                                             Contact Seller
                                         </button>
                                     )}
@@ -511,6 +515,64 @@ export default function OrdersPage() {
                     )}
                 </div>
             </div>
+
+            {/* View Review Popup */}
+            {viewReviewTarget && (
+                <div className={styles.modalOverlay} onClick={() => setViewReviewTarget(null)}>
+                    <div className={styles.reviewModal} onClick={e => e.stopPropagation()}>
+                        <div className={styles.reviewModalHead}>
+                            <h3>Your Review</h3>
+                            <button className={styles.reviewModalClose} onClick={() => setViewReviewTarget(null)}>
+                                <X size={18} />
+                            </button>
+                        </div>
+                        <div className={styles.reviewModalBody}>
+                            <div className={styles.reviewProduct}>
+                                <img
+                                    src={viewReviewTarget.order.items[0]?.image || 'https://placehold.co/52x52?text=Item'}
+                                    alt={viewReviewTarget.order.items[0]?.name}
+                                />
+                                <div>
+                                    <p className={styles.reviewProductName}>{viewReviewTarget.order.items[0]?.name}</p>
+                                    <p className={styles.reviewProductSub}>Auction Win</p>
+                                </div>
+                            </div>
+                            <div className={styles.viewReviewRating}>
+                                <span className={styles.starLabel}>Your rating</span>
+                                <div className={styles.viewReviewStars}>
+                                    {[1,2,3,4,5].map(s => (
+                                        <Star key={s} size={20}
+                                            fill={s <= viewReviewTarget.review.rating ? '#f59e0b' : 'none'}
+                                            stroke={s <= viewReviewTarget.review.rating ? '#f59e0b' : '#d1d5db'}
+                                        />
+                                    ))}
+                                    <span className={styles.ratingLabel}>
+                                        {['','Poor','Fair','Good','Very Good','Excellent'][viewReviewTarget.review.rating]}
+                                    </span>
+                                </div>
+                            </div>
+                            {viewReviewTarget.review.comment ? (
+                                <div className={styles.viewReviewComment}>
+                                    <span className={styles.starLabel}>Your comment</span>
+                                    <p>{viewReviewTarget.review.comment}</p>
+                                </div>
+                            ) : (
+                                <p className={styles.viewReviewNoComment}>No comment was left.</p>
+                            )}
+                            {viewReviewTarget.review.created_at && (
+                                <p className={styles.viewReviewDate}>
+                                    Submitted on {new Date(viewReviewTarget.review.created_at).toLocaleDateString('en-US', { year: 'numeric', month: 'long', day: 'numeric' })}
+                                </p>
+                            )}
+                        </div>
+                        <div className={styles.reviewModalFoot}>
+                            <button className={styles.reviewSubmitBtn} onClick={() => setViewReviewTarget(null)}>
+                                Done
+                            </button>
+                        </div>
+                    </div>
+                </div>
+            )}
 
             {/* Review Modal */}
             {reviewTarget && (
