@@ -14,7 +14,7 @@
     background: none;
     border: none;
     color: #6b7280;
-    font-size: 0.88rem;
+    font-size: 0.85rem;
     font-weight: 600;
     cursor: pointer;
     padding: 0;
@@ -151,7 +151,7 @@
     line-height: 1.3;
 }
 .orderId {
-    font-size: 0.78rem;
+    font-size: 0.75rem;
     color: #9ca3af;
     margin: 0;
     font-family: monospace;
@@ -187,7 +187,7 @@
 }
 .metaItem { display: flex; flex-direction: column; gap: 0.15rem; }
 .metaLabel {
-    font-size: 0.72rem;
+    font-size: 0.75rem;
     font-weight: 600;
     color: #9ca3af;
     text-transform: uppercase;
@@ -231,7 +231,7 @@
     box-shadow: 0 0 0 3px rgba(103,58,183,0.15);
 }
 .stepBarLabel {
-    font-size: 0.72rem;
+    font-size: 0.75rem;
     font-weight: 600;
     color: #9ca3af;
     white-space: nowrap;
@@ -312,7 +312,7 @@
     border: 1px solid #f59e0b;
     border-radius: 6px;
     color: #92400e;
-    font-size: 0.78rem;
+    font-size: 0.75rem;
     font-weight: 700;
     padding: 0.2rem 0.6rem;
     cursor: pointer;
@@ -469,14 +469,14 @@
     border: 1px solid #e5e7eb;
 }
 .modalProductName { font-size: 0.92rem; font-weight: 600; color: #111; margin: 0 0 0.2rem 0; }
-.modalBuyer { font-size: 0.78rem; color: #9ca3af; margin: 0; }
+.modalBuyer { font-size: 0.75rem; color: #9ca3af; margin: 0; }
 .modalAmount { margin-left: auto; font-size: 1rem; font-weight: 700; color: #673AB7; }
 
 /* Ship form */
 .shipForm { padding: 1.2rem 1.4rem; display: flex; flex-direction: column; gap: 0.9rem; }
 .formGroup { display: flex; flex-direction: column; gap: 0.35rem; }
 .formGroup label {
-    font-size: 0.78rem;
+    font-size: 0.75rem;
     font-weight: 700;
     color: #6b7280;
     text-transform: uppercase;
@@ -516,7 +516,7 @@
     background: white;
     border: 1.5px solid #e5e7eb;
     border-radius: 8px;
-    font-size: 0.88rem;
+    font-size: 0.85rem;
     font-weight: 600;
     color: #6b7280;
     cursor: pointer;
@@ -532,7 +532,7 @@
     color: white;
     border: none;
     border-radius: 8px;
-    font-size: 0.88rem;
+    font-size: 0.85rem;
     font-weight: 700;
     cursor: pointer;
     transition: all 0.2s;
@@ -545,7 +545,7 @@
 .reviewStars { display: flex; align-items: center; gap: 0.3rem; justify-content: center; }
 .reviewRatingNum { font-size: 1rem; font-weight: 700; color: #f59e0b; margin-left: 0.5rem; }
 .reviewComment {
-    font-size: 0.95rem;
+    font-size: 0.9rem;
     color: #374151;
     font-style: italic;
     line-height: 1.6;
@@ -555,8 +555,8 @@
     border-radius: 0 8px 8px 0;
     margin: 0;
 }
-.reviewNoComment { font-size: 0.88rem; color: #9ca3af; text-align: center; margin: 0; }
-.reviewDate { font-size: 0.78rem; color: #9ca3af; text-align: right; margin: 0; }
+.reviewNoComment { font-size: 0.85rem; color: #9ca3af; text-align: center; margin: 0; }
+.reviewDate { font-size: 0.75rem; color: #9ca3af; text-align: right; margin: 0; }
 
 /* ── Loading / Empty ── */
 .loading {
@@ -567,7 +567,7 @@
     min-height: 50vh;
     gap: 1rem;
     color: #6b7280;
-    font-size: 0.95rem;
+    font-size: 0.9rem;
     font-weight: 500;
 }
 .spinner {
@@ -588,7 +588,7 @@
     flex-direction: column;
     align-items: center;
     gap: 0.75rem;
-    font-size: 0.95rem;
+    font-size: 0.9rem;
     font-weight: 500;
 }
 

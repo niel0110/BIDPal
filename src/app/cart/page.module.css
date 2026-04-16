@@ -392,7 +392,7 @@
     }
 
     .sellerName {
-        font-size: 0.78rem;
+        font-size: 0.75rem;
     }
 
     .itemCondition {
@@ -424,7 +424,7 @@
     }
 
     .summaryRow {
-        font-size: 0.88rem;
+        font-size: 0.85rem;
         margin-bottom: 0.75rem;
     }
 
@@ -439,7 +439,7 @@
 
     .checkoutBtn {
         padding: 0.9rem;
-        font-size: 0.95rem;
+        font-size: 0.9rem;
         border-radius: 10px;
     }
 
@@ -459,7 +459,7 @@
     }
 
     .emptyCart p {
-        font-size: 0.88rem;
+        font-size: 0.85rem;
         margin-bottom: 1.75rem;
     }
 
@@ -502,7 +502,7 @@
     .cartItem { padding: 0.7rem; gap: 0.65rem; border-radius: 12px; }
     .itemImageWrapper { width: 68px; height: 68px; border-radius: 8px; }
     .itemMainInfo h3 { font-size: 0.82rem; }
-    .itemPrice { font-size: 0.88rem; }
+    .itemPrice { font-size: 0.85rem; }
     .summaryCard { padding: 1rem; border-radius: 12px; }
     .summaryCard h2 { font-size: 1rem; margin-bottom: 0.75rem; }
     .summaryRow { font-size: 0.82rem; margin-bottom: 0.6rem; }

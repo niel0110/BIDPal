@@ -279,7 +279,7 @@
     border-radius: 14px;
     border: 1px solid #eee;
     background: #fafafa;
-    font-size: 0.95rem;
+    font-size: 0.9rem;
     outline: none;
     transition: all 0.2s;
     font-family: inherit;
@@ -462,7 +462,7 @@
     border-radius: 14px;
     margin-bottom: 2rem;
     font-weight: 600;
-    font-size: 0.95rem;
+    font-size: 0.9rem;
     display: flex;
     align-items: center;
     gap: 0.75rem;
@@ -617,7 +617,7 @@
     border: 1px solid #c5cae9;
     padding: 0.4rem 0.85rem;
     border-radius: 10px;
-    font-size: 0.78rem;
+    font-size: 0.75rem;
     font-weight: 700;
     color: #3949ab;
     cursor: pointer;
@@ -641,7 +641,7 @@
     border: 1px solid #ffe082;
     padding: 0.4rem 0.85rem;
     border-radius: 10px;
-    font-size: 0.78rem;
+    font-size: 0.75rem;
     font-weight: 700;
     color: #e65100;
     cursor: pointer;
@@ -715,7 +715,7 @@
 
 .pinnedTitle {
     font-weight: 700;
-    font-size: 0.78rem;
+    font-size: 0.75rem;
     text-transform: uppercase;
     letter-spacing: 0.04em;
     color: #15803d;
@@ -1076,7 +1076,7 @@ input:checked+.slider:before {
     border: none;
     outline: none;
     width: 100%;
-    font-size: 0.95rem;
+    font-size: 0.9rem;
 }
 
 /* Accordion */
@@ -1254,7 +1254,7 @@ input:checked+.slider:before {
 }
 
 .policyContent p {
-    font-size: 0.95rem;
+    font-size: 0.9rem;
     color: #555;
     line-height: 1.7;
 }
@@ -1298,7 +1298,7 @@ input:checked+.slider:before {
     margin-bottom: 0.5rem;
     line-height: 1.5;
     color: #555;
-    font-size: 0.95rem;
+    font-size: 0.9rem;
 }
 
 /* Wishlist Section */
@@ -1459,7 +1459,7 @@ input:checked+.slider:before {
 }
 
 .wishlistDesc {
-    font-size: 0.78rem;
+    font-size: 0.75rem;
     color: #999;
     margin: 0.25rem 0 0;
     display: -webkit-box;
@@ -1477,7 +1477,7 @@ input:checked+.slider:before {
     background: #f0f6ff;
     border-radius: 8px;
     padding: 0.4rem 0.75rem;
-    font-size: 0.78rem;
+    font-size: 0.75rem;
 }
 
 .wishlistScheduleLabel {
@@ -1582,7 +1582,7 @@ input:checked+.slider:before {
 .policySection p {
     color: #555;
     line-height: 1.5;
-    font-size: 0.95rem;
+    font-size: 0.9rem;
 }
 
 .contactInfo {
@@ -1598,7 +1598,7 @@ input:checked+.slider:before {
     gap: 0.75rem;
     color: #111;
     font-weight: 700;
-    font-size: 0.95rem;
+    font-size: 0.9rem;
 }
 
 .backTitle {
@@ -1661,7 +1661,7 @@ input:checked+.slider:before {
 
 .toggleInfo h4 {
     margin: 0 0 0.25rem 0;
-    font-size: 0.95rem;
+    font-size: 0.9rem;
     font-weight: 700;
 }
 
@@ -1901,7 +1901,7 @@ input:checked+.slider:before {
 .modalDescription p {
     color: #666;
     line-height: 1.6;
-    font-size: 0.95rem;
+    font-size: 0.9rem;
     margin: 0;
 }
 
@@ -2095,7 +2095,7 @@ input:checked+.slider:before {
 
 .insightAlert p {
     margin: 0;
-    font-size: 0.95rem;
+    font-size: 0.9rem;
     color: #111;
 }
 
@@ -2241,7 +2241,7 @@ input:checked+.slider:before {
     border-radius: 14px;
     border: 1px solid #eee;
     background: #fafafa;
-    font-size: 0.95rem;
+    font-size: 0.9rem;
     font-family: inherit;
     outline: none;
     resize: vertical;
@@ -2260,7 +2260,7 @@ input:checked+.slider:before {
     border-radius: 14px;
     border: 1px solid #eee;
     background: #fafafa;
-    font-size: 0.95rem;
+    font-size: 0.9rem;
     outline: none;
     transition: all 0.2s;
     cursor: pointer;
@@ -2294,7 +2294,7 @@ input:checked+.slider:before {
 }
 
 .checkboxGroup label {
-    font-size: 0.95rem;
+    font-size: 0.9rem;
     font-weight: 600;
     color: #111;
     cursor: pointer;
@@ -2307,7 +2307,7 @@ input:checked+.slider:before {
     background: white;
     border: 2px solid #f0f0f0;
     border-radius: 14px;
-    font-size: 0.95rem;
+    font-size: 0.9rem;
     font-weight: 700;
     cursor: pointer;
     color: #666;
@@ -2337,7 +2337,7 @@ input:checked+.slider:before {
 .mapPlaceholder p {
     margin: 0;
     color: #999;
-    font-size: 0.95rem;
+    font-size: 0.9rem;
 }
 
 .loadingFallback {
@@ -2374,7 +2374,7 @@ input:checked+.slider:before {
     min-height: 200px;
     color: #999;
     font-weight: 600;
-    font-size: 0.95rem;
+    font-size: 0.9rem;
 }
 
 /* ── Store Hero Banner ── */
@@ -2441,7 +2441,7 @@ input:checked+.slider:before {
     display: inline-block;
     background: #fff0f0;
     color: var(--color-primary);
-    font-size: 0.72rem;
+    font-size: 0.75rem;
     font-weight: 700;
     padding: 0.2rem 0.75rem;
     border-radius: 50px;
@@ -2502,7 +2502,7 @@ input:checked+.slider:before {
     border: none;
     background: transparent;
     padding: 1.1rem;
-    font-size: 0.95rem;
+    font-size: 0.9rem;
     font-family: inherit;
     outline: none;
 }
@@ -2514,7 +2514,7 @@ input:checked+.slider:before {
     border-radius: 14px;
     border: 1px solid #eee;
     background: #fafafa;
-    font-size: 0.95rem;
+    font-size: 0.9rem;
     font-family: inherit;
     resize: vertical;
     outline: none;
@@ -2530,7 +2530,7 @@ input:checked+.slider:before {
 
 /* ── Optional tag ── */
 .optionalTag {
-    font-size: 0.78rem;
+    font-size: 0.75rem;
     font-weight: 400;
     color: #aaa;
     margin-left: 4px;
@@ -2620,7 +2620,7 @@ input:checked+.slider:before {
     border-radius: 14px;
     background: #f9f9f9;
     color: #555;
-    font-size: 0.95rem;
+    font-size: 0.9rem;
     font-weight: 700;
     cursor: pointer;
     transition: all 0.2s;
@@ -2638,7 +2638,7 @@ input:checked+.slider:before {
     border-radius: 14px;
     background: var(--color-primary, #d32f2f);
     color: #ffffff;
-    font-size: 0.95rem;
+    font-size: 0.9rem;
     font-weight: 700;
     cursor: pointer;
     transition: all 0.2s;
@@ -2662,7 +2662,7 @@ input:checked+.slider:before {
     border-radius: 14px;
     background: #1a1a1a;
     color: #ffffff;
-    font-size: 0.95rem;
+    font-size: 0.9rem;
     font-weight: 700;
     cursor: pointer;
     transition: all 0.2s;
@@ -2793,7 +2793,7 @@ input:checked+.slider:before {
     }
 
     .globalBack {
-        font-size: 0.78rem;
+        font-size: 0.75rem;
         padding: 0.45rem 0.75rem;
         margin-bottom: 1rem;
     }
@@ -2851,7 +2851,7 @@ input:checked+.slider:before {
     .formGroup select,
     .formGroup textarea {
         padding: 0.75rem 0.9rem;
-        font-size: 0.88rem;
+        font-size: 0.85rem;
         border-radius: 10px;
     }
 
@@ -2901,7 +2901,7 @@ input:checked+.slider:before {
     }
 
     .addressTypeLine h3 {
-        font-size: 0.95rem;
+        font-size: 0.9rem;
     }
 
     .addressInfo p {
@@ -2929,7 +2929,7 @@ input:checked+.slider:before {
 
     .addFullBtn {
         padding: 0.9rem;
-        font-size: 0.88rem;
+        font-size: 0.85rem;
         border-radius: 12px;
     }
 
@@ -2938,7 +2938,7 @@ input:checked+.slider:before {
     .navActionItem {
         padding: 0.9rem 1rem;
         border-radius: 12px;
-        font-size: 0.88rem;
+        font-size: 0.85rem;
     }
 
     /* Payment */
@@ -2952,7 +2952,7 @@ input:checked+.slider:before {
     }
 
     .paymentDetail {
-        font-size: 0.78rem;
+        font-size: 0.75rem;
     }
 
     .connectionStatus {
@@ -2992,7 +2992,7 @@ input:checked+.slider:before {
 
     .searchBox {
         padding: 0.75rem 0.9rem;
-        font-size: 0.88rem;
+        font-size: 0.85rem;
         border-radius: 10px;
         margin-bottom: 1.25rem;
     }
@@ -3004,7 +3004,7 @@ input:checked+.slider:before {
 
     .faqQuestion {
         padding: 1rem;
-        font-size: 0.88rem;
+        font-size: 0.85rem;
     }
 
     .faqAnswer {
@@ -3041,7 +3041,7 @@ input:checked+.slider:before {
     }
 
     .friendInfo p {
-        font-size: 0.78rem;
+        font-size: 0.75rem;
     }
 
     .inviteBtn {
@@ -3075,7 +3075,7 @@ input:checked+.slider:before {
         padding: 0.85rem 1rem;
         border-radius: 12px;
         gap: 0.75rem;
-        font-size: 0.88rem;
+        font-size: 0.85rem;
     }
 
     .contactIcon {
@@ -3096,7 +3096,7 @@ input:checked+.slider:before {
 
     /* Invite Friends — Generate Invite Link button */
     .primaryBtn {
-        font-size: 0.88rem;
+        font-size: 0.85rem;
         padding: 0.75rem 1.25rem;
         border-radius: 10px;
         width: fit-content;
@@ -3105,7 +3105,7 @@ input:checked+.slider:before {
     /* Security — Update Password button */
     .secondaryBtnLarge {
         padding: 0.8rem;
-        font-size: 0.88rem;
+        font-size: 0.85rem;
         border-radius: 10px;
         margin-top: 0;
     }
@@ -3139,7 +3139,7 @@ input:checked+.slider:before {
         border-radius: 8px;
     }
 
-    .formGroup label { font-size: 0.78rem; }
+    .formGroup label { font-size: 0.75rem; }
 
     .primaryBtn,
     .secondaryBtn {
@@ -3149,7 +3149,7 @@ input:checked+.slider:before {
     }
 
     .addressCard { padding: 0.75rem; border-radius: 12px; }
-    .addressTypeLine h3 { font-size: 0.88rem; }
+    .addressTypeLine h3 { font-size: 0.85rem; }
     .addressInfo p { font-size: 0.75rem; }
 
     .toggleItem,
@@ -3163,7 +3163,7 @@ input:checked+.slider:before {
     .paymentName { font-size: 0.82rem; }
 
     .faqQuestion { padding: 0.85rem; font-size: 0.82rem; }
-    .faqAnswer { padding: 0 0.85rem 0.85rem; font-size: 0.78rem; }
+    .faqAnswer { padding: 0 0.85rem 0.85rem; font-size: 0.75rem; }
 
     .contactCard { padding: 0.65rem 0.85rem; border-radius: 10px; font-size: 0.82rem; }
     .contactIcon { width: 30px; height: 30px; border-radius: 7px; }
@@ -3236,7 +3236,7 @@ input:checked+.slider:before {
     }
 
     .wishlistSeller {
-        font-size: 0.72rem;
+        font-size: 0.75rem;
     }
 
     .wishlistName {
@@ -3245,7 +3245,7 @@ input:checked+.slider:before {
     }
 
     .wishlistDesc {
-        font-size: 0.72rem;
+        font-size: 0.75rem;
         -webkit-line-clamp: 2;
     }
 
@@ -3267,7 +3267,7 @@ input:checked+.slider:before {
     .viewAuctionBtn {
         width: 100%;
         padding: 0.5rem 0.75rem;
-        font-size: 0.78rem;
+        font-size: 0.75rem;
         border-radius: 8px;
         text-align: center;
     }
@@ -3377,7 +3377,7 @@ input:checked+.slider:before {
     }
 
     .priceLabel { font-size: 0.6rem; }
-    .priceValue { font-size: 0.88rem; }
+    .priceValue { font-size: 0.85rem; }
 
     .wishlistPriceRow { gap: 0.3rem; padding-top: 0.3rem; }
 
@@ -3389,11 +3389,11 @@ input:checked+.slider:before {
 
     .sectionHeader { margin-bottom: 0.85rem; }
     .sectionHeader h1 { font-size: 1.35rem; }
-    .sectionHeader p { font-size: 0.78rem; }
+    .sectionHeader p { font-size: 0.75rem; }
 
     .emptyWishlist { padding: 2.5rem 1rem; }
     .emptyIconWrapper { width: 60px; height: 60px; }
     .emptyWishlist h2 { font-size: 1.1rem; }
-    .emptyWishlist p { font-size: 0.78rem; }
+    .emptyWishlist p { font-size: 0.75rem; }
 }
 

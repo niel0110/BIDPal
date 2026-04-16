@@ -134,7 +134,7 @@
   border: none;
   outline: none;
   padding: 0.9rem 0;
-  font-size: 0.95rem;
+  font-size: 0.9rem;
   background: transparent;
   font-family: inherit;
 }
@@ -331,7 +331,7 @@
 }
 
 .infoTitle h3 {
-  font-size: 0.95rem;
+  font-size: 0.9rem;
   font-weight: 700;
   color: #111;
   margin: 0;
@@ -416,7 +416,7 @@
 .confirmBtn {
   padding: 0.9rem 1.5rem;
   border-radius: 12px;
-  font-size: 0.95rem;
+  font-size: 0.9rem;
   font-weight: 700;
   cursor: pointer;
   transition: all 0.2s;
@@ -869,14 +869,14 @@
   background: linear-gradient(135deg, var(--color-primary) 0%, #d32f2f 100%);
   color: white;
   border-radius: 50%;
-  font-size: 0.95rem;
+  font-size: 0.9rem;
   font-weight: 800;
   flex-shrink: 0;
   box-shadow: 0 4px 15px rgba(211, 47, 47, 0.2);
 }
 
 .stepContent {
-  font-size: 0.95rem;
+  font-size: 0.9rem;
   color: #444;
   line-height: 1.6;
   margin-top: 0.25rem;
@@ -895,7 +895,7 @@
   color: white;
   border: none;
   border-radius: 14px;
-  font-size: 0.95rem;
+  font-size: 0.9rem;
   font-weight: 800;
   cursor: pointer;
   transition: all 0.3s ease;

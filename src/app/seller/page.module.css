@@ -593,7 +593,7 @@
 
 .emptyBids p {
     margin-top: 1rem;
-    font-size: 0.95rem;
+    font-size: 0.9rem;
     color: #999;
 }
 
@@ -1154,7 +1154,7 @@
 
 .winnerProductInfo h4 {
     margin: 0;
-    font-size: 0.95rem;
+    font-size: 0.9rem;
     font-weight: 650;
     color: #111;
     line-height: 1.3;

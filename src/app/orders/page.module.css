@@ -72,7 +72,7 @@
     border-radius: 12px;
     background: white;
     font-family: inherit;
-    font-size: 0.95rem;
+    font-size: 0.9rem;
     outline: none;
     transition: all 0.2s;
 }
@@ -437,7 +437,7 @@
 
     .statusBadge {
         padding: 0.3rem 0.65rem;
-        font-size: 0.72rem;
+        font-size: 0.75rem;
     }
 
     /* Items */
@@ -453,15 +453,15 @@
     }
 
     .itemMeta h3 {
-        font-size: 0.88rem;
+        font-size: 0.85rem;
     }
 
     .itemMeta p {
-        font-size: 0.78rem;
+        font-size: 0.75rem;
     }
 
     .itemPrice {
-        font-size: 0.88rem;
+        font-size: 0.85rem;
     }
 
     /* Footer */
@@ -473,11 +473,11 @@
     }
 
     .orderId {
-        font-size: 0.78rem;
+        font-size: 0.75rem;
     }
 
     .orderDate {
-        font-size: 0.78rem;
+        font-size: 0.75rem;
     }
 
     .orderTotal {
@@ -509,14 +509,14 @@
     .cancelBtn,
     .receivedBtn {
         padding: 0.4rem 0.75rem;
-        font-size: 0.78rem;
+        font-size: 0.75rem;
         border-radius: 8px;
         white-space: nowrap;
     }
 
     /* Tracking */
     .trackingBanner {
-        font-size: 0.78rem;
+        font-size: 0.75rem;
         padding: 0.6rem 0.75rem;
     }
 
@@ -532,7 +532,7 @@
     }
 
     .emptyState p {
-        font-size: 0.88rem;
+        font-size: 0.85rem;
         margin-bottom: 1.75rem;
     }
 
@@ -595,7 +595,7 @@
     color: white;
     border: none;
     border-radius: 10px;
-    font-size: 0.95rem;
+    font-size: 0.9rem;
     font-weight: 700;
     cursor: pointer;
     transition: all 0.2s;
@@ -619,7 +619,7 @@
     color: white;
     border: none;
     border-radius: 10px;
-    font-size: 0.95rem;
+    font-size: 0.9rem;
     font-weight: 700;
     cursor: pointer;
     transition: all 0.2s;
@@ -667,7 +667,7 @@
     color: white;
     border: none;
     border-radius: 8px;
-    font-size: 0.78rem;
+    font-size: 0.75rem;
     font-weight: 700;
     line-height: 1.3;
     cursor: pointer;
@@ -727,7 +727,7 @@
     }
 
     .reviewModalHead h3 {
-        font-size: 0.95rem;
+        font-size: 0.9rem;
     }
 
     .reviewModalBody {
@@ -787,15 +787,15 @@
     .tabItem svg { width: 15px; height: 15px; }
     .orderCard { padding: 0.75rem; border-radius: 12px; }
     .itemImage { width: 50px; height: 50px; border-radius: 8px; }
-    .itemMeta h3 { font-size: 0.78rem; }
+    .itemMeta h3 { font-size: 0.75rem; }
     .itemMeta p { font-size: 0.68rem; }
-    .itemPrice { font-size: 0.88rem; }
-    .orderId { font-size: 0.72rem; }
-    .orderDate { font-size: 0.72rem; }
-    .totalAmount { font-size: 0.95rem; }
+    .itemPrice { font-size: 0.85rem; }
+    .orderId { font-size: 0.75rem; }
+    .orderDate { font-size: 0.75rem; }
+    .totalAmount { font-size: 0.9rem; }
     .primaryBtn, .secondaryBtn, .payNowBtn, .cancelBtn, .receivedBtn, .reviewBtn {
         padding: 0.35rem 0.6rem;
-        font-size: 0.72rem;
+        font-size: 0.75rem;
         border-radius: 7px;
     }
     .reviewedChip { padding: 0.35rem 0.6rem; font-size: 0.7rem; }
@@ -1026,7 +1026,7 @@
     border: 1px solid #fecaca;
     border-radius: 8px;
     color: #dc2626;
-    font-size: 0.88rem;
+    font-size: 0.9rem;
     font-weight: 600;
     margin-bottom: 1rem;
     cursor: pointer;
@@ -1041,7 +1041,7 @@
     background: #ede9fe;
     border: 1px solid #c4b5fd;
     border-radius: 10px;
-    font-size: 0.88rem;
+    font-size: 0.9rem;
     color: #4c1d95;
 }
 
@@ -1072,7 +1072,7 @@
     color: white;
     border: none;
     border-radius: 10px;
-    font-size: 0.95rem;
+    font-size: 0.9rem;
     font-weight: 700;
     cursor: pointer;
     transition: all 0.2s;

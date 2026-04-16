@@ -196,7 +196,7 @@
 
 .inputGroup label {
     display: block;
-    font-size: 0.95rem;
+    font-size: 0.9rem;
     font-weight: 700;
     margin-bottom: 0.75rem;
     color: #444;
@@ -241,7 +241,7 @@
 
 .field label {
     display: block;
-    font-size: 0.95rem;
+    font-size: 0.9rem;
     font-weight: 700;
     margin-bottom: 0.75rem;
     color: #444;
@@ -266,7 +266,7 @@
     border: 1.5px solid #eee;
     border-radius: 14px;
     font-family: inherit;
-    font-size: 0.95rem;
+    font-size: 0.9rem;
     font-weight: 600;
     outline: none;
 }

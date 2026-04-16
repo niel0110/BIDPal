@@ -55,7 +55,7 @@
     position: absolute;
     top: calc(100% + 8px);
     right: 0;
-    width: 360px;
+    width: 420px;
     background: white;
     border-radius: 16px;
     border: 1px solid #f0f0f0;
@@ -80,7 +80,7 @@
 
 .dropdownHeader h3 {
     margin: 0;
-    font-size: 0.95rem;
+    font-size: 0.9rem;
     font-weight: 750;
     color: #111;
 }
@@ -213,7 +213,7 @@
 }
 
 .itemTime {
-    font-size: 0.72rem;
+    font-size: 0.75rem;
     color: #aaa;
     font-weight: 500;
 }
@@ -245,18 +245,16 @@
         color: #ef4f25;
     }
 
-    /* Portrait card — draggable, auto height, no white space */
     .dropdown {
         position: fixed;
         top: 58px;
-        right: 0.5rem;
+        right: 8px;
         left: auto;
-        width: 165px;
-        height: auto;
-        max-height: 60svh;
-        border-radius: 14px;
+        width: min(300px, calc(100vw - 40px));
+        max-height: 72svh;
+        border-radius: 16px;
         border: 1px solid #e0e0e0;
-        box-shadow: 0 6px 24px rgba(0, 0, 0, 0.15);
+        box-shadow: 0 8px 32px rgba(0, 0, 0, 0.18);
         display: flex;
         flex-direction: column;
         overflow: hidden;
@@ -265,28 +263,28 @@
     }
 
     .dropdownHeader {
-        padding: 0.45rem 0.6rem 0.4rem;
+        padding: 0.85rem 1rem 0.75rem;
         background: #fafafa;
         border-bottom: 1px solid #f0f0f0;
         flex-shrink: 0;
     }
 
     .dropdownHeader h3 {
-        font-size: 0.7rem;
+        font-size: 1rem;
         font-weight: 800;
     }
 
     .headerActions {
-        gap: 0.2rem;
+        gap: 0.4rem;
     }
 
     .markAllBtn {
-        font-size: 0.56rem;
-        padding: 2px 4px;
+        font-size: 0.75rem;
+        padding: 4px 8px;
     }
 
     .closeBtn {
-        padding: 2px;
+        padding: 4px;
     }
 
     .list {
@@ -297,43 +295,67 @@
     }
 
     .item {
-        padding: 0.45rem 0.6rem;
-        gap: 0.3rem;
+        padding: 0.85rem 1rem;
+        gap: 0.75rem;
         border-bottom: 1px solid #f5f5f5;
         align-items: flex-start;
     }
 
     .iconWrap {
-        display: none;
+        display: flex;
+        width: 36px;
+        height: 36px;
+        border-radius: 10px;
     }
 
     .itemText {
-        font-size: 0.62rem;
-        line-height: 1.25;
-        margin-bottom: 0.1rem;
+        font-size: 0.85rem;
+        line-height: 1.45;
+        margin-bottom: 0.25rem;
     }
 
     .itemTime {
-        font-size: 0.55rem;
+        font-size: 0.75rem;
     }
 
     .unreadDot {
-        width: 5px;
-        height: 5px;
+        width: 8px;
+        height: 8px;
+        margin-top: 6px;
         flex-shrink: 0;
+    }
+
+    .empty p {
+        font-size: 0.9rem;
     }
 }
 
 @media (max-width: 360px) {
     .bellBtn {
-        width: 28px;
-        height: 28px;
-        border-radius: 7px;
+        width: 30px;
+        height: 30px;
     }
 
-    .dropdown { width: 148px; }
-    .dropdownHeader h3 { font-size: 0.65rem; }
-    .itemText { font-size: 0.58rem; }
-    .itemTime { font-size: 0.52rem; }
-    .item { padding: 0.4rem 0.5rem; }
+    .dropdown {
+        right: 6px;
+        left: auto;
+        width: min(280px, calc(100vw - 32px));
+    }
+
+    .dropdownHeader h3 { font-size: 0.9rem; }
+    .itemText { font-size: 0.85rem; }
+    .itemTime { font-size: 0.75rem; }
+    .item { padding: 0.75rem 0.85rem; }
+}
+
+@media (max-width: 320px) {
+    .dropdown {
+        right: 6px;
+        left: auto;
+        width: min(260px, calc(100vw - 28px));
+    }
+
+    .dropdownHeader h3 { font-size: 0.9rem; }
+    .itemText { font-size: 0.82rem; }
+    .item { padding: 0.7rem 0.75rem; }
 }

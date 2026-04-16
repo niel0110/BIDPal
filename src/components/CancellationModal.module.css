@@ -127,7 +127,7 @@
 .subtitle {
     margin: 0;
     color: #666;
-    font-size: 0.95rem;
+    font-size: 0.9rem;
 }
 
 /* Modal Body */
@@ -223,7 +223,7 @@
     margin-bottom: 0.5rem;
     font-weight: 600;
     color: #333;
-    font-size: 0.95rem;
+    font-size: 0.9rem;
 }
 
 .required {
@@ -236,7 +236,7 @@
     padding: 0.875rem;
     border: 2px solid #e0e0e0;
     border-radius: 10px;
-    font-size: 0.95rem;
+    font-size: 0.9rem;
     font-family: inherit;
     resize: vertical;
     transition: all 0.2s;
@@ -274,7 +274,7 @@
 
 .infoBox h4 {
     margin: 0 0 0.75rem 0;
-    font-size: 0.95rem;
+    font-size: 0.9rem;
     color: #1976d2;
     font-weight: 700;
 }
@@ -323,7 +323,7 @@
     padding: 0.875rem 1.5rem;
     border: none;
     border-radius: 10px;
-    font-size: 0.95rem;
+    font-size: 0.9rem;
     font-weight: 600;
     cursor: pointer;
     transition: all 0.2s;

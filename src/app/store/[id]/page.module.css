@@ -181,7 +181,7 @@
 }
 
 .description {
-    font-size: 0.95rem;
+    font-size: 0.9rem;
     line-height: 1.6;
     color: #555;
     white-space: pre-wrap;
@@ -272,7 +272,7 @@
 }
 
 .reviewsCount {
-    font-size: 0.88rem;
+    font-size: 0.9rem;
     color: #78716c;
     font-weight: 500;
     margin-left: auto;
@@ -330,7 +330,7 @@
 }
 
 .reviewDate {
-    font-size: 0.78rem;
+    font-size: 0.75rem;
     color: #9ca3af;
     margin: 0;
 }

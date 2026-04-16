@@ -188,7 +188,7 @@
     padding: 11px 14px;
     border: 1.5px solid #e0e0e0;
     border-radius: 8px;
-    font-size: 0.95rem;
+    font-size: 0.9rem;
     font-family: inherit;
     background: white;
     transition: border-color 0.2s, box-shadow 0.2s;
@@ -233,7 +233,7 @@
     padding: 13px 2.5rem;
     border-radius: 8px;
     font-weight: 600;
-    font-size: 0.95rem;
+    font-size: 0.9rem;
     cursor: pointer;
     display: flex;
     align-items: center;
