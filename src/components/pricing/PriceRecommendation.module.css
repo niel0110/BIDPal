@@ -281,19 +281,150 @@
 
 @media (max-width: 768px) {
     .container {
-        padding: 24px;
+        padding: 1.1rem 1rem;
+        margin: 0.75rem 0;
+        border-radius: 12px;
+    }
+
+    .promptIcon {
+        width: 52px;
+        height: 52px;
+        margin-bottom: 12px;
+    }
+
+    .promptSection h3 {
+        font-size: 1.1rem;
+        margin-bottom: 8px;
+    }
+
+    .promptSection p {
+        font-size: 0.82rem;
+        margin-bottom: 16px;
+    }
+
+    .generateBtn {
+        padding: 10px 20px;
+        font-size: 0.85rem;
+        gap: 7px;
     }
 
     .pricesGrid {
         grid-template-columns: 1fr;
+        gap: 0.6rem;
+        margin-bottom: 0.75rem;
+    }
+
+    .priceCard {
+        padding: 0.75rem 1rem;
+        border-radius: 10px;
+    }
+
+    .priceLabel {
+        font-size: 0.7rem;
+        margin-bottom: 4px;
+    }
+
+    .priceValue {
+        font-size: 1.25rem;
+        margin-bottom: 3px;
+    }
+
+    .priceDesc {
+        font-size: 0.72rem;
+    }
+
+    .priceRange {
+        padding: 0.6rem 0.75rem;
+        font-size: 0.8rem;
+        gap: 8px;
+        margin-bottom: 0.75rem;
+    }
+
+    .reasoning,
+    .insights {
+        padding: 0.75rem;
+        margin-bottom: 0.75rem;
+        border-radius: 10px;
+    }
+
+    .reasoning h4,
+    .insights h4 {
+        font-size: 0.85rem;
+        margin-bottom: 8px;
+    }
+
+    .reasoning p,
+    .insights li {
+        font-size: 0.78rem;
+        line-height: 1.5;
+    }
+
+    .header {
+        gap: 10px;
+        margin-bottom: 0.85rem;
+    }
+
+    .headerIcon {
+        width: 36px;
+        height: 36px;
+        border-radius: 9px;
+    }
+
+    .header h3 {
+        font-size: 1rem;
+    }
+
+    .confidence {
+        font-size: 0.78rem;
+    }
+
+    .errorBox,
+    .warningBox {
+        font-size: 0.78rem;
+        padding: 0.6rem 0.75rem;
+        gap: 7px;
+        margin-top: 10px;
     }
 
     .actions {
         flex-direction: column;
+        gap: 0.5rem;
     }
 
     .applyBtn,
     .retryBtn {
         width: 100%;
+        padding: 0.7rem 1rem;
+        font-size: 0.85rem;
+        min-width: unset;
+    }
+}
+
+@media (max-width: 320px) {
+    .container {
+        padding: 0.9rem 0.75rem;
+        border-radius: 10px;
+    }
+
+    .promptIcon {
+        width: 44px;
+        height: 44px;
+    }
+
+    .promptSection h3 {
+        font-size: 0.95rem;
+    }
+
+    .promptSection p {
+        font-size: 0.75rem;
+    }
+
+    .generateBtn {
+        padding: 0.55rem 1rem;
+        font-size: 0.78rem;
+    }
+
+    .priceValue {
+        font-size: 1.1rem;
     }
 }

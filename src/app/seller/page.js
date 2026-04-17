@@ -53,12 +53,16 @@ export default function SellerDashboard() {
     const [liveDuration, setLiveDuration] = useState({ hours: 0, minutes: 0, seconds: 0 });
     const [auctionEndModal, setAuctionEndModal] = useState({ show: false, hasWinner: false, winner: null });
     const [mobileTab, setMobileTab] = useState('live');
+    const [showSetupModal, setShowSetupModal] = useState(false);
+    const [setupPermissions, setSetupPermissions] = useState({ cam: 'pending', mic: 'pending' });
 
     // Agora refs
     const agoraClientRef = useRef(null);
     const localTracksRef = useRef({ audio: null, video: null });
     const socketRef = useRef(null);
     const liveStartTimeRef = useRef(null);
+    const setupStreamRef = useRef(null);
+    const setupVideoRef = useRef(null);
 
     const fetchDashboardData = useCallback(async () => {
         if (!user) return;
@@ -307,6 +311,17 @@ export default function SellerDashboard() {
         bidders: dashboardData.activeAuction.bids?.[0]?.count || 0
     } : null;
 
+    const handleSetNext = (auctionId) => {
+        setDashboardData(prev => {
+            const queue = [...prev.queue];
+            const idx = queue.findIndex(i => i.auction_id === auctionId);
+            if (idx <= 0) return prev; // already first or not found
+            const [item] = queue.splice(idx, 1);
+            queue.unshift(item);
+            return { ...prev, queue };
+        });
+    };
+
     // Check if there are products available (queue + active)
     const hasProducts = dashboardData.queue.length > 0 || activeItem !== null;
 
@@ -492,35 +507,89 @@ export default function SellerDashboard() {
         console.log('✅ Stream stopped');
     };
 
+    // Stop the camera preview stream in the setup modal
+    const stopSetupPreview = () => {
+        if (setupStreamRef.current) {
+            setupStreamRef.current.getTracks().forEach(t => t.stop());
+            setupStreamRef.current = null;
+        }
+    };
+
+    // Request camera + mic for the pre-live setup modal
+    const startSetupPreview = async () => {
+        setSetupPermissions({ cam: 'pending', mic: 'pending' });
+        try {
+            const stream = await navigator.mediaDevices.getUserMedia({ video: true, audio: true });
+            setupStreamRef.current = stream;
+            setSetupPermissions({ cam: 'granted', mic: 'granted' });
+        } catch (err) {
+            const camDenied = err.name === 'NotAllowedError' || err.name === 'PermissionDeniedError';
+            setSetupPermissions({ cam: camDenied ? 'denied' : 'error', mic: camDenied ? 'denied' : 'error' });
+        }
+    };
+
+    // Attach stream to preview video when both modal and stream are ready
+    useEffect(() => {
+        if (showSetupModal && setupPermissions.cam === 'granted' && setupVideoRef.current && setupStreamRef.current) {
+            setupVideoRef.current.srcObject = setupStreamRef.current;
+            setupVideoRef.current.play().catch(() => {});
+        }
+    }, [showSetupModal, setupPermissions]);
+
+    // Cleanup preview when modal closes
+    useEffect(() => {
+        if (!showSetupModal) stopSetupPreview();
+    }, [showSetupModal]);
+
+    // The actual go-live logic (called after setup confirmation)
+    const executeGoLive = async () => {
+        if (dashboardData.queue.length === 0) {
+            alert('You need to schedule products before starting a live auction.');
+            return;
+        }
+        const nextAuction = dashboardData.queue[0];
+        try {
+            const apiUrl = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:5000';
+            const token = localStorage.getItem('bidpal_token');
+            const res = await fetch(`${apiUrl}/api/auctions/${nextAuction.auction_id}/start`, {
+                method: 'POST',
+                headers: { ...(token ? { 'Authorization': `Bearer ${token}` } : {}) }
+            });
+            if (res.ok) {
+                await startAgoraStream(nextAuction.auction_id);
+                fetchDashboardData();
+            } else {
+                const error = await res.json();
+                alert(error.error || 'Failed to start auction');
+            }
+        } catch (err) {
+            console.error(err);
+            alert('An error occurred while starting the auction');
+        }
+    };
+
+    const handleSetupConfirm = async () => {
+        stopSetupPreview();
+        setShowSetupModal(false);
+        setSetupPermissions({ cam: 'pending', mic: 'pending' });
+        await executeGoLive();
+    };
+
+    const handleSetupCancel = () => {
+        stopSetupPreview();
+        setShowSetupModal(false);
+        setSetupPermissions({ cam: 'pending', mic: 'pending' });
+    };
+
     const handleGoLive = async () => {
         if (!isLive) {
             if (dashboardData.queue.length === 0) {
                 alert('You need to schedule products before starting a live auction.');
                 return;
             }
-            const nextAuction = dashboardData.queue[0];
-            try {
-                const apiUrl = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:5000';
-                const token = localStorage.getItem('bidpal_token');
-                const res = await fetch(`${apiUrl}/api/auctions/${nextAuction.auction_id}/start`, {
-                    method: 'POST',
-                    headers: {
-                        ...(token ? { 'Authorization': `Bearer ${token}` } : {})
-                    }
-                });
-                if (res.ok) {
-                    // Start camera on dashboard
-                    await startAgoraStream(nextAuction.auction_id);
-                    // Refresh dashboard to show active auction
-                    fetchDashboardData();
-                } else {
-                    const error = await res.json();
-                    alert(error.error || 'Failed to start auction');
-                }
-            } catch (err) {
-                console.error(err);
-                alert('An error occurred while starting the auction');
-            }
+            setShowSetupModal(true);
+            startSetupPreview();
+            return;
         } else {
             // End Stream
             const confirmed = confirm('Are you sure you want to end this live auction? This will declare the winner and cannot be undone.');
@@ -741,98 +810,82 @@ export default function SellerDashboard() {
                         </div>
                     )}
 
-                    {/* Recent Bids — directly below video */}
-                    <section className={styles.card}>
+                    {/* Combined Bids & Chat — side by side */}
+                    <section className={styles.bidsChatCard}>
                         <div className={styles.cardHeader}>
                             <div className={styles.cardTitleGroup}>
-                                <Gavel size={16} color="#111" />
+                                <Gavel size={15} color="#111" />
                                 <div className={styles.cardHeaderText}>
-                                    <h2>Recent Bids</h2>
-                                    <p>Live bidding activity</p>
-                                </div>
-                            </div>
-                            {bidderCount > 0 && (
-                                <div className={styles.biddersCount}>
-                                    <Users size={13} /> {bidderCount} bidder{bidderCount !== 1 ? 's' : ''}
-                                </div>
-                            )}
-                        </div>
-                        <div className={styles.bidsList}>
-                            {recentBids.length > 0 ? recentBids.map((bid, index) => (
-                                <div key={bid.bid_id || index} className={styles.bidRow}>
-                                    <div className={styles.bidderAvatar}>
-                                        {(bid.bidder_name || 'B').charAt(0).toUpperCase()}
-                                    </div>
-                                    <div className={styles.bidInfo}>
-                                        <span className={styles.bidderName}>{bid.bidder_name || 'Anonymous'}</span>
-                                        <span className={styles.bidTimestamp}>{bid.timeAgo || 'just now'}</span>
-                                    </div>
-                                    <span className={styles.bidPrice}>₱{Number(bid.amount).toLocaleString()}</span>
-                                </div>
-                            )) : (
-                                <div className={styles.emptyBids}>
-                                    <Gavel size={32} color="#eee" strokeWidth={1.5} />
-                                    <p>No bids yet</p>
-                                </div>
-                            )}
-                        </div>
-                    </section>
-
-                    {/* Live Chat — directly below bids */}
-                    <section className={styles.card}>
-                        <div className={styles.cardHeader}>
-                            <div className={styles.cardTitleGroup}>
-                                <MessageSquare size={16} color="#111" />
-                                <div className={styles.cardHeaderText}>
-                                    <h2>Live Chat</h2>
-                                    <p>Buyer comments</p>
+                                    <h2>Bids &amp; Chat</h2>
+                                    {bidderCount > 0 && <p>{bidderCount} active bidder{bidderCount !== 1 ? 's' : ''}</p>}
                                 </div>
                             </div>
                             <button onClick={() => setComments([])} className={styles.clearChatBtn}>
-                                Clear
+                                Clear chat
                             </button>
                         </div>
-                        <div className={styles.chatBox}>
-                            <div className={styles.commentList}>
-                                {comments.length > 0 ? comments.map(msg => (
-                                    <div key={msg.id} className={styles.comment}>
-                                        <div className={styles.commentHeader}>
-                                            <span className={styles.userName}>{msg.user}</span>
-                                            <span className={styles.commentTime}>
-                                                {new Date(msg.sent_at || Date.now()).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
-                                            </span>
+
+                        <div className={styles.bidsChatBody}>
+                            {/* Left: Bids */}
+                            <div className={styles.bidsChatLeft}>
+                                <div className={styles.bidsChatLabel}>
+                                    <Gavel size={11} /> Bids
+                                </div>
+                                <div className={styles.bidsScroll}>
+                                    {recentBids.length > 0 ? recentBids.map((bid, index) => (
+                                        <div key={bid.bid_id || index} className={styles.bidRowCompact}>
+                                            <div className={styles.bidderAvatarSm}>
+                                                {(bid.bidder_name || 'B').charAt(0).toUpperCase()}
+                                            </div>
+                                            <span className={styles.bidderNameSm}>{bid.bidder_name || 'Anon'}</span>
+                                            <span className={styles.bidPriceSm}>₱{Number(bid.amount).toLocaleString()}</span>
                                         </div>
-                                        <p className={styles.commentText}>{msg.text || msg.body}</p>
-                                    </div>
-                                )) : (
-                                    <p className={styles.emptyChat}>
-                                        {isLive ? 'No comments yet.' : 'Go live to see buyer comments.'}
-                                    </p>
-                                )}
+                                    )) : (
+                                        <p className={styles.emptyColMsg}>No bids yet</p>
+                                    )}
+                                </div>
                             </div>
-                            <div className={styles.chatInputArea}>
-                                <textarea
-                                    placeholder={isLive ? 'Type an announcement…' : 'Go live to comment'}
-                                    className={styles.announcementInput}
-                                    value={messageInput}
-                                    onChange={(e) => setMessageInput(e.target.value)}
-                                    rows={1}
-                                    disabled={!isLive}
-                                    onKeyDown={(e) => {
-                                        if (e.key === 'Enter' && !e.shiftKey) {
-                                            e.preventDefault();
-                                            handleSendComment();
-                                        }
-                                    }}
-                                />
-                                <button
-                                    className={styles.chatSendBtn}
-                                    onClick={handleSendComment}
-                                    disabled={!isLive || !messageInput.trim()}
-                                    title="Send"
-                                >
-                                    <Send size={16} />
-                                </button>
+
+                            {/* Right: Chat */}
+                            <div className={styles.bidsChatRight}>
+                                <div className={styles.bidsChatLabel}>
+                                    <MessageSquare size={11} /> Chat
+                                </div>
+                                <div className={styles.chatScroll}>
+                                    {comments.length > 0 ? comments.map(msg => (
+                                        <div key={msg.id} className={styles.commentCompact}>
+                                            <span className={styles.commentUserSm}>{msg.user}</span>
+                                            <p className={styles.commentTextSm}>{msg.text || msg.body}</p>
+                                        </div>
+                                    )) : (
+                                        <p className={styles.emptyColMsg}>
+                                            {isLive ? 'No comments yet.' : 'Go live to chat.'}
+                                        </p>
+                                    )}
+                                </div>
+                                <div className={styles.chatInputCompact}>
+                                    <input
+                                        type="text"
+                                        placeholder={isLive ? 'Say something…' : 'Go live first'}
+                                        className={styles.chatInputSm}
+                                        value={messageInput}
+                                        onChange={(e) => setMessageInput(e.target.value)}
+                                        disabled={!isLive}
+                                        onKeyDown={(e) => {
+                                            if (e.key === 'Enter') {
+                                                e.preventDefault();
+                                                handleSendComment();
+                                            }
+                                        }}
+                                    />
+                                    <button
+                                        className={styles.chatSendBtnSm}
+                                        onClick={handleSendComment}
+                                        disabled={!isLive || !messageInput.trim()}
+                                    >
+                                        <Send size={13} />
+                                    </button>
+                                </div>
                             </div>
                         </div>
                     </section>
@@ -852,14 +905,26 @@ export default function SellerDashboard() {
                             </Link>
                         </div>
                         <div className={styles.queueGrid}>
-                            {dashboardData.queue.length > 0 ? dashboardData.queue.map(item => (
-                                <div key={item.auction_id} className={styles.queueGridItem}>
+                            {dashboardData.queue.length > 0 ? dashboardData.queue.map((item, idx) => (
+                                <div key={item.auction_id} className={`${styles.queueGridItem} ${idx === 0 ? styles.queueGridItemFirst : ''}`}>
                                     <img src={item.products?.images?.[0]?.image_url || 'https://placehold.co/100x100?text=No+Image'} alt={item.products?.name} />
                                     <div className={styles.queueGridMeta}>
                                         <h4>{item.products?.name}</h4>
-                                        <span>Starts at ₱{item.reserve_price?.toLocaleString() || item.buy_now_price?.toLocaleString()}</span>
+                                        <span>₱{item.reserve_price?.toLocaleString() || item.buy_now_price?.toLocaleString()}</span>
                                     </div>
-                                    <button className={styles.setNextBtn}>Set Next</button>
+                                    {!isLive ? (
+                                        idx === 0 ? (
+                                            <button className={styles.goLiveQueueBtn} onClick={handleGoLive}>Go Live</button>
+                                        ) : (
+                                            <button className={styles.setNextBtn} onClick={() => handleSetNext(item.auction_id)}>Set Next</button>
+                                        )
+                                    ) : (
+                                        idx === 0 ? (
+                                            <span className={styles.upNextBadge}>Up Next</span>
+                                        ) : (
+                                            <button className={styles.setNextBtn} onClick={() => handleSetNext(item.auction_id)}>Set Next</button>
+                                        )
+                                    )}
                                 </div>
                             )) : (
                                 <div className={styles.emptyQueue}>
@@ -872,6 +937,80 @@ export default function SellerDashboard() {
                 </aside>
 
             </div>
+
+            {/* Pre-Live Setup Modal */}
+            {showSetupModal && (
+                <div className={styles.modalOverlay} onClick={handleSetupCancel}>
+                    <div className={styles.setupModalContent} onClick={(e) => e.stopPropagation()}>
+                        <h2 className={styles.setupModalTitle}>Camera &amp; Mic Setup</h2>
+                        <p className={styles.setupModalSub}>Allow access so buyers can see and hear you.</p>
+
+                        <div className={styles.setupPreviewWrap}>
+                            {setupPermissions.cam === 'granted' ? (
+                                <video
+                                    ref={setupVideoRef}
+                                    className={styles.setupPreviewVideo}
+                                    autoPlay
+                                    muted
+                                    playsInline
+                                />
+                            ) : setupPermissions.cam === 'denied' || setupPermissions.cam === 'error' ? (
+                                <div className={styles.setupPreviewBlocked}>
+                                    <VideoOff size={32} color="#bbb" />
+                                    <span>Camera blocked</span>
+                                </div>
+                            ) : (
+                                <div className={styles.setupPreviewBlocked}>
+                                    <Video size={28} color="#bbb" />
+                                    <span>Requesting access…</span>
+                                </div>
+                            )}
+                        </div>
+
+                        <div className={styles.setupPermList}>
+                            <div className={styles.setupPermRow}>
+                                <div className={`${styles.setupPermDot} ${
+                                    setupPermissions.cam === 'granted' ? styles.setupPermGranted :
+                                    setupPermissions.cam === 'denied' || setupPermissions.cam === 'error' ? styles.setupPermDenied :
+                                    styles.setupPermPending
+                                }`} />
+                                <Video size={14} />
+                                <span>Camera</span>
+                                <span className={styles.setupPermStatus}>
+                                    {setupPermissions.cam === 'granted' ? 'Allowed' :
+                                     setupPermissions.cam === 'denied' ? 'Blocked — check browser settings' :
+                                     setupPermissions.cam === 'error' ? 'Error' : 'Waiting…'}
+                                </span>
+                            </div>
+                            <div className={styles.setupPermRow}>
+                                <div className={`${styles.setupPermDot} ${
+                                    setupPermissions.mic === 'granted' ? styles.setupPermGranted :
+                                    setupPermissions.mic === 'denied' || setupPermissions.mic === 'error' ? styles.setupPermDenied :
+                                    styles.setupPermPending
+                                }`} />
+                                <Mic size={14} />
+                                <span>Microphone</span>
+                                <span className={styles.setupPermStatus}>
+                                    {setupPermissions.mic === 'granted' ? 'Allowed' :
+                                     setupPermissions.mic === 'denied' ? 'Blocked' :
+                                     setupPermissions.mic === 'error' ? 'Error' : 'Waiting…'}
+                                </span>
+                            </div>
+                        </div>
+
+                        <div className={styles.setupActions}>
+                            <button className={styles.setupCancelBtn} onClick={handleSetupCancel}>Cancel</button>
+                            <button
+                                className={styles.setupStartBtn}
+                                onClick={handleSetupConfirm}
+                                disabled={setupPermissions.cam !== 'granted' || setupPermissions.mic !== 'granted'}
+                            >
+                                <Play size={14} fill="currentColor" /> Start Live
+                            </button>
+                        </div>
+                    </div>
+                </div>
+            )}
 
             {/* Auction End Modal */}
             {auctionEndModal.show && (

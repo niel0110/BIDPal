@@ -211,35 +211,58 @@
 }
 
 .chatHeader {
-    padding: 1rem 1.5rem;
+    padding: 0.85rem 1.25rem;
     border-bottom: 1px solid #f0f0f0;
     display: flex;
     justify-content: space-between;
     align-items: center;
     flex-shrink: 0;
+    gap: 0.5rem;
+    background: #fff;
 }
 
 .chatInfo {
     display: flex;
     align-items: center;
-    gap: 0.85rem;
+    gap: 0.75rem;
+    min-width: 0;
+    flex: 1;
 }
 
 .chatInfo img {
-    width: 36px;
-    height: 36px;
-    border-radius: 10px;
+    width: 38px;
+    height: 38px;
+    border-radius: 50%;
+    object-fit: cover;
+    flex-shrink: 0;
+    border: 2px solid #f0f0f0;
+}
+
+.chatInfoText {
+    display: flex;
+    flex-direction: column;
+    gap: 0.1rem;
+    min-width: 0;
 }
 
 .chatInfo h3 {
-    font-size: 1rem;
-    font-weight: 750;
+    font-size: 0.95rem;
+    font-weight: 700;
     margin: 0;
     color: #111;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+}
+
+.chatRole {
+    font-size: 0.7rem;
+    color: #aaa;
+    font-weight: 500;
 }
 
 .chatInfo span {
-    font-size: 0.75rem;
+    font-size: 0.72rem;
     color: #10b981;
     font-weight: 600;
 }
@@ -486,7 +509,7 @@
     }
 
     .messagesHeader h1 {
-        font-size: 1.5rem;
+        font-size: 1.25rem;
     }
 
     /* Full-width single panel */
@@ -504,26 +527,40 @@
     }
 
     .searchBox {
-        margin: 0.75rem;
-        padding: 0.7rem 1rem;
+        margin: 0.5rem 0.75rem;
+        padding: 0.5rem 0.75rem;
+        border-radius: 10px;
+        gap: 0.5rem;
+    }
+
+    .searchBox input {
+        font-size: 0.78rem;
     }
 
     .chatItem {
-        padding: 0.85rem 1rem;
-        gap: 0.75rem;
+        padding: 0.7rem 0.85rem;
+        gap: 0.65rem;
     }
 
     .avatarWrapper {
-        width: 42px;
-        height: 42px;
+        width: 38px;
+        height: 38px;
+    }
+
+    .avatarWrapper img {
+        border-radius: 10px;
     }
 
     .chatName {
-        font-size: 0.85rem;
+        font-size: 0.8rem;
+    }
+
+    .chatTime {
+        font-size: 0.68rem;
     }
 
     .lastMessage {
-        font-size: 0.75rem;
+        font-size: 0.72rem;
     }
 
     /* Chat window hidden until chat is selected */
@@ -567,7 +604,17 @@
     }
 
     .chatHeader {
-        padding: 0.85rem 1rem;
+        padding: 0.7rem 0.85rem;
+        gap: 0.4rem;
+    }
+
+    .chatInfo img {
+        width: 34px;
+        height: 34px;
+    }
+
+    .chatInfo h3 {
+        font-size: 0.85rem;
     }
 
     .messageArea {
@@ -615,11 +662,14 @@
 
 @media (max-width: 360px) {
     .messagesContent { padding: 0 8px; }
-    .messagesHeader h1 { font-size: 1.3rem; }
-    .chatItem { padding: 0.7rem 0.85rem; gap: 0.6rem; }
-    .avatarWrapper { width: 36px; height: 36px; }
-    .chatName { font-size: 0.82rem; }
-    .lastMessage { font-size: 0.75rem; }
+    .messagesHeader h1 { font-size: 1.1rem; }
+    .searchBox { margin: 0.4rem 0.6rem; padding: 0.45rem 0.65rem; }
+    .searchBox input { font-size: 0.72rem; }
+    .chatItem { padding: 0.6rem 0.75rem; gap: 0.55rem; }
+    .avatarWrapper { width: 34px; height: 34px; }
+    .chatName { font-size: 0.76rem; }
+    .chatTime { font-size: 0.63rem; }
+    .lastMessage { font-size: 0.68rem; }
     .chatHeader { padding: 0.7rem 0.85rem; }
     .chatInfo h3 { font-size: 0.85rem; }
     .messageArea { padding: 0.75rem; }
@@ -629,4 +679,16 @@
     .inputBar { padding: 0.6rem 0.75rem; }
     .messageTextbox { font-size: 0.75rem; padding: 0.5rem 0.65rem; }
     .sendBtn { width: 34px; height: 34px; }
+}
+
+@media (max-width: 320px) {
+    .messagesContent { padding: 0 5px; }
+    .messagesHeader h1 { font-size: 1rem; }
+    .searchBox { margin: 0.35rem 0.5rem; padding: 0.4rem 0.55rem; }
+    .searchBox input { font-size: 0.7rem; }
+    .chatItem { padding: 0.55rem 0.65rem; gap: 0.5rem; }
+    .avatarWrapper { width: 32px; height: 32px; }
+    .chatName { font-size: 0.73rem; }
+    .chatTime { font-size: 0.6rem; }
+    .lastMessage { font-size: 0.65rem; }
 }

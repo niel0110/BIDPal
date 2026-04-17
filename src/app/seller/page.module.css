@@ -508,7 +508,190 @@
 
 .moreBtn:hover { color: #111; }
 
-/* ---------- Bids ---------- */
+/* ---------- Combined Bids & Chat card ---------- */
+.bidsChatCard {
+    background: white;
+    border: 1px solid #f0f0f0;
+    border-radius: 16px;
+    overflow: hidden;
+    box-shadow: 0 1px 4px rgba(0, 0, 0, 0.03);
+}
+
+.bidsChatBody {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    min-height: 240px;
+    max-height: 300px;
+}
+
+.bidsChatLeft {
+    border-right: 1px solid #f0f0f0;
+    display: flex;
+    flex-direction: column;
+    overflow: hidden;
+}
+
+.bidsChatRight {
+    display: flex;
+    flex-direction: column;
+    overflow: hidden;
+}
+
+.bidsChatLabel {
+    padding: 0.45rem 0.75rem;
+    font-size: 0.65rem;
+    font-weight: 700;
+    color: #aaa;
+    text-transform: uppercase;
+    letter-spacing: 0.06em;
+    background: #fafafa;
+    border-bottom: 1px solid #f5f5f5;
+    display: flex;
+    align-items: center;
+    gap: 0.3rem;
+    flex-shrink: 0;
+}
+
+.bidsScroll {
+    flex: 1;
+    overflow-y: auto;
+    padding: 0.5rem;
+    display: flex;
+    flex-direction: column;
+    gap: 0.35rem;
+    scrollbar-width: none;
+}
+
+.bidsScroll::-webkit-scrollbar { display: none; }
+
+.bidRowCompact {
+    display: flex;
+    align-items: center;
+    gap: 0.35rem;
+    padding: 0.38rem 0.45rem;
+    background: #fafafa;
+    border-radius: 8px;
+    border: 1px solid #f5f5f5;
+}
+
+.bidderAvatarSm {
+    width: 22px;
+    height: 22px;
+    border-radius: 50%;
+    background: #ebebeb;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 0.6rem;
+    font-weight: 800;
+    color: #555;
+    flex-shrink: 0;
+}
+
+.bidderNameSm {
+    font-size: 0.7rem;
+    font-weight: 700;
+    color: #111;
+    flex: 1;
+    min-width: 0;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+}
+
+.bidPriceSm {
+    font-size: 0.68rem;
+    font-weight: 800;
+    color: #10b981;
+    flex-shrink: 0;
+}
+
+.chatScroll {
+    flex: 1;
+    overflow-y: auto;
+    padding: 0.5rem;
+    display: flex;
+    flex-direction: column;
+    gap: 0.5rem;
+    scrollbar-width: none;
+}
+
+.chatScroll::-webkit-scrollbar { display: none; }
+
+.commentCompact { display: flex; flex-direction: column; gap: 1px; }
+
+.commentUserSm {
+    font-size: 0.67rem;
+    font-weight: 700;
+    color: #333;
+}
+
+.commentTextSm {
+    font-size: 0.68rem;
+    color: #666;
+    margin: 0;
+    line-height: 1.35;
+    word-break: break-word;
+}
+
+.emptyColMsg {
+    font-size: 0.7rem;
+    color: #ccc;
+    text-align: center;
+    padding: 1.25rem 0.5rem;
+    margin: 0;
+    line-height: 1.4;
+}
+
+.chatInputCompact {
+    display: flex;
+    gap: 0.3rem;
+    align-items: center;
+    padding: 0.45rem 0.5rem;
+    border-top: 1px solid #f0f0f0;
+    background: white;
+    flex-shrink: 0;
+}
+
+.chatInputSm {
+    flex: 1;
+    background: #f8f8f8;
+    border: 1px solid #ebebeb;
+    padding: 0.38rem 0.55rem;
+    border-radius: 8px;
+    font-size: 0.7rem;
+    font-family: inherit;
+    outline: none;
+    color: #111;
+    min-width: 0;
+}
+
+.chatInputSm:focus {
+    border-color: #ccc;
+    background: white;
+}
+
+.chatInputSm:disabled { opacity: 0.45; }
+
+.chatSendBtnSm {
+    width: 28px;
+    height: 28px;
+    background: #111;
+    color: white;
+    border: none;
+    border-radius: 7px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    cursor: pointer;
+    flex-shrink: 0;
+    transition: background 0.15s;
+}
+
+.chatSendBtnSm:disabled { opacity: 0.2; cursor: not-allowed; }
+.chatSendBtnSm:not(:disabled):hover { background: #333; }
+
+/* ---------- Bids (desktop standalone — kept for reference) ---------- */
 .bidsList {
     padding: 1rem 1.25rem;
     display: flex;
@@ -715,16 +898,49 @@
     background: #111;
     color: white;
     border: none;
-    padding: 0.4rem 0.85rem;
+    padding: 0.4rem 0.7rem;
     border-radius: 7px;
     font-size: 0.72rem;
     font-weight: 700;
     cursor: pointer;
     transition: background 0.15s;
-    width: 100%;
+    flex-shrink: 0;
+    white-space: nowrap;
 }
 
 .setNextBtn:hover { background: #333; }
+
+.goLiveQueueBtn {
+    flex-shrink: 0;
+    background: var(--color-primary);
+    color: white;
+    border: none;
+    padding: 0.35rem 0.6rem;
+    border-radius: 7px;
+    font-size: 0.68rem;
+    font-weight: 700;
+    cursor: pointer;
+    white-space: nowrap;
+    transition: background 0.15s;
+}
+
+.goLiveQueueBtn:hover { background: #B71C1C; }
+
+.queueGridItemFirst {
+    border-color: #D32F2F;
+    background: #fff8f8;
+}
+
+.upNextBadge {
+    flex-shrink: 0;
+    background: #D32F2F;
+    color: white;
+    font-size: 0.65rem;
+    font-weight: 700;
+    padding: 0.28rem 0.5rem;
+    border-radius: 6px;
+    white-space: nowrap;
+}
 
 .viewInventoryBtn {
     font-size: 0.78rem;
@@ -1249,6 +1465,140 @@
 
 .modalBtn:hover { background: #2a2a2a; }
 
+/* ---------- Pre-Live Setup Modal ---------- */
+.setupModalContent {
+    background: white;
+    border-radius: 16px;
+    padding: 1.75rem;
+    max-width: 420px;
+    width: 92%;
+    box-shadow: 0 16px 48px rgba(0, 0, 0, 0.22);
+    text-align: left;
+    animation: slideUp 0.25s ease-out;
+}
+
+.setupModalTitle {
+    font-size: 1.15rem;
+    font-weight: 800;
+    color: #111;
+    margin: 0 0 0.25rem;
+}
+
+.setupModalSub {
+    font-size: 0.8rem;
+    color: #999;
+    margin: 0 0 1.1rem;
+}
+
+.setupPreviewWrap {
+    width: 100%;
+    aspect-ratio: 4/3;
+    background: #111;
+    border-radius: 12px;
+    overflow: hidden;
+    margin-bottom: 1rem;
+    position: relative;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+}
+
+.setupPreviewVideo {
+    width: 100%;
+    height: 100%;
+    object-fit: cover;
+    transform: scaleX(-1);
+}
+
+.setupPreviewBlocked {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 0.5rem;
+    color: #666;
+    font-size: 0.78rem;
+    font-weight: 600;
+}
+
+.setupPermList {
+    display: flex;
+    flex-direction: column;
+    gap: 0.5rem;
+    margin-bottom: 1.25rem;
+}
+
+.setupPermRow {
+    display: flex;
+    align-items: center;
+    gap: 0.5rem;
+    font-size: 0.8rem;
+    font-weight: 600;
+    color: #333;
+}
+
+.setupPermDot {
+    width: 8px;
+    height: 8px;
+    border-radius: 50%;
+    flex-shrink: 0;
+}
+
+.setupPermPending { background: #ccc; }
+.setupPermGranted { background: #10b981; box-shadow: 0 0 6px rgba(16,185,129,0.4); }
+.setupPermDenied  { background: #D32F2F; }
+
+.setupPermStatus {
+    margin-left: auto;
+    font-size: 0.72rem;
+    color: #999;
+    font-weight: 500;
+}
+
+.setupActions {
+    display: flex;
+    gap: 0.65rem;
+}
+
+.setupCancelBtn {
+    flex: 1;
+    padding: 0.7rem;
+    background: #f5f5f5;
+    border: none;
+    border-radius: 10px;
+    font-size: 0.85rem;
+    font-weight: 700;
+    color: #555;
+    cursor: pointer;
+    transition: background 0.15s;
+}
+
+.setupCancelBtn:hover { background: #ebebeb; }
+
+.setupStartBtn {
+    flex: 2;
+    padding: 0.7rem;
+    background: #D32F2F;
+    border: none;
+    border-radius: 10px;
+    font-size: 0.85rem;
+    font-weight: 700;
+    color: white;
+    cursor: pointer;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    gap: 0.4rem;
+    transition: background 0.15s;
+}
+
+.setupStartBtn:hover:not(:disabled) { background: #B71C1C; }
+
+.setupStartBtn:disabled {
+    background: #e0e0e0;
+    color: #bbb;
+    cursor: not-allowed;
+}
+
 /* ---------- Recent Winners ---------- */
 .winnersContainer {
     display: flex;
@@ -1433,18 +1783,28 @@
         border-bottom-color: #D32F2F;
     }
 
-    /* Layout */
+    /* Layout — cards stack flush, no gap between them */
     .controlRoom {
-        padding: 0.75rem;
-        gap: 0.75rem;
-        background: #f5f5f5;
+        padding: 8px 8px;
+        gap: 0;
+        background: transparent;
         min-height: unset;
+        width: 100%;
+        box-sizing: border-box;
     }
 
-    /* Cards */
-    .liveAuctionArea { border-radius: 14px; }
-    .card { border-radius: 14px; }
-    .emptyState { border-radius: 14px; }
+    .mainWorkArea,
+    .interactionPanel {
+        width: 100%;
+        min-width: 0;
+        box-sizing: border-box;
+    }
+
+    /* Cards: gentle radius, stack flush */
+    .liveAuctionArea { border-radius: 10px; margin-bottom: 0; }
+    .card            { border-radius: 10px; border-top: 1px solid #ebebeb; margin-top: -1px; }
+    .bidsChatCard    { border-radius: 10px; border-top: 1px solid #ebebeb; margin-top: -1px; }
+    .emptyState      { border-radius: 10px; margin-bottom: 0; }
 
     /* Tab panel: hide inactive sections on mobile */
     .tabSectionHidden { display: none; }
@@ -1472,26 +1832,25 @@
     .emptyState p { font-size: 0.82rem; margin-bottom: 1.1rem; }
     .emptyStateBtn { padding: 0.65rem 1.25rem; font-size: 0.82rem; }
 
-    /* Bids */
-    .cardHeader { padding: 0.875rem 1.1rem; }
-    .bidsList { padding: 0.75rem 1rem; gap: 0.45rem; max-height: none; }
-    .bidRow { padding: 0.6rem 0.875rem; gap: 0.6rem; }
-    .bidderName { font-size: 0.82rem; }
-    .bidPrice { font-size: 0.875rem; }
-    .bidderAvatar { width: 28px; height: 28px; font-size: 0.68rem; }
+    /* Card header */
+    .cardHeader { padding: 0.75rem 1rem; }
+
+    /* Combined bids+chat */
+    .bidsChatBody { min-height: 220px; max-height: 270px; }
+    .bidsChatLabel { padding: 0.4rem 0.65rem; font-size: 0.62rem; }
+    .bidsScroll { padding: 0.4rem; gap: 0.3rem; }
+    .chatScroll { padding: 0.4rem; gap: 0.4rem; }
+    .chatInputCompact { padding: 0.4rem 0.45rem; gap: 0.28rem; }
 
     /* Queue */
     .queueList { padding: 0.875rem 1rem; gap: 0.75rem; }
     .queueItem { min-width: 120px; padding: 0.875rem 0.75rem; }
     .queueItem img { width: 60px; height: 60px; }
-    .queueMeta h4 { font-size: 0.78rem; }
-    .queueMeta span { font-size: 0.68rem; }
-
-    /* Chat */
-    .chatBox { height: 280px; }
-    .commentList { padding: 0.875rem 1rem; gap: 0.7rem; }
-    .chatInputArea { padding: 0.65rem 1rem; }
-    .announcementInput { font-size: 0.8rem; }
+    .queueGridItem { padding: 0.55rem; gap: 0.5rem; border-radius: 9px; }
+    .queueGridItem img { width: 40px; height: 40px; border-radius: 7px; }
+    .queueGridMeta h4 { font-size: 0.75rem; }
+    .queueGridMeta span { font-size: 0.65rem; }
+    .setNextBtn { padding: 0.32rem 0.5rem; font-size: 0.65rem; border-radius: 6px; }
 }
 
 @media (max-width: 480px) {
@@ -1501,7 +1860,7 @@
 
     .mobileTabBar { top: 55px; }
 
-    .controlRoom { padding: 0.65rem; gap: 0.65rem; }
+    .controlRoom { padding: 7px 7px; gap: 0; }
     .videoContainer { height: 210px; }
     .productDetailsSection { padding: 0.75rem 0.875rem; }
     .productTitle { font-size: 0.875rem; }
@@ -1510,11 +1869,20 @@
     .statCardValue { font-size: 1.1rem; }
     .emptyState { padding: 2rem 1rem; }
     .emptyState h2 { font-size: 1.05rem; }
-    .cardHeader { padding: 0.75rem 1rem; }
-    .bidsList { padding: 0.65rem 0.875rem; }
+    .cardHeader { padding: 0.65rem 0.9rem; }
+    .bidsChatBody { min-height: 205px; max-height: 255px; }
+    .bidsChatLabel { padding: 0.35rem 0.55rem; }
+    .bidsScroll { padding: 0.35rem; }
+    .chatScroll { padding: 0.35rem; }
+    .chatInputCompact { padding: 0.35rem 0.4rem; }
+    .chatInputSm { font-size: 0.67rem; padding: 0.32rem 0.48rem; }
+    .chatSendBtnSm { width: 26px; height: 26px; }
     .queueItem { min-width: 110px; }
     .queueItem img { width: 56px; height: 56px; }
-    .chatBox { height: 260px; }
+    .queueGridItem { padding: 0.5rem; gap: 0.4rem; }
+    .queueGridItem img { width: 36px; height: 36px; }
+    .queueGridMeta h4 { font-size: 0.7rem; }
+    .setNextBtn { padding: 0.28rem 0.45rem; font-size: 0.62rem; }
     .videoStatsOverlay { padding: 0.5rem 0.75rem 1rem; gap: 0.5rem; }
     .videoStat { font-size: 0.68rem; padding: 0.18rem 0.4rem; }
 }
@@ -1527,7 +1895,7 @@
     .mobileTabBar { top: 51px; }
     .mobileTab { padding: 0.58rem 0.35rem; font-size: 0.65rem; }
 
-    .controlRoom { padding: 0.55rem; gap: 0.55rem; }
+    .controlRoom { padding: 6px 6px; gap: 0; }
     .videoContainer { height: 190px; }
     .productDetailsSection { padding: 0.65rem 0.75rem; }
     .productTitle { font-size: 0.82rem; }
@@ -1545,6 +1913,16 @@
     .queueItem img { width: 52px; height: 52px; }
     .chatBox { height: 245px; }
     .chatInputArea { padding: 0.55rem 0.75rem; }
+    .bidsChatBody { min-height: 190px; max-height: 240px; }
+    .bidsChatLabel { font-size: 0.58rem; padding: 0.32rem 0.5rem; }
+    .bidRowCompact { padding: 0.32rem 0.38rem; gap: 0.28rem; }
+    .bidderAvatarSm { width: 20px; height: 20px; font-size: 0.55rem; }
+    .bidderNameSm { font-size: 0.65rem; }
+    .bidPriceSm { font-size: 0.63rem; }
+    .commentUserSm { font-size: 0.62rem; }
+    .commentTextSm { font-size: 0.63rem; }
+    .chatInputSm { font-size: 0.63rem; padding: 0.28rem 0.42rem; }
+    .chatSendBtnSm { width: 24px; height: 24px; border-radius: 6px; }
     .videoStatsOverlay { padding: 0.45rem 0.65rem 0.875rem; gap: 0.4rem; }
     .videoStat { font-size: 0.65rem; padding: 0.15rem 0.35rem; }
 }
@@ -1557,14 +1935,32 @@
     .mobileTabBar { top: 48px; }
     .mobileTab { padding: 0.55rem 0.3rem; font-size: 0.62rem; }
 
-    .controlRoom { padding: 0.5rem; gap: 0.5rem; }
+    .controlRoom { padding: 6px 5px; gap: 0; }
     .videoContainer { height: 172px; }
     .statCardValue { font-size: 0.95rem; }
     .queueItem { min-width: 88px; }
     .queueItem img { width: 46px; height: 46px; }
+    .queueGridItem { padding: 0.45rem; gap: 0.35rem; }
+    .queueGridItem img { width: 32px; height: 32px; border-radius: 6px; }
+    .queueGridMeta h4 { font-size: 0.65rem; }
+    .queueGridMeta span { font-size: 0.58rem; }
+    .setNextBtn { padding: 0.25rem 0.4rem; font-size: 0.58rem; }
     .chatBox { height: 225px; }
     .emptyState h2 { font-size: 0.9rem; }
     .emptyState p { font-size: 0.75rem; }
+    .bidsChatBody { min-height: 178px; max-height: 225px; }
+    .bidsChatLabel { font-size: 0.56rem; padding: 0.28rem 0.45rem; }
+    .bidsScroll { padding: 0.28rem; gap: 0.25rem; }
+    .chatScroll { padding: 0.28rem; gap: 0.3rem; }
+    .chatInputCompact { padding: 0.28rem 0.35rem; }
+    .bidRowCompact { padding: 0.28rem 0.32rem; }
+    .bidderAvatarSm { width: 18px; height: 18px; font-size: 0.5rem; }
+    .bidderNameSm { font-size: 0.62rem; }
+    .bidPriceSm { font-size: 0.6rem; }
+    .commentUserSm { font-size: 0.6rem; }
+    .commentTextSm { font-size: 0.6rem; }
+    .chatInputSm { font-size: 0.6rem; padding: 0.25rem 0.38rem; }
+    .chatSendBtnSm { width: 22px; height: 22px; }
     .videoStatsOverlay { padding: 0.4rem 0.6rem 0.75rem; gap: 0.35rem; }
     .videoStat { font-size: 0.62rem; padding: 0.14rem 0.32rem; }
     .addQueueBtn { padding: 0.32rem 0.6rem; font-size: 0.7rem; }

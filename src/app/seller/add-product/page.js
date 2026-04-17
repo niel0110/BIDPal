@@ -2,7 +2,6 @@
 
 import { useState } from 'react';
 import { useRouter } from 'next/navigation';
-import BackButton from '@/components/BackButton';
 import { Info, Grid, Camera, X, Trash2, Upload, ChevronLeft, Package, DollarSign } from 'lucide-react';
 import styles from './page.module.css';
 import { useAuth } from '@/context/AuthContext';
@@ -23,80 +22,58 @@ const categoriesData = [
         id: 'electronics',
         name: 'Electronics',
         groups: [
-            {
-                title: 'Phones and Accessories',
-                items: ['Smartphones', 'Smartwatches', 'Tablets', 'Accessories GSM', 'Cases and covers']
-            },
-            {
-                title: 'Computers',
-                items: ['Laptops', 'Laptop components', 'Desktop Computers', 'Computer components', 'Printers and scanners']
-            },
-            {
-                title: 'Audio & Video',
-                items: ['TVs', 'Projectors', 'Headphones', 'Audio for home', 'Home cinema']
-            },
-            {
-                title: 'Gaming & Consoles',
-                items: ['Consoles PlayStation 5', 'Consoles Xbox Series X/S', 'Consoles PlayStation 4', 'Consoles Xbox One', 'Consoles Nintendo Switch']
-            },
-            {
-                title: 'Minor appliances',
-                items: ['Kitchen, cooking', 'Hygiene and care', 'For home', 'Vacuum cleaners']
-            },
-            {
-                title: 'Large Appliances',
-                items: ['Fridges', 'Washing machines', 'Clothes dryers', 'Free-standing kitchens']
-            },
-            {
-                title: 'Photography',
-                items: ['Digital cameras', 'Lenses', 'Photo accessories', 'Instant cameras (Instax, Polaroid)']
-            }
+            { title: 'Phones & Tablets', items: ['Smartphones', 'Tablets', 'Smartwatches', 'Accessories'] },
+            { title: 'Computers', items: ['Laptops', 'Desktop Computers', 'Components', 'Printers'] },
+            { title: 'Audio & Video', items: ['TVs', 'Headphones', 'Projectors', 'Home Audio'] },
+            { title: 'Gaming', items: ['PlayStation', 'Xbox', 'Nintendo Switch', 'PC Gaming'] },
+            { title: 'Appliances', items: ['Kitchen', 'Laundry', 'Refrigerators', 'Vacuums'] },
+            { title: 'Photography', items: ['Cameras', 'Lenses', 'Accessories', 'Instant Cameras'] },
         ]
     },
     {
         id: 'fashion',
         name: 'Fashion',
         groups: [
-            { title: 'Women', items: ['Dresses', 'Tops', 'Pants', 'Shoes', 'Bags', 'Accessories'] },
-            { title: 'Men', items: ['Shirts', 'Jeans', 'Suits', 'Shoes', 'Watches', 'Accessories'] },
-            { title: 'Kids', items: ['Baby clothes', 'Kid clothes', 'Toys', 'Gear'] },
-            { title: 'Luxury & Jewelry', items: ['Necklaces', 'Rings', 'Luxury Watches', 'Vintage Bags'] }
+            { title: 'Women', items: ['Dresses', 'Tops', 'Pants', 'Shoes', 'Bags'] },
+            { title: 'Men', items: ['Shirts', 'Jeans', 'Suits', 'Shoes', 'Watches'] },
+            { title: 'Kids', items: ['Baby Clothes', 'Kids Clothes', 'Toys'] },
+            { title: 'Luxury & Jewelry', items: ['Necklaces', 'Rings', 'Watches', 'Bags'] },
         ]
     },
     {
         id: 'home',
         name: 'Home & Living',
         groups: [
-            { title: 'Furniture', items: ['Sofa', 'Bed', 'Dining Table', 'Chairs', 'Storage'] },
-            { title: 'Decor & Lighting', items: ['Lamps', 'Wall Art', 'Textiles', 'Kitchenware'] },
-            { title: 'Garden & Tools', items: ['Plants', 'Tools', 'Outdoor Furniture', 'Lighting'] }
+            { title: 'Furniture', items: ['Sofa', 'Bed', 'Dining Table', 'Storage'] },
+            { title: 'Decor & Lighting', items: ['Lamps', 'Wall Art', 'Kitchenware', 'Textiles'] },
+            { title: 'Garden & Tools', items: ['Plants', 'Tools', 'Outdoor Furniture'] },
         ]
     },
     {
         id: 'culture',
-        name: 'Collectibles & Culture',
+        name: 'Collectibles',
         groups: [
-            { title: 'Books', items: ['Fiction', 'Non-fiction', 'Comics', 'Antiquarian'] },
-            { title: 'Music & Film', items: ['Vinyl', 'CDs/DVDs', 'Instruments', 'Audio Equipment'] },
-            { title: 'Collectibles', items: ['Trading Cards', 'Action Figures', 'Antiques', 'Numismatics'] }
+            { title: 'Books', items: ['Fiction', 'Non-fiction', 'Comics', 'Rare Books'] },
+            { title: 'Music & Film', items: ['Vinyl', 'CDs/DVDs', 'Instruments'] },
+            { title: 'Collectibles', items: ['Trading Cards', 'Action Figures', 'Antiques'] },
         ]
     },
     {
         id: 'sports',
         name: 'Sports & Outdoors',
         groups: [
-            { title: 'Exercise', items: ['Gym', 'Yoga', 'Bicycles', 'Weights'] },
-            { title: 'Outdoors', items: ['Tents', 'Backpacks', 'Sleeping Bags', 'Camping Gear'] },
-            { title: 'Team Sports', items: ['Basketball', 'Football', 'Tennis', 'Golf'] }
+            { title: 'Fitness', items: ['Gym Equipment', 'Yoga', 'Bicycles'] },
+            { title: 'Outdoors', items: ['Tents', 'Backpacks', 'Camping Gear'] },
+            { title: 'Team Sports', items: ['Basketball', 'Football', 'Tennis', 'Golf'] },
         ]
     },
     {
         id: 'automotive',
-        name: 'Automotive & Parts',
+        name: 'Automotive',
         groups: [
-            { title: 'Car Parts', items: ['Wheels & Tires', 'Engines', 'Lighting', 'Filters'] },
-            { title: 'Interior & Audio', items: ['Seats', 'Head Units', 'Mats', 'Organizers'] },
-            { title: 'Accessories', items: ['Cleaning', 'Tools', 'Safety'] }
+            { title: 'Car Parts', items: ['Wheels & Tires', 'Engines', 'Filters'] },
+            { title: 'Interior & Audio', items: ['Seats', 'Head Units', 'Organizers'] },
+            { title: 'Accessories', items: ['Cleaning', 'Tools', 'Safety'] },
         ]
     },
 ];
@@ -106,6 +83,12 @@ export default function AddProductPage() {
     const { user } = useAuth();
     const [currentStep, setCurrentStep] = useState(0);
     const [activeCategory, setActiveCategory] = useState(null);
+    const [expandedGroups, setExpandedGroups] = useState({});
+
+    const toggleGroup = (catId, groupIdx) => {
+        const key = `${catId}-${groupIdx}`;
+        setExpandedGroups(prev => ({ ...prev, [key]: !prev[key] }));
+    };
     const [isSubmitting, setIsSubmitting] = useState(false);
     const [images, setImages] = useState([]);
     const [previewUrls, setPreviewUrls] = useState([]);
@@ -120,13 +103,24 @@ export default function AddProductPage() {
         specifications: '',
         availability: '1',
         length: '',
+        lengthUnit: 'mm',
         width: '',
+        widthUnit: 'mm',
         height: '',
+        heightUnit: 'mm',
         price: '',
         reservePrice: '',
         startingPrice: '',
         categories: []
     });
+
+    const isFormComplete = () =>
+        formData.name.trim().length > 0 &&
+        formData.condition.trim().length > 0 &&
+        formData.brand.trim().length > 0 &&
+        formData.categories.length > 0 &&
+        formData.reservePrice.toString().trim().length > 0 &&
+        formData.startingPrice.toString().trim().length > 0;
 
     const toggleCategory = (catName) => {
         setFormData(prev => {
@@ -404,7 +398,7 @@ export default function AddProductPage() {
                             <div className={styles.charCount}>{formData.description.length}/2000</div>
                         </div>
 
-                        <div className={styles.inputGroup}>
+                        <div className={styles.inputGroup} style={{ marginBottom: '0' }}>
                             <label>Number of units available</label>
                             <input
                                 type="text"
@@ -414,20 +408,36 @@ export default function AddProductPage() {
                             />
                         </div>
 
-                        <div className={styles.dimensionsRow}>
+                        <div className={styles.dimensionsRow} style={{ marginTop: '1.5rem' }}>
                             <label className={styles.fullWidth}>Dimensions (optional)</label>
-                            <div className={styles.dimField}>
-                                <span>Length [mm]</span>
-                                <input type="number" min="0" value={formData.length} onChange={(e) => setFormData({ ...formData, length: e.target.value })} />
-                            </div>
-                            <div className={styles.dimField}>
-                                <span>Width [mm]</span>
-                                <input type="number" min="0" value={formData.width} onChange={(e) => setFormData({ ...formData, width: e.target.value })} />
-                            </div>
-                            <div className={styles.dimField}>
-                                <span>Height [mm]</span>
-                                <input type="number" min="0" value={formData.height} onChange={(e) => setFormData({ ...formData, height: e.target.value })} />
-                            </div>
+                            {[
+                                { key: 'length', unitKey: 'lengthUnit', label: 'Length' },
+                                { key: 'width', unitKey: 'widthUnit', label: 'Width' },
+                                { key: 'height', unitKey: 'heightUnit', label: 'Height' },
+                            ].map(({ key, unitKey, label }) => (
+                                <div key={key} className={styles.dimField}>
+                                    <span>{label}</span>
+                                    <div className={styles.dimInputRow}>
+                                        <input
+                                            type="number"
+                                            min="0"
+                                            value={formData[key]}
+                                            onChange={(e) => setFormData({ ...formData, [key]: e.target.value })}
+                                        />
+                                        <select
+                                            className={styles.unitSelect}
+                                            value={formData[unitKey]}
+                                            onChange={(e) => setFormData({ ...formData, [unitKey]: e.target.value })}
+                                        >
+                                            <option value="mm">mm</option>
+                                            <option value="cm">cm</option>
+                                            <option value="m">m</option>
+                                            <option value="in">in</option>
+                                            <option value="ft">ft</option>
+                                        </select>
+                                    </div>
+                                </div>
+                            ))}
                         </div>
 
                     </div>
@@ -439,9 +449,13 @@ export default function AddProductPage() {
 
                         <div className={styles.inputGroup}>
                             <label>Condition *</label>
-                            <div className={styles.conditionGrid} style={{display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(100px, 1fr))', gap: '10px', marginBottom: '20px'}}>
+                            <div className={styles.conditionGrid}>
                                 {conditionOptions.map(cond => (
-                                    <div key={cond} style={{padding: '12px', border: `2px solid ${formData.condition === cond ? '#00A3FF' : '#ddd'}`, borderRadius: '8px', cursor: 'pointer', textAlign: 'center', backgroundColor: formData.condition === cond ? '#E3F2FD' : 'white'}} onClick={() => setFormData({ ...formData, condition: cond })}>
+                                    <div
+                                        key={cond}
+                                        className={`${styles.conditionItem} ${formData.condition === cond ? styles.conditionItemActive : ''}`}
+                                        onClick={() => setFormData({ ...formData, condition: cond })}
+                                    >
                                         {cond}
                                     </div>
                                 ))}
@@ -467,45 +481,59 @@ export default function AddProductPage() {
                         <div className={styles.categoryLayout}>
                             <div className={styles.categorySide}>
                                 {categoriesData.map(cat => (
-                                    <button
-                                        key={cat.id}
-                                        className={`${styles.catItem} ${activeCategory === cat.id ? styles.activeCatItem : ''}`}
-                                        onClick={() => setActiveCategory(cat.id === activeCategory ? null : cat.id)}
-                                    >
-                                        {cat.name}
-                                        <ChevronLeft size={16} style={{ transform: 'rotate(180deg)' }} />
-                                    </button>
+                                    <div key={cat.id} className={styles.catAccordion}>
+                                        <button
+                                            className={`${styles.catItem} ${activeCategory === cat.id ? styles.activeCatItem : ''}`}
+                                            onClick={() => setActiveCategory(cat.id === activeCategory ? null : cat.id)}
+                                        >
+                                            {cat.name}
+                                            <ChevronLeft size={14} style={{ transform: activeCategory === cat.id ? 'rotate(270deg)' : 'rotate(180deg)', transition: 'transform 0.2s', flexShrink: 0 }} />
+                                        </button>
+                                        {activeCategory === cat.id && (
+                                            <div className={styles.subcategoryPanel}>
+                                                {cat.groups.map((group, idx) => {
+                                                    const key = `${cat.id}-${idx}`;
+                                                    const isOpen = expandedGroups[key];
+                                                    return (
+                                                        <div key={idx} className={styles.subGroupAccordion}>
+                                                            <button
+                                                                className={styles.subGroupHeader}
+                                                                onClick={() => toggleGroup(cat.id, idx)}
+                                                            >
+                                                                <span>{group.title}</span>
+                                                                <ChevronLeft size={13} style={{ transform: isOpen ? 'rotate(270deg)' : 'rotate(180deg)', transition: 'transform 0.2s', flexShrink: 0 }} />
+                                                            </button>
+                                                            {isOpen && (
+                                                                <div className={styles.subItemsList}>
+                                                                    {group.items.map(item => (
+                                                                        <label key={item} className={styles.subItem}>
+                                                                            <input
+                                                                                type="checkbox"
+                                                                                checked={formData.categories.includes(`${cat.id}:${group.title}:${item}`)}
+                                                                                onChange={() => toggleCategory(`${cat.id}:${group.title}:${item}`)}
+                                                                            />
+                                                                            <div className={styles.customCheckSmall}>
+                                                                                {formData.categories.includes(`${cat.id}:${group.title}:${item}`) && <div className={styles.checkInnerSmall} />}
+                                                                            </div>
+                                                                            <span>{item}</span>
+                                                                        </label>
+                                                                    ))}
+                                                                </div>
+                                                            )}
+                                                        </div>
+                                                    );
+                                                })}
+                                            </div>
+                                        )}
+                                    </div>
                                 ))}
                             </div>
-
-                            {activeCategory && (
-                                <div className={styles.subcategoryGrid}>
-                                    {categoriesData.find(c => c.id === activeCategory)?.groups.map((group, idx) => (
-                                        <div key={idx} className={styles.subGroup}>
-                                            <h3>{group.title}</h3>
-                                            {group.items.map(item => (
-                                                <label key={item} className={styles.subItem}>
-                                                    <input
-                                                        type="checkbox"
-                                                        checked={formData.categories.includes(item)}
-                                                        onChange={() => toggleCategory(item)}
-                                                    />
-                                                    <div className={styles.customCheckSmall}>
-                                                        {formData.categories.includes(item) && <div className={styles.checkInnerSmall} />}
-                                                    </div>
-                                                    <span>{item}</span>
-                                                </label>
-                                            ))}
-                                        </div>
-                                    ))}
-                                </div>
-                            )}
                         </div>
                         <div className={styles.selectedCats}>
                             <strong>Selected categories:</strong>
                             {formData.categories.map(cat => (
                                 <span key={cat} className={styles.catBadge}>
-                                    {cat} <X size={12} onClick={() => toggleCategory(cat)} style={{ cursor: 'pointer' }} />
+                                    {cat.split(':').pop()} <X size={12} onClick={() => toggleCategory(cat)} style={{ cursor: 'pointer' }} />
                                 </span>
                             ))}
                         </div>
@@ -528,23 +556,23 @@ export default function AddProductPage() {
                             onApplyRecommendation={handleApplyRecommendation}
                         />
 
-                        <div style={{marginTop: '20px'}}>
+                        <div style={{marginTop: '12px'}}>
                             <div className={styles.inputGroup}>
                                 <label>Reserve Price (Minimum Selling Price) *</label>
-                                <div style={{display: 'flex', alignItems: 'center', gap: '10px'}}>
-                                    <span style={{fontSize: '1.2rem', fontWeight: 'bold'}}>₱</span>
+                                <div style={{display: 'flex', alignItems: 'center', gap: '6px'}}>
+                                    <span className={styles.pesoSign}>₱</span>
                                     <input type="number" step="0.01" min="0" placeholder="0.00" value={formData.reservePrice} onChange={(e) => setFormData({ ...formData, reservePrice: e.target.value })} required style={{flex: 1}} />
                                 </div>
-                                <small>The minimum price you'll accept for this item</small>
+                                <small className={styles.fieldHint}>The minimum price you'll accept for this item</small>
                             </div>
 
                             <div className={styles.inputGroup}>
                                 <label>Starting Bid Price *</label>
-                                <div style={{display: 'flex', alignItems: 'center', gap: '10px'}}>
-                                    <span style={{fontSize: '1.2rem', fontWeight: 'bold'}}>₱</span>
+                                <div style={{display: 'flex', alignItems: 'center', gap: '6px'}}>
+                                    <span className={styles.pesoSign}>₱</span>
                                     <input type="number" step="0.01" min="0" placeholder="0.00" value={formData.startingPrice} onChange={(e) => setFormData({ ...formData, startingPrice: e.target.value })} required style={{flex: 1}} />
                                 </div>
-                                <small>The initial bid amount to attract buyers</small>
+                                <small className={styles.fieldHint}>The initial bid amount to attract buyers</small>
                             </div>
                         </div>
                     </div>
@@ -562,7 +590,7 @@ export default function AddProductPage() {
                         )}
 
                         <div className={styles.photoGridDetailed}>
-                            <label className={styles.uploadCard} style={{cursor: isScanning ? 'not-allowed' : 'pointer', opacity: isScanning ? 0.5 : 1}}>
+                            <label className={styles.uploadCard} style={{cursor: isScanning ? 'not-allowed' : 'pointer', opacity: isScanning ? 0.5 : 1, gridColumn: '1 / -1'}}>
                                 <input
                                     type="file"
                                     hidden
@@ -572,7 +600,7 @@ export default function AddProductPage() {
                                     disabled={isScanning}
                                 />
                                 <div className={styles.uploadInner}>
-                                    <Upload size={32} color="#00A3FF" strokeWidth={1.5} />
+                                    <Upload size={24} color="#00A3FF" strokeWidth={1.5} />
                                     <span>Upload a photo</span>
                                 </div>
                                 <div className={styles.uploadMeta}>
@@ -633,7 +661,11 @@ export default function AddProductPage() {
                     {currentStep > 0 && (
                         <button className={styles.backLink} onClick={handleBack}>Back</button>
                     )}
-                    <button className={styles.nextBtn} onClick={handleNext} disabled={isSubmitting}>
+                    <button
+                        className={styles.nextBtn}
+                        onClick={handleNext}
+                        disabled={isSubmitting || (currentStep === steps.length - 1 && !isFormComplete())}
+                    >
                         {isSubmitting ? 'Submitting...' : (currentStep === steps.length - 1 ? 'Add' : 'Next')}
                     </button>
                 </div>

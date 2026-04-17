@@ -11,6 +11,53 @@
     margin-bottom: 2.5rem;
 }
 
+.backLink {
+    display: inline-flex;
+    align-items: center;
+    gap: 0.35rem;
+    text-decoration: none;
+    background: #f4f4f5;
+    border: 1px solid #e4e4e7;
+    border-radius: 10px;
+    padding: 0.45rem 0.85rem 0.45rem 0.55rem;
+    color: #3f3f46;
+    font-size: 0.875rem;
+    font-weight: 600;
+    line-height: 1;
+    transition: background 0.15s, border-color 0.15s, transform 0.15s, box-shadow 0.15s;
+}
+
+.backLink:hover {
+    background: #e4e4e7;
+    border-color: #d1d1d6;
+    transform: translateX(-2px);
+    box-shadow: 0 2px 8px rgba(0,0,0,0.07);
+}
+
+.backLink:active {
+    transform: translateX(-4px);
+    background: #d4d4d8;
+}
+
+.backLinkIcon {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    width: 22px;
+    height: 22px;
+    border-radius: 6px;
+    background: white;
+    border: 1px solid #e4e4e7;
+    flex-shrink: 0;
+}
+
+.titleGroup {
+    display: flex;
+    flex-direction: column;
+    gap: 0.35rem;
+    align-items: flex-start;
+}
+
 .titleGroup h1 {
     font-size: 2.25rem;
     font-weight: 800;
@@ -273,10 +320,11 @@
     background: white;
     border-radius: 20px;
     border: 1px solid #f0f0f0;
-    padding: 1.5rem;
+    padding: 1rem 1.25rem;
     display: flex;
     flex-direction: column;
     transition: box-shadow 0.3s ease;
+    cursor: pointer;
 }
 
 .auctionCard:hover {
@@ -333,12 +381,12 @@
 }
 
 .moreBtn:hover {
-    background: #f5f5f5;
     color: #333;
 }
 
 .dropdownContainer {
     position: relative;
+    z-index: 999;
 }
 
 .dropdownMenu {
@@ -549,4 +597,414 @@
     border-radius: 999px;
     font-size: 0.9rem;
     font-weight: 700;
+}
+
+.emptyState {
+    grid-column: 1 / -1;
+    text-align: center;
+    padding: 2.5rem 1rem;
+    color: #888;
+}
+
+.emptyIcon {
+    opacity: 0.25;
+    margin-bottom: 0.75rem;
+}
+
+.emptyTitle {
+    font-size: 0.95rem;
+    font-weight: 700;
+    color: #555;
+    margin: 0 0 0.35rem 0;
+}
+
+.emptyDesc {
+    font-size: 0.78rem;
+    color: #aaa;
+    margin: 0;
+}
+
+.chevronBtn {
+    background: none;
+    border: none;
+    color: #aaa;
+    cursor: pointer;
+    padding: 0.25rem;
+    border-radius: 6px;
+    display: flex;
+    align-items: center;
+    transition: color 0.2s, transform 0.25s;
+    flex-shrink: 0;
+}
+
+.chevronBtn:hover {
+    color: #555;
+}
+
+.chevronOpen {
+    transform: rotate(180deg);
+    color: var(--color-primary);
+}
+
+.cardSummary {
+    display: flex;
+    align-items: center;
+    gap: 0.75rem;
+    padding: 0.25rem 0;
+}
+
+.summaryThumb {
+    width: 44px;
+    height: 44px;
+    border-radius: 8px;
+    object-fit: cover;
+    flex-shrink: 0;
+}
+
+.summaryInfo {
+    display: flex;
+    flex-direction: column;
+    gap: 0.1rem;
+    min-width: 0;
+}
+
+.summaryName {
+    font-size: 0.9rem;
+    font-weight: 700;
+    color: #333;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+}
+
+.summaryMeta {
+    font-size: 0.75rem;
+    color: #999;
+}
+
+/* ── Mobile responsive ──────────────────────────────────────── */
+@media (max-width: 768px) {
+    .backLink {
+        font-size: 0.75rem;
+        padding: 0.32rem 0.65rem 0.32rem 0.4rem;
+        border-radius: 8px;
+        gap: 0.25rem;
+    }
+
+    .backLinkIcon {
+        width: 18px;
+        height: 18px;
+        border-radius: 5px;
+    }
+
+    .container {
+        padding: 1rem 1rem 4rem;
+    }
+
+    .header {
+        flex-direction: column;
+        gap: 0.75rem;
+        margin-bottom: 1.25rem;
+        align-items: stretch;
+    }
+
+    .titleGroup h1 {
+        font-size: 1.4rem;
+        margin-bottom: 0.2rem;
+    }
+
+    .titleGroup p {
+        font-size: 0.78rem;
+        color: #888;
+    }
+
+    .buttonGroup {
+        display: flex;
+        flex-direction: row;
+        flex-wrap: nowrap;
+        gap: 0.5rem;
+    }
+
+    .createBtn,
+    .productsBtn,
+    .cleanBtn,
+    .selectBtn,
+    .selectAllBtn,
+    .deleteSelectedBtn,
+    .cancelBtn {
+        flex: 1 1 0;
+        min-width: 0;
+        justify-content: center;
+        padding: 0.55rem 0.5rem;
+        font-size: 0.75rem;
+        border-radius: 10px;
+        white-space: nowrap;
+        overflow: visible;
+    }
+
+    .createBtn svg,
+    .productsBtn svg,
+    .cleanBtn svg,
+    .selectBtn svg,
+    .selectAllBtn svg,
+    .deleteSelectedBtn svg,
+    .cancelBtn svg {
+        flex-shrink: 0;
+        width: 14px;
+        height: 14px;
+    }
+
+    .tabsContainer {
+        flex-direction: column;
+        align-items: stretch;
+        gap: 0.75rem;
+        padding-bottom: 0.75rem;
+        margin-bottom: 1.25rem;
+    }
+
+    .tabs {
+        gap: 0.25rem;
+        overflow-x: auto;
+        -webkit-overflow-scrolling: touch;
+        scrollbar-width: none;
+    }
+
+    .tabs::-webkit-scrollbar {
+        display: none;
+    }
+
+    .tab {
+        padding: 0.4rem 0.85rem;
+        font-size: 0.85rem;
+        white-space: nowrap;
+        flex-shrink: 0;
+    }
+
+    .searchBox {
+        width: 100%;
+        box-sizing: border-box;
+    }
+
+    .auctionGrid {
+        grid-template-columns: 1fr 1fr;
+        gap: 0.5rem;
+    }
+
+    .auctionCard {
+        border-radius: 10px;
+        padding: 0.4rem;
+        cursor: pointer;
+    }
+
+    .cardHeader {
+        gap: 0.2rem;
+        margin-bottom: 0.3rem;
+        align-items: center;
+    }
+
+    .statusBadge {
+        padding: 0.15rem 0.35rem;
+        font-size: 0.55rem;
+        border-radius: 4px;
+        flex-shrink: 0;
+    }
+
+    .auctionId {
+        display: none;
+    }
+
+    .moreBtn {
+        padding: 0.2rem;
+        margin-left: auto;
+    }
+
+    .dropdownMenu {
+        min-width: 100px;
+        border-radius: 10px;
+        top: calc(100% + 0.25rem);
+        right: 0;
+        left: auto;
+        box-shadow: 0 4px 16px rgba(0, 0, 0, 0.15);
+        z-index: 999;
+    }
+
+    .dropdownItem {
+        padding: 0.5rem 0.85rem;
+        font-size: 0.75rem;
+        gap: 0;
+        white-space: nowrap;
+    }
+
+    .dropdownItem {
+        gap: 0.5rem;
+    }
+
+    /* Drive-style: image preview fills card, name below */
+    .cardSummary {
+        flex-direction: column;
+        gap: 0.25rem;
+        padding: 0;
+    }
+
+    .summaryThumb {
+        width: 100%;
+        height: 68px;
+        border-radius: 7px;
+        object-fit: cover;
+    }
+
+    .summaryInfo {
+        gap: 0.05rem;
+    }
+
+    .summaryName {
+        font-size: 0.68rem;
+        white-space: normal;
+        display: -webkit-box;
+        -webkit-line-clamp: 2;
+        -webkit-box-orient: vertical;
+        overflow: hidden;
+        line-height: 1.3;
+    }
+
+    .summaryMeta {
+        font-size: 0.6rem;
+    }
+
+    /* Expanded details */
+    .cardBody {
+        flex-direction: column;
+        gap: 0.4rem;
+        margin-bottom: 0.4rem;
+        align-items: flex-start;
+    }
+
+    .thumbnail {
+        width: 100%;
+        height: 80px;
+        border-radius: 8px;
+        flex-shrink: 0;
+    }
+
+    .info h3 {
+        font-size: 0.78rem;
+        margin-bottom: 0.15rem;
+    }
+
+    .meta {
+        font-size: 0.68rem;
+    }
+
+    .cardFooter {
+        padding: 0.35rem 0.45rem;
+        margin-bottom: 0.4rem;
+        border-radius: 8px;
+    }
+
+    .metricLabel {
+        font-size: 0.56rem;
+    }
+
+    .metricValue {
+        font-size: 0.76rem;
+    }
+
+    .cardActions button,
+    .cardActions a {
+        padding: 0.4rem 0.3rem;
+        font-size: 0.72rem;
+        border-radius: 8px;
+    }
+}
+
+@media (max-width: 480px) {
+    .titleGroup h1 {
+        font-size: 1.25rem;
+    }
+
+    .createBtn,
+    .productsBtn,
+    .cleanBtn,
+    .selectBtn,
+    .selectAllBtn,
+    .deleteSelectedBtn,
+    .cancelBtn {
+        padding: 0.5rem 0.875rem;
+        font-size: 0.8rem;
+    }
+}
+
+@media (max-width: 320px) {
+    .container {
+        padding: 0.75rem 0.75rem 3.5rem;
+    }
+
+    .auctionGrid {
+        grid-template-columns: 1fr 1fr;
+        gap: 0.4rem;
+    }
+
+    .auctionCard {
+        border-radius: 9px;
+        padding: 0.35rem;
+    }
+
+    .cardHeader {
+        margin-bottom: 0.25rem;
+        gap: 0.15rem;
+    }
+
+    .statusBadge {
+        padding: 0.12rem 0.3rem;
+        font-size: 0.5rem;
+    }
+
+    .chevronBtn {
+        padding: 0.1rem;
+    }
+
+    .moreBtn {
+        padding: 0.1rem;
+    }
+
+    .summaryThumb {
+        height: 58px;
+        border-radius: 6px;
+    }
+
+    .summaryName {
+        font-size: 0.62rem;
+        line-height: 1.2;
+    }
+
+    .summaryMeta {
+        font-size: 0.55rem;
+    }
+
+    .tab {
+        padding: 0.3rem 0.55rem;
+        font-size: 0.75rem;
+    }
+
+    .thumbnail {
+        height: 70px;
+    }
+
+    .info h3 {
+        font-size: 0.72rem;
+    }
+
+    .metricLabel {
+        font-size: 0.52rem;
+    }
+
+    .metricValue {
+        font-size: 0.7rem;
+    }
+
+    .cardActions button,
+    .cardActions a {
+        padding: 0.35rem 0.25rem;
+        font-size: 0.68rem;
+    }
 }

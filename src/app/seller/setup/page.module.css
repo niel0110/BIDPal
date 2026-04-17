@@ -141,16 +141,16 @@
 }
 
 .formTitle {
-    font-size: 1.6rem;
+    font-size: 1.35rem;
     font-weight: 700;
     color: #111;
     margin-bottom: 0.4rem;
 }
 
 .formSubtitle {
-    font-size: 0.9rem;
+    font-size: 0.82rem;
     color: #777;
-    margin-bottom: 2.5rem;
+    margin-bottom: 2rem;
 }
 
 .redText {
@@ -230,10 +230,10 @@
     background: #D32F2F;
     color: white;
     border: none;
-    padding: 13px 2.5rem;
+    padding: 11px 2rem;
     border-radius: 8px;
     font-weight: 600;
-    font-size: 0.9rem;
+    font-size: 0.85rem;
     cursor: pointer;
     display: flex;
     align-items: center;
@@ -292,6 +292,10 @@
     max-width: 440px;
 }
 
+.successIconWrap {
+    display: none;
+}
+
 .successEyebrow {
     font-size: 0.8rem;
     font-weight: 700;
@@ -299,7 +303,17 @@
     color: #D32F2F;
     text-transform: uppercase;
     margin-bottom: 1.5rem;
+    display: flex;
+    align-items: center;
+    gap: 0.4rem;
 }
+
+.successEyebrow::before {
+    content: '🎉';
+    font-size: 0.95rem;
+}
+
+.successEmoji { display: none; }
 
 .successTitle {
     font-size: 3.5rem;
@@ -339,6 +353,10 @@
     background: #B71C1C;
     transform: translateY(-2px);
     box-shadow: 0 12px 32px rgba(211, 47, 47, 0.3);
+}
+
+.successQuoteInline {
+    display: none;
 }
 
 .successRight {
@@ -402,4 +420,268 @@
     color: rgba(255, 255, 255, 0.3);
     text-align: center;
     font-style: italic;
+}
+
+/* ── Mobile header (hidden on desktop) ── */
+.mobileHeader {
+    display: none;
+}
+
+/* ── Responsive ── */
+@media (max-width: 768px) {
+    .setupPage {
+        flex-direction: column;
+    }
+
+    /* Hide sidebar on mobile */
+    .sidebar {
+        display: none;
+    }
+
+    /* Show mobile header */
+    .mobileHeader {
+        display: flex;
+        flex-direction: column;
+        background: white;
+        box-shadow: 0 2px 8px rgba(0,0,0,0.05);
+        position: sticky;
+        top: 0;
+        z-index: 50;
+    }
+
+    .mobileHeaderTop {
+        display: flex;
+        align-items: center;
+        justify-content: space-between;
+        padding: 0.65rem 1rem;
+    }
+
+    .mobileStepBadge {
+        display: flex;
+        align-items: center;
+        gap: 0.3rem;
+    }
+
+    .mobileStepNum {
+        width: 22px;
+        height: 22px;
+        border-radius: 50%;
+        background: #D32F2F;
+        color: white;
+        font-size: 0.72rem;
+        font-weight: 800;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        flex-shrink: 0;
+    }
+
+    .mobileStepOf {
+        font-size: 0.72rem;
+        color: #bbb;
+        font-weight: 600;
+    }
+
+    .mobileStepTitle {
+        font-size: 0.78rem;
+        font-weight: 700;
+        color: #333;
+    }
+
+    .mobileProgressTrack {
+        height: 3px;
+        background: #f0f0f0;
+        width: 100%;
+    }
+
+    .mobileProgressFill {
+        height: 100%;
+        background: #D32F2F;
+        border-radius: 0 2px 2px 0;
+        transition: width 0.35s ease;
+    }
+
+    .main {
+        flex: 1;
+        overflow-y: auto;
+    }
+
+    .formArea {
+        padding: 1.5rem 1.25rem 5rem;
+        max-width: 100%;
+    }
+
+    .formTitle {
+        font-size: 1.35rem;
+        margin-bottom: 0.3rem;
+    }
+
+    .formSubtitle {
+        font-size: 0.82rem;
+        margin-bottom: 1.5rem;
+    }
+
+    .formGrid {
+        grid-template-columns: 1fr;
+        gap: 1rem;
+    }
+
+    .formGridFull {
+        grid-column: 1;
+    }
+
+    .formGroup label {
+        font-size: 0.75rem;
+    }
+
+    .input,
+    .select,
+    .textarea {
+        padding: 10px 12px;
+        font-size: 0.85rem;
+    }
+
+    .formActions {
+        margin-top: 1.75rem;
+        gap: 0.75rem;
+    }
+
+    .nextBtn {
+        flex: 1;
+        justify-content: center;
+        padding: 12px 1.5rem;
+        font-size: 0.85rem;
+    }
+
+    .backBtn {
+        padding: 0.55rem 1rem;
+        font-size: 0.82rem;
+    }
+
+    /* Success page mobile — single unified screen */
+    .successPage {
+        flex-direction: column;
+        min-height: 100vh;
+    }
+
+    /* Hide the dark right panel on mobile */
+    .successRight {
+        display: none;
+    }
+
+    .successLeft {
+        flex: 1;
+        align-items: stretch;
+        justify-content: flex-start;
+        padding: 0;
+    }
+
+    .successContent {
+        max-width: 100%;
+        display: flex;
+        flex-direction: column;
+        align-items: center;
+        text-align: center;
+        padding: 3rem 1.5rem 2rem;
+        min-height: 100vh;
+    }
+
+    .successIconWrap {
+        display: flex;
+        padding: 0.85rem 1.25rem;
+        border-radius: 18px;
+        background: white;
+        align-items: center;
+        justify-content: center;
+        margin-bottom: 2rem;
+        border: 1px solid #f0f0f0;
+        box-shadow: 0 4px 16px rgba(0,0,0,0.06);
+    }
+
+    .successEmoji { display: none; }
+
+    .successEyebrow {
+        font-size: 0.65rem;
+        letter-spacing: 1.5px;
+        margin-bottom: 0.6rem;
+        justify-content: center;
+    }
+
+    .successEyebrow::before {
+        display: none;
+    }
+
+    .successTitle {
+        font-size: 2.2rem;
+        margin-bottom: 0.75rem;
+    }
+
+    .successSubtitle {
+        font-size: 0.85rem;
+        line-height: 1.65;
+        margin-bottom: 1.75rem;
+        color: #777;
+        max-width: 280px;
+    }
+
+    .successBtn {
+        font-size: 0.88rem;
+        padding: 0.85rem 1.75rem;
+        border-radius: 12px;
+        gap: 0.5rem;
+        align-self: center;
+        box-shadow: 0 6px 18px rgba(211, 47, 47, 0.25);
+    }
+
+    /* Inline quote shown on mobile at the bottom */
+    .successQuoteInline {
+        display: block;
+        margin-top: auto;
+        padding-top: 2rem;
+        font-size: 0.75rem;
+        font-style: italic;
+        color: #bbb;
+        line-height: 1.65;
+        border-top: 1px solid #f0f0f0;
+        text-align: center;
+    }
+}
+
+@media (max-width: 320px) {
+    .mobileHeaderTop {
+        padding: 0.55rem 0.85rem;
+    }
+
+    .formArea {
+        padding: 1.25rem 1rem 4.5rem;
+    }
+
+    .formTitle {
+        font-size: 1.2rem;
+    }
+
+    .input,
+    .select,
+    .textarea {
+        padding: 9px 10px;
+        font-size: 0.8rem;
+    }
+
+    .nextBtn {
+        padding: 11px 1.25rem;
+        font-size: 0.8rem;
+    }
+
+    .successContent {
+        padding: 2rem 1.25rem 1.75rem;
+    }
+
+    .successTitle {
+        font-size: 2rem;
+    }
+
+    .successBtn {
+        font-size: 0.82rem;
+        padding: 0.75rem 1.5rem;
+    }
 }

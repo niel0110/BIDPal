@@ -79,6 +79,10 @@ export const getConversations = async (req, res) => {
       const displayName = otherUser.Seller?.[0]?.store_name ||
         (otherUser.Fname ? `${otherUser.Fname} ${otherUser.Lname || ''}`.trim() : 'Unknown User');
 
+      const realName = otherUser.Fname
+        ? `${otherUser.Fname} ${otherUser.Lname || ''}`.trim()
+        : 'Unknown User';
+
       return {
         id: conv.conversation_id,
         name: displayName,
@@ -89,6 +93,8 @@ export const getConversations = async (req, res) => {
         otherUser: {
           id: otherUser.user_id,
           name: displayName,
+          realName,
+          storeName: otherUser.Seller?.[0]?.store_name || null,
           avatar: otherUser.Seller?.[0]?.logo_url || otherUser.Avatar || null
         }
       };

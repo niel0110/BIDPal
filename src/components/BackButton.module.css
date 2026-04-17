@@ -41,3 +41,30 @@
 .label {
     color: #3f3f46;
 }
+
+@media (max-width: 768px) {
+    .backBtn {
+        font-size: 0.75rem;
+        padding: 0.32rem 0.65rem 0.32rem 0.4rem;
+        border-radius: 8px;
+        gap: 0.25rem;
+    }
+
+    .iconWrap {
+        width: 18px;
+        height: 18px;
+        border-radius: 5px;
+    }
+}
+
+@media (max-width: 320px) {
+    .backBtn {
+        font-size: 0.7rem;
+        padding: 0.28rem 0.55rem 0.28rem 0.35rem;
+    }
+
+    .iconWrap {
+        width: 16px;
+        height: 16px;
+    }
+}

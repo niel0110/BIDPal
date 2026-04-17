@@ -2,7 +2,6 @@
 
 import { useState, useEffect } from 'react';
 import Link from 'next/link';
-import BackButton from '@/components/BackButton';
 import { ChevronLeft, Plus, Trash2 } from 'lucide-react';
 import styles from './page.module.css';
 import { useAuth } from '@/context/AuthContext';
@@ -94,13 +93,14 @@ export default function InventoryPage() {
     return (
         <div className={styles.container}>
             <header className={styles.header}>
-                <BackButton label="Back" />
-                <div>
-                    <h1 className={styles.title}>My Products</h1>
-                    <p style={{ color: '#999', fontSize: '0.9rem', marginTop: '0.5rem' }}>
-                        Draft products ready to be scheduled
-                    </p>
-                </div>
+                <Link href="/seller/auctions" className={styles.backLink}>
+                    <span className={styles.backLinkIcon}>
+                        <ChevronLeft size={18} strokeWidth={2.5} />
+                    </span>
+                    <span>My Auctions</span>
+                </Link>
+                <h1 className={styles.title}>My Products</h1>
+                <p className={styles.subtitle}>Draft products ready to be scheduled</p>
             </header>
 
             {loading ? (
@@ -111,11 +111,11 @@ export default function InventoryPage() {
                         <div style={{
                             gridColumn: '1 / -1',
                             textAlign: 'center',
-                            padding: '3rem',
+                            padding: '1.5rem 1rem',
                             color: '#999'
                         }}>
-                            <p style={{ fontSize: '1.1rem', marginBottom: '0.5rem' }}>No draft products available</p>
-                            <p style={{ fontSize: '0.9rem' }}>Products that are scheduled or completed won't appear here</p>
+                            <p style={{ fontSize: '0.9rem', fontWeight: 600, color: '#555', marginBottom: '0.35rem' }}>No draft products available</p>
+                            <p style={{ fontSize: '0.75rem', color: '#bbb' }}>Products that are scheduled or completed won't appear here</p>
                         </div>
                     ) : (
                         products.map((product) => {
