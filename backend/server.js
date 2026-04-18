@@ -30,10 +30,7 @@ app.use(cors({
     'https://www.bidpal.shop',    // The www version of your domain
     'https://bid-pal-pink.vercel.app',
     'http://localhost:3000',
-<<<<<<< HEAD
-=======
     'http://localhost:5000',
->>>>>>> 471e973e4a5c43c665e830a268f9611152fa7e55
     'http://localhost:5173'
   ],
   credentials: true
