@@ -42,7 +42,8 @@ import {
     ShoppingBag,
     Users,
     DollarSign,
-    ChevronLeft
+    ChevronLeft,
+    FileText
 } from 'lucide-react';
 import styles from './page.module.css';
 import { useAuth } from '@/context/AuthContext';
@@ -2207,22 +2208,340 @@ function PrivacySection() {
 }
 
 function HelpCenterSection() {
+    const [activePanel, setActivePanel] = useState(null); // 'privacy' | 'terms' | 'faq' | null
+
+    const helpItems = [
+        { id: 'privacy',  label: 'Privacy Policy',      icon: <Lock size={20} /> },
+        { id: 'terms',    label: 'Terms & Agreements',  icon: <FileText size={20} /> },
+        { id: 'faq',      label: 'FAQs',                icon: <HelpCircle size={20} /> },
+        { id: 'email',    label: 'Email Support',       icon: <Mail size={20} /> },
+        { id: 'chat',     label: 'Live Chat',           icon: <MessageSquare size={20} /> },
+    ];
+
+    const faqItems = [
+        {
+            q: 'How do I place a bid?',
+            a: 'Navigate to an active auction, enter a bid amount higher than the current highest bid, and confirm. All bids are binding once placed.'
+        },
+        {
+            q: 'How do I know if I won an auction?',
+            a: 'You will receive an in-app notification and email when the auction ends confirming your win. Check your order history for next steps.'
+        },
+        {
+            q: 'Can I cancel a bid?',
+            a: 'Bids are binding and cannot be cancelled once submitted. Please review your bid amount carefully before confirming.'
+        },
+        {
+            q: 'What payment methods are accepted?',
+            a: 'BIDPal accepts major credit and debit cards, processed securely through our third-party payment gateway partners.'
+        },
+        {
+            q: 'How do I track my order?',
+            a: 'Go to your profile and view your Purchase History. Each order shows its current shipping status and tracking information.'
+        },
+        {
+            q: 'What is the return or refund policy?',
+            a: 'Returns are subject to each seller\'s individual policy. For disputes, contact the seller directly via in-app chat or reach out to BIDPal support.'
+        },
+        {
+            q: 'How do I start selling on BIDPal?',
+            a: 'Register as a Seller, complete identity verification using a valid Philippine government ID, set up your store profile, and start listing items.'
+        },
+        {
+            q: 'How does live auction streaming work?',
+            a: 'Sellers can broadcast live auctions using BIDPal\'s built-in streaming feature. Buyers can watch and place bids in real time during the broadcast.'
+        },
+        {
+            q: 'How do I contact BIDPal support?',
+            a: 'You can send a message to the BIDPal Admin via in-app messaging, email us at support@bidpal.com, or use Live Chat from this Help Center.'
+        },
+        {
+            q: 'How do I delete my account?',
+            a: 'Go to Profile > Security and submit an account deletion request. Your personal data will be permanently removed within 30 days, subject to legal retention obligations.'
+        },
+    ];
+
+    const privacyContent = (
+        <div className={styles.policyContent}>
+            <p style={{ marginBottom: '1.5rem', color: '#555', lineHeight: 1.7 }}>
+                <strong>Effective Date:</strong> June 24, 2025 &nbsp;|&nbsp; <strong>Last Updated:</strong> January 08, 2026
+            </p>
+            <p style={{ marginBottom: '2rem', color: '#555', lineHeight: 1.7 }}>
+                BIDPal values your privacy and is committed to protecting your personal information in accordance with the <strong>Republic Act No. 10173 – Data Privacy Act of 2012 (DPA)</strong> and applicable international standards including the GDPR where relevant.
+            </p>
+
+            {[
+                {
+                    title: '1. Information We Collect',
+                    items: [
+                        'Account & Profile: Full name, email, contact number, date of birth, gender, avatar, and account role (Buyer or Seller).',
+                        'Identity Verification: Government-issued ID images (UMID, Driver\'s License, PhilID, Passport, Voter\'s ID, SSS/GSIS, PRC, TIN) for Seller verification.',
+                        'Auction & Transaction Data: Bid history, purchase history, cart contents, payment method, order and shipping status.',
+                        'Location & Address: Full shipping/billing address using Philippine regional hierarchy (Region, Province, City/Municipality, Barangay).',
+                        'Communications: In-app messages, reviews, ratings, and support tickets.',
+                        'Live Streaming Data: Real-time video/audio transmitted via Agora SDK during live auctions (not permanently stored unless required for disputes).',
+                        'Device & Technical Info: IP address, device model, OS, app version, session logs, and crash reports.',
+                    ]
+                },
+                {
+                    title: '2. How We Use Your Data',
+                    items: [
+                        'To create and manage your account and authenticate your identity.',
+                        'To process bids, transactions, payments, and deliveries.',
+                        'To verify Seller identity and maintain platform integrity.',
+                        'To power live auction streaming and real-time bidding.',
+                        'To send transactional notifications (bid won, payment due, order updates).',
+                        'To detect fraud, prevent abuse, and ensure platform security.',
+                        'To personalize content and provide item recommendations.',
+                        'To send optional promotional communications (with your consent).',
+                        'To comply with legal obligations under Philippine law.',
+                    ]
+                },
+                {
+                    title: '3. Data Sharing',
+                    items: [
+                        'Supabase – Database, authentication, file storage, and real-time infrastructure.',
+                        'Agora SDK – Live video/audio streaming for auction broadcasts.',
+                        'Google Maps API / Leaflet – Address lookup and location display.',
+                        'Google Generative AI – Content moderation and personalized recommendations.',
+                        'Payment Gateway Providers – Secure payment processing.',
+                        'Logistics Partners – Shipping address and order details for delivery fulfillment.',
+                        'Legal / Regulatory Authorities – When required by law, court order, or the National Privacy Commission (NPC).',
+                        'We do not sell your personal data to any third party.',
+                    ]
+                },
+                {
+                    title: '4. Data Retention',
+                    items: [
+                        'Active account data: Retained for the duration of account activity.',
+                        'Transaction and bid records: 5 years (for legal and tax compliance).',
+                        'Identity verification documents: Duration of account + 1 year after deletion.',
+                        'Chat and messaging logs: 2 years or upon account deletion.',
+                        'Device and usage logs: 90 days.',
+                        'Deleted account data: Up to 30 days before permanent erasure.',
+                    ]
+                },
+                {
+                    title: '5. Your Rights',
+                    items: [
+                        'Right to be Informed – Know what data we collect and how it is used.',
+                        'Right to Access – Request a copy of your personal data we hold.',
+                        'Right to Rectification – Correct inaccurate or incomplete information.',
+                        'Right to Erasure – Request deletion of your account and data.',
+                        'Right to Object – Object to processing for marketing or profiling.',
+                        'Right to Data Portability – Receive your data in a machine-readable format.',
+                        'Right to Lodge a Complaint – File a complaint with the National Privacy Commission (NPC) at www.privacy.gov.ph.',
+                    ]
+                },
+                {
+                    title: '6. Security',
+                    items: [
+                        'TLS/HTTPS encryption for all data in transit.',
+                        'Bcrypt hashing for stored passwords.',
+                        'Row-level security (RLS) enforced at the database level via Supabase.',
+                        'Session token management and role-based access controls.',
+                        'Regular security assessments and vulnerability monitoring.',
+                        'In the event of a data breach, affected users and the NPC will be notified within 72 hours as required by law.',
+                    ]
+                },
+                {
+                    title: '7. Children\'s Privacy',
+                    items: [
+                        'BIDPal is strictly intended for users 18 years of age and older.',
+                        'We do not knowingly collect data from minors.',
+                        'Accounts identified as belonging to users under 18 will be suspended and their data deleted.',
+                    ]
+                },
+                {
+                    title: '8. Changes to This Policy',
+                    items: [
+                        'We may update this Privacy Policy periodically.',
+                        'Material changes will be communicated via in-app notification and/or email.',
+                        'Continued use of BIDPal after the effective date constitutes acceptance of the revised policy.',
+                    ]
+                },
+            ].map(({ title, items }) => (
+                <div key={title} className={styles.policySection}>
+                    <h3>{title}</h3>
+                    <ul>
+                        {items.map((item, i) => <li key={i}>{item}</li>)}
+                    </ul>
+                </div>
+            ))}
+
+            <div className={styles.policySection}>
+                <h3>9. Contact Us</h3>
+                <p>For privacy inquiries, send a message to the BIDPal Admin via in-app messaging, or reach us at:</p>
+                <ul>
+                    <li>Email: support@bidpal.com</li>
+                    <li>National Privacy Commission: www.privacy.gov.ph | info@privacy.gov.ph | Hotline: 8234-2228</li>
+                </ul>
+                <p style={{ marginTop: '1rem' }}>We aim to respond to all inquiries within <strong>3–5 business days</strong>.</p>
+            </div>
+        </div>
+    );
+
+    const termsContent = (
+        <div className={styles.policyContent}>
+            <p style={{ marginBottom: '1.5rem', color: '#555', lineHeight: 1.7 }}>
+                <strong>Effective Date:</strong> June 24, 2025 &nbsp;|&nbsp; <strong>Last Updated:</strong> January 08, 2026
+            </p>
+            <p style={{ marginBottom: '2rem', color: '#555', lineHeight: 1.7 }}>
+                By accessing or using BIDPal, you agree to be bound by these Terms and Agreements. Please read them carefully before using our platform.
+            </p>
+
+            {[
+                {
+                    title: '1. Eligibility',
+                    items: [
+                        'You must be at least 18 years old to use BIDPal.',
+                        'By registering, you confirm that all information provided is accurate and complete.',
+                        'BIDPal is primarily intended for users in the Philippines.',
+                    ]
+                },
+                {
+                    title: '2. Account Responsibilities',
+                    items: [
+                        'You are responsible for maintaining the confidentiality of your account credentials.',
+                        'You must notify BIDPal immediately of any unauthorized use of your account.',
+                        'You may not share, transfer, or sell your account to another person.',
+                        'BIDPal reserves the right to suspend or terminate accounts that violate these Terms.',
+                    ]
+                },
+                {
+                    title: '3. Bidding Rules',
+                    items: [
+                        'All bids placed on BIDPal are legally binding commitments to purchase.',
+                        'Once a bid is placed, it cannot be retracted or cancelled.',
+                        'Shill bidding, bid manipulation, or any form of fraudulent bidding is strictly prohibited.',
+                        'The highest bidder at the close of an auction is obligated to complete the purchase.',
+                        'Failure to complete a winning purchase may result in account suspension.',
+                    ]
+                },
+                {
+                    title: '4. Seller Obligations',
+                    items: [
+                        'Sellers must complete identity verification using a valid Philippine government-issued ID.',
+                        'All listings must be accurate, truthful, and not misleading.',
+                        'Sellers are responsible for fulfilling orders promptly after a successful auction or purchase.',
+                        'Counterfeit, prohibited, or illegal items must not be listed.',
+                        'Sellers must honor the stated price and shipping terms.',
+                    ]
+                },
+                {
+                    title: '5. Prohibited Items and Conduct',
+                    items: [
+                        'Illegal, counterfeit, or stolen goods.',
+                        'Weapons, explosives, or hazardous materials.',
+                        'Items that infringe intellectual property rights.',
+                        'Harassment, abuse, or threatening conduct toward other users.',
+                        'Spamming, phishing, or fraudulent activity of any kind.',
+                    ]
+                },
+                {
+                    title: '6. Fees and Payments',
+                    items: [
+                        'BIDPal may charge platform fees for certain transactions, which will be disclosed before confirmation.',
+                        'Payments are processed securely by third-party payment gateway providers.',
+                        'BIDPal does not store full credit/debit card details on its servers.',
+                        'All prices are displayed in Philippine Peso (₱).',
+                    ]
+                },
+                {
+                    title: '7. Dispute Resolution',
+                    items: [
+                        'Disputes between buyers and sellers should first be attempted through in-app messaging.',
+                        'BIDPal support may mediate disputes but is not liable for the outcome of private transactions.',
+                        'BIDPal reserves the right to issue refunds, suspend listings, or ban users in cases of fraud.',
+                    ]
+                },
+                {
+                    title: '8. Limitation of Liability',
+                    items: [
+                        'BIDPal is a platform and is not a party to transactions between buyers and sellers.',
+                        'BIDPal is not liable for losses arising from user-to-user transactions, delivery issues, or item disputes.',
+                        'Service availability is provided on an "as is" basis and BIDPal does not guarantee uninterrupted access.',
+                    ]
+                },
+                {
+                    title: '9. Governing Law',
+                    items: [
+                        'These Terms are governed by the laws of the Republic of the Philippines.',
+                        'Any disputes shall be subject to the jurisdiction of Philippine courts.',
+                    ]
+                },
+                {
+                    title: '10. Changes to These Terms',
+                    items: [
+                        'BIDPal may update these Terms at any time.',
+                        'Continued use of the platform after changes constitutes acceptance of the revised Terms.',
+                        'Material changes will be communicated via in-app notification or email.',
+                    ]
+                },
+            ].map(({ title, items }) => (
+                <div key={title} className={styles.policySection}>
+                    <h3>{title}</h3>
+                    <ul>
+                        {items.map((item, i) => <li key={i}>{item}</li>)}
+                    </ul>
+                </div>
+            ))}
+        </div>
+    );
+
+    const panelTitles = { privacy: 'Privacy Policy', terms: 'Terms & Agreements', faq: 'FAQs' };
+
     return (
         <div className={styles.section}>
             <header className={styles.sectionHeader}>
                 <h1>Help Center</h1>
                 <p>Find answers or contact support.</p>
             </header>
+
             <div className={styles.contactList}>
-                <div className={styles.contactCard}>
-                    <div className={styles.contactIcon}><Mail /></div>
-                    <span>Email Support</span>
-                </div>
-                <div className={styles.contactCard}>
-                    <div className={styles.contactIcon}><MessageSquare /></div>
-                    <span>Live Chat</span>
-                </div>
+                {helpItems.map(item => (
+                    <div
+                        key={item.id}
+                        className={styles.contactCard}
+                        style={{ cursor: ['privacy', 'terms', 'faq'].includes(item.id) ? 'pointer' : 'default' }}
+                        onClick={() => ['privacy', 'terms', 'faq'].includes(item.id) ? setActivePanel(item.id) : null}
+                    >
+                        <div className={styles.contactIcon}>{item.icon}</div>
+                        <span style={{ flex: 1 }}>{item.label}</span>
+                        {['privacy', 'terms', 'faq'].includes(item.id) && <ChevronRight size={18} color="#aaa" />}
+                    </div>
+                ))}
             </div>
+
+            {activePanel && (
+                <div className={styles.helpOverlay} onClick={() => setActivePanel(null)}>
+                    <div className={styles.helpPanel} onClick={e => e.stopPropagation()}>
+                        <div className={styles.helpPanelHeader}>
+                            <h2>{panelTitles[activePanel]}</h2>
+                            <button className={styles.helpPanelCloseBtn} onClick={() => setActivePanel(null)}>
+                                <X size={18} />
+                            </button>
+                        </div>
+                        <div className={styles.helpPanelBody}>
+                            {activePanel === 'privacy' && privacyContent}
+                            {activePanel === 'terms' && termsContent}
+                            {activePanel === 'faq' && (
+                                <div>
+                                    {faqItems.map((item, i) => (
+                                        <details key={i} className={styles.faqItem}>
+                                            <summary className={styles.faqQuestion}>
+                                                <span>{item.q}</span>
+                                                <ChevronDown size={18} className={styles.accordionArrow} />
+                                            </summary>
+                                            <p className={styles.faqAnswer}>{item.a}</p>
+                                        </details>
+                                    ))}
+                                </div>
+                            )}
+                        </div>
+                    </div>
+                </div>
+            )}
         </div>
     );
 }
