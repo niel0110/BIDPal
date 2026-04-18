@@ -256,9 +256,19 @@ function MessagesPageInner() {
             lastMessage: 'Start a conversation...'
         } : null);
 
-    const filteredChats = chats.filter(c =>
-        c.name?.toLowerCase().includes(searchQuery.toLowerCase())
-    );
+    const getChatDisplayName = (chat) => {
+        if (isSeller) {
+            // Sellers see buyer's real name, not store name
+            return chat.otherUser?.realName || chat.otherUser?.name || chat.name;
+        }
+        // Buyers see seller's store name
+        return chat.otherUser?.storeName || chat.otherUser?.name || chat.name;
+    };
+
+    const filteredChats = chats.filter(c => {
+        const displayName = getChatDisplayName(c);
+        return displayName?.toLowerCase().includes(searchQuery.toLowerCase());
+    });
 
     const handleSelectChat = (chatId) => {
         setSelectedChat(chatId);
@@ -299,14 +309,14 @@ function MessagesPageInner() {
                                         >
                                             <div className={styles.avatarWrapper}>
                                                 <img
-                                                    src={chat.avatar || 'https://placehold.co/48x48?text=?'}
-                                                    alt={chat.name}
+                                                    src={chat.otherUser?.avatar || chat.otherUser?.Avatar || chat.avatar || 'https://placehold.co/48x48?text=?'}
+                                                    alt={getChatDisplayName(chat)}
                                                     onError={avatarFallback}
                                                 />
                                             </div>
                                             <div className={styles.chatMeta}>
                                                 <div className={styles.chatNameRow}>
-                                                    <span className={styles.chatName}>{chat.name}</span>
+                                                    <span className={styles.chatName}>{getChatDisplayName(chat)}</span>
                                                     <span className={styles.chatTime}>{timeAgo(chat.lastMessageAt)}</span>
                                                 </div>
                                                 <div className={styles.lastMsgRow}>
@@ -368,12 +378,13 @@ function MessagesPageInner() {
                                     </button>
                                     <div className={styles.chatInfo}>
                                         <img
-                                            src={currentChat.avatar || 'https://placehold.co/36x36?text=?'}
-                                            alt={currentChat.name}
+                                            src={currentChat.otherUser?.avatar || currentChat.otherUser?.Avatar || currentChat.avatar || 'https://placehold.co/36x36?text=?'}
+                                            alt={getChatDisplayName(currentChat)}
                                             onError={avatarFallback}
                                         />
-                                        <div>
-                                            <h3>{currentChat.name}</h3>
+                                        <div className={styles.chatInfoText}>
+                                            <h3>{getChatDisplayName(currentChat)}</h3>
+                                            <span className={styles.chatRole}>{isSeller ? 'Buyer' : 'Seller'}</span>
                                         </div>
                                     </div>
                                     <div className={styles.chatActions}>
@@ -384,7 +395,7 @@ function MessagesPageInner() {
 
                                 <div className={styles.messageArea} ref={messageAreaRef}>
                                     {messagesLoading ? (
-                                        <div style={{ padding: '2rem', textAlign: 'center', color: '#aaa' }}>
+                                        <div style={{ padding: '2rem', textAlign: 'center', color: '#ccc', fontSize: '0.78rem' }}>
                                             Loading messages...
                                         </div>
                                     ) : messages.length === 0 ? (

@@ -1,7 +1,7 @@
 'use client';
 
 import BIDPalLoader from '@/components/BIDPalLoader';
-import BackButton from '@/components/BackButton';
+import Link from 'next/link';
 import { useState, useEffect } from 'react';
 import { useParams, useRouter } from 'next/navigation';
 import {
@@ -186,7 +186,10 @@ export default function AuctionResultsPage() {
         <div className={styles.container}>
             {/* Header */}
             <div className={styles.header}>
-                <BackButton label="Back" />
+                <Link href="/seller/auctions" className={styles.backLink}>
+                    <span className={styles.backLinkIcon}><ChevronLeft size={18} strokeWidth={2.5} /></span>
+                    <span>My Auctions</span>
+                </Link>
                 <h1 className={styles.title}>Auction Results</h1>
             </div>
 

@@ -1,7 +1,7 @@
 .container {
     max-width: 1200px;
     margin: 0 auto;
-    padding: 1.5rem;
+    padding: 1.5rem 1.5rem 4rem;
 }
 
 .header {
@@ -11,23 +11,40 @@
     margin-bottom: 1.5rem;
 }
 
-.backBtn {
-    display: flex;
+.backLink {
+    display: inline-flex;
     align-items: center;
-    gap: 0.5rem;
-    padding: 0.5rem 1rem;
-    background: white;
-    border: 1px solid #e5e7eb;
-    border-radius: 8px;
-    cursor: pointer;
-    font-size: 0.9rem;
-    font-weight: 500;
-    transition: all 0.2s;
+    gap: 0.35rem;
+    text-decoration: none;
+    background: #f4f4f5;
+    border: 1px solid #e4e4e7;
+    border-radius: 10px;
+    padding: 0.45rem 0.85rem 0.45rem 0.55rem;
+    color: #3f3f46;
+    font-size: 0.875rem;
+    font-weight: 600;
+    line-height: 1;
+    transition: background 0.15s, border-color 0.15s, transform 0.15s, box-shadow 0.15s;
+    flex-shrink: 0;
 }
 
-.backBtn:hover {
-    background: #f9fafb;
-    border-color: #d1d5db;
+.backLink:hover {
+    background: #e4e4e7;
+    border-color: #d1d1d6;
+    transform: translateX(-2px);
+    box-shadow: 0 2px 8px rgba(0,0,0,0.07);
+}
+
+.backLinkIcon {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    width: 22px;
+    height: 22px;
+    border-radius: 6px;
+    background: white;
+    border: 1px solid #e4e4e7;
+    flex-shrink: 0;
 }
 
 .title {
@@ -956,21 +973,369 @@
 }
 
 @media (max-width: 768px) {
+    .container {
+        padding: 0.85rem 0.85rem 4rem;
+        max-width: 100%;
+    }
+
+    .backLink {
+        font-size: 0.78rem;
+        padding: 0.35rem 0.65rem 0.35rem 0.42rem;
+        border-radius: 8px;
+    }
+
+    .backLinkIcon {
+        width: 18px;
+        height: 18px;
+        border-radius: 5px;
+    }
+
+    .title {
+        font-size: 1.05rem;
+    }
+
+    /* Product */
     .productSection {
         flex-direction: column;
+        padding: 0.85rem;
+        gap: 0.75rem;
+        margin-bottom: 1rem;
     }
 
     .productImage {
         width: 100%;
-        height: auto;
+        height: 160px;
+        object-fit: cover;
+        border-radius: 8px;
     }
 
+    .productInfo h2 {
+        font-size: 0.95rem;
+        margin-bottom: 0.4rem;
+    }
+
+    .productDesc {
+        font-size: 0.78rem;
+        margin-bottom: 0.6rem;
+    }
+
+    .auctionMeta {
+        flex-direction: column;
+        gap: 0.3rem;
+        font-size: 0.75rem;
+    }
+
+    /* Stats */
     .statsGrid {
         grid-template-columns: repeat(2, 1fr);
+        gap: 0.6rem;
+        margin-bottom: 1rem;
+    }
+
+    .statCard {
+        padding: 0.75rem 0.5rem;
+    }
+
+    .statCard svg {
+        width: 18px;
+        height: 18px;
+        margin-bottom: 0.3rem;
+    }
+
+    .statValue {
+        font-size: 1.1rem;
+        margin-bottom: 0.1rem;
+    }
+
+    .statLabel {
+        font-size: 0.72rem;
+    }
+
+    /* Winner */
+    .winnerSection,
+    .noWinnerSection,
+    .biddersSection,
+    .transactionHistory {
+        padding: 0.85rem;
+        margin-bottom: 1rem;
+    }
+
+    .sectionHeader {
+        margin-bottom: 0.75rem;
+    }
+
+    .sectionHeader svg {
+        width: 18px;
+        height: 18px;
+    }
+
+    .sectionHeader h3 {
+        font-size: 0.9rem;
     }
 
     .winnerCard {
         flex-direction: column;
+        align-items: center;
         text-align: center;
+        gap: 0.5rem;
+        padding: 0.85rem;
+    }
+
+    .winnerAvatar {
+        width: 44px;
+        height: 44px;
+    }
+
+    .winnerInfo h4 {
+        font-size: 0.9rem;
+        margin-bottom: 0.1rem;
+    }
+
+    .winnerInfo p {
+        font-size: 0.75rem;
+    }
+
+    .winnerPrice {
+        font-size: 1rem;
+        justify-content: center;
+        gap: 0.2rem;
+    }
+
+    .winnerPrice svg {
+        width: 14px;
+        height: 14px;
+    }
+
+    .contactBuyerBtn {
+        width: 100%;
+        justify-content: center;
+        font-size: 0.8rem;
+        padding: 0.5rem 1rem;
+    }
+
+    /* Order process */
+    .orderProcess {
+        padding: 0.85rem;
+        margin-top: 1rem;
+    }
+
+    .processTitle {
+        font-size: 0.82rem;
+        margin-bottom: 1rem;
+    }
+
+    /* Timeline */
+    .stepLabel {
+        font-size: 0.58rem;
+        max-width: 56px;
+    }
+
+    .stepIcon {
+        width: 28px;
+        height: 28px;
+    }
+
+    .stepIcon svg {
+        width: 13px;
+        height: 13px;
+    }
+
+    /* Status row */
+    .currentStatusRow {
+        flex-direction: column;
+        align-items: flex-start;
+        gap: 0.4rem;
+    }
+
+    .statusLabel {
+        font-size: 0.8rem;
+    }
+
+    .statusBadge {
+        font-size: 0.72rem;
+        padding: 0.3rem 0.65rem;
+    }
+
+    .orderId {
+        margin-left: 0;
+        font-size: 0.7rem;
+    }
+
+    /* Banners */
+    .waitingBuyer,
+    .completedBanner,
+    .cancelledBanner {
+        font-size: 0.8rem;
+        padding: 0.65rem 0.85rem;
+    }
+
+    /* Bidder cards */
+    .bidderCard {
+        padding: 0.65rem;
+        gap: 0.6rem;
+    }
+
+    .bidderRank {
+        width: 28px;
+        height: 28px;
+        font-size: 0.78rem;
+    }
+
+    .bidderAvatar {
+        width: 32px;
+        height: 32px;
+    }
+
+    .bidderInfo h5 {
+        font-size: 0.82rem;
+    }
+
+    .bidderInfo p {
+        font-size: 0.72rem;
+    }
+
+    .bidderAmount {
+        font-size: 0.88rem;
+    }
+
+    .sectionNote {
+        font-size: 0.75rem;
+    }
+
+    .sectionSubtitle {
+        font-size: 0.78rem;
+    }
+
+    /* Ship form actions */
+    .shipFormActions {
+        flex-direction: column;
+    }
+
+    .cancelShipBtn,
+    .submitShipBtn {
+        width: 100%;
+        justify-content: center;
+        font-size: 0.82rem;
+    }
+
+    .confirmPayBtn,
+    .shipBtn {
+        width: 100%;
+        justify-content: center;
+        font-size: 0.82rem;
+        padding: 0.65rem 1rem;
+    }
+
+    /* Transaction table — hide date, auto-size amount so it never clips */
+    .tableHeader {
+        grid-template-columns: 44px 1fr auto;
+        gap: 0.5rem;
+        padding: 0.65rem 0.75rem;
+        font-size: 0.68rem;
+    }
+
+    .tableRow {
+        grid-template-columns: 44px 1fr auto;
+        gap: 0.5rem;
+        padding: 0.75rem 0.75rem;
+    }
+
+    .colDate {
+        display: none;
+    }
+
+    .rankBadge {
+        width: 32px;
+        height: 32px;
+        font-size: 0.75rem;
+        border-radius: 6px;
+    }
+
+    .smallAvatar {
+        width: 28px;
+        height: 28px;
+        flex-shrink: 0;
+    }
+
+    .bidderCell {
+        gap: 0.5rem;
+    }
+
+    .amountCell {
+        font-size: 0.82rem;
+        white-space: nowrap;
+    }
+
+    .topAmount {
+        font-size: 0.88rem;
+    }
+
+    .bidderName {
+        font-size: 0.76rem;
+        gap: 0.3rem;
+    }
+
+    .winnerBadge {
+        font-size: 0.55rem;
+        padding: 0.1rem 0.3rem;
+    }
+
+    .bidderId {
+        font-size: 0.65rem;
+    }
+
+    .currentWinner,
+    .backupWinner,
+    .thirdPlace {
+        display: none;
+    }
+}
+
+@media (max-width: 320px) {
+    .container {
+        padding: 0.65rem 0.65rem 3.5rem;
+    }
+
+    .title {
+        font-size: 0.95rem;
+    }
+
+    .productImage {
+        height: 130px;
+    }
+
+    .statValue {
+        font-size: 0.95rem;
+    }
+
+    .statCard {
+        padding: 0.6rem 0.4rem;
+    }
+
+    .tableHeader {
+        grid-template-columns: 38px 1fr auto;
+        font-size: 0.62rem;
+        padding: 0.55rem 0.6rem;
+    }
+
+    .tableRow {
+        grid-template-columns: 38px 1fr auto;
+        padding: 0.6rem 0.6rem;
+    }
+
+    .rankBadge {
+        width: 27px;
+        height: 27px;
+        font-size: 0.68rem;
+    }
+
+    .backLink {
+        font-size: 0.72rem;
+        padding: 0.3rem 0.55rem 0.3rem 0.38rem;
+    }
+
+    .backLinkIcon {
+        width: 16px;
+        height: 16px;
     }
 }

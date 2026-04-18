@@ -17,7 +17,9 @@ import {
     CheckCircle2,
     Info,
     AlertOctagon,
-    Users
+    Users,
+    ChevronDown,
+    ChevronLeft
 } from 'lucide-react';
 import Link from 'next/link';
 import { useAuth } from '@/context/AuthContext';
@@ -42,6 +44,8 @@ export default function MyAuctions() {
     const [cleaningInventory, setCleaningInventory] = useState(false);
     const [selectedItems, setSelectedItems] = useState([]);
     const [selectMode, setSelectMode] = useState(false);
+    const [expandedCard, setExpandedCard] = useState(null);
+
     const [modalConfig, setModalConfig] = useState({
         isOpen: false,
         title: '',
@@ -266,13 +270,13 @@ export default function MyAuctions() {
     };
 
     const handleCardClick = (itemId, e) => {
-        // Don't select if clicking on buttons, links, or checkboxes
         if (e.target.closest('button') || e.target.closest('a') || e.target.type === 'checkbox') {
             return;
         }
-
         if (selectMode) {
             toggleItemSelection(itemId);
+        } else {
+            setExpandedCard(prev => prev === itemId ? null : itemId);
         }
     };
 
@@ -639,6 +643,12 @@ export default function MyAuctions() {
         <div className={styles.container}>
             <header className={styles.header}>
                 <div className={styles.titleGroup}>
+                    <Link href="/seller" className={styles.backLink}>
+                        <span className={styles.backLinkIcon}>
+                            <ChevronLeft size={18} strokeWidth={2.5} />
+                        </span>
+                        <span>Back</span>
+                    </Link>
                     <h1>My Auctions</h1>
                     <p>Manage your live, scheduled, and past auctions.</p>
                 </div>
@@ -678,18 +688,6 @@ export default function MyAuctions() {
                         </>
                     ) : (
                         <>
-                            {(activeTab === 'drafts' || activeTab === 'scheduled' || activeTab === 'completed') && (
-                                <>
-                                    <button
-                                        onClick={toggleSelectMode}
-                                        className={styles.selectBtn}
-                                        title="Enter edit mode"
-                                    >
-                                        <Edit2 size={18} />
-                                        Edit
-                                    </button>
-                                </>
-                            )}
                             <Link href="/seller/inventory" className={styles.productsBtn}>
                                 <Package size={20} />
                                 My Products
@@ -751,6 +749,14 @@ export default function MyAuctions() {
                                 </span>
                                 <span className={styles.auctionId}>#{product.products_id.slice(0, 8)}</span>
                                 {!selectMode && (
+                                <button
+                                    className={`${styles.chevronBtn} ${expandedCard === product.products_id ? styles.chevronOpen : ''}`}
+                                    onClick={() => setExpandedCard(prev => prev === product.products_id ? null : product.products_id)}
+                                >
+                                    <ChevronDown size={16} />
+                                </button>
+                                )}
+                                {!selectMode && (
                                 <div className={styles.dropdownContainer} ref={openDropdown === product.products_id ? dropdownRef : null}>
                                     <button
                                         className={styles.moreBtn}
@@ -765,8 +771,8 @@ export default function MyAuctions() {
                                                 className={styles.dropdownItem}
                                                 onClick={() => setOpenDropdown(null)}
                                             >
-                                                <Edit2 size={16} />
-                                                Edit Product
+                                                <Edit2 size={14} />
+                                                Edit
                                             </Link>
                                             <button
                                                 className={`${styles.dropdownItem} ${styles.deleteItem}`}
@@ -776,8 +782,8 @@ export default function MyAuctions() {
                                                 }}
                                                 disabled={isDeleting}
                                             >
-                                                <Trash2 size={16} />
-                                                Delete Product
+                                                <Trash2 size={14} />
+                                                Delete
                                             </button>
                                         </div>
                                     )}
@@ -785,6 +791,19 @@ export default function MyAuctions() {
                                 )}
                             </div>
 
+                            {expandedCard !== product.products_id && (
+                                <div className={styles.cardSummary}>
+                                    <img
+                                        src={product.images && product.images.length > 0 ? product.images[0].image_url : 'https://placehold.co/200x200?text=No+Image'}
+                                        alt={product.name}
+                                        className={styles.summaryThumb}
+                                    />
+                                    <span className={styles.summaryName}>{product.name}</span>
+                                </div>
+                            )}
+
+                            {expandedCard === product.products_id && (
+                            <>
                             <div className={styles.cardBody}>
                                 <img
                                     src={product.images && product.images.length > 0 ? product.images[0].image_url : 'https://placehold.co/200x200?text=No+Image'}
@@ -819,13 +838,15 @@ export default function MyAuctions() {
                                 <Link href={`/seller/inventory`} className={styles.secondaryBtn}>View in Inventory</Link>
                                 <Link href={`/seller/auctions/schedule?id=${product.products_id}`} className={styles.primaryBtn}>Schedule Auction</Link>
                             </div>
+                            </>
+                            )}
                         </div>
                         );
                     }) : (
-                        <div style={{ gridColumn: '1 / -1', textAlign: 'center', padding: '4rem 2rem', color: '#888' }}>
-                            <Package size={48} style={{ marginBottom: '1rem', opacity: 0.3 }} />
-                            <p style={{ fontSize: '1.1rem', fontWeight: 600, marginBottom: '0.5rem' }}>No draft products</p>
-                            <p style={{ fontSize: '0.9rem' }}>All your products are scheduled or active.</p>
+                        <div className={styles.emptyState}>
+                            <Package size={40} className={styles.emptyIcon} />
+                            <p className={styles.emptyTitle}>No draft products</p>
+                            <p className={styles.emptyDesc}>All your products are scheduled or active.</p>
                         </div>
                     )
                 ) : (
@@ -861,6 +882,14 @@ export default function MyAuctions() {
                                 </span>
                                 <span className={styles.auctionId}>#{auction.auction_id.slice(0, 8)}</span>
                                 {!selectMode && (
+                                <button
+                                    className={`${styles.chevronBtn} ${expandedCard === auction.auction_id ? styles.chevronOpen : ''}`}
+                                    onClick={() => setExpandedCard(prev => prev === auction.auction_id ? null : auction.auction_id)}
+                                >
+                                    <ChevronDown size={16} />
+                                </button>
+                                )}
+                                {!selectMode && (
                                 <div className={styles.dropdownContainer} ref={openDropdown === auction.auction_id ? dropdownRef : null}>
                                     <button
                                         className={styles.moreBtn}
@@ -876,8 +905,8 @@ export default function MyAuctions() {
                                                     className={styles.dropdownItem}
                                                     onClick={() => setOpenDropdown(null)}
                                                 >
-                                                    <Edit2 size={16} />
-                                                    Edit Schedule
+                                                    <Edit2 size={14} />
+                                                    Edit
                                                 </Link>
                                             )}
                                             {isCompleted && (
@@ -886,8 +915,8 @@ export default function MyAuctions() {
                                                     className={styles.dropdownItem}
                                                     onClick={() => setOpenDropdown(null)}
                                                 >
-                                                    <CheckCircle2 size={16} />
-                                                    View Results
+                                                    <CheckCircle2 size={14} />
+                                                    View
                                                 </Link>
                                             )}
                                             {!isActive && (
@@ -899,14 +928,14 @@ export default function MyAuctions() {
                                                     }}
                                                     disabled={isDeleting}
                                                 >
-                                                    <Trash2 size={16} />
-                                                    Delete Auction
+                                                    <Trash2 size={14} />
+                                                    Delete
                                                 </button>
                                             )}
                                             {isActive && (
                                                 <div className={styles.dropdownItem} style={{ opacity: 0.5, cursor: 'not-allowed' }}>
-                                                    <X size={16} />
-                                                    Cannot delete active auction
+                                                    <X size={14} />
+                                                    Can't delete
                                                 </div>
                                             )}
                                         </div>
@@ -915,6 +944,22 @@ export default function MyAuctions() {
                                 )}
                             </div>
 
+                            {expandedCard !== auction.auction_id && (
+                                <div className={styles.cardSummary}>
+                                    <img
+                                        src={auction.product_image || 'https://placehold.co/200x200?text=No+Image'}
+                                        alt={auction.product_name}
+                                        className={styles.summaryThumb}
+                                    />
+                                    <div className={styles.summaryInfo}>
+                                        <span className={styles.summaryName}>{auction.product_name}</span>
+                                        <span className={styles.summaryMeta}>{formattedStartTime}</span>
+                                    </div>
+                                </div>
+                            )}
+
+                            {expandedCard === auction.auction_id && (
+                            <>
                             <div className={styles.cardBody}>
                                 <img
                                     src={auction.product_image || 'https://placehold.co/200x200?text=No+Image'}
@@ -976,13 +1021,15 @@ export default function MyAuctions() {
                                     </Link>
                                 )}
                             </div>
+                            </>
+                            )}
                         </div>
                         );
                     }) : (
-                        <div style={{ gridColumn: '1 / -1', textAlign: 'center', padding: '4rem 2rem', color: '#888' }}>
-                            <Calendar size={48} style={{ marginBottom: '1rem', opacity: 0.3 }} />
-                            <p style={{ fontSize: '1.1rem', fontWeight: 600, marginBottom: '0.5rem' }}>No auctions yet</p>
-                            <p style={{ fontSize: '0.9rem' }}>Create your first auction to start selling.</p>
+                        <div className={styles.emptyState}>
+                            <Calendar size={40} className={styles.emptyIcon} />
+                            <p className={styles.emptyTitle}>No auctions yet</p>
+                            <p className={styles.emptyDesc}>Create your first auction to start selling.</p>
                         </div>
                     )
                 )}

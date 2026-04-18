@@ -3,7 +3,8 @@
 import { useState, useEffect, Suspense } from 'react';
 import { useSearchParams, useRouter } from 'next/navigation';
 import Link from 'next/link';
-import { ChevronRight, Check, Package, ArrowRight, Loader2, Calendar } from 'lucide-react';
+import { ChevronRight, Check, Package, ArrowRight, Loader2 } from 'lucide-react';
+import Logo from '@/components/Logo';
 import PhilippineIDVerification from '@/components/PhilippineIDVerification';
 import { useAuth } from '@/context/AuthContext';
 import styles from './page.module.css';
@@ -74,11 +75,19 @@ function PersonalInfoStep({ data, onChange, onNext }) {
                 </div>
                 <div className={styles.formGroup}>
                     <label>Birthday<span style={{ color: 'red' }}>*</span></label>
-                    <div style={{ position: 'relative', display: 'flex', alignItems: 'center' }}>
-                        <input className={styles.input} type="text" placeholder="MM/DD/YYYY" maxLength={10} value={data.birthday} style={{ paddingRight: '2.5rem' }} onChange={e => { const digits = e.target.value.replace(/\D/g, '').slice(0, 8); let formatted = digits; if (digits.length > 4) formatted = digits.slice(0, 2) + '/' + digits.slice(2, 4) + '/' + digits.slice(4); else if (digits.length > 2) formatted = digits.slice(0, 2) + '/' + digits.slice(2); onChange({ birthday: formatted }); }} />
-                        <input type="date" max={new Date().toISOString().split('T')[0]} style={{ position: 'absolute', right: 0, opacity: 0, width: '2rem', height: '100%', cursor: 'pointer' }} onChange={e => { const [y, m, d] = e.target.value.split('-'); if (y && m && d) onChange({ birthday: `${m}/${d}/${y}` }); }} />
-                        <Calendar size={16} style={{ position: 'absolute', right: '0.6rem', pointerEvents: 'none', color: '#888' }} />
-                    </div>
+                    <input
+                        className={styles.input}
+                        type="date"
+                        max={new Date().toISOString().split('T')[0]}
+                        value={data.birthday && data.birthday.length === 10
+                            ? `${data.birthday.slice(6)}-${data.birthday.slice(0,2)}-${data.birthday.slice(3,5)}`
+                            : ''}
+                        onChange={e => {
+                            const [y, m, d] = e.target.value.split('-');
+                            if (y && m && d) onChange({ birthday: `${m}/${d}/${y}` });
+                            else onChange({ birthday: '' });
+                        }}
+                    />
                 </div>
                 <div className={styles.formGroup}>
                     <label>Gender<span style={{ color: 'red' }}>*</span></label>
@@ -367,7 +376,10 @@ function GetStartedPage() {
         <div className={styles.successPage}>
             <div className={styles.successLeft}>
                 <div className={styles.successContent}>
-                    <p className={styles.successEyebrow}>🎉 Setup Complete</p>
+                    <div className={styles.successIconWrap}>
+                        <Logo />
+                    </div>
+                    <p className={styles.successEyebrow}>Setup Complete</p>
                     <h1 className={styles.successTitle}>
                         Get<br /><span>Started</span>
                     </h1>
@@ -376,26 +388,15 @@ function GetStartedPage() {
                         and start your first auction on BIDPal today.
                     </p>
                     <Link href="/seller" className={styles.successBtn}>
-                        <Package size={20} /> Go to Dashboard <ArrowRight size={18} />
+                        <Package size={18} /> Go to Dashboard <ArrowRight size={16} />
                     </Link>
+                    <p className={styles.successQuoteInline}>
+                        "Every expert was once a beginner. Your journey starts with that first product."
+                    </p>
                 </div>
             </div>
 
             <div className={styles.successRight}>
-                <div className={styles.storeCard}>
-                    <p className={styles.storeCardLabel}>Your Store Overview</p>
-                    {[
-                        { label: 'Products Listed', value: '0' },
-                        { label: 'Active Auctions', value: '0' },
-                        { label: 'Total Revenue', value: '₱ 0' },
-                        { label: 'Account Status', value: 'Verified ✓', green: true },
-                    ].map((row, i) => (
-                        <div className={styles.storeCardStat} key={i}>
-                            <span className={styles.storeCardStatLabel}>{row.label}</span>
-                            <span className={`${styles.storeCardStatValue} ${row.green ? styles.green : ''}`}>{row.value}</span>
-                        </div>
-                    ))}
-                </div>
                 <p className={styles.successQuote}>
                     "Every expert was once a beginner.<br />Your journey starts with that first product."
                 </p>
@@ -535,6 +536,22 @@ function SetupPageInner() {
     return (
         <div className={styles.setupPage}>
             <Sidebar currentStep={step} onStepClick={setStep} />
+
+            {/* Mobile-only top header */}
+            <div className={styles.mobileHeader}>
+                <div className={styles.mobileHeaderTop}>
+                    <Logo />
+                    <div className={styles.mobileStepBadge}>
+                        <span className={styles.mobileStepNum}>{step}</span>
+                        <span className={styles.mobileStepOf}>/ {STEPS.length}</span>
+                        <span className={styles.mobileStepTitle}>{STEPS[step - 1]?.title}</span>
+                    </div>
+                </div>
+                <div className={styles.mobileProgressTrack}>
+                    <div className={styles.mobileProgressFill} style={{ width: `${(step / STEPS.length) * 100}%` }} />
+                </div>
+            </div>
+
             <div className={styles.main}>
                 {step === 1 && <PersonalInfoStep data={personal} onChange={merge(setPersonal)} onNext={() => setStep(2)} />}
                 {step === 2 && <StoreInfoStep data={store} onChange={merge(setStore)} onNext={() => setStep(3)} onBack={() => setStep(1)} />}

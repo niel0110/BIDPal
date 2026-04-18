@@ -1,32 +1,40 @@
+/* =============================================
+   SELLER HUB — polished, buyer-side quality
+   ============================================= */
+
+/* ---------- Header ---------- */
 .header {
     display: flex;
     justify-content: space-between;
     align-items: center;
-    padding: 1.5rem 2rem;
-    background-color: #fff;
+    padding: 1.25rem 1.5rem;
+    background: white;
     border-bottom: 1px solid #f0f0f0;
+    position: sticky;
+    top: 0;
+    z-index: 10;
 }
 
 .titleInfo {
     display: flex;
     flex-direction: column;
-    gap: 0.25rem;
+    gap: 0.2rem;
 }
 
 .title {
-    font-size: 2.25rem;
-    font-weight: 850;
+    font-size: 1.75rem;
+    font-weight: 800;
     color: #111;
     margin: 0;
     letter-spacing: -0.03em;
+    line-height: 1.1;
 }
 
 .statusBadge {
-    display: flex;
+    display: inline-flex;
     align-items: center;
-    gap: 0.5rem;
-    padding: 2px 0;
-    font-size: 0.8rem;
+    gap: 0.4rem;
+    font-size: 0.78rem;
     font-weight: 600;
     color: #888;
 }
@@ -35,166 +43,160 @@
     width: 6px;
     height: 6px;
     border-radius: 50%;
-    background-color: #eee;
+    background: #ccc;
+    flex-shrink: 0;
 }
 
 .statusDot.live {
-    background-color: #D32F2F;
-    box-shadow: 0 0 10px rgba(211, 47, 47, 0.4);
+    background: #D32F2F;
+    box-shadow: 0 0 8px rgba(211, 47, 47, 0.5);
     animation: pulse 2s infinite;
 }
 
 @keyframes pulse {
-    0% {
-        transform: scale(1);
-        opacity: 1;
-    }
-
-    50% {
-        transform: scale(1.3);
-        opacity: 0.6;
-    }
-
-    100% {
-        transform: scale(1);
-        opacity: 1;
-    }
+    0%   { transform: scale(1);   opacity: 1;   }
+    50%  { transform: scale(1.4); opacity: 0.6; }
+    100% { transform: scale(1);   opacity: 1;   }
 }
 
 .headerActions {
     display: flex;
-    gap: 0.75rem;
+    gap: 0.6rem;
+    align-items: center;
+}
+
+/* ---------- Add to Queue button (inside card header) ---------- */
+.addQueueBtn {
+    display: inline-flex;
+    align-items: center;
+    gap: 0.25rem;
+    padding: 0.38rem 0.75rem;
+    border-radius: 8px;
+    background: #111;
+    border: none;
+    color: white;
+    font-weight: 700;
+    font-size: 0.75rem;
+    text-decoration: none;
+    transition: all 0.15s;
+    white-space: nowrap;
+    flex-shrink: 0;
+}
+
+.addQueueBtn:hover {
+    background: #2a2a2a;
 }
 
 .liveControlBtn {
-    display: flex;
+    display: inline-flex;
     align-items: center;
-    gap: 0.6rem;
-    padding: 0.75rem 1.5rem;
-    border-radius: 12px;
-    font-weight: 750;
+    gap: 0.35rem;
+    padding: 0.55rem 1rem;
+    border-radius: 10px;
+    font-weight: 700;
     border: none;
     cursor: pointer;
-    transition: all 0.2s cubic-bezier(0.4, 0, 0.2, 1);
-    font-size: 0.9rem;
+    font-size: 0.85rem;
+    transition: all 0.15s;
+    white-space: nowrap;
 }
 
 .liveControlBtn.start {
-    background-color: #111;
+    background: #111;
     color: white;
 }
 
 .liveControlBtn.start:hover {
-    background-color: #333;
-    transform: translateY(-1px);
-    box-shadow: 0 4px 12px rgba(0, 0, 0, 0.1);
+    background: #2a2a2a;
 }
 
 .liveControlBtn.stop {
-    background-color: #fafafa;
-    border: 1.5px solid #111;
-    color: #111;
+    background: #fff1f0;
+    border: 1.5px solid #D32F2F;
+    color: #D32F2F;
+}
+
+.liveControlBtn.stop:hover {
+    background: #ffe5e3;
 }
 
 .liveControlBtn.disabled {
-    background-color: #e0e0e0;
-    color: #999;
+    background: #ebebeb;
+    color: #bbb;
     cursor: not-allowed;
-    opacity: 0.6;
 }
 
-.liveControlBtn.disabled:hover {
-    background-color: #e0e0e0;
-    transform: none;
-    box-shadow: none;
+/* ---------- Mobile Tab Bar (hidden on desktop) ---------- */
+.mobileTabBar {
+    display: none;
 }
 
-.addBtnSmall {
-    display: flex;
-    align-items: center;
-    gap: 0.4rem;
-    padding: 0.75rem 1.25rem;
-    border-radius: 12px;
-    background: #fafafa;
-    border: 1.5px solid #f0f0f0;
-    color: #111;
-    font-weight: 700;
-    text-decoration: none;
-    transition: all 0.2s;
-    font-size: 0.85rem;
-}
-
-.addBtnSmall:hover {
-    border-color: #111;
-    background: #fff;
-}
-
-/* Logic Containers */
+/* ---------- Main Layout ---------- */
 .controlRoom {
     display: grid;
-    grid-template-columns: 1fr 400px;
-    gap: 2rem;
-    padding: 2rem;
-    background-color: #fafafa;
-    min-height: calc(100vh - 120px);
+    grid-template-columns: 1fr 300px;
+    gap: 1.5rem;
+    padding: 1.5rem;
+    background: #f8f8f8;
+    min-height: calc(100vh - 76px);
 }
 
 .mainWorkArea {
     display: flex;
     flex-direction: column;
-    gap: 1.5rem;
+    gap: 1.25rem;
 }
 
 .interactionPanel {
     display: flex;
     flex-direction: column;
-    gap: 2rem;
+    gap: 1.25rem;
 }
 
-/* Live Auction Area - Fullscreen Video Layout */
+/* ---------- Tab visibility (mobile only) ---------- */
+.tabSectionHidden { display: block; }
+
+/* ---------- Live Auction Area ---------- */
 .liveAuctionArea {
     background: white;
-    border-radius: 24px;
+    border-radius: 16px;
     overflow: hidden;
-    color: #111;
-    margin-bottom: 2rem;
-    box-shadow: 0 4px 20px rgba(0, 0, 0, 0.08);
-    position: relative;
     border: 1px solid #f0f0f0;
+    box-shadow: 0 2px 8px rgba(0, 0, 0, 0.04);
 }
 
 /* Live Badge */
 .livePulseBadge {
     position: absolute;
-    top: 1.5rem;
-    right: 1.5rem;
-    background: rgba(255, 77, 77, 1);
-    padding: 0.75rem 1.5rem;
+    top: 1rem;
+    right: 1rem;
+    background: #D32F2F;
+    color: white;
+    padding: 0.38rem 0.8rem;
     border-radius: 50px;
     font-weight: 800;
-    font-size: 0.9rem;
+    font-size: 0.72rem;
     z-index: 20;
-    display: flex;
+    display: inline-flex;
     align-items: center;
-    gap: 0.5rem;
-    box-shadow: 0 8px 24px rgba(255, 77, 77, 0.4);
-    animation: pulse 2s infinite;
+    gap: 0.4rem;
+    letter-spacing: 0.06em;
 }
 
 .livePulseDot {
-    width: 8px;
-    height: 8px;
+    width: 6px;
+    height: 6px;
     background: white;
     border-radius: 50%;
     animation: pulse 2s infinite;
 }
 
-/* Fullscreen Video Container */
+/* Video */
 .videoContainer {
     width: 100%;
-    height: 500px;
+    height: 420px;
     position: relative;
-    background: #000;
+    background: #111;
     overflow: hidden;
 }
 
@@ -202,16 +204,46 @@
     width: 100%;
     height: 100%;
     object-fit: cover;
+    opacity: 0.85;
+}
+
+/* Stats overlay on video */
+.videoStatsOverlay {
+    position: absolute;
+    top: 0;
+    left: 0;
+    right: 0;
+    padding: 0.75rem 1rem 1.5rem;
+    background: linear-gradient(to bottom, rgba(0,0,0,0.55) 0%, transparent 100%);
+    display: flex;
+    align-items: center;
+    gap: 0.85rem;
+    z-index: 12;
+    pointer-events: none;
+}
+
+.videoStat {
+    display: inline-flex;
+    align-items: center;
+    gap: 0.3rem;
+    color: white;
+    font-size: 0.78rem;
+    font-weight: 700;
+    text-shadow: 0 1px 3px rgba(0,0,0,0.5);
+    background: rgba(0,0,0,0.3);
+    padding: 0.25rem 0.55rem;
+    border-radius: 20px;
+    backdrop-filter: blur(4px);
 }
 
 /* Camera Controls */
 .cameraControls {
     position: absolute;
-    bottom: 2rem;
+    bottom: 1.25rem;
     left: 50%;
     transform: translateX(-50%);
     display: flex;
-    gap: 1rem;
+    gap: 0.85rem;
     z-index: 15;
 }
 
@@ -219,26 +251,26 @@
     background: rgba(255, 255, 255, 0.15);
     border: 2px solid rgba(255, 255, 255, 0.3);
     border-radius: 50%;
-    width: 56px;
-    height: 56px;
+    width: 48px;
+    height: 48px;
     display: flex;
     align-items: center;
     justify-content: center;
     cursor: pointer;
-    backdrop-filter: blur(10px);
+    backdrop-filter: blur(8px);
     color: white;
-    transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+    transition: all 0.2s;
 }
 
 .controlBtn:hover {
     background: rgba(255, 255, 255, 0.25);
     border-color: rgba(255, 255, 255, 0.5);
-    transform: scale(1.1);
+    transform: scale(1.08);
 }
 
 .controlBtnDanger {
-    background: rgba(211, 47, 47, 0.9);
-    border-color: rgba(211, 47, 47, 1);
+    background: rgba(211, 47, 47, 0.85);
+    border-color: #D32F2F;
 }
 
 .controlBtnDanger:hover {
@@ -252,41 +284,41 @@
     display: flex;
     align-items: center;
     justify-content: center;
-    background: rgba(0, 0, 0, 0.6);
-    backdrop-filter: blur(8px);
+    background: rgba(0, 0, 0, 0.5);
+    backdrop-filter: blur(6px);
     z-index: 10;
 }
 
 .startCameraBtn {
-    padding: 1.25rem 2.5rem;
-    font-size: 1.1rem;
+    padding: 0.9rem 2rem;
+    font-size: 0.95rem;
     font-weight: 700;
-    border-radius: 16px;
-    cursor: pointer;
-    background: linear-gradient(135deg, #D32F2F 0%, #B71C1C 100%);
+    border-radius: 12px;
+    background: #D32F2F;
     color: white;
     border: none;
-    display: flex;
+    cursor: pointer;
+    display: inline-flex;
     align-items: center;
-    gap: 0.75rem;
-    box-shadow: 0 8px 24px rgba(211, 47, 47, 0.5);
-    transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+    gap: 0.6rem;
+    box-shadow: 0 6px 20px rgba(211, 47, 47, 0.4);
+    transition: all 0.2s;
 }
 
 .startCameraBtn:hover {
-    transform: translateY(-2px) scale(1.05);
-    box-shadow: 0 12px 32px rgba(211, 47, 47, 0.6);
+    transform: translateY(-2px);
+    box-shadow: 0 10px 28px rgba(211, 47, 47, 0.5);
 }
 
-/* Product Details Section */
+/* Product Details */
 .productDetailsSection {
-    padding: 1.5rem 2rem;
+    padding: 1.25rem 1.5rem;
     background: white;
-    border-top: 1px solid #f0f0f0;
+    border-top: 1px solid #f5f5f5;
 }
 
 .productHeader {
-    margin-bottom: 1rem;
+    margin-bottom: 0.85rem;
 }
 
 .productTitleArea {
@@ -297,10 +329,11 @@
 
 .productIcon {
     flex-shrink: 0;
+    color: #D32F2F;
 }
 
 .productTitle {
-    font-size: 1.25rem;
+    font-size: 1.1rem;
     font-weight: 800;
     margin: 0;
     color: #111;
@@ -312,105 +345,98 @@
 .productStatsGrid {
     display: grid;
     grid-template-columns: repeat(2, 1fr);
-    gap: 1rem;
+    gap: 0.75rem;
 }
 
 .statCard {
     background: #fafafa;
     border: 1px solid #f0f0f0;
-    border-radius: 12px;
-    padding: 1rem 1.25rem;
-    transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+    border-radius: 10px;
+    padding: 0.875rem 1rem;
+    transition: all 0.2s;
 }
 
 .statCard:hover {
     background: #f5f5f5;
-    transform: translateY(-2px);
-    box-shadow: 0 4px 12px rgba(0, 0, 0, 0.08);
-    border-color: #e0e0e0;
+    border-color: #e5e5e5;
 }
 
 .statCardLabel {
-    font-size: 0.7rem;
+    font-size: 0.68rem;
     text-transform: uppercase;
-    letter-spacing: 0.08em;
+    letter-spacing: 0.07em;
     font-weight: 700;
-    margin-bottom: 0.5rem;
-    color: #888;
+    margin-bottom: 0.4rem;
+    color: #999;
 }
 
 .statCardValue {
-    font-size: 1.75rem;
+    font-size: 1.5rem;
     font-weight: 900;
     color: #111;
     display: flex;
     align-items: center;
-    gap: 0.4rem;
+    gap: 0.35rem;
     line-height: 1;
 }
 
-/* Empty State */
+/* ---------- Empty State ---------- */
 .emptyState {
     background: white;
-    border-radius: 24px;
-    padding: 4rem 2rem;
+    border-radius: 16px;
+    padding: 3rem 2rem;
     text-align: center;
-    margin-bottom: 2rem;
-    border: 2px dashed #e0e0e0;
+    border: 1.5px dashed #e5e5e5;
 }
 
 .emptyState h2 {
-    font-size: 1.75rem;
+    font-size: 1.35rem;
     font-weight: 800;
-    color: #333;
-    margin: 1.5rem 0 0.5rem;
+    color: #222;
+    margin: 1rem 0 0.4rem;
 }
 
 .emptyState p {
     color: #999;
-    font-size: 1rem;
-    margin-bottom: 2rem;
+    font-size: 0.875rem;
+    margin-bottom: 1.5rem;
+    line-height: 1.5;
+    max-width: 320px;
+    margin-left: auto;
+    margin-right: auto;
 }
 
 .emptyStateBtn {
     display: inline-flex;
     align-items: center;
-    gap: 0.75rem;
-    background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+    gap: 0.5rem;
+    background: #111;
     color: white;
-    padding: 1rem 2rem;
-    border-radius: 12px;
+    padding: 0.75rem 1.5rem;
+    border-radius: 10px;
     font-weight: 700;
+    font-size: 0.875rem;
     text-decoration: none;
-    transition: transform 0.2s;
-    box-shadow: 0 4px 15px rgba(102, 126, 234, 0.3);
+    transition: all 0.15s;
 }
 
 .emptyStateBtn:hover {
-    transform: translateY(-2px);
-    box-shadow: 0 6px 20px rgba(102, 126, 234, 0.4);
+    background: #2a2a2a;
+    transform: translateY(-1px);
 }
 
-/* Card System */
+/* ---------- Cards ---------- */
 .card {
     background: white;
     border: 1px solid #f0f0f0;
-    border-radius: 24px;
+    border-radius: 16px;
     overflow: hidden;
-    display: flex;
-    flex-direction: column;
-    transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
-    box-shadow: 0 2px 8px rgba(0, 0, 0, 0.02);
-}
-
-.card:hover {
-    box-shadow: 0 12px 40px rgba(0, 0, 0, 0.06);
-    transform: translateY(-2px);
+    box-shadow: 0 1px 4px rgba(0, 0, 0, 0.03);
 }
 
 .cardHeader {
-    padding: 1.5rem 2rem;
-    border-bottom: 1px solid #fcfcfc;
+    padding: 1.1rem 1.5rem;
+    border-bottom: 1px solid #f8f8f8;
     display: flex;
     justify-content: space-between;
     align-items: center;
@@ -420,9 +446,9 @@
 .scrollIndicator {
     position: absolute;
     bottom: -1px;
-    left: 2rem;
-    right: 2rem;
-    height: 3px;
+    left: 1.5rem;
+    right: 1.5rem;
+    height: 2px;
     background: #f0f0f0;
     border-radius: 10px;
     pointer-events: none;
@@ -432,7 +458,7 @@
     position: absolute;
     top: 0;
     left: 0;
-    width: 100px;
+    width: 80px;
     height: 100%;
     background: #D32F2F;
     border-radius: 10px;
@@ -442,30 +468,31 @@
 .cardTitleGroup {
     display: flex;
     align-items: center;
-    gap: 0.75rem;
+    gap: 0.6rem;
+    color: #111;
 }
 
 .iconCircle {
-    width: 36px;
-    height: 36px;
+    width: 32px;
+    height: 32px;
     background: #fdf2f2;
-    border-radius: 10px;
+    border-radius: 8px;
     display: flex;
     align-items: center;
     justify-content: center;
+    flex-shrink: 0;
 }
 
 .cardHeaderText h2 {
-    font-size: 1rem;
-    font-weight: 850;
+    font-size: 0.9rem;
+    font-weight: 800;
     color: #111;
     margin: 0;
-    letter-spacing: -0.01em;
 }
 
 .cardHeaderText p {
-    font-size: 0.7rem;
-    color: #aaa;
+    font-size: 0.68rem;
+    color: #bbb;
     margin: 0;
     font-weight: 500;
 }
@@ -479,132 +506,220 @@
     transition: color 0.2s;
 }
 
-.moreBtn:hover {
-    color: #111;
-}
+.moreBtn:hover { color: #111; }
 
-/* Active Auction Styles */
-.activeItemContent {
-    padding: 1.5rem;
-    display: flex;
-    gap: 2rem;
-    align-items: center;
-}
-
-.itemShowcase {
-    width: 240px;
-    height: 180px;
-    position: relative;
-    border-radius: 14px;
+/* ---------- Combined Bids & Chat card ---------- */
+.bidsChatCard {
+    background: white;
+    border: 1px solid #f0f0f0;
+    border-radius: 16px;
     overflow: hidden;
+    box-shadow: 0 1px 4px rgba(0, 0, 0, 0.03);
+}
+
+.bidsChatBody {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    min-height: 240px;
+    max-height: 300px;
+}
+
+.bidsChatLeft {
+    border-right: 1px solid #f0f0f0;
+    display: flex;
+    flex-direction: column;
+    overflow: hidden;
+}
+
+.bidsChatRight {
+    display: flex;
+    flex-direction: column;
+    overflow: hidden;
+}
+
+.bidsChatLabel {
+    padding: 0.45rem 0.75rem;
+    font-size: 0.65rem;
+    font-weight: 700;
+    color: #aaa;
+    text-transform: uppercase;
+    letter-spacing: 0.06em;
     background: #fafafa;
+    border-bottom: 1px solid #f5f5f5;
+    display: flex;
+    align-items: center;
+    gap: 0.3rem;
+    flex-shrink: 0;
 }
 
-.itemImage {
-    width: 100%;
-    height: 100%;
-    object-fit: cover;
+.bidsScroll {
+    flex: 1;
+    overflow-y: auto;
+    padding: 0.5rem;
+    display: flex;
+    flex-direction: column;
+    gap: 0.35rem;
+    scrollbar-width: none;
 }
 
-.liveTag {
-    position: absolute;
-    top: 12px;
-    left: 12px;
-    background: rgba(0, 0, 0, 0.85);
-    color: white;
-    padding: 4px 10px;
-    border-radius: 6px;
+.bidsScroll::-webkit-scrollbar { display: none; }
+
+.bidRowCompact {
+    display: flex;
+    align-items: center;
+    gap: 0.35rem;
+    padding: 0.38rem 0.45rem;
+    background: #fafafa;
+    border-radius: 8px;
+    border: 1px solid #f5f5f5;
+}
+
+.bidderAvatarSm {
+    width: 22px;
+    height: 22px;
+    border-radius: 50%;
+    background: #ebebeb;
+    display: flex;
+    align-items: center;
+    justify-content: center;
     font-size: 0.6rem;
     font-weight: 800;
-    display: flex;
-    align-items: center;
-    gap: 5px;
-    backdrop-filter: blur(4px);
+    color: #555;
+    flex-shrink: 0;
 }
 
-.tagDot {
-    width: 5px;
-    height: 5px;
-    background: #ff4d4d;
-    border-radius: 50%;
-}
-
-.itemData {
-    flex: 1;
-}
-
-.itemName {
-    font-size: 1.5rem;
-    font-weight: 850;
-    color: #111;
-    margin: 0 0 1rem;
-    letter-spacing: -0.02em;
-}
-
-.itemStats {
-    display: flex;
-    gap: 2.5rem;
-}
-
-.statBox {
-    display: flex;
-    flex-direction: column;
-    gap: 0.25rem;
-}
-
-.statLabel {
+.bidderNameSm {
     font-size: 0.7rem;
-    color: #aaa;
     font-weight: 700;
-    text-transform: uppercase;
-    letter-spacing: 0.05em;
-}
-
-.statValue {
-    font-size: 1.5rem;
-    font-weight: 850;
     color: #111;
+    flex: 1;
+    min-width: 0;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
 }
 
-.timeValue {
-    display: flex;
-    align-items: center;
-    gap: 0.4rem;
-    font-size: 1.35rem;
+.bidPriceSm {
+    font-size: 0.68rem;
     font-weight: 800;
-    color: #D32F2F;
+    color: #10b981;
+    flex-shrink: 0;
 }
 
-/* Bids List */
-.bidsList {
-    padding: 1.5rem;
+.chatScroll {
+    flex: 1;
+    overflow-y: auto;
+    padding: 0.5rem;
     display: flex;
     flex-direction: column;
-    gap: 0.75rem;
-    max-height: 400px;
+    gap: 0.5rem;
+    scrollbar-width: none;
+}
+
+.chatScroll::-webkit-scrollbar { display: none; }
+
+.commentCompact { display: flex; flex-direction: column; gap: 1px; }
+
+.commentUserSm {
+    font-size: 0.67rem;
+    font-weight: 700;
+    color: #333;
+}
+
+.commentTextSm {
+    font-size: 0.68rem;
+    color: #666;
+    margin: 0;
+    line-height: 1.35;
+    word-break: break-word;
+}
+
+.emptyColMsg {
+    font-size: 0.7rem;
+    color: #ccc;
+    text-align: center;
+    padding: 1.25rem 0.5rem;
+    margin: 0;
+    line-height: 1.4;
+}
+
+.chatInputCompact {
+    display: flex;
+    gap: 0.3rem;
+    align-items: center;
+    padding: 0.45rem 0.5rem;
+    border-top: 1px solid #f0f0f0;
+    background: white;
+    flex-shrink: 0;
+}
+
+.chatInputSm {
+    flex: 1;
+    background: #f8f8f8;
+    border: 1px solid #ebebeb;
+    padding: 0.38rem 0.55rem;
+    border-radius: 8px;
+    font-size: 0.7rem;
+    font-family: inherit;
+    outline: none;
+    color: #111;
+    min-width: 0;
+}
+
+.chatInputSm:focus {
+    border-color: #ccc;
+    background: white;
+}
+
+.chatInputSm:disabled { opacity: 0.45; }
+
+.chatSendBtnSm {
+    width: 28px;
+    height: 28px;
+    background: #111;
+    color: white;
+    border: none;
+    border-radius: 7px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    cursor: pointer;
+    flex-shrink: 0;
+    transition: background 0.15s;
+}
+
+.chatSendBtnSm:disabled { opacity: 0.2; cursor: not-allowed; }
+.chatSendBtnSm:not(:disabled):hover { background: #333; }
+
+/* ---------- Bids (desktop standalone — kept for reference) ---------- */
+.bidsList {
+    padding: 1rem 1.25rem;
+    display: flex;
+    flex-direction: column;
+    gap: 0.55rem;
+    max-height: 360px;
     overflow-y: auto;
 }
 
 .emptyBids {
-    padding: 3rem 2rem;
+    padding: 2.5rem 2rem;
     text-align: center;
-    color: #ccc;
+    color: #ddd;
 }
 
 .emptyBids p {
-    margin-top: 1rem;
-    font-size: 0.9rem;
-    color: #999;
+    margin-top: 0.75rem;
+    font-size: 0.875rem;
+    color: #bbb;
 }
 
-/* Bids Section */
 .bidsSection {
     background: #fafafa;
     border-top: 1px solid #f0f0f0;
 }
 
 .subHeader {
-    padding: 1rem 1.5rem;
+    padding: 0.85rem 1.25rem;
     display: flex;
     justify-content: space-between;
     align-items: center;
@@ -613,9 +728,9 @@
 .subTitle {
     display: flex;
     align-items: center;
-    gap: 0.5rem;
-    font-weight: 750;
-    font-size: 0.85rem;
+    gap: 0.4rem;
+    font-weight: 700;
+    font-size: 0.82rem;
     color: #111;
 }
 
@@ -625,311 +740,488 @@
     font-weight: 600;
     display: flex;
     align-items: center;
-    gap: 0.3rem;
+    gap: 0.25rem;
 }
 
 .bidHistory {
-    padding: 0 1.5rem 1.5rem;
+    padding: 0 1.25rem 1.25rem;
     display: flex;
     flex-direction: column;
-    gap: 0.6rem;
+    gap: 0.5rem;
 }
 
 .bidRow {
     background: white;
     border: 1px solid #f0f0f0;
-    padding: 0.85rem 1.1rem;
-    border-radius: 12px;
+    padding: 0.7rem 1rem;
+    border-radius: 10px;
     display: flex;
     justify-content: space-between;
     align-items: center;
+    transition: border-color 0.15s;
 }
+
+.bidRow:hover { border-color: #e5e5e5; }
 
 .bidderName {
     display: block;
-    font-weight: 750;
-    font-size: 0.9rem;
+    font-weight: 700;
+    font-size: 0.875rem;
     color: #111;
 }
 
 .bidTimestamp {
-    font-size: 0.7rem;
+    font-size: 0.68rem;
     color: #bbb;
     font-weight: 500;
+    margin-top: 1px;
 }
 
 .bidPrice {
-    font-size: 1rem;
-    font-weight: 850;
+    font-size: 0.95rem;
+    font-weight: 800;
     color: #10b981;
 }
 
-/* Queue Styles */
+/* ---------- Queue (vertical list in sidebar) ---------- */
+.queueGrid {
+    padding: 0.75rem;
+    display: flex;
+    flex-direction: column;
+    gap: 0.6rem;
+}
+
+.queueGridItem {
+    display: flex;
+    align-items: center;
+    gap: 0.75rem;
+    padding: 0.75rem;
+    background: #fafafa;
+    border-radius: 12px;
+    border: 1px solid #f0f0f0;
+    transition: all 0.2s;
+}
+
+.queueGridItem:hover {
+    border-color: #e0e0e0;
+    background: #f5f5f5;
+}
+
+.queueGridItem img {
+    width: 52px;
+    height: 52px;
+    border-radius: 9px;
+    object-fit: cover;
+    flex-shrink: 0;
+}
+
+.queueGridMeta {
+    flex: 1;
+    min-width: 0;
+}
+
+.queueGridMeta h4 {
+    font-size: 0.82rem;
+    font-weight: 700;
+    margin: 0 0 2px;
+    color: #111;
+    line-height: 1.3;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+}
+
+.queueGridMeta span {
+    font-size: 0.72rem;
+    color: #888;
+    font-weight: 500;
+}
+
+/* Legacy horizontal queue (kept for compatibility) */
 .queueList {
-    padding: 2rem;
+    padding: 1.25rem;
     display: flex;
     flex-direction: row;
-    gap: 1.5rem;
+    gap: 1rem;
     overflow-x: auto;
     scrollbar-width: none;
     -ms-overflow-style: none;
 }
 
-.queueList::-webkit-scrollbar {
-    display: none;
-}
+.queueList::-webkit-scrollbar { display: none; }
 
 .queueItem {
     display: flex;
     flex-direction: column;
     align-items: center;
-    gap: 1rem;
-    padding: 1.25rem;
-    background: #fff;
-    border-radius: 18px;
-    border: 1px solid #f5f5f5;
-    transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
-    min-width: 160px;
+    gap: 0.75rem;
+    padding: 1rem;
+    background: #fafafa;
+    border-radius: 14px;
+    border: 1px solid #f0f0f0;
+    transition: all 0.2s;
+    min-width: 140px;
+    flex-shrink: 0;
 }
 
 .queueItem:hover {
-    border-color: #f0f0f0;
-    background: #fff;
+    border-color: #e0e0e0;
+    background: #f5f5f5;
 }
 
 .queueItem img {
-    width: 80px;
-    height: 80px;
-    border-radius: 14px;
+    width: 72px;
+    height: 72px;
+    border-radius: 10px;
     object-fit: cover;
-    box-shadow: 0 8px 16px rgba(0, 0, 0, 0.05);
+}
+
+.queueMeta {
+    text-align: center;
 }
 
 .queueMeta h4 {
-    font-size: 0.9rem;
-    font-weight: 750;
-    margin: 0 0 1px;
+    font-size: 0.82rem;
+    font-weight: 700;
+    margin: 0 0 2px;
     color: #111;
+    line-height: 1.3;
 }
 
 .queueMeta span {
-    font-size: 0.75rem;
+    font-size: 0.72rem;
     color: #888;
     font-weight: 500;
 }
 
 .setNextBtn {
-    margin-left: auto;
     background: #111;
     color: white;
     border: none;
-    padding: 0.5rem 1rem;
-    border-radius: 8px;
-    font-size: 0.75rem;
-    font-weight: 750;
+    padding: 0.4rem 0.7rem;
+    border-radius: 7px;
+    font-size: 0.72rem;
+    font-weight: 700;
     cursor: pointer;
-    transition: transform 0.2s;
+    transition: background 0.15s;
+    flex-shrink: 0;
+    white-space: nowrap;
 }
 
-.setNextBtn:hover {
-    transform: scale(1.02);
+.setNextBtn:hover { background: #333; }
+
+.goLiveQueueBtn {
+    flex-shrink: 0;
+    background: var(--color-primary);
+    color: white;
+    border: none;
+    padding: 0.35rem 0.6rem;
+    border-radius: 7px;
+    font-size: 0.68rem;
+    font-weight: 700;
+    cursor: pointer;
+    white-space: nowrap;
+    transition: background 0.15s;
+}
+
+.goLiveQueueBtn:hover { background: #B71C1C; }
+
+.queueGridItemFirst {
+    border-color: #D32F2F;
+    background: #fff8f8;
+}
+
+.upNextBadge {
+    flex-shrink: 0;
+    background: #D32F2F;
+    color: white;
+    font-size: 0.65rem;
+    font-weight: 700;
+    padding: 0.28rem 0.5rem;
+    border-radius: 6px;
+    white-space: nowrap;
 }
 
 .viewInventoryBtn {
-    font-size: 0.8rem;
+    font-size: 0.78rem;
     color: #111;
-    font-weight: 750;
+    font-weight: 700;
     text-decoration: underline;
 }
 
-/* Side Metrics */
+/* ---------- Stats Bar (viewers / likes / shares) ---------- */
+.statsBar {
+    background: white;
+    border: 1px solid #f0f0f0;
+    border-radius: 14px;
+    padding: 1rem 1.25rem;
+    display: flex;
+    align-items: center;
+    justify-content: space-around;
+    gap: 0.5rem;
+    box-shadow: 0 1px 4px rgba(0, 0, 0, 0.03);
+}
+
+.statBarItem {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 0.15rem;
+    flex: 1;
+}
+
+.statBarValue {
+    font-size: 1.35rem;
+    font-weight: 900;
+    color: #111;
+    line-height: 1.1;
+}
+
+.statBarLabel {
+    font-size: 0.68rem;
+    font-weight: 600;
+    color: #aaa;
+    text-transform: uppercase;
+    letter-spacing: 0.05em;
+}
+
+.statBarDivider {
+    width: 1px;
+    height: 36px;
+    background: #f0f0f0;
+    flex-shrink: 0;
+}
+
+/* ---------- Bidder avatar ---------- */
+.bidderAvatar {
+    width: 30px;
+    height: 30px;
+    border-radius: 50%;
+    background: #f0f0f0;
+    border: 1px solid #e5e5e5;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 0.72rem;
+    font-weight: 800;
+    color: #555;
+    flex-shrink: 0;
+}
+
+.bidInfo {
+    display: flex;
+    flex-direction: column;
+    gap: 1px;
+    flex: 1;
+    min-width: 0;
+}
+
+/* ---------- Clear chat button ---------- */
+.clearChatBtn {
+    background: none;
+    border: none;
+    font-size: 0.75rem;
+    color: #bbb;
+    font-weight: 600;
+    cursor: pointer;
+    padding: 0.2rem 0.4rem;
+    border-radius: 5px;
+    transition: color 0.15s;
+}
+
+.clearChatBtn:hover { color: #D32F2F; }
+
+/* ---------- Metrics (legacy — kept for desktop) ---------- */
 .metricsGrid {
-    padding: 1.25rem 1.5rem;
+    padding: 1rem 1.25rem;
     display: grid;
     grid-template-columns: 1fr;
-    gap: 0.75rem;
+    gap: 0.55rem;
 }
 
 .metricItem {
     display: flex;
     align-items: center;
-    gap: 1.25rem;
-    padding: 1.25rem;
-    background: linear-gradient(135deg, #fff 0%, #fafafa 100%);
+    gap: 1rem;
+    padding: 0.9rem 1.1rem;
+    background: #fafafa;
     border: 1px solid #f0f0f0;
-    border-radius: 18px;
-    transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
-    box-shadow: 0 2px 6px rgba(0, 0, 0, 0.02);
+    border-radius: 12px;
+    transition: all 0.2s;
 }
 
 .metricItem:hover {
-    border-color: #e0e0e0;
-    transform: translateY(-3px);
-    box-shadow: 0 8px 20px rgba(0, 0, 0, 0.06);
+    border-color: #e5e5e5;
+    background: #f5f5f5;
 }
 
 .metricIcon {
-    width: 32px;
-    height: 32px;
-    background: #fff;
-    border: 1px solid #f0f0f0;
+    width: 30px;
+    height: 30px;
+    background: white;
+    border: 1px solid #ebebeb;
     border-radius: 8px;
     display: flex;
     align-items: center;
     justify-content: center;
-    color: #111;
+    color: #555;
+    flex-shrink: 0;
 }
 
-.metricIcon svg {
-    width: 16px;
-    height: 16px;
-}
+.metricIcon svg { width: 15px; height: 15px; }
 
 .metricLabel {
     font-size: 0.8rem;
     font-weight: 600;
-    color: #888;
+    color: #777;
     flex: 1;
 }
 
 .metricValue {
-    font-size: 1.15rem;
-    font-weight: 850;
+    font-size: 1.1rem;
+    font-weight: 800;
     color: #111;
 }
 
-/* Side Chat */
-.chatCard {
-    flex: 1;
-}
+/* ---------- Chat ---------- */
+.chatCard { flex: 1; }
 
 .chatBox {
-    flex: 1;
     display: flex;
     flex-direction: column;
-    min-height: 0;
+    height: 300px;
 }
 
 .commentList {
     flex: 1;
     overflow-y: auto;
-    padding: 1.25rem 1.5rem;
+    padding: 1rem 1.25rem;
     display: flex;
     flex-direction: column;
-    gap: 1rem;
+    gap: 0.8rem;
 }
 
 .commentHeader {
     display: flex;
     justify-content: space-between;
-    margin-bottom: 0.2rem;
+    margin-bottom: 0.15rem;
+    align-items: baseline;
 }
 
 .userName {
-    font-weight: 750;
-    font-size: 0.8rem;
+    font-weight: 700;
+    font-size: 0.78rem;
+    color: #111;
 }
 
 .commentTime {
-    font-size: 0.65rem;
+    font-size: 0.63rem;
     color: #ccc;
-    font-weight: 600;
+    font-weight: 500;
 }
 
 .commentText {
-    font-size: 0.85rem;
-    line-height: 1.4;
+    font-size: 0.82rem;
+    line-height: 1.45;
     color: #555;
     margin: 0;
-    font-weight: 450;
+}
+
+.emptyChat {
+    font-size: 0.82rem;
+    color: #bbb;
+    text-align: center;
+    padding: 2rem 1rem;
+    line-height: 1.5;
+    margin: 0;
 }
 
 .chatInputArea {
-    padding: 1rem 1.5rem;
-    background: #fff;
+    padding: 0.85rem 1.25rem;
     border-top: 1px solid #f0f0f0;
     display: flex;
-    gap: 0.6rem;
+    gap: 0.5rem;
     align-items: flex-end;
 }
 
 .announcementInput {
     flex: 1;
-    background: #fafafa;
-    border: 1.5px solid #eee;
-    padding: 0.75rem 1rem;
-    border-radius: 12px;
-    font-size: 0.85rem;
+    background: #f8f8f8;
+    border: 1.5px solid #ebebeb;
+    padding: 0.6rem 0.85rem;
+    border-radius: 10px;
+    font-size: 0.82rem;
     font-family: inherit;
     outline: none;
     resize: none;
-    min-height: 40px;
-    max-height: 80px;
-    transition: all 0.2s;
+    min-height: 38px;
+    max-height: 72px;
+    transition: all 0.15s;
+    color: #111;
 }
 
 .announcementInput:focus {
-    border-color: #111;
-    background: #fff;
+    border-color: #ccc;
+    background: white;
 }
 
 .chatSendBtn {
-    width: 40px;
-    height: 40px;
+    width: 36px;
+    height: 36px;
     background: #111;
     color: white;
     border: none;
-    border-radius: 10px;
+    border-radius: 9px;
     display: flex;
     align-items: center;
     justify-content: center;
     cursor: pointer;
     flex-shrink: 0;
-    transition: all 0.2s;
+    transition: all 0.15s;
 }
 
-.chatSendBtn:disabled {
-    opacity: 0.2;
-}
+.chatSendBtn:disabled { opacity: 0.2; cursor: not-allowed; }
+.chatSendBtn:not(:disabled):hover { background: #333; }
 
-.chatSendBtn:not(:disabled):hover {
-    transform: translateY(-1px);
-    box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);
-}
-
-/* Empty state hint */
+/* ---------- Misc ---------- */
 .emptyHint {
-    font-size: 0.875rem;
+    font-size: 0.82rem;
     color: #999;
-    margin: 0.5rem 0 1rem;
+    margin: 0.4rem 0 0.85rem;
 }
 
-.completedList {
-    padding: 1.5rem 2rem;
+.emptyQueue {
+    padding: 2rem;
+    text-align: center;
 }
+
+.emptyQueue p { font-size: 0.85rem; color: #bbb; margin: 0 0 0.5rem; }
+.emptyQueue a { font-size: 0.82rem; color: #D32F2F; font-weight: 700; }
+
+.completedList { padding: 1.25rem 1.5rem; }
 
 .completedGrid {
     display: grid;
-    grid-template-columns: repeat(auto-fill, minmax(200px, 1fr));
-    gap: 1.5rem;
+    grid-template-columns: repeat(auto-fill, minmax(180px, 1fr));
+    gap: 1rem;
 }
 
 .completedItem {
-    background: #fff;
+    background: white;
     border: 1px solid #f0f0f0;
-    border-radius: 16px;
+    border-radius: 14px;
     overflow: hidden;
     transition: all 0.2s;
 }
 
 .completedItem:hover {
     transform: translateY(-2px);
-    box-shadow: 0 4px 12px rgba(0, 0, 0, 0.05);
+    box-shadow: 0 4px 12px rgba(0, 0, 0, 0.06);
 }
 
 .completedImage {
     position: relative;
-    height: 120px;
+    height: 110px;
 }
 
 .completedImage img {
@@ -940,24 +1232,22 @@
 
 .completedBadge {
     position: absolute;
-    top: 10px;
-    right: 10px;
+    top: 8px;
+    right: 8px;
     background: rgba(0, 0, 0, 0.7);
     color: white;
-    padding: 2px 8px;
+    padding: 2px 7px;
     border-radius: 4px;
-    font-size: 0.65rem;
+    font-size: 0.62rem;
     font-weight: 800;
 }
 
-.completedInfo {
-    padding: 1rem;
-}
+.completedInfo { padding: 0.875rem; }
 
 .completedInfo h4 {
-    margin: 0 0 0.5rem 0;
-    font-size: 0.9rem;
-    font-weight: 750;
+    margin: 0 0 0.4rem;
+    font-size: 0.875rem;
+    font-weight: 700;
     color: #111;
 }
 
@@ -968,287 +1258,112 @@
 }
 
 .finalPrice {
-    font-size: 1rem;
-    font-weight: 850;
+    font-size: 0.95rem;
+    font-weight: 800;
     color: #10b981;
 }
 
 .bidCount {
-    font-size: 0.75rem;
-    color: #999;
+    font-size: 0.72rem;
+    color: #aaa;
     font-weight: 600;
 }
 
 .emptyCompleted {
     padding: 2rem;
     text-align: center;
-    color: #aaa;
-    font-size: 0.9rem;
+    color: #bbb;
+    font-size: 0.875rem;
 }
 
-/* Responsive Design */
-@media (max-width: 1200px) {
-    .controlRoom {
-        grid-template-columns: 1fr;
-    }
-
-    .videoContainer {
-        height: 400px;
-    }
-
-    .productTitle {
-        font-size: 1.15rem;
-    }
-
-    .productStatsGrid {
-        grid-template-columns: 1fr;
-        gap: 0.75rem;
-    }
-
-    .statCardValue {
-        font-size: 1.5rem;
-    }
-}
-
-@media (max-width: 768px) {
-    .header {
-        padding: 1rem 1.25rem;
-        flex-direction: column;
-        gap: 1rem;
-        align-items: flex-start;
-    }
-
-    .headerActions {
-        width: 100%;
-        flex-direction: column;
-    }
-
-    .addBtnSmall,
-    .liveControlBtn {
-        width: 100%;
-        justify-content: center;
-    }
-
-    .controlRoom {
-        padding: 1rem;
-        gap: 1rem;
-    }
-
-    .videoContainer {
-        height: 300px;
-    }
-
-    .productDetailsSection {
-        padding: 1.25rem 1.5rem;
-    }
-
-    .productTitle {
-        font-size: 1.1rem;
-    }
-
-    .statCardValue {
-        font-size: 1.5rem;
-    }
-
-    .statCard {
-        padding: 0.875rem 1rem;
-    }
-
-    .livePulseBadge {
-        top: 1rem;
-        right: 1rem;
-        padding: 0.5rem 1rem;
-        font-size: 0.8rem;
-    }
-
-    .cameraControls {
-        bottom: 1rem;
-        gap: 0.75rem;
-    }
-
-    .controlBtn {
-        width: 48px;
-        height: 48px;
-    }
-
-    .startCameraBtn {
-        padding: 1rem 2rem;
-        font-size: 1rem;
-    }
-}
-
-@media (max-width: 480px) {
-    .title {
-        font-size: 1.75rem;
-    }
-
-    .videoContainer {
-        height: 250px;
-    }
-
-    .productTitle {
-        font-size: 1rem;
-    }
-
-    .statCard {
-        padding: 0.75rem 0.875rem;
-    }
-
-    .statCardLabel {
-        font-size: 0.65rem;
-        margin-bottom: 0.4rem;
-    }
-
-    .statCardValue {
-        font-size: 1.25rem;
-    }
-
-    .productDetailsSection {
-        padding: 1rem 1.25rem;
-    }
-}
-
-/* Recent Winners Section */
-.winnersContainer {
+/* ---------- Active Auction (non-video section) ---------- */
+.activeItemContent {
+    padding: 1.25rem;
     display: flex;
-    flex-direction: column;
-    gap: 1rem;
-    padding: 1rem 0;
+    gap: 1.5rem;
+    align-items: center;
 }
 
-.winnerCard {
-    display: flex;
-    flex-direction: column;
-    gap: 1rem;
-    padding: 1rem;
-    background: #fafafa;
+.itemShowcase {
+    width: 200px;
+    height: 155px;
+    position: relative;
     border-radius: 12px;
-    border: 1px solid #f0f0f0;
-    transition: all 0.2s;
-}
-
-.winnerCard:hover {
-    background: #f5f5f5;
-    border-color: #e0e0e0;
-}
-
-.winnerProduct {
-    display: flex;
-    align-items: center;
-    gap: 0.75rem;
-}
-
-.winnerProductImg {
-    width: 60px;
-    height: 60px;
-    object-fit: cover;
-    border-radius: 8px;
-    border: 1px solid #eee;
-}
-
-.winnerProductInfo {
-    display: flex;
-    flex-direction: column;
-    gap: 0.25rem;
-}
-
-.winnerProductInfo h4 {
-    margin: 0;
-    font-size: 0.9rem;
-    font-weight: 650;
-    color: #111;
-    line-height: 1.3;
-}
-
-.winnerEndDate {
-    font-size: 0.75rem;
-    color: #999;
-    font-weight: 500;
-}
-
-.winnerInfo {
-    display: flex;
-    align-items: center;
-    gap: 0.75rem;
-    padding: 0.75rem;
-    background: white;
-    border-radius: 10px;
-    border: 1px solid #eee;
-}
-
-.winnerAvatar {
-    width: 40px;
-    height: 40px;
-    border-radius: 50%;
-    background: #f0f0f0;
-    display: flex;
-    align-items: center;
-    justify-content: center;
-    color: #999;
     overflow: hidden;
+    background: #fafafa;
     flex-shrink: 0;
 }
 
-.winnerAvatar img {
-    width: 100%;
-    height: 100%;
-    object-fit: cover;
+.itemImage { width: 100%; height: 100%; object-fit: cover; }
+
+.liveTag {
+    position: absolute;
+    top: 10px;
+    left: 10px;
+    background: rgba(0, 0, 0, 0.8);
+    color: white;
+    padding: 3px 8px;
+    border-radius: 5px;
+    font-size: 0.6rem;
+    font-weight: 800;
+    display: flex;
+    align-items: center;
+    gap: 4px;
 }
 
-.winnerDetails {
+.tagDot {
+    width: 4px;
+    height: 4px;
+    background: #ff4d4d;
+    border-radius: 50%;
+}
+
+.itemData { flex: 1; }
+
+.itemName {
+    font-size: 1.3rem;
+    font-weight: 800;
+    color: #111;
+    margin: 0 0 0.875rem;
+    letter-spacing: -0.02em;
+}
+
+.itemStats { display: flex; gap: 2rem; }
+
+.statBox {
     display: flex;
     flex-direction: column;
-    gap: 0.15rem;
-    flex: 1;
+    gap: 0.2rem;
 }
 
-.winnerLabel {
-    font-size: 0.7rem;
-    color: #999;
-    font-weight: 600;
+.statLabel {
+    font-size: 0.65rem;
+    color: #aaa;
+    font-weight: 700;
     text-transform: uppercase;
-    letter-spacing: 0.5px;
+    letter-spacing: 0.05em;
 }
 
-.winnerName {
-    font-size: 0.9rem;
+.statValue {
+    font-size: 1.3rem;
+    font-weight: 850;
     color: #111;
-    font-weight: 650;
 }
 
-.winnerBid {
-    font-size: 1rem;
-    color: #16a34a;
-    font-weight: 750;
+.timeValue {
+    display: flex;
+    align-items: center;
+    gap: 0.35rem;
+    font-size: 1.2rem;
+    font-weight: 800;
+    color: #D32F2F;
 }
 
-.winnerBadge {
-    font-size: 1.5rem;
-    line-height: 1;
-}
-
-.noWinner {
-    padding: 1rem;
-    text-align: center;
-    background: #fafafa;
-    border-radius: 8px;
-    border: 1px dashed #ddd;
-}
-
-.noWinner span {
-    font-size: 0.85rem;
-    color: #999;
-    font-weight: 500;
-}
-
-/* Auction End Modal */
+/* ---------- Auction End Modal ---------- */
 .modalOverlay {
     position: fixed;
-    top: 0;
-    left: 0;
-    right: 0;
-    bottom: 0;
-    background: rgba(0, 0, 0, 0.6);
+    inset: 0;
+    background: rgba(0, 0, 0, 0.5);
     backdrop-filter: blur(4px);
     display: flex;
     align-items: center;
@@ -1258,134 +1373,595 @@
 }
 
 @keyframes fadeIn {
-    from {
-        opacity: 0;
-    }
-    to {
-        opacity: 1;
-    }
+    from { opacity: 0; }
+    to   { opacity: 1; }
 }
 
 .modalContent {
     background: white;
     border-radius: 16px;
-    padding: 2rem;
-    max-width: 440px;
+    padding: 1.75rem;
+    max-width: 400px;
     width: 90%;
-    box-shadow: 0 20px 60px rgba(0, 0, 0, 0.3);
-    animation: slideUp 0.3s ease-out;
+    box-shadow: 0 16px 48px rgba(0, 0, 0, 0.2);
     text-align: center;
+    animation: slideUp 0.25s ease-out;
 }
 
 @keyframes slideUp {
-    from {
-        transform: translateY(20px);
-        opacity: 0;
-    }
-    to {
-        transform: translateY(0);
-        opacity: 1;
-    }
+    from { transform: translateY(16px); opacity: 0; }
+    to   { transform: translateY(0);    opacity: 1; }
 }
 
-.modalIcon {
-    margin-bottom: 1.5rem;
-}
-
-.iconCircle {
-    width: 80px;
-    height: 80px;
-    margin: 0 auto;
-    background: linear-gradient(135deg, #fef3c7 0%, #fde68a 100%);
-    border-radius: 50%;
-    display: flex;
-    align-items: center;
-    justify-content: center;
-    font-size: 2.5rem;
-    box-shadow: 0 8px 24px rgba(251, 191, 36, 0.3);
-}
+.modalIcon { margin-bottom: 1.25rem; font-size: 2.5rem; }
 
 .modalTitle {
-    font-size: 1.75rem;
+    font-size: 1.25rem;
     font-weight: 800;
     color: #111;
-    margin: 0 0 1.5rem 0;
-    letter-spacing: -0.02em;
+    margin: 0 0 1rem;
 }
 
 .modalBody {
-    margin-bottom: 2rem;
+    display: flex;
+    flex-direction: column;
+    gap: 0.65rem;
+    margin-bottom: 1.25rem;
 }
 
 .winnerInfo,
 .priceInfo {
-    background: #f9fafb;
-    border-radius: 12px;
-    padding: 1.25rem;
-    margin-bottom: 1rem;
-    text-align: left;
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    padding: 0.75rem 1rem;
+    background: #fafafa;
+    border-radius: 10px;
+    border: 1px solid #f0f0f0;
 }
 
 .winnerLabel,
 .priceLabel {
     font-size: 0.75rem;
-    font-weight: 600;
-    text-transform: uppercase;
-    letter-spacing: 0.5px;
     color: #888;
-    margin-bottom: 0.5rem;
+    font-weight: 600;
 }
 
 .winnerValue {
-    font-size: 1.25rem;
+    font-size: 0.9rem;
     font-weight: 700;
     color: #111;
 }
 
 .priceValue {
-    font-size: 1.75rem;
+    font-size: 1rem;
     font-weight: 800;
-    color: #16a34a;
-    display: flex;
-    align-items: center;
-    gap: 0.5rem;
+    color: #10b981;
 }
 
 .notificationNote {
-    margin-top: 1.25rem;
-    padding: 1rem;
-    background: #e0f2fe;
-    border-radius: 10px;
-    font-size: 0.9rem;
-    color: #0369a1;
-    font-weight: 500;
-    border: 1px solid #bae6fd;
+    font-size: 0.78rem;
+    color: #999;
+    line-height: 1.5;
 }
 
 .noWinnerText {
-    font-size: 1rem;
-    color: #666;
-    line-height: 1.6;
-    margin: 0;
-    padding: 1rem;
+    font-size: 0.875rem;
+    color: #777;
+    line-height: 1.5;
 }
 
 .modalBtn {
-    width: 100%;
-    padding: 1rem;
-    background: linear-gradient(135deg, #673AB7, #9C27B0);
+    background: #111;
     color: white;
     border: none;
+    padding: 0.75rem 2.5rem;
     border-radius: 10px;
-    font-size: 1rem;
+    font-size: 0.9rem;
     font-weight: 700;
     cursor: pointer;
-    transition: all 0.2s;
-    text-transform: uppercase;
-    letter-spacing: 0.5px;
+    transition: all 0.15s;
 }
 
-.modalBtn:hover {
-    transform: translateY(-2px);
-    box-shadow: 0 8px 20px rgba(103, 58, 183, 0.4);
+.modalBtn:hover { background: #2a2a2a; }
+
+/* ---------- Pre-Live Setup Modal ---------- */
+.setupModalContent {
+    background: white;
+    border-radius: 16px;
+    padding: 1.75rem;
+    max-width: 420px;
+    width: 92%;
+    box-shadow: 0 16px 48px rgba(0, 0, 0, 0.22);
+    text-align: left;
+    animation: slideUp 0.25s ease-out;
+}
+
+.setupModalTitle {
+    font-size: 1.15rem;
+    font-weight: 800;
+    color: #111;
+    margin: 0 0 0.25rem;
+}
+
+.setupModalSub {
+    font-size: 0.8rem;
+    color: #999;
+    margin: 0 0 1.1rem;
+}
+
+.setupPreviewWrap {
+    width: 100%;
+    aspect-ratio: 4/3;
+    background: #111;
+    border-radius: 12px;
+    overflow: hidden;
+    margin-bottom: 1rem;
+    position: relative;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+}
+
+.setupPreviewVideo {
+    width: 100%;
+    height: 100%;
+    object-fit: cover;
+    transform: scaleX(-1);
+}
+
+.setupPreviewBlocked {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 0.5rem;
+    color: #666;
+    font-size: 0.78rem;
+    font-weight: 600;
+}
+
+.setupPermList {
+    display: flex;
+    flex-direction: column;
+    gap: 0.5rem;
+    margin-bottom: 1.25rem;
+}
+
+.setupPermRow {
+    display: flex;
+    align-items: center;
+    gap: 0.5rem;
+    font-size: 0.8rem;
+    font-weight: 600;
+    color: #333;
+}
+
+.setupPermDot {
+    width: 8px;
+    height: 8px;
+    border-radius: 50%;
+    flex-shrink: 0;
+}
+
+.setupPermPending { background: #ccc; }
+.setupPermGranted { background: #10b981; box-shadow: 0 0 6px rgba(16,185,129,0.4); }
+.setupPermDenied  { background: #D32F2F; }
+
+.setupPermStatus {
+    margin-left: auto;
+    font-size: 0.72rem;
+    color: #999;
+    font-weight: 500;
+}
+
+.setupActions {
+    display: flex;
+    gap: 0.65rem;
+}
+
+.setupCancelBtn {
+    flex: 1;
+    padding: 0.7rem;
+    background: #f5f5f5;
+    border: none;
+    border-radius: 10px;
+    font-size: 0.85rem;
+    font-weight: 700;
+    color: #555;
+    cursor: pointer;
+    transition: background 0.15s;
+}
+
+.setupCancelBtn:hover { background: #ebebeb; }
+
+.setupStartBtn {
+    flex: 2;
+    padding: 0.7rem;
+    background: #D32F2F;
+    border: none;
+    border-radius: 10px;
+    font-size: 0.85rem;
+    font-weight: 700;
+    color: white;
+    cursor: pointer;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    gap: 0.4rem;
+    transition: background 0.15s;
+}
+
+.setupStartBtn:hover:not(:disabled) { background: #B71C1C; }
+
+.setupStartBtn:disabled {
+    background: #e0e0e0;
+    color: #bbb;
+    cursor: not-allowed;
+}
+
+/* ---------- Recent Winners ---------- */
+.winnersContainer {
+    display: flex;
+    flex-direction: column;
+    gap: 0.85rem;
+    padding: 0.85rem 0;
+}
+
+.winnerCard {
+    display: flex;
+    flex-direction: column;
+    gap: 0.85rem;
+    padding: 0.875rem;
+    background: #fafafa;
+    border-radius: 12px;
+    border: 1px solid #f0f0f0;
+    transition: all 0.2s;
+}
+
+.winnerCard:hover {
+    background: #f5f5f5;
+    border-color: #e5e5e5;
+}
+
+.winnerProduct {
+    display: flex;
+    align-items: center;
+    gap: 0.65rem;
+}
+
+.winnerProductImg {
+    width: 52px;
+    height: 52px;
+    object-fit: cover;
+    border-radius: 8px;
+    border: 1px solid #eee;
+    flex-shrink: 0;
+}
+
+.winnerProductInfo {
+    display: flex;
+    flex-direction: column;
+    gap: 0.2rem;
+}
+
+.winnerProductInfo h4 {
+    margin: 0;
+    font-size: 0.875rem;
+    font-weight: 700;
+    color: #111;
+    line-height: 1.3;
+}
+
+.winnerEndDate {
+    font-size: 0.72rem;
+    color: #aaa;
+    font-weight: 500;
+}
+
+.winnerInfo {
+    display: flex;
+    align-items: center;
+    gap: 0.65rem;
+    padding: 0.65rem 0.875rem;
+    background: white;
+    border-radius: 10px;
+    border: 1px solid #eee;
+}
+
+.winnerAvatar {
+    width: 36px;
+    height: 36px;
+    border-radius: 50%;
+    background: #f0f0f0;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    color: #aaa;
+    overflow: hidden;
+    flex-shrink: 0;
+}
+
+.winnerAvatar img { width: 100%; height: 100%; object-fit: cover; }
+
+.winnerDetails {
+    display: flex;
+    flex-direction: column;
+    gap: 0.1rem;
+    flex: 1;
+}
+
+.winnerBadge { font-size: 1.25rem; line-height: 1; }
+
+.noWinner {
+    padding: 0.875rem;
+    text-align: center;
+    background: #fafafa;
+    border-radius: 8px;
+    border: 1px dashed #ddd;
+}
+
+.noWinner span {
+    font-size: 0.82rem;
+    color: #aaa;
+    font-weight: 500;
+}
+
+/* ============================================================
+   RESPONSIVE
+   ============================================================ */
+
+@media (max-width: 1200px) {
+    .controlRoom {
+        grid-template-columns: 1fr 260px;
+    }
+
+    .videoContainer { height: 360px; }
+    .statCardValue { font-size: 1.35rem; }
+    .productTitle { font-size: 1.05rem; }
+}
+
+@media (max-width: 900px) {
+    .controlRoom {
+        grid-template-columns: 1fr;
+    }
+
+    .videoContainer { height: 340px; }
+}
+
+@media (max-width: 768px) {
+    /* Header */
+    .header {
+        padding: 0.85rem 1rem;
+        gap: 0.6rem;
+        position: sticky;
+        top: 0;
+        z-index: 20;
+    }
+
+    .title { font-size: 1.45rem; }
+    .statusBadge { font-size: 0.72rem; }
+
+    .liveControlBtn {
+        padding: 0.5rem 1rem;
+        font-size: 0.82rem;
+        border-radius: 9px;
+    }
+
+    /* Tab bar */
+    .mobileTabBar {
+        display: flex;
+        background: white;
+        border-bottom: 1px solid #f0f0f0;
+        position: sticky;
+        top: 60px;
+        z-index: 19;
+    }
+
+    .mobileTab {
+        flex: 1;
+        display: flex;
+        flex-direction: column;
+        align-items: center;
+        gap: 0.18rem;
+        padding: 0.65rem 0.5rem;
+        background: none;
+        border: none;
+        border-bottom: 2.5px solid transparent;
+        cursor: pointer;
+        font-size: 0.7rem;
+        font-weight: 700;
+        color: #bbb;
+        transition: all 0.15s;
+        min-width: 0;
+        white-space: nowrap;
+    }
+
+    .mobileTab svg { flex-shrink: 0; }
+
+    .mobileTabActive {
+        color: #D32F2F;
+        border-bottom-color: #D32F2F;
+    }
+
+    /* Layout — cards stack flush, no gap between them */
+    .controlRoom {
+        padding: 8px 8px;
+        gap: 0;
+        background: transparent;
+        min-height: unset;
+        width: 100%;
+        box-sizing: border-box;
+    }
+
+    .mainWorkArea,
+    .interactionPanel {
+        width: 100%;
+        min-width: 0;
+        box-sizing: border-box;
+    }
+
+    /* Cards: gentle radius, stack flush */
+    .liveAuctionArea { border-radius: 10px; margin-bottom: 0; }
+    .card            { border-radius: 10px; border-top: 1px solid #ebebeb; margin-top: -1px; }
+    .bidsChatCard    { border-radius: 10px; border-top: 1px solid #ebebeb; margin-top: -1px; }
+    .emptyState      { border-radius: 10px; margin-bottom: 0; }
+
+    /* Tab panel: hide inactive sections on mobile */
+    .tabSectionHidden { display: none; }
+
+    /* Video stats overlay */
+    .videoStatsOverlay { padding: 0.6rem 0.875rem 1.25rem; gap: 0.6rem; }
+    .videoStat { font-size: 0.72rem; padding: 0.2rem 0.45rem; gap: 0.25rem; }
+
+    /* Video */
+    .videoContainer { height: 240px; }
+    .livePulseBadge { top: 0.65rem; right: 0.65rem; padding: 0.32rem 0.7rem; font-size: 0.68rem; }
+    .cameraControls { bottom: 0.875rem; gap: 0.65rem; }
+    .controlBtn { width: 42px; height: 42px; }
+    .startCameraBtn { padding: 0.75rem 1.5rem; font-size: 0.875rem; }
+
+    /* Product details */
+    .productDetailsSection { padding: 0.875rem 1.1rem; }
+    .productTitle { font-size: 0.9rem; }
+    .statCard { padding: 0.7rem 0.875rem; }
+    .statCardValue { font-size: 1.2rem; }
+
+    /* Empty state */
+    .emptyState { padding: 2.25rem 1.25rem; }
+    .emptyState h2 { font-size: 1.15rem; margin: 0.85rem 0 0.35rem; }
+    .emptyState p { font-size: 0.82rem; margin-bottom: 1.1rem; }
+    .emptyStateBtn { padding: 0.65rem 1.25rem; font-size: 0.82rem; }
+
+    /* Card header */
+    .cardHeader { padding: 0.75rem 1rem; }
+
+    /* Combined bids+chat */
+    .bidsChatBody { min-height: 220px; max-height: 270px; }
+    .bidsChatLabel { padding: 0.4rem 0.65rem; font-size: 0.62rem; }
+    .bidsScroll { padding: 0.4rem; gap: 0.3rem; }
+    .chatScroll { padding: 0.4rem; gap: 0.4rem; }
+    .chatInputCompact { padding: 0.4rem 0.45rem; gap: 0.28rem; }
+
+    /* Queue */
+    .queueList { padding: 0.875rem 1rem; gap: 0.75rem; }
+    .queueItem { min-width: 120px; padding: 0.875rem 0.75rem; }
+    .queueItem img { width: 60px; height: 60px; }
+    .queueGridItem { padding: 0.55rem; gap: 0.5rem; border-radius: 9px; }
+    .queueGridItem img { width: 40px; height: 40px; border-radius: 7px; }
+    .queueGridMeta h4 { font-size: 0.75rem; }
+    .queueGridMeta span { font-size: 0.65rem; }
+    .setNextBtn { padding: 0.32rem 0.5rem; font-size: 0.65rem; border-radius: 6px; }
+}
+
+@media (max-width: 480px) {
+    .header { padding: 0.75rem 0.875rem; }
+    .title { font-size: 1.3rem; }
+    .liveControlBtn { padding: 0.45rem 0.85rem; font-size: 0.8rem; }
+
+    .mobileTabBar { top: 55px; }
+
+    .controlRoom { padding: 7px 7px; gap: 0; }
+    .videoContainer { height: 210px; }
+    .productDetailsSection { padding: 0.75rem 0.875rem; }
+    .productTitle { font-size: 0.875rem; }
+    .statCard { padding: 0.6rem 0.75rem; }
+    .statCardLabel { font-size: 0.62rem; }
+    .statCardValue { font-size: 1.1rem; }
+    .emptyState { padding: 2rem 1rem; }
+    .emptyState h2 { font-size: 1.05rem; }
+    .cardHeader { padding: 0.65rem 0.9rem; }
+    .bidsChatBody { min-height: 205px; max-height: 255px; }
+    .bidsChatLabel { padding: 0.35rem 0.55rem; }
+    .bidsScroll { padding: 0.35rem; }
+    .chatScroll { padding: 0.35rem; }
+    .chatInputCompact { padding: 0.35rem 0.4rem; }
+    .chatInputSm { font-size: 0.67rem; padding: 0.32rem 0.48rem; }
+    .chatSendBtnSm { width: 26px; height: 26px; }
+    .queueItem { min-width: 110px; }
+    .queueItem img { width: 56px; height: 56px; }
+    .queueGridItem { padding: 0.5rem; gap: 0.4rem; }
+    .queueGridItem img { width: 36px; height: 36px; }
+    .queueGridMeta h4 { font-size: 0.7rem; }
+    .setNextBtn { padding: 0.28rem 0.45rem; font-size: 0.62rem; }
+    .videoStatsOverlay { padding: 0.5rem 0.75rem 1rem; gap: 0.5rem; }
+    .videoStat { font-size: 0.68rem; padding: 0.18rem 0.4rem; }
+}
+
+@media (max-width: 360px) {
+    .header { padding: 0.65rem 0.75rem; gap: 0.5rem; }
+    .title { font-size: 1.15rem; }
+    .liveControlBtn { padding: 0.42rem 0.75rem; font-size: 0.77rem; gap: 0.25rem; }
+
+    .mobileTabBar { top: 51px; }
+    .mobileTab { padding: 0.58rem 0.35rem; font-size: 0.65rem; }
+
+    .controlRoom { padding: 6px 6px; gap: 0; }
+    .videoContainer { height: 190px; }
+    .productDetailsSection { padding: 0.65rem 0.75rem; }
+    .productTitle { font-size: 0.82rem; }
+    .productStatsGrid { gap: 0.5rem; }
+    .statCardValue { font-size: 1rem; }
+    .emptyState { padding: 1.75rem 0.875rem; }
+    .emptyState h2 { font-size: 0.95rem; }
+    .emptyState p { font-size: 0.78rem; }
+    .cardHeader { padding: 0.65rem 0.875rem; }
+    .bidsList { padding: 0.6rem 0.75rem; }
+    .bidRow { padding: 0.5rem 0.7rem; gap: 0.5rem; }
+    .bidderAvatar { width: 26px; height: 26px; font-size: 0.62rem; }
+    .queueList { padding: 0.65rem; }
+    .queueItem { min-width: 100px; padding: 0.7rem 0.55rem; }
+    .queueItem img { width: 52px; height: 52px; }
+    .chatBox { height: 245px; }
+    .chatInputArea { padding: 0.55rem 0.75rem; }
+    .bidsChatBody { min-height: 190px; max-height: 240px; }
+    .bidsChatLabel { font-size: 0.58rem; padding: 0.32rem 0.5rem; }
+    .bidRowCompact { padding: 0.32rem 0.38rem; gap: 0.28rem; }
+    .bidderAvatarSm { width: 20px; height: 20px; font-size: 0.55rem; }
+    .bidderNameSm { font-size: 0.65rem; }
+    .bidPriceSm { font-size: 0.63rem; }
+    .commentUserSm { font-size: 0.62rem; }
+    .commentTextSm { font-size: 0.63rem; }
+    .chatInputSm { font-size: 0.63rem; padding: 0.28rem 0.42rem; }
+    .chatSendBtnSm { width: 24px; height: 24px; border-radius: 6px; }
+    .videoStatsOverlay { padding: 0.45rem 0.65rem 0.875rem; gap: 0.4rem; }
+    .videoStat { font-size: 0.65rem; padding: 0.15rem 0.35rem; }
+}
+
+@media (max-width: 320px) {
+    .header { padding: 0.6rem 0.7rem; }
+    .title { font-size: 1.05rem; }
+    .liveControlBtn { padding: 0.38rem 0.65rem; font-size: 0.73rem; }
+
+    .mobileTabBar { top: 48px; }
+    .mobileTab { padding: 0.55rem 0.3rem; font-size: 0.62rem; }
+
+    .controlRoom { padding: 6px 5px; gap: 0; }
+    .videoContainer { height: 172px; }
+    .statCardValue { font-size: 0.95rem; }
+    .queueItem { min-width: 88px; }
+    .queueItem img { width: 46px; height: 46px; }
+    .queueGridItem { padding: 0.45rem; gap: 0.35rem; }
+    .queueGridItem img { width: 32px; height: 32px; border-radius: 6px; }
+    .queueGridMeta h4 { font-size: 0.65rem; }
+    .queueGridMeta span { font-size: 0.58rem; }
+    .setNextBtn { padding: 0.25rem 0.4rem; font-size: 0.58rem; }
+    .chatBox { height: 225px; }
+    .emptyState h2 { font-size: 0.9rem; }
+    .emptyState p { font-size: 0.75rem; }
+    .bidsChatBody { min-height: 178px; max-height: 225px; }
+    .bidsChatLabel { font-size: 0.56rem; padding: 0.28rem 0.45rem; }
+    .bidsScroll { padding: 0.28rem; gap: 0.25rem; }
+    .chatScroll { padding: 0.28rem; gap: 0.3rem; }
+    .chatInputCompact { padding: 0.28rem 0.35rem; }
+    .bidRowCompact { padding: 0.28rem 0.32rem; }
+    .bidderAvatarSm { width: 18px; height: 18px; font-size: 0.5rem; }
+    .bidderNameSm { font-size: 0.62rem; }
+    .bidPriceSm { font-size: 0.6rem; }
+    .commentUserSm { font-size: 0.6rem; }
+    .commentTextSm { font-size: 0.6rem; }
+    .chatInputSm { font-size: 0.6rem; padding: 0.25rem 0.38rem; }
+    .chatSendBtnSm { width: 22px; height: 22px; }
+    .videoStatsOverlay { padding: 0.4rem 0.6rem 0.75rem; gap: 0.35rem; }
+    .videoStat { font-size: 0.62rem; padding: 0.14rem 0.32rem; }
+    .addQueueBtn { padding: 0.32rem 0.6rem; font-size: 0.7rem; }
 }

@@ -1,16 +1,31 @@
 'use client';
 
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useRef } from 'react';
 import Link from 'next/link';
-import { ChevronLeft, Search, Filter, Plus } from 'lucide-react';
+import { ChevronLeft, Search, Filter, Plus, X } from 'lucide-react';
 import styles from './page.module.css';
 import { useAuth } from '@/context/AuthContext';
+
+const CONDITIONS = ['Brand New', 'Like New', 'Lightly Used', 'Used', 'Heavily Used', 'For Parts'];
 
 export default function SelectProductPage() {
     const { user } = useAuth();
     const [searchQuery, setSearchQuery] = useState('');
     const [products, setProducts] = useState([]);
     const [loading, setLoading] = useState(true);
+    const [filterOpen, setFilterOpen] = useState(false);
+    const [selectedCondition, setSelectedCondition] = useState('');
+    const filterRef = useRef(null);
+
+    useEffect(() => {
+        const handleClickOutside = (e) => {
+            if (filterRef.current && !filterRef.current.contains(e.target)) {
+                setFilterOpen(false);
+            }
+        };
+        document.addEventListener('mousedown', handleClickOutside);
+        return () => document.removeEventListener('mousedown', handleClickOutside);
+    }, []);
 
     useEffect(() => {
         const fetchProducts = async () => {
@@ -29,9 +44,9 @@ export default function SelectProductPage() {
 
                 const responseData = await res.json();
                 if (res.ok) {
-                    // Filter out scheduled and active products
+                    // Only show draft/pending products ready to be scheduled
                     const availableProducts = (responseData.data || []).filter(
-                        p => p.status !== 'scheduled' && p.status !== 'active'
+                        p => p.status === 'draft' || p.status === 'pending' || !p.status
                     );
                     setProducts(availableProducts);
                 } else {
@@ -51,15 +66,20 @@ export default function SelectProductPage() {
         }
     }, [user]);
 
-    const filteredProducts = products.filter(product =>
-        product.name.toLowerCase().includes(searchQuery.toLowerCase())
-    );
+    const filteredProducts = products.filter(product => {
+        const matchesSearch = product.name.toLowerCase().includes(searchQuery.toLowerCase());
+        const matchesCondition = !selectedCondition ||
+            (product.condition || '').toLowerCase().replace(/_/g, ' ') === selectedCondition.toLowerCase();
+        return matchesSearch && matchesCondition;
+    });
 
     return (
         <div className={styles.container}>
             <header className={styles.header}>
                 <Link href="/seller/auctions" className={styles.backLink}>
-                    <ChevronLeft size={24} />
+                    <span className={styles.backLinkIcon}>
+                        <ChevronLeft size={18} strokeWidth={2.5} />
+                    </span>
                     <span>My Auctions</span>
                 </Link>
                 <div className={styles.titleArea}>
@@ -70,18 +90,42 @@ export default function SelectProductPage() {
 
             <div className={styles.controls}>
                 <div className={styles.searchBar}>
-                    <Search size={20} />
+                    <Search size={16} className={styles.searchIcon} />
                     <input
                         type="text"
-                        placeholder="Search your inventory..."
+                        placeholder="Search products..."
                         value={searchQuery}
                         onChange={(e) => setSearchQuery(e.target.value)}
                     />
+                    {searchQuery && (
+                        <button className={styles.clearBtn} onClick={() => setSearchQuery('')}>
+                            <X size={14} />
+                        </button>
+                    )}
                 </div>
-                <button className={styles.filterBtn}>
-                    <Filter size={20} />
-                    <span>Filter</span>
-                </button>
+                <div className={styles.filterWrapper} ref={filterRef}>
+                    <button
+                        className={`${styles.filterBtn} ${selectedCondition ? styles.filterActive : ''}`}
+                        onClick={() => setFilterOpen(prev => !prev)}
+                    >
+                        <Filter size={15} />
+                    </button>
+                    {filterOpen && (
+                        <div className={styles.filterDropdown}>
+                            <button
+                                className={`${styles.filterOption} ${!selectedCondition ? styles.filterOptionActive : ''}`}
+                                onClick={() => { setSelectedCondition(''); setFilterOpen(false); }}
+                            >All</button>
+                            {CONDITIONS.map(c => (
+                                <button
+                                    key={c}
+                                    className={`${styles.filterOption} ${selectedCondition === c ? styles.filterOptionActive : ''}`}
+                                    onClick={() => { setSelectedCondition(c); setFilterOpen(false); }}
+                                >{c}</button>
+                            ))}
+                        </div>
+                    )}
+                </div>
             </div>
 
             {loading ? (
@@ -89,8 +133,8 @@ export default function SelectProductPage() {
             ) : (
                 <div className={styles.productGrid}>
                     {filteredProducts.length === 0 && !loading ? (
-                        <div style={{ gridColumn: '1 / -1', textAlign: 'center', padding: '2rem', color: '#666' }}>
-                            {searchQuery ? 'No products found matching your search.' : 'No products available for auction. Add products first.'}
+                        <div style={{ gridColumn: '1 / -1', textAlign: 'center', padding: '1.5rem', color: '#aaa', fontSize: '0.8rem' }}>
+                            {searchQuery ? 'No draft products match your search.' : 'No draft products available. Add a product first.'}
                         </div>
                     ) : (
                         filteredProducts.map((product) => (
@@ -104,7 +148,7 @@ export default function SelectProductPage() {
                                 </div>
                                 <div className={styles.productInfo}>
                                     <strong>{product.name}</strong>
-                                    <span style={{ textTransform: 'capitalize' }}>Status: {product.status}</span>
+                                    <span>Draft · Ready to schedule</span>
                                 </div>
                                 <Link href={`/seller/auctions/schedule?id=${product.products_id}`} className={styles.selectBtn}>
                                     Select for Auction

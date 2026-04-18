@@ -3,7 +3,7 @@
 import { useState, useEffect, Suspense } from 'react';
 import { useRouter, useSearchParams } from 'next/navigation';
 import BackButton from '@/components/BackButton';
-import { ChevronLeft, Gavel, Tag, Calendar, Clock, Info, DollarSign } from 'lucide-react';
+import { Gavel, Tag, Calendar, Clock, Info } from 'lucide-react';
 import { useSubmitLock } from '@/hooks/useSubmitLock';
 import styles from './page.module.css';
 import { useAuth } from '@/context/AuthContext';
@@ -18,6 +18,7 @@ function ScheduleAuctionPageInner() {
     const [formData, setFormData] = useState({
         startDate: '',
         startTime: '',
+        fixedPrice: '',
     });
     const { isSubmitting, runWithLock } = useSubmitLock();
     
@@ -60,8 +61,6 @@ function ScheduleAuctionPageInner() {
         fetchProduct();
     }, [productId]);
 
-    const handleBack = () => router.back();
-
     const handleSubmit = async (e) => {
         e.preventDefault();
         await runWithLock(async () => {
@@ -78,7 +77,7 @@ function ScheduleAuctionPageInner() {
                     seller_id: user.seller_id,
                     sale_type: saleType,
                     starting_bid: saleType === 'bid' ? productDetails?.reserve_price : null,
-                    buy_now_price: saleType === 'sale' ? productDetails?.buy_now_price : null,
+                    buy_now_price: saleType === 'sale' ? (parseFloat(formData.fixedPrice) || productDetails?.buy_now_price) : null,
                     start_date: formData.startDate,
                     start_time: formData.startTime,
                 };
@@ -196,7 +195,7 @@ function ScheduleAuctionPageInner() {
                                 </span>
                             )}
                         </div>
-                        <p style={{ "wordWrap": "break-word" }}>ID: {productId || '---'}</p>
+                        <p>ID: {productId ? `${productId.slice(0, 8)}…` : '---'}</p>
                     </div>
                 </div>
                 )}
@@ -230,7 +229,7 @@ function ScheduleAuctionPageInner() {
                                 </div>
                                 <div className={styles.typeText}>
                                     <strong>Bid it</strong>
-                                    <span>Live auction experience</span>
+                                    <span>Live auction</span>
                                 </div>
                             </div>
                             <div
@@ -241,37 +240,50 @@ function ScheduleAuctionPageInner() {
                                     <Tag size={24} />
                                 </div>
                                 <div className={styles.typeText}>
-                                    <strong>Just for sale</strong>
-                                    <span>Fixed price listing</span>
+                                    <strong>Fixed sale</strong>
+                                    <span>Set price listing</span>
                                 </div>
                             </div>
                         </div>
                     </div>
 
-                    {/* Display Already-Set Prices */}
+                    {/* Pricing */}
                     <div className={styles.section}>
                         <label className={styles.sectionLabel}>
                             {saleType === 'bid' ? 'Auction Pricing' : 'Fixed Pricing'}
                         </label>
-                        <div className={styles.priceDisplay}>
-                            <div className={styles.priceDisplayIcon}>
-                                <DollarSign size={24} />
-                            </div>
-                            <div className={styles.priceDisplayContent}>
-                                <div className={styles.priceDisplayLabel}>
-                                    {saleType === 'bid' ? 'Starting Bid (Reserve Price)' : 'Buy Now Price'}
+
+                        {saleType === 'bid' ? (
+                            <div className={styles.priceDisplay}>
+                                <div className={styles.priceDisplayIcon}>
+                                    <Gavel size={20} />
                                 </div>
-                                <div className={styles.priceDisplayValue}>
-                                    ₱{saleType === 'bid'
-                                        ? (productDetails?.reserve_price?.toLocaleString('en-PH', { minimumFractionDigits: 2, maximumFractionDigits: 2 }) || '0.00')
-                                        : (productDetails?.buy_now_price?.toLocaleString('en-PH', { minimumFractionDigits: 2, maximumFractionDigits: 2 }) || '0.00')
-                                    }
-                                </div>
-                                <div className={styles.priceDisplayNote}>
-                                    Price set during product creation
+                                <div className={styles.priceDisplayContent}>
+                                    <div className={styles.priceDisplayLabel}>Starting Bid (Reserve Price)</div>
+                                    <div className={styles.priceDisplayValue}>
+                                        ₱{productDetails?.reserve_price?.toLocaleString('en-PH', { minimumFractionDigits: 2, maximumFractionDigits: 2 }) || '0.00'}
+                                    </div>
+                                    <div className={styles.priceDisplayNote}>Price set during product creation</div>
                                 </div>
                             </div>
-                        </div>
+                        ) : (
+                            <div className={styles.field}>
+                                <label>Buy Now Price *</label>
+                                <div className={styles.inputWithIcon}>
+                                    <span className={styles.pesoIcon}>₱</span>
+                                    <input
+                                        type="number"
+                                        step="0.01"
+                                        min="0"
+                                        placeholder="0.00"
+                                        required={saleType === 'sale'}
+                                        value={formData.fixedPrice}
+                                        onChange={(e) => setFormData({ ...formData, fixedPrice: e.target.value })}
+                                    />
+                                </div>
+                                <small className={styles.fieldNote}>Set the fixed price buyers will pay</small>
+                            </div>
+                        )}
                     </div>
 
                     <div className={styles.section}>

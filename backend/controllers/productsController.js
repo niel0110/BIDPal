@@ -1,4 +1,6 @@
 import { supabase } from '../config/supabase.js';
+import { generatePriceRecommendation } from '../services/priceRecommendationService.js';
+import { createModerationCase } from '../services/violationService.js';
 
 // Fetch all products (with optional filters)
 export const getAllProducts = async (req, res) => {
@@ -217,6 +219,60 @@ export const createProduct = async (req, res) => {
 
     if (!data.success) {
       return res.status(400).json({ error: data.error || data.message || 'Failed to create product' });
+    }
+
+    // --- AUTOMATED MODERATION CHECKS ---
+    try {
+        const productDataForAI = {
+            name: productName,
+            description: description || '',
+            category: Array.isArray(categories) ? categories[0] : (categories || 'General'),
+            condition: condition || 'Good',
+            brand: brand || 'Generic'
+        };
+
+        const priceResult = await generatePriceRecommendation(productDataForAI);
+        
+        if (priceResult.success) {
+            const suggestedPrice = priceResult.recommendation.suggestedReservePrice || priceResult.recommendation.suggestedStartingBid;
+            const actualPrice = price ? parseFloat(price) : (starting_price ? parseFloat(starting_price) : 0);
+
+            if (suggestedPrice > 0 && actualPrice > 0) {
+                const deviation = Math.abs(actualPrice - suggestedPrice) / suggestedPrice;
+                
+                if (deviation > 0.5) {
+                    console.log(`⚠️  Price deviation alert: ${Math.round(deviation * 100)}% deviation from recommended ₱${suggestedPrice}`);
+                    
+                    // Flag for moderation
+                    await supabase
+                        .from('Products')
+                        .update({ status: 'under_review' })
+                        .eq('products_id', data.data.products_id);
+
+                    // Create moderation case
+                    await createModerationCase({
+                        user_id: user_id || null, // Might be null if only seller_id known, but we usually have it
+                        case_type: 'listing_moderation',
+                        priority: 'normal',
+                        related_id: data.data.products_id, // We'll assume the migration for related_id is pending or we'll use a Note
+                        evidence: {
+                            reason: 'Price deviation > 50%',
+                            suggested_price: suggestedPrice,
+                            actual_price: actualPrice,
+                            deviation_percent: Math.round(deviation * 100)
+                        }
+                    });
+
+                    return res.status(201).json({ 
+                        message: 'Product created and sent for moderation review due to price deviation.', 
+                        data: { ...data.data, status: 'under_review' } 
+                    });
+                }
+            }
+        }
+    } catch (modErr) {
+        console.error('Moderation check error (non-fatal):', modErr);
+        // We don't block product creation if moderation check fails
     }
 
     res.status(201).json({ message: data.message, data: data.data });

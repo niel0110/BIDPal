@@ -10,14 +10,15 @@ import {
     MoreVertical,
     Calendar
 } from 'lucide-react';
+import BackButton from '@/components/BackButton';
 import styles from './page.module.css';
 
 export default function Analytics() {
     const kpis = [
-        { label: 'Total Revenue', value: '₱ 0', change: '0%', isPositive: true, icon: <DollarSign size={24} />, color: 'purple' },
-        { label: 'Items Sold', value: '0', change: '0%', isPositive: true, icon: <ShoppingBag size={24} />, color: 'blue' },
-        { label: 'Avg. Bid Increase', value: '0%', change: '0%', isPositive: true, icon: <TrendingUp size={24} />, color: 'red' },
-        { label: 'New Followers', value: '0', change: '0%', isPositive: true, icon: <Users size={24} />, color: 'orange' },
+        { label: 'Total Revenue', value: '₱ 0', change: '0%', isPositive: true, icon: <DollarSign size={18} />, color: 'purple' },
+        { label: 'Items Sold', value: '0', change: '0%', isPositive: true, icon: <ShoppingBag size={18} />, color: 'blue' },
+        { label: 'Avg. Bid Increase', value: '0%', change: '0%', isPositive: true, icon: <TrendingUp size={18} />, color: 'red' },
+        { label: 'New Followers', value: '0', change: '0%', isPositive: true, icon: <Users size={18} />, color: 'orange' },
     ];
 
     const topProducts = [];
@@ -26,7 +27,8 @@ export default function Analytics() {
         <div className={styles.container}>
             <header className={styles.header}>
                 <div className={styles.titleGroup}>
-                    <h1>Analytics</h1>
+                    <BackButton label="Back" />
+                    <h1>Merchant Insights</h1>
                     <p>Track your business growth and performance insights.</p>
                 </div>
                 <div className={styles.timeFilter}>
@@ -36,35 +38,34 @@ export default function Analytics() {
             </header>
 
             {/* KPI Grid */}
-            <div className={styles.kpiGrid}>
+            <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '0.5rem', marginBottom: '1rem' }}>
                 {kpis.map((kpi, idx) => (
-                    <div key={idx} className={styles.kpiCard}>
-                        <div className={`${styles.iconBox} ${styles[kpi.color]}`}>
+                    <div key={idx} className={styles.kpiCard} style={{ flexDirection: 'column', alignItems: 'flex-start', padding: '0.75rem', gap: '0.4rem', borderRadius: '12px' }}>
+                        <div className={`${styles.iconBox} ${styles[kpi.color]}`} style={{ width: 36, height: 36, borderRadius: 10, flexShrink: 0 }}>
                             {kpi.icon}
                         </div>
                         <div className={styles.kpiInfo}>
-                            <span className={styles.kpiLabel}>{kpi.label}</span>
-                            <h2 className={styles.kpiValue}>{kpi.value}</h2>
-                            <div className={`${styles.kpiChange} ${kpi.isPositive ? styles.positive : styles.negative}`}>
-                                {kpi.isPositive ? <ArrowUpRight size={14} /> : <ArrowDownRight size={14} />}
-                                <span>{kpi.change} vs last month</span>
+                            <span className={styles.kpiLabel} style={{ fontSize: '0.62rem' }}>{kpi.label}</span>
+                            <h2 className={styles.kpiValue} style={{ fontSize: '1.1rem', margin: '0.1rem 0' }}>{kpi.value}</h2>
+                            <div className={`${styles.kpiChange} ${kpi.isPositive ? styles.positive : styles.negative}`} style={{ fontSize: '0.6rem' }}>
+                                {kpi.isPositive ? <ArrowUpRight size={11} /> : <ArrowDownRight size={11} />}
+                                <span>{kpi.change}</span>
                             </div>
                         </div>
                     </div>
                 ))}
             </div>
 
-            <div className={styles.mainGrid}>
+            <div className={styles.mainGrid} style={{ gap: '0.75rem', marginBottom: '0.75rem' }}>
                 {/* Sales Chart Mockup */}
-                <section className={styles.chartSection}>
-                    <div className={styles.sectionHeader}>
-                        <h3>Revenue Overview</h3>
+                <section className={styles.chartSection} style={{ padding: '0.9rem', borderRadius: 14 }}>
+                    <div className={styles.sectionHeader} style={{ marginBottom: '0.6rem' }}>
+                        <h3 style={{ fontSize: '0.9rem' }}>Revenue Overview</h3>
                         <button className={styles.iconBtn}><MoreVertical size={18} /></button>
                     </div>
-                    <div className={styles.chartContainer}>
-                        {/* Visual simulation of a bar chart */}
-                        <div className={styles.barChart}>
-                            {[0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0].map((h, i) => (
+                    <div className={styles.chartContainer} style={{ height: 130 }}>
+                        <div className={styles.barChart} style={{ height: 100 }}>
+                            {[0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0].map((_, i) => (
                                 <div key={i} className={styles.barWrapper}>
                                     <div className={styles.bar} style={{ height: `10%` }}>
                                         <div className={styles.barTooltip}>₱ 0</div>
@@ -77,7 +78,7 @@ export default function Analytics() {
                 </section>
 
                 {/* Top Products Table */}
-                <section className={styles.tableSection}>
+                <section className={styles.tableSection} style={{ padding: '0.9rem', borderRadius: 14 }}>
                     <div className={styles.sectionHeader}>
                         <h3>Top Performing Items</h3>
                         <button className={styles.textLink}>View All</button>
@@ -117,18 +118,18 @@ export default function Analytics() {
             </div>
 
             {/* Engagement Insights */}
-            <div className={styles.insightsGrid}>
-                <div className={styles.insightCard}>
-                    <h3>Peak Viewing Hours</h3>
-                    <p>Your auctions get 45% more engagement between <strong>7:00 PM - 9:00 PM</strong>.</p>
+            <div style={{ display: 'grid', gridTemplateColumns: '1fr', gap: '0.5rem' }}>
+                <div className={styles.insightCard} style={{ padding: '0.75rem 0.9rem', borderRadius: 12 }}>
+                    <h3 style={{ fontSize: '0.82rem', margin: '0 0 0.2rem 0' }}>Peak Viewing Hours</h3>
+                    <p style={{ fontSize: '0.75rem', margin: 0, lineHeight: 1.4 }}>Your auctions get 45% more engagement between <strong>7:00 PM - 9:00 PM</strong>.</p>
                 </div>
-                <div className={styles.insightCard}>
-                    <h3>Best Category</h3>
-                    <p><strong>Gadgets</strong> is your highest revenue generator this month.</p>
+                <div className={styles.insightCard} style={{ padding: '0.75rem 0.9rem', borderRadius: 12 }}>
+                    <h3 style={{ fontSize: '0.82rem', margin: '0 0 0.2rem 0' }}>Best Category</h3>
+                    <p style={{ fontSize: '0.75rem', margin: 0, lineHeight: 1.4 }}><strong>Gadgets</strong> is your highest revenue generator this month.</p>
                 </div>
-                <div className={styles.insightCard}>
-                    <h3>Tip!</h3>
-                    <p>Adding a "Flat Bid" countdown increases final prices by <strong>12%</strong> on average.</p>
+                <div className={styles.insightCard} style={{ padding: '0.75rem 0.9rem', borderRadius: 12 }}>
+                    <h3 style={{ fontSize: '0.82rem', margin: '0 0 0.2rem 0' }}>Tip!</h3>
+                    <p style={{ fontSize: '0.75rem', margin: 0, lineHeight: 1.4 }}>Adding a "Flat Bid" countdown increases final prices by <strong>12%</strong> on average.</p>
                 </div>
             </div>
         </div>
