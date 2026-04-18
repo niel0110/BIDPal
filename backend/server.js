@@ -18,13 +18,16 @@ const httpServer = createServer(app)
 // Socket.IO setup for real-time events (future native clients)
 const io = new SocketIOServer(httpServer, {
   cors: {
-    origin: process.env.FRONTEND_URL || '*',
-    methods: ['GET', 'POST']
+    origin: ["https://bidpal.shop", "https://www.bidpal.shop", "https://bid-pal-pink.vercel.app"],
+    methods: ['GET', 'POST'],
+    credentials: true
   }
 })
 
 app.use(cors({
   origin: [
+    'https://bidpal.shop',        // Your new production domain
+    'https://www.bidpal.shop',    // The www version of your domain
     'https://bid-pal-pink.vercel.app',
     'http://localhost:3000',
     'http://localhost:5000',
