@@ -56,37 +56,36 @@ io.on('connection', (socket) => {
     socket.join(`user:${userId}`)
   })
 
-  // Join an auction room and track as viewer
-  socket.on('join-auction', (auctionId) => {
+  // Join an auction room — sellers pass { auctionId, role: 'seller' } to skip viewer count
+  socket.on('join-auction', (payload) => {
+    const auctionId = typeof payload === 'object' ? payload.auctionId : payload
+    const role = typeof payload === 'object' ? payload.role : 'viewer'
+
     socket.join(`auction:${auctionId}`)
-
-    // Track this viewer
-    if (!auctionViewers.has(auctionId)) {
-      auctionViewers.set(auctionId, new Set())
-    }
-    auctionViewers.get(auctionId).add(socket.id)
-
-    // Store auctionId on socket for cleanup
     socket.currentAuction = auctionId
+    socket.currentRole = role
 
-    // Broadcast updated viewer count
-    broadcastViewerCount(auctionId)
+    // Only count actual viewers (not the seller)
+    if (role !== 'seller') {
+      if (!auctionViewers.has(auctionId)) {
+        auctionViewers.set(auctionId, new Set())
+      }
+      auctionViewers.get(auctionId).add(socket.id)
+      broadcastViewerCount(auctionId)
+    }
   })
 
   // Leave an auction room
   socket.on('leave-auction', (auctionId) => {
     socket.leave(`auction:${auctionId}`)
 
-    // Remove from viewer tracking
-    if (auctionViewers.has(auctionId)) {
+    if (socket.currentRole !== 'seller' && auctionViewers.has(auctionId)) {
       auctionViewers.get(auctionId).delete(socket.id)
       if (auctionViewers.get(auctionId).size === 0) {
         auctionViewers.delete(auctionId)
       }
+      broadcastViewerCount(auctionId)
     }
-
-    // Broadcast updated viewer count
-    broadcastViewerCount(auctionId)
   })
 
   // Broadcast new bid to everyone in the auction room
@@ -133,8 +132,7 @@ io.on('connection', (socket) => {
 
   // Handle disconnect
   socket.on('disconnect', () => {
-    // Clean up viewer tracking
-    if (socket.currentAuction) {
+    if (socket.currentAuction && socket.currentRole !== 'seller') {
       const auctionId = socket.currentAuction
       if (auctionViewers.has(auctionId)) {
         auctionViewers.get(auctionId).delete(socket.id)

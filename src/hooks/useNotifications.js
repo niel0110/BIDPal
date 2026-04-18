@@ -24,7 +24,7 @@ export function useNotifications() {
                 fetch(`${API_URL}/api/messages/unread-count`, { headers: { Authorization: `Bearer ${token}` } })
             ]);
 
-            // If session expired or token invalid, logout to clear state and stop polling
+            // If session expired or token invalid, logout
             if (notifRes.status === 401 || notifRes.status === 403 || msgRes.status === 401 || msgRes.status === 403) {
                 console.warn("Notification session expired. Logging out.");
                 logout();

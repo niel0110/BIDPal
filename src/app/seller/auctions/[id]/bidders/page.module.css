@@ -1,0 +1,386 @@
+.container {
+    max-width: 900px;
+    margin: 0 auto;
+    padding: 1.5rem 1.5rem 4rem;
+}
+
+/* Header */
+.header {
+    display: flex;
+    align-items: center;
+    gap: 1rem;
+    margin-bottom: 1.5rem;
+}
+
+.backLink {
+    display: inline-flex;
+    align-items: center;
+    gap: 0.35rem;
+    text-decoration: none;
+    background: #f4f4f5;
+    border: 1px solid #e4e4e7;
+    border-radius: 10px;
+    padding: 0.45rem 0.85rem 0.45rem 0.55rem;
+    color: #3f3f46;
+    font-size: 0.875rem;
+    font-weight: 600;
+    line-height: 1;
+    flex-shrink: 0;
+    transition: background 0.15s, border-color 0.15s, transform 0.15s, box-shadow 0.15s;
+}
+
+.backLink:hover {
+    background: #e4e4e7;
+    border-color: #d1d1d6;
+    transform: translateX(-2px);
+    box-shadow: 0 2px 8px rgba(0,0,0,0.07);
+}
+
+.backLinkIcon {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    width: 22px;
+    height: 22px;
+    border-radius: 6px;
+    background: white;
+    border: 1px solid #e4e4e7;
+    flex-shrink: 0;
+}
+
+.headerText {
+    flex: 1;
+}
+
+.title {
+    font-size: 1.5rem;
+    font-weight: 800;
+    color: #111;
+    margin: 0 0 0.1rem 0;
+}
+
+.subtitle {
+    font-size: 0.8rem;
+    color: #999;
+    margin: 0;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    max-width: 260px;
+}
+
+/* Summary bar */
+.summaryBar {
+    display: flex;
+    align-items: center;
+    gap: 0.5rem;
+    margin-bottom: 1rem;
+}
+
+.summaryCount {
+    font-size: 0.85rem;
+    font-weight: 700;
+    color: #111;
+}
+
+.summarySub {
+    font-size: 0.78rem;
+    color: #aaa;
+}
+
+/* Table */
+.table {
+    background: white;
+    border-radius: 12px;
+    border: 1px solid #f0f0f0;
+    overflow: hidden;
+}
+
+.tableHeader {
+    display: grid;
+    grid-template-columns: 80px 1fr 160px 180px;
+    gap: 1rem;
+    padding: 0.85rem 1.25rem;
+    background: #f3f4f6;
+    border-bottom: 2px solid #e5e7eb;
+    font-size: 0.72rem;
+    font-weight: 700;
+    text-transform: uppercase;
+    letter-spacing: 0.5px;
+    color: #6b7280;
+}
+
+.tableRow {
+    display: grid;
+    grid-template-columns: 80px 1fr 160px 180px;
+    gap: 1rem;
+    padding: 0.9rem 1.25rem;
+    background: white;
+    border-bottom: 1px solid #f0f0f0;
+    align-items: center;
+    transition: background 0.15s;
+}
+
+.tableRow:hover {
+    background: #fafafa;
+}
+
+.tableRow:last-child {
+    border-bottom: none;
+}
+
+.highlightRow {
+    background: linear-gradient(90deg, #fef3c7 0%, #ffffff 60%);
+    border-left: 3px solid #f59e0b;
+}
+
+.highlightRow:hover {
+    background: linear-gradient(90deg, #fde68a 0%, #fef9ec 60%);
+}
+
+.colRank,
+.colBidder,
+.colAmount,
+.colDate {
+    display: flex;
+    align-items: center;
+}
+
+/* Rank badge */
+.rankBadge {
+    width: 40px;
+    height: 40px;
+    border-radius: 8px;
+    background: #e5e7eb;
+    color: #6b7280;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-weight: 700;
+    font-size: 0.85rem;
+}
+
+.topRank {
+    background: linear-gradient(135deg, #fbbf24, #f59e0b);
+    color: white;
+    box-shadow: 0 2px 8px rgba(251, 191, 36, 0.3);
+}
+
+/* Bidder cell */
+.bidderCell {
+    display: flex;
+    align-items: center;
+    gap: 0.75rem;
+}
+
+.avatar {
+    width: 38px;
+    height: 38px;
+    border-radius: 50%;
+    background: #e5e7eb;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    overflow: hidden;
+    flex-shrink: 0;
+}
+
+.avatar img {
+    width: 100%;
+    height: 100%;
+    object-fit: cover;
+}
+
+.bidderName {
+    font-size: 0.88rem;
+    font-weight: 600;
+    color: #111;
+    display: flex;
+    align-items: center;
+    gap: 0.4rem;
+    flex-wrap: wrap;
+}
+
+.winnerBadge {
+    padding: 0.15rem 0.4rem;
+    background: linear-gradient(135deg, #10b981, #059669);
+    color: white;
+    border-radius: 4px;
+    font-size: 0.6rem;
+    font-weight: 700;
+    text-transform: uppercase;
+    letter-spacing: 0.3px;
+}
+
+.bidderId {
+    font-size: 0.72rem;
+    color: #9ca3af;
+    margin-top: 0.1rem;
+}
+
+/* Amount */
+.amountCell {
+    font-size: 1rem;
+    font-weight: 700;
+    color: #16a34a;
+    white-space: nowrap;
+}
+
+.topAmount {
+    font-size: 1.1rem;
+    color: #15803d;
+}
+
+/* Date */
+.dateCell {
+    display: flex;
+    flex-direction: column;
+    gap: 0.1rem;
+    font-size: 0.85rem;
+    color: #6b7280;
+}
+
+.timeCell {
+    font-size: 0.72rem;
+    color: #9ca3af;
+}
+
+/* Empty state */
+.emptyState {
+    text-align: center;
+    padding: 4rem 2rem;
+    background: white;
+    border-radius: 12px;
+    border: 1px solid #f0f0f0;
+}
+
+.emptyState h3 {
+    font-size: 1.25rem;
+    font-weight: 700;
+    color: #888;
+    margin: 1rem 0 0.5rem 0;
+}
+
+.emptyState p {
+    color: #aaa;
+    font-size: 0.88rem;
+    margin: 0;
+}
+
+/* ── Mobile ── */
+@media (max-width: 768px) {
+    .container {
+        padding: 1rem 1rem 4rem;
+    }
+
+    .backLink {
+        font-size: 0.78rem;
+        padding: 0.35rem 0.65rem 0.35rem 0.42rem;
+        border-radius: 8px;
+    }
+
+    .backLinkIcon {
+        width: 18px;
+        height: 18px;
+        border-radius: 5px;
+    }
+
+    .title {
+        font-size: 1.1rem;
+    }
+
+    /* On mobile hide date column, auto-size amount */
+    .tableHeader {
+        grid-template-columns: 44px 1fr auto;
+        gap: 0.5rem;
+        padding: 0.65rem 0.85rem;
+        font-size: 0.65rem;
+    }
+
+    .tableRow {
+        grid-template-columns: 44px 1fr auto;
+        gap: 0.5rem;
+        padding: 0.75rem 0.85rem;
+    }
+
+    .colDate {
+        display: none;
+    }
+
+    .rankBadge {
+        width: 32px;
+        height: 32px;
+        font-size: 0.75rem;
+        border-radius: 6px;
+    }
+
+    .avatar {
+        width: 30px;
+        height: 30px;
+    }
+
+    .bidderCell {
+        gap: 0.5rem;
+    }
+
+    .bidderName {
+        font-size: 0.78rem;
+        gap: 0.25rem;
+    }
+
+    .bidderId {
+        font-size: 0.65rem;
+    }
+
+    .amountCell {
+        font-size: 0.85rem;
+    }
+
+    .topAmount {
+        font-size: 0.9rem;
+    }
+
+    .emptyState {
+        padding: 2.5rem 1rem;
+    }
+
+    .emptyState h3 {
+        font-size: 1rem;
+    }
+}
+
+@media (max-width: 320px) {
+    .container {
+        padding: 0.75rem 0.75rem 3.5rem;
+    }
+
+    .title {
+        font-size: 0.95rem;
+    }
+
+    .tableHeader {
+        grid-template-columns: 38px 1fr auto;
+        padding: 0.55rem 0.65rem;
+    }
+
+    .tableRow {
+        grid-template-columns: 38px 1fr auto;
+        padding: 0.65rem 0.65rem;
+    }
+
+    .rankBadge {
+        width: 27px;
+        height: 27px;
+        font-size: 0.68rem;
+    }
+
+    .backLink {
+        font-size: 0.72rem;
+        padding: 0.3rem 0.55rem 0.3rem 0.38rem;
+    }
+
+    .backLinkIcon {
+        width: 16px;
+        height: 16px;
+    }
+}

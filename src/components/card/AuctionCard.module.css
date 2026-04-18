@@ -121,6 +121,11 @@
     padding: 1rem;
     color: white;
     position: relative;
+    flex: 1;
+    display: flex;
+    flex-direction: column;
+    justify-content: space-between;
+    min-height: 100px;
 }
 
 .sellerRow {
@@ -303,6 +308,7 @@
 
     .footer {
         padding: 0.65rem 0.75rem;
+        min-height: 85px;
     }
 
     .titleText {
@@ -325,5 +331,89 @@
     .scheduledBadge {
         font-size: 0.65rem;
         padding: 3px 8px;
+    }
+}
+
+@media (max-width: 360px) {
+    .card {
+        width: 185px;
+    }
+
+    .imageWrapper {
+        height: 140px;
+    }
+
+    .footer {
+        padding: 0.5rem;
+        gap: 0.3rem;
+        min-height: 75px;
+    }
+
+    .sellerRow {
+        margin-bottom: 0.5rem;
+    }
+
+    .avatar {
+        width: 20px;
+        height: 20px;
+    }
+
+    .sellerName {
+        font-size: 0.65rem;
+    }
+
+    .followBtn {
+        font-size: 0.6rem;
+        padding: 0.2rem 0.6rem;
+        border-radius: 4px;
+    }
+
+    .itemInfo {
+        gap: 0.25rem;
+    }
+
+    .titleText {
+        font-size: 0.75rem;
+    }
+
+    .priceText {
+        font-size: 0.85rem;
+    }
+
+    .bidRow {
+        font-size: 0.65rem;
+    }
+
+    .thumb {
+        width: 32px;
+        height: 32px;
+    }
+
+    .thumbStrip {
+        padding: 4px 6px;
+        gap: 4px;
+    }
+
+    .liveBadge,
+    .scheduledBadge {
+        font-size: 0.6rem;
+        padding: 2px 6px;
+        top: 6px;
+        left: 6px;
+    }
+
+    .heartBtn {
+        top: 6px;
+        right: 6px;
+        width: 28px;
+        height: 28px;
+    }
+
+    .overlayBadge {
+        bottom: 6px;
+        right: 6px;
+        padding: 3px 6px;
+        font-size: 0.6rem;
+        gap: 4px;
     }
 }

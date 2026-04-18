@@ -16,7 +16,6 @@ const COURIERS = ['LBC', 'J&T Express', 'Ninja Van', 'GoGo Xpress', 'Flash Expre
 export default function AuctionResultsPage() {
     const params = useParams();
     const router = useRouter();
-    const { user } = useAuth();
     const auctionId = params.id;
 
     const [loading, setLoading] = useState(true);
@@ -465,70 +464,23 @@ export default function AuctionResultsPage() {
                 </div>
             )}
 
-            {/* All Bidders Transaction History */}
+            {/* Bidding History Summary — links to dedicated page */}
             {allBidders.length > 0 && (
                 <div className={styles.transactionHistory}>
                     <div className={styles.sectionHeader}>
-                        <Clock size={24} />
+                        <Clock size={20} />
                         <h3>Complete Bidding History</h3>
                     </div>
                     <p className={styles.sectionSubtitle}>
-                        All participants who placed bids on this auction ({allBidders.length} total bidders)
+                        {allBidders.length} total bidder{allBidders.length !== 1 ? 's' : ''} participated in this auction
                     </p>
-                    <div className={styles.historyTable}>
-                        <div className={styles.tableHeader}>
-                            <div className={styles.colRank}>Rank</div>
-                            <div className={styles.colBidder}>Bidder</div>
-                            <div className={styles.colAmount}>Highest Bid</div>
-                            <div className={styles.colDate}>Date & Time</div>
-                        </div>
-                        {allBidders.map((bid, index) => {
-                            const isTopThree = index < 3;
-                            const bidderName = bid.bidder
-                                ? `${bid.bidder.Fname || ''} ${bid.bidder.Lname || ''}`.trim()
-                                : 'Anonymous';
-                            return (
-                                <div key={bid.bid_id} className={`${styles.tableRow} ${isTopThree ? styles.highlightRow : ''}`}>
-                                    <div className={styles.colRank}>
-                                        <div className={`${styles.rankBadge} ${isTopThree ? styles.topRank : ''}`}>
-                                            #{index + 1}
-                                        </div>
-                                    </div>
-                                    <div className={styles.colBidder}>
-                                        <div className={styles.bidderCell}>
-                                            <div className={styles.smallAvatar}>
-                                                {bid.bidder?.Avatar ? (
-                                                    <img src={bid.bidder.Avatar} alt={bidderName} />
-                                                ) : (
-                                                    <User size={16} />
-                                                )}
-                                            </div>
-                                            <div>
-                                                <div className={styles.bidderName}>
-                                                    {bidderName}
-                                                    {index === 0 && <span className={styles.winnerBadge}>Winner</span>}
-                                                </div>
-                                                <div className={styles.bidderId}>ID: {bid.user_id?.slice(0, 8)}...</div>
-                                            </div>
-                                        </div>
-                                    </div>
-                                    <div className={styles.colAmount}>
-                                        <div className={`${styles.amountCell} ${isTopThree ? styles.topAmount : ''}`}>
-                                            ₱{bid.bid_amount.toLocaleString('en-PH')}
-                                        </div>
-                                    </div>
-                                    <div className={styles.colDate}>
-                                        <div className={styles.dateCell}>
-                                            {new Date(bid.placed_at).toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' })}
-                                            <span className={styles.timeCell}>
-                                                {new Date(bid.placed_at).toLocaleTimeString('en-US', { hour: '2-digit', minute: '2-digit' })}
-                                            </span>
-                                        </div>
-                                    </div>
-                                </div>
-                            );
-                        })}
-                    </div>
+                    <Link
+                        href={`/seller/auctions/${auctionId}/bidders`}
+                        className={styles.viewAllBtn}
+                    >
+                        <span>View All Bidders & Transaction History</span>
+                        <span className={styles.viewAllBtnCount}>{allBidders.length}</span>
+                    </Link>
                 </div>
             )}
         </div>

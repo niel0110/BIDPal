@@ -18,10 +18,10 @@ export default function AuctionCard({ data }) {
         data.status === 'scheduled' ? (data.reminder_count ?? 0) : (data.bids_count ?? 0)
     );
 
-    // All images — deduplicate and filter nulls
-    const allImages = data.images?.length
+    // All images — deduplicate and filter nulls/noposter
+    const allImages = (data.images?.length
         ? [...new Set(data.images)]
-        : (data.image ? [data.image] : []);
+        : (data.image ? [data.image] : [])).filter(img => img && img !== 'noposter');
 
     const [activeImg, setActiveImg] = useState(allImages[0] || null);
 
@@ -49,9 +49,9 @@ export default function AuctionCard({ data }) {
     }, [user, data.seller_id]);
 
     useEffect(() => {
-        const imgs = data.images?.length
+        const imgs = (data.images?.length
             ? [...new Set(data.images)]
-            : (data.image ? [data.image] : []);
+            : (data.image ? [data.image] : [])).filter(img => img && img !== 'noposter');
         setActiveImg(imgs[0] || null);
     }, [data.image, data.images]);
 
@@ -140,8 +140,8 @@ export default function AuctionCard({ data }) {
                     </div>
                 </div>
 
-                {/* Thumbnail strip — only when multiple images */}
-                {allImages.length > 1 && (
+                {/* Thumbnail strip — always render if images exist for height consistency */}
+                {allImages.length >= 1 && (
                     <div className={styles.thumbStrip} onClick={e => e.stopPropagation()}>
                         {allImages.map((img, i) => (
                             <button

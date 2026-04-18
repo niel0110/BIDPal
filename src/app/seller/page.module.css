@@ -520,8 +520,8 @@
 .bidsChatBody {
     display: grid;
     grid-template-columns: 1fr 1fr;
-    min-height: 240px;
-    max-height: 300px;
+    height: 280px;
+    overflow: hidden;
 }
 
 .bidsChatLeft {
@@ -1836,7 +1836,7 @@
     .cardHeader { padding: 0.75rem 1rem; }
 
     /* Combined bids+chat */
-    .bidsChatBody { min-height: 220px; max-height: 270px; }
+    .bidsChatBody { height: 250px; }
     .bidsChatLabel { padding: 0.4rem 0.65rem; font-size: 0.62rem; }
     .bidsScroll { padding: 0.4rem; gap: 0.3rem; }
     .chatScroll { padding: 0.4rem; gap: 0.4rem; }
@@ -1870,7 +1870,7 @@
     .emptyState { padding: 2rem 1rem; }
     .emptyState h2 { font-size: 1.05rem; }
     .cardHeader { padding: 0.65rem 0.9rem; }
-    .bidsChatBody { min-height: 205px; max-height: 255px; }
+    .bidsChatBody { height: 230px; }
     .bidsChatLabel { padding: 0.35rem 0.55rem; }
     .bidsScroll { padding: 0.35rem; }
     .chatScroll { padding: 0.35rem; }
@@ -1913,7 +1913,7 @@
     .queueItem img { width: 52px; height: 52px; }
     .chatBox { height: 245px; }
     .chatInputArea { padding: 0.55rem 0.75rem; }
-    .bidsChatBody { min-height: 190px; max-height: 240px; }
+    .bidsChatBody { height: 215px; }
     .bidsChatLabel { font-size: 0.58rem; padding: 0.32rem 0.5rem; }
     .bidRowCompact { padding: 0.32rem 0.38rem; gap: 0.28rem; }
     .bidderAvatarSm { width: 20px; height: 20px; font-size: 0.55rem; }
@@ -1948,7 +1948,7 @@
     .chatBox { height: 225px; }
     .emptyState h2 { font-size: 0.9rem; }
     .emptyState p { font-size: 0.75rem; }
-    .bidsChatBody { min-height: 178px; max-height: 225px; }
+    .bidsChatBody { height: 200px; }
     .bidsChatLabel { font-size: 0.56rem; padding: 0.28rem 0.45rem; }
     .bidsScroll { padding: 0.28rem; gap: 0.25rem; }
     .chatScroll { padding: 0.28rem; gap: 0.3rem; }

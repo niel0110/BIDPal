@@ -4,7 +4,7 @@ import BIDPalLoader from '@/components/BIDPalLoader';
 import { useState, useEffect, useRef, Suspense } from 'react';
 import { useSearchParams } from 'next/navigation';
 import Header from '@/components/layout/Header';
-import { Clock, Eye, Heart, Send, X, Truck, Pencil, CheckCircle, Loader2, Mic, MicOff, Video, VideoOff, Share2, Users } from 'lucide-react';
+import { Clock, Eye, Heart, Send, X, Truck, Pencil, CheckCircle, Loader2, Mic, MicOff, Video, VideoOff, Share2, Users, Lock } from 'lucide-react';
 import styles from './page.module.css';
 import { io } from 'socket.io-client';
 import { useAuth } from '@/context/AuthContext';
@@ -43,6 +43,10 @@ function LivePageInner() {
     const [reminderError, setReminderError] = useState(null);
     const [reminderCount, setReminderCount] = useState(0);
     const [copied, setCopied] = useState(false);
+    const [isFollowing, setIsFollowing] = useState(false);
+    const [followerCount, setFollowerCount] = useState(0);
+    const [currentBidAmount, setCurrentBidAmount] = useState(0);
+    const [showLoginPrompt, setShowLoginPrompt] = useState(false);
 
     // Permission and Stream State
     const [permissionStatus, setPermissionStatus] = useState('idle'); // idle, requesting, granted, denied
@@ -62,6 +66,8 @@ function LivePageInner() {
     const localTracksRef = useRef({ audio: null, video: null });
     const socketRef = useRef(null);
     const commentsEndRef = useRef(null);
+    const mobileChatScrollRef = useRef(null);
+    const desktopChatScrollRef = useRef(null);
 
     const apiUrl = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:5000';
 
@@ -102,6 +108,7 @@ function LivePageInner() {
         });
 
         socket.on('bid-update', (bid) => {
+            if (bid.amount) setCurrentBidAmount(prev => Math.max(prev, Number(bid.amount)));
             setBids(prev => {
                 // Check if bid already exists to prevent duplicates
                 const bidExists = prev.some(b => b.id === (bid.id || bid.bid_id) || (b.user === bid.user && b.amount === bid.amount && b.time === bid.time));
@@ -125,14 +132,10 @@ function LivePageInner() {
             setComments(prev => [...prev, { id: comment.id, user: comment.user, text: comment.text, time }]);
         });
 
-        // Listen for live viewer count updates (active sockets)
+        // Live concurrent viewer count — goes up and down as people join/leave
         socket.on('viewer-count', (count) => {
             setViewerCount(count);
-        });
-
-        // Listen for persistent total views updates
-        socket.on('total-views-update', (count) => {
-            setStats(prev => ({ ...prev, viewers: Math.max((prev.viewers || 0), count) }));
+            setStats(prev => ({ ...prev, viewers: count }));
         });
 
         // Listen for like and share updates
@@ -194,7 +197,14 @@ function LivePageInner() {
 
     // ── Auto-scroll chat to the latest message ───────────────────────────────
     useEffect(() => {
-        commentsEndRef.current?.scrollIntoView({ behavior: 'smooth' });
+        requestAnimationFrame(() => {
+            if (mobileChatScrollRef.current) {
+                mobileChatScrollRef.current.scrollTop = mobileChatScrollRef.current.scrollHeight;
+            }
+            if (desktopChatScrollRef.current) {
+                desktopChatScrollRef.current.scrollTop = desktopChatScrollRef.current.scrollHeight;
+            }
+        });
     }, [comments]);
 
     // ── Fetch auction data + initial bids ────────────────────────────────────
@@ -222,6 +232,10 @@ function LivePageInner() {
                         };
                     }) : [];
                     setBids(formattedBids);
+                    if (formattedBids.length > 0) {
+                        const raw = data.bids?.[0]?.bid_amount || data.bids?.[0]?.amount;
+                        if (raw) setCurrentBidAmount(Number(raw));
+                    }
                 }
             } catch (err) {
                 console.error('Failed to fetch bids:', err);
@@ -230,14 +244,13 @@ function LivePageInner() {
 
         const fetchStats = async () => {
             try {
-                const userIdParam = user?.user_id || user?.id ? `?user_id=${user.user_id || user.id}` : '';
-                const res = await fetch(`${apiUrl}/api/auctions/${auctionId}/stats${userIdParam}`);
+                // Don't include user_id here — liked status is handled by its own dedicated effect
+                const res = await fetch(`${apiUrl}/api/auctions/${auctionId}/stats`);
                 if (res.ok) {
                     const data = await res.json();
                     if (data.stats) {
                         setStats(data.stats);
                         setViewerCount(data.stats.liveViewers || 0);
-                        if (typeof data.isLiked !== 'undefined') setIsLiked(data.isLiked);
                     }
                 }
             } catch (err) {
@@ -253,9 +266,12 @@ function LivePageInner() {
                 if (res.ok) {
                     console.log('✅ Auction loaded:', { auction_id: data.auction_id, status: data.status });
                     setAuction(data);
-                    
-                    // Initialize minimum bid requirement
+
+                    // Initialize current bid amount
                     const currentPrice = Number(data.current_price || data.reserve_price || 0);
+                    setCurrentBidAmount(currentPrice);
+
+                    // Initialize minimum bid requirement
                     const step = Number(data.incremental_bid_step || 100);
                     setMinBid(currentPrice + step);
 
@@ -343,13 +359,19 @@ function LivePageInner() {
     useEffect(() => {
         if (!auction || !auctionId || !process.env.NEXT_PUBLIC_AGORA_APP_ID) return;
 
+        // Only connect when auction is active
+        if (auction.status !== 'active') return;
+
         // If auction is already active (seller navigated here from dashboard), auto-start
-        if (isHost && auction.status === 'active' && !hasStarted) {
+        if (isHost && !hasStarted) {
             setHasStarted(true);
             setPermissionStatus('granted');
         }
 
         if (isHost && !hasStarted) return;
+
+        // Buyer: don't start a second Agora connection if one is already running
+        if (!isHost && agoraClientRef.current) return;
 
         let cancelled = false;
 
@@ -387,7 +409,7 @@ function LivePageInner() {
                     }
                 });
 
-                client.on('user-unpublished', (remoteUser, mediaType) => {
+                client.on('user-unpublished', (_remoteUser, mediaType) => {
                     if (mediaType === 'video') setStreamReady(false);
                 });
 
@@ -465,10 +487,10 @@ function LivePageInner() {
                 video.close();
                 localTracksRef.current.video = null;
             }
-            
+
             if (agoraClientRef.current) {
                 const client = agoraClientRef.current;
-                
+
                 // Only leave if we are connected or connecting
                 if (client.connectionState === 'CONNECTED' || client.connectionState === 'CONNECTING' || client.connectionState === 'RECONNECTING') {
                     client.leave().catch(err => {
@@ -477,10 +499,10 @@ function LivePageInner() {
                         }
                     });
                 }
-                agoraClientRef.current = null; // Prevent multiple leave calls
+                agoraClientRef.current = null;
             }
         };
-    }, [auctionId, isHost]);
+    }, [auctionId, auction?.auction_id, auction?.status, isHost]);
 
     // Handle video playback once DOM container is ready
     useEffect(() => {
@@ -509,9 +531,10 @@ function LivePageInner() {
         try {
             const token = localStorage.getItem('bidpal_token');
             const role = isHost ? 'host' : 'audience';
+            const headers = token ? { Authorization: `Bearer ${token}` } : {};
             const res = await fetch(
                 `${apiUrl}/api/agora/token?channelName=${auctionId}&role=${role}&uid=0`,
-                { headers: { Authorization: `Bearer ${token}` } }
+                { headers }
             );
             const data = await res.json();
             return res.ok ? data.token : null;
@@ -537,6 +560,7 @@ function LivePageInner() {
     };
 
     const handleSendMessage = () => {
+        if (!user) { setShowLoginPrompt(true); return; }
         if (!inputValue.trim()) return;
         const time = new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
         const newComment = {
@@ -554,6 +578,7 @@ function LivePageInner() {
     };
 
     const handlePlaceBid = async () => {
+        if (!user) { setShowLoginPrompt(true); return; }
         if (!bidAmount) return;
 
         if (!auctionId) {
@@ -617,6 +642,7 @@ function LivePageInner() {
             if (socketRef.current) {
                 socketRef.current.emit('new-bid', { auctionId, bid: broadcastBid });
             }
+            setCurrentBidAmount(Number(bidAmount));
             setBids(prev => [newBid, ...prev]);
 
             // Close modal and reset only on success
@@ -687,31 +713,15 @@ function LivePageInner() {
         setStreamEnded(true);
     };
 
-    const simulateWin = () => {
-        setWinnerModal({
-            show: true,
-            title: "You won the auction!",
-            subtitle: "You're the highest bidder",
-            amount: "1700"
-        });
-    };
-
-    const simulateBackupWin = () => {
-        setWinnerModal({
-            show: true,
-            title: "Winning bidder cancelled",
-            subtitle: "You're now the highest bidder",
-            amount: "1600"
-        });
-    };
-
     const handleOpenPayment = () => {
         setWinnerModal({ ...winnerModal, show: false });
         setShowPaymentModal(true);
     };
 
     const handleLike = async () => {
-        if (!user) return;
+        if (!user) { setShowLoginPrompt(true); return; }
+        // Optimistic toggle so UI feels instant
+        setIsLiked(prev => !prev);
         try {
             const res = await fetch(`${apiUrl}/api/dashboard/auction/${auctionId}/like`, {
                 method: 'POST',
@@ -721,16 +731,68 @@ function LivePageInner() {
             if (res.ok) {
                 const data = await res.json();
                 setIsLiked(data.liked);
-                setStats(prev => ({ ...prev, likes: data.likeCount }));
+                // Socket `like-update` will broadcast exact count to all viewers
+            } else {
+                setIsLiked(prev => !prev); // revert on error
             }
         } catch (err) {
+            setIsLiked(prev => !prev); // revert on error
             console.error('Failed to like auction:', err);
         }
     };
 
-    // Track view/join event when a non-host viewer loads the page
+    // Re-check liked status once user auth resolves (initial stats fetch may run before user loads)
     useEffect(() => {
-        if (!auctionId || isHost) return; // Only track buyer views
+        const userId = user?.user_id || user?.id;
+        if (!auctionId || !userId) return;
+        fetch(`${apiUrl}/api/auctions/${auctionId}/stats?user_id=${userId}`)
+            .then(r => r.ok ? r.json() : null)
+            .then(data => { if (data?.isLiked !== undefined) setIsLiked(data.isLiked); })
+            .catch(() => {});
+    }, [auctionId, apiUrl, user]);
+
+    // Fetch follow status + follower count when seller is known
+    useEffect(() => {
+        if (!auction?.seller_info?.seller_id) return;
+        const sellerId = auction.seller_info.seller_id;
+
+        fetch(`${apiUrl}/api/follows/followers/${sellerId}`)
+            .then(r => r.json())
+            .then(d => { if (typeof d.count === 'number') setFollowerCount(d.count); else if (Array.isArray(d)) setFollowerCount(d.length); })
+            .catch(() => {});
+
+        if (!user) return;
+        const token = localStorage.getItem('bidpal_token');
+        fetch(`${apiUrl}/api/follows/check/${sellerId}`, { headers: { Authorization: `Bearer ${token}` } })
+            .then(r => r.json())
+            .then(d => { if (d.is_following !== undefined) setIsFollowing(d.is_following); })
+            .catch(() => {});
+    }, [auction?.seller_info?.seller_id, user?.user_id]);
+
+    const handleFollow = async () => {
+        if (!user) { setShowLoginPrompt(true); return; }
+        const token = localStorage.getItem('bidpal_token');
+        const sellerId = auction?.seller_info?.seller_id;
+        if (!sellerId) return;
+        try {
+            const endpoint = isFollowing ? '/api/follows/unfollow' : '/api/follows/follow';
+            const res = await fetch(`${apiUrl}${endpoint}`, {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${token}` },
+                body: JSON.stringify({ followed_seller_id: sellerId })
+            });
+            if (res.ok) {
+                setIsFollowing(f => !f);
+                setFollowerCount(c => isFollowing ? Math.max(0, c - 1) : c + 1);
+            }
+        } catch (err) {
+            console.error('Follow error:', err);
+        }
+    };
+
+    // Track view/join event — only for logged-in, non-host viewers
+    useEffect(() => {
+        if (!auctionId || isHost || !user) return;
         const session_id = `${Date.now()}-${Math.random().toString(36).slice(2)}`;
         fetch(`${apiUrl}/api/dashboard/auction/${auctionId}/view`, {
             method: 'POST',
@@ -741,7 +803,6 @@ function LivePageInner() {
 
     const handleShare = async () => {
         try {
-            // Share using Web Share API if available
             if (navigator.share) {
                 await navigator.share({
                     title: product?.name || 'Live Auction',
@@ -749,22 +810,31 @@ function LivePageInner() {
                     url: window.location.href
                 });
             } else {
-                // Fallback: copy link to clipboard
                 await navigator.clipboard.writeText(window.location.href);
-                alert('Link copied to clipboard!');
+                setCopied(true);
+                setTimeout(() => setCopied(false), 2000);
             }
+        } catch (err) {
+            // User cancelled — do nothing
+            if (err?.name === 'AbortError') return;
+            console.error('Share failed:', err);
+            return;
+        }
 
-            // Track share in backend
-            await fetch(`${apiUrl}/api/dashboard/auction/${auctionId}/share`, {
+        // Only track if user actually shared (not cancelled)
+        try {
+            const res = await fetch(`${apiUrl}/api/dashboard/auction/${auctionId}/share`, {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
                 body: JSON.stringify({ user_id: user?.user_id || user?.id || null })
             });
-
-            // Update share count
-            setStats(prev => ({ ...prev, shares: prev.shares + 1 }));
+            // Socket `share-update` broadcasts the exact count to all viewers in real-time
+            if (res.ok) {
+                const data = await res.json();
+                setStats(prev => ({ ...prev, shares: data.shareCount ?? prev.shares + 1 }));
+            }
         } catch (err) {
-            console.error('Failed to share:', err);
+            console.error('Failed to track share:', err);
         }
     };
 
@@ -805,7 +875,7 @@ function LivePageInner() {
 
                 {/* VIDEO SECTION */}
                 <section className={`${styles.videoWrapper}${isScheduledBuyer ? ' ' + styles.videoWrapperSmall : ''}`}>
-                    <div className={styles.videoPlaceholder} style={{ position: 'relative', background: '#000' }}>
+                    <div className={styles.videoPlaceholder} style={{ position: 'relative', background: 'white' }}>
                         {/* Agora video containers */}
                         <div
                             id="agora-local-video"
@@ -834,14 +904,14 @@ function LivePageInner() {
 
                         {/* Fallback overlay when stream not yet active */}
                         {!streamReady && (
-                            <div style={{
+                            <div className={styles.notLiveOverlay} style={{
                                 position: 'absolute',
                                 inset: 0,
                                 display: 'flex',
                                 flexDirection: 'column',
                                 alignItems: 'center',
                                 justifyContent: 'center',
-                                background: `linear-gradient(rgba(0,0,0,0.6), rgba(0,0,0,0.6)), url(${product?.images?.[0]?.image_url || 'https://placehold.co/1280x720'}) center/cover`,
+                                background: `linear-gradient(rgba(0,0,0,0.25), rgba(0,0,0,0.35)), url(${product?.images?.[0]?.image_url || 'https://placehold.co/1280x720'}) center/cover`,
                                 zIndex: 1
                             }}>
                                 {isHost ? (
@@ -941,14 +1011,14 @@ function LivePageInner() {
                                         <p style={{ color: '#ddd', fontSize: '0.95rem' }}>This auction is no longer available.</p>
                                     </div>
                                 ) : (
-                                    <div style={{ textAlign: 'center', padding: '0 2rem', maxWidth: '480px' }}>
-                                        <div style={{ marginBottom: '1.2rem' }}>
-                                            <Loader2 size={44} color="white" className={styles.spinner} />
+                                    <div className={styles.notLiveContent} style={{ textAlign: 'center', padding: '0 1.5rem', maxWidth: '400px' }}>
+                                        <div style={{ marginBottom: '0.75rem' }}>
+                                            <Loader2 size={32} color="white" className={styles.spinner} />
                                         </div>
-                                        <h2 style={{ color: 'white', fontSize: '1.3rem', fontWeight: 700, marginBottom: '0.4rem' }}>
+                                        <h2 style={{ color: 'white', fontSize: '1rem', fontWeight: 700, marginBottom: '0.3rem' }}>
                                             Host hasn&apos;t gone live yet
                                         </h2>
-                                        <p style={{ color: '#ddd', fontSize: '0.9rem', marginBottom: '1.2rem' }}>
+                                        <p style={{ color: '#ddd', fontSize: '0.75rem', marginBottom: '0.85rem' }}>
                                             The seller will start the stream shortly. This page updates automatically.
                                         </p>
                                         {(() => {
@@ -966,21 +1036,21 @@ function LivePageInner() {
                                                     ? `${diffHrs} hour${diffHrs > 1 ? 's' : ''} ago`
                                                     : `${diffMins} minute${diffMins !== 1 ? 's' : ''} ago`;
                                                 return (
-                                                    <div style={{ background: 'rgba(255,255,255,0.12)', borderRadius: '10px', padding: '12px 18px', display: 'inline-block' }}>
-                                                        <p style={{ color: '#ccc', fontSize: '0.75rem', marginBottom: '2px', textTransform: 'uppercase', letterSpacing: '0.05em' }}>Was scheduled</p>
-                                                        <p style={{ color: 'white', fontWeight: 700, fontSize: '1rem', margin: 0 }}>
+                                                    <div style={{ background: 'rgba(255,255,255,0.12)', borderRadius: '8px', padding: '8px 14px', display: 'inline-block' }}>
+                                                        <p style={{ color: '#ccc', fontSize: '0.62rem', marginBottom: '2px', textTransform: 'uppercase', letterSpacing: '0.05em' }}>Was scheduled</p>
+                                                        <p style={{ color: 'white', fontWeight: 700, fontSize: '0.8rem', margin: 0 }}>
                                                             {new Date(auction.start_time).toLocaleDateString('en-PH', { weekday: 'short', month: 'short', day: 'numeric', year: 'numeric' })}
                                                             {' · '}
                                                             {new Date(auction.start_time).toLocaleTimeString('en-PH', { hour: '2-digit', minute: '2-digit' })}
                                                         </p>
-                                                        <p style={{ color: '#FFB74D', fontSize: '0.8rem', marginTop: '4px', margin: '4px 0 0' }}>Started {waitLabel}</p>
+                                                        <p style={{ color: '#FFB74D', fontSize: '0.68rem', margin: '3px 0 0' }}>Started {waitLabel}</p>
                                                     </div>
                                                 );
                                             }
                                             return (
-                                                <div style={{ background: 'rgba(255,255,255,0.12)', borderRadius: '10px', padding: '12px 18px', display: 'inline-block' }}>
-                                                    <p style={{ color: '#ccc', fontSize: '0.75rem', marginBottom: '2px', textTransform: 'uppercase', letterSpacing: '0.05em' }}>Scheduled start</p>
-                                                    <p style={{ color: 'white', fontWeight: 700, fontSize: '1rem', margin: 0 }}>
+                                                <div style={{ background: 'rgba(255,255,255,0.12)', borderRadius: '8px', padding: '8px 14px', display: 'inline-block' }}>
+                                                    <p style={{ color: '#ccc', fontSize: '0.62rem', marginBottom: '2px', textTransform: 'uppercase', letterSpacing: '0.05em' }}>Scheduled start</p>
+                                                    <p style={{ color: 'white', fontWeight: 700, fontSize: '0.8rem', margin: 0 }}>
                                                         {new Date(auction.start_time).toLocaleDateString('en-PH', { weekday: 'short', month: 'short', day: 'numeric', year: 'numeric' })}
                                                         {' · '}
                                                         {new Date(auction.start_time).toLocaleTimeString('en-PH', { hour: '2-digit', minute: '2-digit' })}
@@ -1119,10 +1189,12 @@ function LivePageInner() {
                         <div className={styles.sellerInfo}>
                             <div className={styles.sellerName}>{seller_info.store_name}</div>
                             <div className={styles.sellerStats}>
-                                <Heart size={10} fill="white" /> {Math.floor(Math.random() * 5000) + 1000}
+                                <Heart size={10} fill="white" /> {followerCount.toLocaleString()}
                             </div>
                         </div>
-                        <button className={styles.followBtn}>+ Follow</button>
+                        <button className={`${styles.followBtn} ${isFollowing ? styles.followBtnActive : ''}`} onClick={handleFollow}>
+                            {isFollowing ? '✓ Following' : '+ Follow'}
+                        </button>
                     </div>
 
                     {/* Mobile-only: TikTok/IG-Live style overlay */}
@@ -1139,20 +1211,25 @@ function LivePageInner() {
                                 <div className={styles.mobileStoreText}>
                                     <span className={styles.mobileStoreName}>{seller_info.store_name}</span>
                                     <span className={styles.mobileStoreFollowers}>
-                                        <Heart size={9} fill="white" /> {Math.floor(Math.random() * 5000) + 1000}
+                                        <Heart size={9} fill="white" /> {stats.likes.toLocaleString()}
                                     </span>
                                 </div>
-                                <button className={styles.mobileFollowBtn}>+ Follow</button>
+                                <button
+                                    className={`${styles.mobileFollowBtn} ${isFollowing ? styles.mobileFollowBtnActive : ''}`}
+                                    onClick={handleFollow}
+                                >
+                                    {isFollowing ? 'Following' : '+ Follow'}
+                                </button>
                             </div>
                             <div className={styles.mobileViewerCount}>
-                                <Users size={13} />
-                                <span>{stats.viewers || viewerCount}</span>
+                                <Eye size={13} />
+                                <span>{viewerCount}</span>
                             </div>
                         </div>
 
-                        {/* MIDDLE: chat messages (left side) */}
+                        {/* MIDDLE: chat messages */}
                         <div className={styles.mobileOverlayMiddle}>
-                            <div className={styles.mobileChatMessages}>
+                            <div className={styles.mobileChatMessages} ref={mobileChatScrollRef}>
                                 {comments.map(msg => (
                                     <div key={msg.id} className={styles.mobileChatMsg}>
                                         <span className={styles.mobileChatUser}>{msg.user}</span>
@@ -1163,7 +1240,7 @@ function LivePageInner() {
                             </div>
                         </div>
 
-                        {/* BOTTOM: product card + input */}
+                        {/* BOTTOM: product card + chat row */}
                         <div className={styles.mobileOverlayBottom}>
                             {/* Product card */}
                             <div className={styles.mobileProductCard}>
@@ -1174,10 +1251,9 @@ function LivePageInner() {
                                 />
                                 <div className={styles.mobileProductInfo}>
                                     <span className={styles.mobileProductName}>{product?.name}</span>
-                                    <span className={styles.mobileProductBidLabel}>Current Bid ({bids.length} Bids)</span>
+                                    <span className={styles.mobileProductBidLabel}>Current Bid ({bids.length} Bid{bids.length !== 1 ? 's' : ''})</span>
                                     <div className={styles.mobileProductPriceRow}>
-                                        <span className={styles.mobileProductOriginal}>₱{Number(auction.reserve_price || 0).toLocaleString('en-PH')}</span>
-                                        <span className={styles.mobileProductPrice}>₱{Number(bids[0]?.amount || auction.current_price || auction.reserve_price || 0).toLocaleString('en-PH')}</span>
+                                        <span className={styles.mobileProductPrice}>₱{currentBidAmount.toLocaleString('en-PH')}</span>
                                     </div>
                                     {countdown && (
                                         <span className={styles.mobileCountdown}>
@@ -1187,28 +1263,43 @@ function LivePageInner() {
                                 </div>
                                 <button
                                     className={styles.mobileBidBtn}
-                                    onClick={() => { if (minBid) setBidAmount(minBid); setShowModal(true); }}
+                                    onClick={() => { if (!user) { setShowLoginPrompt(true); return; } if (minBid) setBidAmount(minBid); setShowModal(true); }}
                                 >
                                     Bid
                                 </button>
                             </div>
 
-                            {/* Chat input */}
-                            <div className={styles.mobileChatInput}>
-                                <input
-                                    type="text"
-                                    placeholder="Type..."
-                                    value={inputValue}
-                                    onChange={(e) => setInputValue(e.target.value)}
-                                    onKeyDown={(e) => e.key === 'Enter' && handleSendMessage()}
-                                />
-                                <button
-                                    onClick={handleSendMessage}
-                                    disabled={!inputValue.trim()}
-                                    style={{ opacity: inputValue.trim() ? 1 : 0.4 }}
-                                >
-                                    <Send size={15} color="white" />
-                                </button>
+                            {/* Chat row: input + like + share */}
+                            <div className={styles.mobileChatRow}>
+                                <div className={styles.mobileChatInput}>
+                                    <input
+                                        type="text"
+                                        placeholder={user ? 'Say something...' : 'Login to comment...'}
+                                        value={inputValue}
+                                        readOnly={!user}
+                                        onChange={(e) => setInputValue(e.target.value)}
+                                        onFocus={() => { if (!user) setShowLoginPrompt(true); }}
+                                        onKeyDown={(e) => e.key === 'Enter' && handleSendMessage()}
+                                    />
+                                    <button
+                                        onClick={handleSendMessage}
+                                        disabled={!inputValue.trim()}
+                                        style={{ opacity: inputValue.trim() ? 1 : 0.4 }}
+                                    >
+                                        <Send size={15} color="white" />
+                                    </button>
+                                </div>
+                                <div className={styles.mobileChatActions}>
+                                    <button
+                                        className={`${styles.mobileChatActionBtn} ${isLiked ? styles.mobileChatActionBtnLiked : ''}`}
+                                        onClick={handleLike}
+                                    >
+                                        <Heart size={19} fill={isLiked ? 'currentColor' : 'none'} />
+                                    </button>
+                                    <button className={styles.mobileChatActionBtn} onClick={handleShare}>
+                                        <Share2 size={19} />
+                                    </button>
+                                </div>
                             </div>
                         </div>
                     </div>
@@ -1408,7 +1499,7 @@ function LivePageInner() {
                     <div className={styles.chatSection}>
                         <h3 className={styles.chatHeader}>Live Chat</h3>
 
-                        <div className={styles.messagesList}>
+                        <div className={styles.messagesList} ref={desktopChatScrollRef}>
                             {comments.length === 0 && (
                                 <div style={{ padding: '20px', color: '#999', textAlign: 'center' }}>
                                     Welcome to the live stream!
@@ -1462,7 +1553,7 @@ function LivePageInner() {
                         <div className={styles.modalHeader}>
                             <h2 className={styles.modalTitle}>Place your bid</h2>
                             <button className={styles.closeBtn} onClick={() => setShowModal(false)}>
-                                <X size={16} />
+                                <X size={12} />
                             </button>
                         </div>
 
@@ -1757,6 +1848,36 @@ function LivePageInner() {
                                 <button className={styles.finalPayBtn}>Pay Now</button>
                             </div>
                         </div>
+                    </div>
+                </div>
+            )}
+
+            {/* LOGIN PROMPT MODAL */}
+            {showLoginPrompt && (
+                <div className={styles.modalOverlay} onClick={() => setShowLoginPrompt(false)}>
+                    <div className={styles.loginPromptContent} onClick={(e) => e.stopPropagation()}>
+                        <button className={styles.closeBtn} style={{ position: 'absolute', top: '0.75rem', right: '0.75rem' }} onClick={() => setShowLoginPrompt(false)}>
+                            <X size={12} />
+                        </button>
+                        <div className={styles.loginPromptIcon}>
+                            <Lock size={28} strokeWidth={2.5} />
+                        </div>
+                        <h2 className={styles.loginPromptTitle}>Login Required</h2>
+                        <p className={styles.loginPromptDesc}>
+                            You need to be logged in to like, follow, comment, and bid on live auctions.
+                        </p>
+                        <button
+                            className={styles.loginPromptBtn}
+                            onClick={() => window.location.href = '/signin'}
+                        >
+                            Log In
+                        </button>
+                        <button
+                            className={styles.loginPromptSecondary}
+                            onClick={() => window.location.href = '/signup'}
+                        >
+                            Create an Account
+                        </button>
                     </div>
                 </div>
             )}

@@ -32,7 +32,7 @@ export default function ProductCard({ data }) {
     return (
         <div className={styles.card}>
             <div className={styles.imageWrapper}>
-                <img src={data.image || 'https://placehold.co/200x200'} alt={data.title} className={styles.image} />
+                <img src={(data.image && data.image !== 'noposter') ? data.image : 'https://placehold.co/200x200?text=No+Image'} alt={data.title} className={styles.image} />
 
                 <div className={styles.badges}>
                     {data.isSoldOut ? (

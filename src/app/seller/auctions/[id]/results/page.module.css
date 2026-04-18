@@ -241,7 +241,7 @@
 
 .noWinnerSection {
     text-align: center;
-    padding: 4rem 2rem;
+    padding: 2.5rem 1.5rem;
 }
 
 .noWinnerSection h3 {
@@ -254,6 +254,40 @@
 .noWinnerSection p {
     color: #aaa;
     margin: 0;
+}
+
+/* View All Bidders button */
+.viewAllBtn {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    width: 100%;
+    padding: 0.85rem 1rem;
+    background: #f9fafb;
+    border: 1.5px solid #e5e7eb;
+    border-radius: 8px;
+    font-size: 0.88rem;
+    font-weight: 600;
+    color: #374151;
+    cursor: pointer;
+    text-decoration: none;
+    transition: all 0.2s;
+    margin-top: 1rem;
+}
+
+.viewAllBtn:hover {
+    background: #f3f4f6;
+    border-color: #d1d5db;
+    color: #111;
+}
+
+.viewAllBtnCount {
+    background: #673AB7;
+    color: white;
+    border-radius: 20px;
+    padding: 0.2rem 0.6rem;
+    font-size: 0.75rem;
+    font-weight: 700;
 }
 
 /* Top Bidders */
@@ -1051,13 +1085,31 @@
         font-size: 0.72rem;
     }
 
-    /* Winner */
+    /* Winner / sections */
     .winnerSection,
     .noWinnerSection,
     .biddersSection,
     .transactionHistory {
         padding: 0.85rem;
         margin-bottom: 1rem;
+    }
+
+    .noWinnerSection {
+        padding: 1.5rem 1rem;
+    }
+
+    .noWinnerSection svg {
+        width: 36px;
+        height: 36px;
+    }
+
+    .noWinnerSection h3 {
+        font-size: 1rem;
+        margin: 0.6rem 0 0.3rem 0;
+    }
+
+    .noWinnerSection p {
+        font-size: 0.78rem;
     }
 
     .sectionHeader {

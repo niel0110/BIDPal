@@ -63,9 +63,13 @@ export default function SellerDashboard() {
     const liveStartTimeRef = useRef(null);
     const setupStreamRef = useRef(null);
     const setupVideoRef = useRef(null);
+    const chatScrollRef = useRef(null);
 
     const fetchDashboardData = useCallback(async () => {
-        if (!user) return;
+        if (!user) {
+            router.push('/');
+            return;
+        }
         try {
             const apiUrl = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:5000';
             const token = localStorage.getItem('bidpal_token');
@@ -78,8 +82,18 @@ export default function SellerDashboard() {
                 }
             });
 
+            if (res.status === 401 || res.status === 403) {
+                console.warn('Session expired in dashboard summary. Logging out.');
+                logout();
+                return;
+            }
+
             if (res.ok) {
                 const data = await res.json();
+                // Show live concurrent viewers only (not accumulated total views)
+                if (data.stats) {
+                    data.stats.viewers = data.stats.liveViewers ?? 0;
+                }
                 setDashboardData(data);
                 setIsLive(data.activeAuction !== null);
 
@@ -116,6 +130,10 @@ export default function SellerDashboard() {
             const convRes = await fetch(`${apiUrl}/api/messages`, {
                 headers: { 'Authorization': `Bearer ${token}` }
             });
+            if (convRes.status === 401 || convRes.status === 403) {
+                logout();
+                return;
+            }
             if (!convRes.ok) return;
             const convs = await convRes.json();
             if (!convs || convs.length === 0) return;
@@ -133,6 +151,11 @@ export default function SellerDashboard() {
     }, [user]);
 
     useEffect(() => {
+        if (!user) {
+            router.replace('/');
+            return;
+        }
+        
         fetchDashboardData();
         fetchLatestMessages();
         // Polling for updates every 10 seconds
@@ -141,8 +164,39 @@ export default function SellerDashboard() {
             fetchLatestMessages();
         }, 10000);
         return () => clearInterval(interval);
-    }, [fetchDashboardData, fetchLatestMessages]);
+    }, [user, router, fetchDashboardData, fetchLatestMessages]);
     
+    // ── Poll auction stats while live ───
+    useEffect(() => {
+        const auctionId = dashboardData.activeAuction?.auction_id;
+        if (!auctionId || !isLive) return;
+
+        const apiUrl = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:5000';
+
+        const pollStats = async () => {
+            try {
+                const res = await fetch(`${apiUrl}/api/auctions/${auctionId}/stats`);
+                if (!res.ok) return;
+                const data = await res.json();
+                if (data.stats) {
+                    setDashboardData(prev => ({
+                        ...prev,
+                        stats: {
+                            ...prev.stats,
+                            viewers: data.stats.liveViewers ?? prev.stats.viewers,
+                            likes: data.stats.likes ?? prev.stats.likes,
+                            shares: data.stats.shares ?? prev.stats.shares,
+                        }
+                    }));
+                }
+            } catch (_) {}
+        };
+
+        pollStats();
+        const interval = setInterval(pollStats, 15000);
+        return () => clearInterval(interval);
+    }, [dashboardData.activeAuction?.auction_id, isLive]);
+
     // ── Socket.IO for Live Comments ─────
     useEffect(() => {
         const auctionId = dashboardData.activeAuction?.auction_id;
@@ -160,7 +214,7 @@ export default function SellerDashboard() {
 
         socket.on('connect', () => {
             console.log('📡 Connected to auction socket:', auctionId);
-            socket.emit('join-auction', auctionId);
+            socket.emit('join-auction', { auctionId, role: 'seller' });
 
             // Fetch existing comments from database when joining
             fetch(`${apiUrl}/api/auctions/${auctionId}/comments`)
@@ -186,15 +240,32 @@ export default function SellerDashboard() {
             setComments(prev => [...prev, comment]);
         });
 
-        // Listen for viewer count updates
+        // Listen for real-time stat updates
         socket.on('viewer-count', (count) => {
-            console.log('👥 Viewer count updated:', count);
             setDashboardData(prev => ({
                 ...prev,
-                stats: {
-                    ...prev.stats,
-                    viewers: count
-                }
+                stats: { ...prev.stats, viewers: count }
+            }));
+        });
+
+        socket.on('total-views-update', (count) => {
+            setDashboardData(prev => ({
+                ...prev,
+                stats: { ...prev.stats, viewers: count }
+            }));
+        });
+
+        socket.on('like-update', (count) => {
+            setDashboardData(prev => ({
+                ...prev,
+                stats: { ...prev.stats, likes: count }
+            }));
+        });
+
+        socket.on('share-update', (count) => {
+            setDashboardData(prev => ({
+                ...prev,
+                stats: { ...prev.stats, shares: count }
             }));
         });
 
@@ -239,6 +310,13 @@ export default function SellerDashboard() {
         };
     }, [dashboardData.activeAuction?.auction_id, isLive]);
 
+    // Auto-scroll chat to latest comment
+    useEffect(() => {
+        if (chatScrollRef.current) {
+            chatScrollRef.current.scrollTop = chatScrollRef.current.scrollHeight;
+        }
+    }, [comments]);
+
     // Auto-start camera if auction is already live
     useEffect(() => {
         let cancelled = { val: false };
@@ -256,17 +334,28 @@ export default function SellerDashboard() {
         };
     }, [dashboardData.activeAuction?.auction_id, isLive]);
 
+    const hasPlayedRef = useRef(false);
+
     // Handle video playback once DOM container is ready
     useEffect(() => {
-        if (streamReady && localTracksRef.current.video) {
-            console.log('▶️ Playing video locally...');
-            try {
-                localTracksRef.current.video.play('seller-camera-preview');
-            } catch (e) {
-                console.warn('Video playback failed:', e);
+        if (!streamReady) {
+            hasPlayedRef.current = false;
+        }
+
+        if (streamReady && localTracksRef.current.video && dashboardData.activeAuction?.auction_id) {
+            const container = document.getElementById('seller-camera-preview');
+            if (container && !hasPlayedRef.current) {
+                console.log('▶️ Playing video locally...');
+                try {
+                    container.innerHTML = '';
+                    localTracksRef.current.video.play(container);
+                    hasPlayedRef.current = true;
+                } catch (e) {
+                    console.warn('Video playback failed:', e);
+                }
             }
         }
-    }, [streamReady]);
+    }, [streamReady, dashboardData.activeAuction?.auction_id]);
 
     // Live duration counter
     useEffect(() => {
@@ -305,7 +394,7 @@ export default function SellerDashboard() {
     const activeItem = dashboardData.activeAuction ? {
         id: dashboardData.activeAuction.auction_id,
         title: dashboardData.activeAuction.products?.name,
-        image: dashboardData.activeAuction.products?.images?.[0]?.image_url || "https://placehold.co/400x400?text=No+Image",
+        image: (dashboardData.activeAuction.products?.images?.[0]?.image_url && dashboardData.activeAuction.products?.images?.[0]?.image_url !== 'noposter') ? dashboardData.activeAuction.products?.images?.[0]?.image_url : "https://placehold.co/400x400?text=No+Image",
         currentBid: dashboardData.activeAuction.current_price || dashboardData.activeAuction.reserve_price || 0,
         timeLeft: '---', // Needs timer logic
         bidders: dashboardData.activeAuction.bids?.[0]?.count || 0
@@ -556,8 +645,7 @@ export default function SellerDashboard() {
                 headers: { ...(token ? { 'Authorization': `Bearer ${token}` } : {}) }
             });
             if (res.ok) {
-                await startAgoraStream(nextAuction.auction_id);
-                fetchDashboardData();
+                await fetchDashboardData();
             } else {
                 const error = await res.json();
                 alert(error.error || 'Failed to start auction');
@@ -851,7 +939,7 @@ export default function SellerDashboard() {
                                 <div className={styles.bidsChatLabel}>
                                     <MessageSquare size={11} /> Chat
                                 </div>
-                                <div className={styles.chatScroll}>
+                                <div className={styles.chatScroll} ref={chatScrollRef}>
                                     {comments.length > 0 ? comments.map(msg => (
                                         <div key={msg.id} className={styles.commentCompact}>
                                             <span className={styles.commentUserSm}>{msg.user}</span>
@@ -907,7 +995,7 @@ export default function SellerDashboard() {
                         <div className={styles.queueGrid}>
                             {dashboardData.queue.length > 0 ? dashboardData.queue.map((item, idx) => (
                                 <div key={item.auction_id} className={`${styles.queueGridItem} ${idx === 0 ? styles.queueGridItemFirst : ''}`}>
-                                    <img src={item.products?.images?.[0]?.image_url || 'https://placehold.co/100x100?text=No+Image'} alt={item.products?.name} />
+                                    <img src={(item.products?.images?.[0]?.image_url && item.products?.images?.[0]?.image_url !== 'noposter') ? item.products?.images?.[0]?.image_url : 'https://placehold.co/100x100?text=No+Image'} alt={item.products?.name} />
                                     <div className={styles.queueGridMeta}>
                                         <h4>{item.products?.name}</h4>
                                         <span>₱{item.reserve_price?.toLocaleString() || item.buy_now_price?.toLocaleString()}</span>
