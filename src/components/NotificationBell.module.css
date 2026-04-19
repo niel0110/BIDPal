@@ -2,14 +2,6 @@
     position: relative;
     display: flex;
     align-items: center;
-    gap: 0.1rem;
-}
-
-.bellLabel {
-    font-size: 0.9rem;
-    font-weight: 500;
-    color: #333;
-    white-space: nowrap;
 }
 
 .bellBtn {
@@ -18,30 +10,43 @@
     cursor: pointer;
     display: flex;
     align-items: center;
-    justify-content: center;
-    width: 40px;
-    height: 40px;
-    border-radius: 10px;
-    color: #555;
-    position: relative;
-    transition: background 0.2s, color 0.2s;
+    gap: 0.5rem;
+    color: #333;
+    font-size: 0.9rem;
+    font-weight: 500;
+    font-family: inherit;
+    padding: 0;
+    transition: color 0.2s;
 }
 
 .bellBtn:hover {
-    background: #f5f5f5;
     color: #111;
+}
+
+.bellIconWrap {
+    position: relative;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    width: 20px;
+    height: 20px;
+    color: #333;
+}
+
+.bellLabel {
+    white-space: nowrap;
 }
 
 .badge {
     position: absolute;
-    top: 4px;
-    right: 4px;
+    top: -5px;
+    right: -6px;
     background: #ef4444;
     color: white;
     font-size: 0.6rem;
     font-weight: 800;
-    min-width: 16px;
-    height: 16px;
+    min-width: 15px;
+    height: 15px;
     border-radius: 8px;
     display: flex;
     align-items: center;
@@ -49,6 +54,7 @@
     padding: 0 3px;
     line-height: 1;
     border: 1.5px solid white;
+    pointer-events: none;
 }
 
 .dropdown {
@@ -192,7 +198,23 @@
 .iconWrap.auction_sold { background: #dcfce7; color: #16a34a; }
 .iconWrap.auction_reserve_not_met { background: #fee2e2; color: #dc2626; }
 .iconWrap.order_update { background: #fdf4ff; color: #a855f7; }
+.iconWrap.order_cancelled { background: #fee2e2; color: #dc2626; }
+.iconWrap.account_violation { background: #fef2f2; color: #dc2626; }
+.iconWrap.warning { background: #fffbeb; color: #d97706; }
+.iconWrap.buyer_violation { background: #fff7ed; color: #ea580c; }
 .iconWrap.auction_upcoming { background: #fff7ed; color: #f97316; }
+
+/* Violation/warning items get a stronger unread highlight */
+.item.unread.account_violation,
+.item.unread.warning {
+    background: #fef2f2;
+    border-left: 3px solid #dc2626;
+}
+
+.item.unread.account_violation:hover,
+.item.unread.warning:hover {
+    background: #fee2e2;
+}
 
 .itemContent {
     flex: 1;
@@ -229,20 +251,22 @@
 
 /* ── Mobile — must be at the END so it overrides base styles ── */
 @media (max-width: 768px) {
-    .bellLabel {
-        display: none;
-    }
-
     .wrapper {
         gap: 0;
     }
 
     .bellBtn {
+        color: #ef4f25;
+        gap: 0;
+    }
+
+    .bellLabel {
+        display: none;
+    }
+
+    .bellIconWrap {
         width: 34px;
         height: 34px;
-        border-radius: 8px;
-        background: none;
-        color: #ef4f25;
     }
 
     .dropdown {
@@ -331,7 +355,7 @@
 }
 
 @media (max-width: 360px) {
-    .bellBtn {
+    .bellIconWrap {
         width: 30px;
         height: 30px;
     }

@@ -799,7 +799,7 @@ function LivePageInner() {
             headers: { 'Content-Type': 'application/json' },
             body: JSON.stringify({ user_id: user?.user_id || user?.id || null, session_id })
         }).catch(() => {}); // Fire-and-forget — non-critical
-    }, [auctionId, isHost]); // eslint-disable-line react-hooks/exhaustive-deps
+    }, [auctionId, isHost, user]); // re-runs when user auth resolves
 
     const handleShare = async () => {
         try {

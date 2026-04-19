@@ -5,9 +5,8 @@ import { useAuth } from '@/context/AuthContext';
 
 const API_URL = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:5000';
 const POLL_INTERVAL = 10000; // 10 seconds
-const UNREAD_SENTINEL = '2099-12-31T23:59:59.000Z'; // far-future = unread
-
-export const isUnread = (n) => n.read_at === UNREAD_SENTINEL;
+// Supabase returns timestamptz in +00:00 format, not .000Z — use year check instead of string compare
+export const isUnread = (n) => !n.read_at || new Date(n.read_at).getFullYear() >= 2099;
 
 export function useNotifications() {
     const { user, logout } = useAuth();
@@ -33,7 +32,8 @@ export function useNotifications() {
 
             if (notifRes.ok) {
                 const data = await notifRes.json();
-                const list = Array.isArray(data) ? data : [];
+                // Messages have their own indicator — exclude them from the bell
+                const list = (Array.isArray(data) ? data : []).filter(n => n.type !== 'new_message');
                 setNotifications(list);
                 setUnreadCount(list.filter(isUnread).length);
             }

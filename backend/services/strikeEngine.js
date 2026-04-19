@@ -71,15 +71,24 @@ const applyStrike1Consequences = async (violationEvent) => {
   try {
     console.log('📢 Applying Strike 1 consequences: Warning');
 
-    // Send notification to buyer
+    // Create moderation case so admin can review the cancellation reason
+    await createModerationCase({
+      user_id: violationEvent.user_id,
+      violation_event_id: violationEvent.violation_event_id,
+      case_type: 'cancellation_review',
+      priority: 'normal'
+    });
+
+    const isExcessiveCancellation = violationEvent.violation_type === 'excessive_cancellations';
     await sendStrikeNotification(violationEvent.user_id, 1, {
       title: '⚠️ Strike 1: Warning Issued',
-      message: `You have received your first strike for failing to complete payment within the required timeframe. Please ensure you complete payments within 24 hours of winning auctions to avoid further penalties.`,
+      message: isExcessiveCancellation
+        ? `You have received Strike 1 for excessive order cancellations (more than 3 per week). Further cancellations will lead to account restrictions.`
+        : `You have received Strike 1 for failing to complete payment within the 24-hour window. Please ensure you pay within 24 hours of winning an auction to avoid further penalties.`,
       auction_id: violationEvent.auction_id,
       violation_type: violationEvent.violation_type
     });
 
-    // Log the action
     console.log(`✅ Strike 1 warning sent to user ${violationEvent.user_id}`);
   } catch (err) {
     console.error('Error applying Strike 1 consequences:', err);
@@ -111,10 +120,20 @@ const applyStrike2Consequences = async (violationEvent) => {
 
     if (restrictionError) throw restrictionError;
 
-    // Send notification to buyer
+    // Create moderation case so admin can review the cancellation reason
+    await createModerationCase({
+      user_id: violationEvent.user_id,
+      violation_event_id: violationEvent.violation_event_id,
+      case_type: 'cancellation_review',
+      priority: 'normal'
+    });
+
+    const isExcessiveCancellation = violationEvent.violation_type === 'excessive_cancellations';
     await sendStrikeNotification(violationEvent.user_id, 2, {
       title: '🔒 Strike 2: Account Restricted',
-      message: `Your account has been restricted due to repeated payment failures. You must now provide payment pre-authorization before placing bids. This ensures you have available funds before bidding. Complete successful transactions to restore full privileges.`,
+      message: isExcessiveCancellation
+        ? `Your account has been restricted due to repeated excessive cancellations. You must now provide payment pre-authorization before placing bids. Avoid further cancellations to restore full privileges.`
+        : `Your account has been restricted due to repeated payment failures. You must now provide payment pre-authorization before placing bids. Complete successful transactions to restore full privileges.`,
       auction_id: violationEvent.auction_id,
       violation_type: violationEvent.violation_type,
       restriction_details: {
@@ -162,10 +181,12 @@ const applyStrike3Consequences = async (violationEvent) => {
       priority: 'high'
     });
 
-    // Send notification to buyer
+    const isExcessiveCancellation = violationEvent.violation_type === 'excessive_cancellations';
     await sendStrikeNotification(violationEvent.user_id, 3, {
       title: '🚫 Strike 3: Account Suspended',
-      message: `Your account has been suspended due to three payment violations. Your case is under review by our moderation team. You may submit an appeal within 7 days. If the suspension is confirmed, your account will be permanently banned.`,
+      message: isExcessiveCancellation
+        ? `Your account has been suspended due to three violations for excessive order cancellations. Your case is under review by our moderation team. You may submit an appeal within 7 days.`
+        : `Your account has been suspended due to three payment violations. Your case is under review by our moderation team. You may submit an appeal within 7 days. If the suspension is confirmed, your account will be permanently banned.`,
       auction_id: violationEvent.auction_id,
       violation_type: violationEvent.violation_type,
       moderation_case_id: moderationCase.moderation_case_id,
@@ -190,15 +211,16 @@ const sendStrikeNotification = async (userId, strikeNumber, details) => {
       .insert([{
         user_id: userId,
         type: 'account_violation',
-        title: details.title,
-        message: details.message,
-        reference_type: 'violation',
-        reference_id: details.auction_id || null,
-        data: {
+        payload: {
+          title: details.title,
+          message: details.message,
           strike_number: strikeNumber,
           violation_type: details.violation_type,
           ...details
-        }
+        },
+        reference_type: 'violation',
+        reference_id: details.auction_id || null,
+        read_at: '2099-12-31T23:59:59.000Z'
       }]);
 
     if (error) throw error;
@@ -241,10 +263,13 @@ const notifyAffectedSellers = async (violationEvent) => {
       .insert([{
         user_id: sellerUserId,
         type: 'buyer_violation',
-        title: '⚠️ Bogus Buyer Flagged',
-        message: `The winning bidder for your auction has been flagged for repeated payment violations. Their account is now under review by our moderation team.`,
+        payload: {
+          title: '⚠️ Bogus Buyer Flagged',
+          message: `The winning bidder for your auction has been flagged for repeated payment violations. Their account is now under review by our moderation team.`
+        },
         reference_type: 'auction',
-        reference_id: violationEvent.auction_id
+        reference_id: violationEvent.auction_id,
+        read_at: '2099-12-31T23:59:59.000Z'
       }]);
 
     console.log(`📧 Seller ${sellerUserId} notified about buyer violation`);

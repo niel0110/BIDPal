@@ -22,7 +22,11 @@ function getNotificationIcon(type) {
         case 'auction_won': return <Gavel size={16} />;
         case 'auction_sold': return <Package size={16} />;
         case 'auction_reserve_not_met': return <Gavel size={16} />;
-        case 'order_update': return <Package size={16} />;
+        case 'order_update':
+        case 'order_cancelled': return <Package size={16} />;
+        case 'account_violation':
+        case 'warning':
+        case 'buyer_violation': return <Bell size={16} />;
         case 'auction_reminder': return <Bell size={16} />;
         case 'auction_interest': return <Users size={16} />;
         case 'auction_upcoming': return <Bell size={16} />;
@@ -31,18 +35,55 @@ function getNotificationIcon(type) {
 }
 
 function getNotificationTarget(notification) {
-    const { type, reference_id, metadata } = notification;
-    let meta = metadata;
-    if (typeof metadata === 'string') {
-        try { meta = JSON.parse(metadata); } catch (e) { meta = {}; }
+    const { type, reference_id, reference_type } = notification;
+    const isSeller = reference_type === 'auction';
+
+    switch (type) {
+        // Buyer won — go pay
+        case 'auction_won':
+            return '/orders';
+
+        // Seller's item sold — see full results
+        case 'auction_sold':
+            return reference_id ? `/seller/auctions/${reference_id}/results` : '/seller';
+
+        // Reserve not met — auction is over, buyer checks orders for context
+        case 'auction_reserve_not_met':
+            return '/orders';
+
+        // order_update / order_cancelled:
+        //   reference_type='auction' → seller notification → seller orders
+        //   reference_type='order'  → buyer notification → buyer orders
+        case 'order_update':
+        case 'order_cancelled':
+            return isSeller ? '/seller/orders' : '/orders';
+
+        // Buyer violations/warnings → Account Standing in profile
+        case 'account_violation':
+        case 'warning':
+            return '/profile?tab=account-standing';
+
+        // Seller notified of a flagged buyer → seller orders
+        case 'buyer_violation':
+            return '/seller/orders';
+
+        // Reminder / upcoming auction → live page
+        case 'auction_reminder':
+        case 'auction_upcoming':
+            return reference_id ? `/live?id=${reference_id}` : '/';
+
+        // Seller: someone set a reminder / bid on auction → their live auction
+        case 'auction_interest':
+        case 'new_bid':
+            return reference_id ? `/live?id=${reference_id}` : '/seller';
+
+        // Messages handled separately (excluded from bell)
+        case 'new_message':
+            return '/messages';
+
+        default:
+            return '/';
     }
-    if (type === 'new_message') return `/messages`;
-    if (type === 'auction_won') return `/orders`;
-    if (type === 'auction_sold' && reference_id) return `/seller/auctions/${reference_id}/results`;
-    if (type === 'auction_reserve_not_met' && reference_id) return `/live?id=${reference_id}`;
-    if (type === 'order_update' && meta?.order_id) return `/orders`;
-    if (type === 'auction_upcoming' && reference_id) return `/live?id=${reference_id}`;
-    return '/';
 }
 
 export default function NotificationBell() {
@@ -79,12 +120,14 @@ export default function NotificationBell() {
                 aria-label="Notifications"
                 title="Notifications"
             >
-                <Bell size={20} />
-                {unreadCount > 0 && (
-                    <span className={styles.badge}>{unreadCount > 99 ? '99+' : unreadCount}</span>
-                )}
+                <span className={styles.bellIconWrap}>
+                    <Bell size={18} />
+                    {unreadCount > 0 && (
+                        <span className={styles.badge}>{unreadCount > 99 ? '99+' : unreadCount}</span>
+                    )}
+                </span>
+                <span className={styles.bellLabel}>Notifications</span>
             </button>
-            <span className={styles.bellLabel}>Notifications</span>
 
             {open && (
                 <div className={styles.dropdown}>
@@ -112,7 +155,7 @@ export default function NotificationBell() {
                             notifications.slice(0, 20).map(n => (
                                 <div
                                     key={n.notification_id}
-                                    className={`${styles.item} ${isUnread(n) ? styles.unread : ''}`}
+                                    className={`${styles.item} ${isUnread(n) ? styles.unread : ''} ${isUnread(n) ? (styles[n.type] || '') : ''}`}
                                     onClick={() => handleNotificationClick(n)}
                                 >
                                     <div className={`${styles.iconWrap} ${styles[n.type] || ''}`}>
@@ -120,26 +163,20 @@ export default function NotificationBell() {
                                     </div>
                                     <div className={styles.itemContent}>
                                         <p className={styles.itemText}>
-                                            {n.type === 'new_message' && (
-                                                <><strong>{n.payload?.senderName}</strong> sent you a message: &quot;{n.payload?.preview}&quot;</>
-                                            )}
                                             {n.type === 'new_bid' && (
                                                 <>New bid on <strong>{n.payload?.itemName}</strong></>
                                             )}
-                                            {n.type === 'auction_won' && (
-                                                <><strong>{n.title}</strong><br/>{n.message}</>
+                                            {(n.type === 'auction_won' || n.type === 'auction_sold' || n.type === 'auction_reserve_not_met') && (
+                                                <><strong>{n.payload?.title}</strong>{n.payload?.message && <><br />{n.payload.message}</>}</>
                                             )}
-                                            {n.type === 'auction_sold' && (
-                                                <><strong>{n.title}</strong><br/>{n.message}</>
+                                            {(n.type === 'order_cancelled' || n.type === 'account_violation' || n.type === 'warning' || (n.type === 'order_update' && n.payload?.title)) && (
+                                                <><strong>{n.payload?.title}</strong>{n.payload?.message && <><br />{n.payload.message}</>}</>
                                             )}
-                                            {n.type === 'auction_reserve_not_met' && (
-                                                <><strong>{n.title}</strong><br/>{n.message}</>
-                                            )}
-                                            {n.type === 'order_update' && (
+                                            {n.type === 'order_update' && !n.payload?.title && (
                                                 <>Your order has been updated</>
                                             )}
-                                            {!['new_message', 'new_bid', 'order_update', 'auction_won', 'auction_sold', 'auction_reserve_not_met'].includes(n.type) && (
-                                                <>{n.message || n.payload?.message || 'You have a new notification'}</>
+                                            {!['new_bid', 'order_update', 'order_cancelled', 'auction_won', 'auction_sold', 'auction_reserve_not_met', 'account_violation', 'warning'].includes(n.type) && (
+                                                <>{n.payload?.title ? <><strong>{n.payload.title}</strong>{n.payload.message && <><br />{n.payload.message}</>}</> : n.payload?.message || 'You have a new notification'}</>
                                             )}
                                         </p>
                                         <span className={styles.itemTime}>{timeAgo(n.created_at)}</span>

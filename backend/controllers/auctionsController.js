@@ -1,5 +1,6 @@
 import { supabase } from '../config/supabase.js';
 import { createNotification } from './notificationsController.js';
+import { createPaymentWindow } from '../services/violationService.js';
 
 // Get all auctions for a seller
 export const getSellerAuctions = async (req, res) => {
@@ -494,19 +495,36 @@ export const endAuction = async (req, res) => {
         .eq('products_id', auction.products_id)
         .maybeSingle();
 
-      // Create order for the winner
-      const { data: orderData, error: orderError } = await supabase
+      // Guard: skip if order already exists for this auction (idempotent)
+      const { data: existingOrder } = await supabase
         .from('Orders')
-        .insert([{
-          user_id: winningBid.user_id,
-          seller_id: auction.seller_id,
-          total_amount: winningBid.bid_amount,
-          status: 'pending_payment',
-          order_type: 'auction',
-          auction_id: id
-        }])
         .select('order_id')
-        .single();
+        .eq('auction_id', id)
+        .eq('user_id', winningBid.user_id)
+        .maybeSingle();
+
+      let orderData = existingOrder;
+      let orderError = null;
+
+      if (!existingOrder) {
+        // Create order for the winner
+        const result = await supabase
+          .from('Orders')
+          .insert([{
+            user_id: winningBid.user_id,
+            seller_id: auction.seller_id,
+            total_amount: winningBid.bid_amount,
+            status: 'pending_payment',
+            order_type: 'auction',
+            auction_id: id
+          }])
+          .select('order_id')
+          .single();
+        orderData = result.data;
+        orderError = result.error;
+      } else {
+        console.log(`ℹ️ Order already exists for auction ${id}: ${existingOrder.order_id}`);
+      }
 
       if (orderError) {
         console.error('❌ ERROR creating order:', orderError);
@@ -521,21 +539,36 @@ export const endAuction = async (req, res) => {
         orderId = orderData.order_id;
         console.log(`✅ Order created successfully: ${orderId}`);
 
-        // Create order item
-        const { error: itemError } = await supabase
+        // Create order item (only if none exists yet)
+        const { data: existingItem } = await supabase
           .from('Order_items')
-          .insert([{
-            order_id: orderId,
-            products_id: auction.products_id,
-            quantity: 1,
-            unit_price: winningBid.bid_amount,
-            subtotal: winningBid.bid_amount
-          }]);
+          .select('order_item_id')
+          .eq('order_id', orderId)
+          .maybeSingle();
 
-        if (itemError) {
-          console.error('❌ ERROR creating order item:', itemError);
-        } else {
-          console.log(`📦 Order item created for order: ${orderId}`);
+        if (!existingItem) {
+          const { error: itemError } = await supabase
+            .from('Order_items')
+            .insert([{
+              order_id: orderId,
+              products_id: auction.products_id,
+              quantity: 1,
+              unit_price: winningBid.bid_amount,
+              subtotal: winningBid.bid_amount
+            }]);
+
+          if (itemError) {
+            console.error('❌ ERROR creating order item:', itemError);
+          } else {
+            console.log(`📦 Order item created for order: ${orderId}`);
+          }
+        }
+
+        // Create a 24-hour payment window for the winner
+        try {
+          await createPaymentWindow(id, winningBid.user_id, new Date().toISOString());
+        } catch (pwErr) {
+          console.warn('Payment_Windows insert skipped:', pwErr.message);
         }
       }
 
@@ -549,14 +582,15 @@ export const endAuction = async (req, res) => {
         .insert([{
           user_id: winningBid.user_id,
           type: 'auction_won',
-          title: '🎉 Congratulations! You won the auction',
-          message: `You won the auction with a bid of ₱${winningBid.bid_amount.toLocaleString('en-PH')}. Please proceed to payment.`,
-          reference_id: id,
-          reference_type: 'auction',
-          metadata: JSON.stringify({
+          payload: {
+            title: '🎉 Congratulations! You won the auction',
+            message: `You won "${productData?.name}" with a bid of ₱${winningBid.bid_amount.toLocaleString('en-PH')}. Please proceed to payment within 24 hours.`,
             order_id: orderId,
             product_name: productData?.name
-          })
+          },
+          reference_id: id,
+          reference_type: 'auction',
+          read_at: '2099-12-31T23:59:59.000Z'
         }])
         .select();
 
@@ -575,14 +609,15 @@ export const endAuction = async (req, res) => {
           .insert([{
             user_id: sellerUserId,
             type: 'auction_sold',
-            title: '💰 Your auction has ended successfully',
-            message: `Your auction sold to ${winnerName} for ₱${winningBid.bid_amount.toLocaleString('en-PH')}. Awaiting buyer payment.`,
-            reference_id: id,
-            reference_type: 'auction',
-            metadata: JSON.stringify({
+            payload: {
+              title: '🏆 Auction Sold — Awaiting Payment',
+              message: `"${productData?.name}" sold to ${winnerName} for ₱${winningBid.bid_amount.toLocaleString('en-PH')}. The buyer has 24 hours to complete payment.`,
               order_id: orderId,
               winner_user_id: winningBid.user_id
-            })
+            },
+            reference_id: id,
+            reference_type: 'auction',
+            read_at: '2099-12-31T23:59:59.000Z'
           }])
           .select();
 
@@ -599,10 +634,13 @@ export const endAuction = async (req, res) => {
         .insert([{
           user_id: winningBid.user_id,
           type: 'auction_reserve_not_met',
-          title: 'Auction ended - Reserve not met',
-          message: `The auction ended but the reserve price was not met. Your bid of ₱${winningBid.bid_amount.toLocaleString('en-PH')} was the highest.`,
+          payload: {
+            title: 'Auction ended — Reserve not met',
+            message: `The auction ended but the reserve price was not met. Your bid of ₱${winningBid.bid_amount.toLocaleString('en-PH')} was the highest.`
+          },
           reference_id: id,
-          reference_type: 'auction'
+          reference_type: 'auction',
+          read_at: '2099-12-31T23:59:59.000Z'
         }]);
     }
 
@@ -819,6 +857,24 @@ export const placeBid = async (req, res) => {
       return res.status(400).json({
         error: `Auction is not active (status: ${auction.status})`,
         currentStatus: auction.status
+      });
+    }
+
+    // Anti-bogus: check if buyer is suspended/banned or has restrictions
+    const { data: restriction } = await supabase
+      .from('Account_Restrictions')
+      .select('restriction_type, reason')
+      .eq('user_id', user_id)
+      .eq('is_active', true)
+      .in('restriction_type', ['bidding_disabled', 'suspended', 'banned'])
+      .maybeSingle();
+
+    if (restriction) {
+      return res.status(403).json({
+        error: restriction.restriction_type === 'banned'
+          ? 'Your account has been permanently banned from bidding.'
+          : 'Your bidding privileges are temporarily suspended. Please check your account status.',
+        restriction_type: restriction.restriction_type
       });
     }
 

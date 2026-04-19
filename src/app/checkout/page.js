@@ -4,7 +4,7 @@ import BIDPalLoader from '@/components/BIDPalLoader';
 import BackButton from '@/components/BackButton';
 import { useState, useEffect, useCallback, Suspense } from 'react';
 import { useRouter, useSearchParams } from 'next/navigation';
-import { ChevronLeft, MapPin, Plus, CreditCard, Truck, CheckCircle2, Loader2, AlertCircle, X, ShoppingBag } from 'lucide-react';
+import { MapPin, Plus, CreditCard, Truck, CheckCircle2, Loader2, AlertCircle, X, ShoppingBag, Gavel, Lock } from 'lucide-react';
 import { useAuth } from '@/context/AuthContext';
 import styles from './page.module.css';
 
@@ -32,7 +32,7 @@ function CheckoutPageInner() {
     const [showErrorModal, setShowErrorModal] = useState(false);
     const [modalError, setModalError] = useState('');
 
-    // Fetch order/auction data
+    // Fetch order/auction data — check real order status first
     useEffect(() => {
         const fetchOrderData = async () => {
             if (!user || !auctionId) {
@@ -41,15 +41,31 @@ function CheckoutPageInner() {
             }
 
             try {
-                // Fetch auction wins to get order details
+                // Primary: fetch from Orders table to get the real status
+                const ordersRes = await fetch(`${API_URL}/api/orders/user/${user.user_id}`);
+                if (ordersRes.ok) {
+                    const orders = await ordersRes.json();
+                    const existing = orders.find(o => o.auction_id === auctionId);
+                    if (existing) {
+                        if (existing.status !== 'pending_payment') {
+                            setError('already_paid');
+                            setLoading(false);
+                            return;
+                        }
+                        setOrderData(existing);
+                        setLoading(false);
+                        return;
+                    }
+                }
+
+                // Fallback: auction-wins endpoint (covers newly ended auctions not yet in Orders)
                 const winsRes = await fetch(`${API_URL}/api/orders/user/${user.user_id}/auction-wins`);
                 if (!winsRes.ok) throw new Error('Failed to fetch auction data');
-
                 const wins = await winsRes.json();
                 const auction = wins.find(w => w.auction_id === auctionId);
 
                 if (!auction) {
-                    setError('Auction not found or you are not the winner');
+                    setError('Auction not found or you are not the winner.');
                     setLoading(false);
                     return;
                 }
@@ -190,13 +206,28 @@ function CheckoutPageInner() {
         );
     }
 
+    if (error === 'already_paid') {
+        return (
+            <div className={styles.checkoutContainer}>
+                <div className={styles.errorState}>
+                    <div className={styles.alreadyPaidIcon}><CheckCircle2 size={40} /></div>
+                    <h2>Already Processed</h2>
+                    <p>This order has already been paid and is being prepared for shipping.</p>
+                    <button className={styles.goOrdersBtn} onClick={() => router.push('/orders')}>
+                        View My Orders
+                    </button>
+                </div>
+            </div>
+        );
+    }
+
     if (error || !orderData) {
         return (
             <div className={styles.checkoutContainer}>
                 <div className={styles.errorState}>
-                    <AlertCircle size={48} color="#f44336" />
-                    <h2>Unable to process checkout</h2>
-                    <p>{error || 'Order not found'}</p>
+                    <div className={styles.errorStateIcon}><AlertCircle size={40} /></div>
+                    <h2>Unable to load checkout</h2>
+                    <p>{error || 'Order not found. It may have expired or already been processed.'}</p>
                     <BackButton label="Back to Orders" />
                 </div>
             </div>
@@ -210,6 +241,8 @@ function CheckoutPageInner() {
         <>
         <div className={styles.checkoutContainer}>
             <div className={styles.checkoutContent}>
+
+                {/* ── Header ── */}
                 <header className={styles.checkoutHeader}>
                     <BackButton label="Back" />
                     <h1>Checkout</h1>
@@ -218,19 +251,21 @@ function CheckoutPageInner() {
                 <div className={styles.checkoutMain}>
                     {/* Left Column - Forms */}
                     <div className={styles.checkoutForms}>
+
                         {/* Shipping Address Section */}
                         <section className={styles.section}>
                             <div className={styles.sectionHeader}>
                                 <div className={styles.sectionTitle}>
-                                    <MapPin size={20} />
+                                    <span className={styles.stepBadge}>01</span>
+                                    <MapPin size={18} />
                                     <h2>Shipping Address</h2>
                                 </div>
                                 {addresses.length > 0 && (
                                     <button
                                         className={styles.changeBtn}
-                                        onClick={() => router.push('/profile?tab=address')}
+                                        onClick={() => router.push(`/profile?tab=address&returnTo=/checkout?auction_id=${auctionId}`)}
                                     >
-                                        <Plus size={16} />
+                                        <Plus size={14} />
                                         Add New
                                     </button>
                                 )}
@@ -238,13 +273,13 @@ function CheckoutPageInner() {
 
                             {addresses.length === 0 ? (
                                 <div className={styles.emptyState}>
-                                    <MapPin size={32} color="#ccc" />
-                                    <p>No addresses found</p>
+                                    <div className={styles.emptyIcon}><MapPin size={24} /></div>
+                                    <p>No saved addresses</p>
                                     <button
                                         className={styles.addAddressBtn}
-                                        onClick={() => router.push('/profile?tab=address')}
+                                        onClick={() => router.push(`/profile?tab=address&returnTo=/checkout?auction_id=${auctionId}`)}
                                     >
-                                        <Plus size={18} />
+                                        <Plus size={16} />
                                         Add Shipping Address
                                     </button>
                                 </div>
@@ -286,7 +321,8 @@ function CheckoutPageInner() {
                         <section className={styles.section}>
                             <div className={styles.sectionHeader}>
                                 <div className={styles.sectionTitle}>
-                                    <CreditCard size={20} />
+                                    <span className={styles.stepBadge}>02</span>
+                                    <CreditCard size={18} />
                                     <h2>Payment Method</h2>
                                 </div>
                             </div>
@@ -305,7 +341,7 @@ function CheckoutPageInner() {
                                         className={styles.radio}
                                     />
                                     <div className={styles.paymentInfo}>
-                                        <Truck size={24} />
+                                        <div className={styles.paymentIconWrap}><Truck size={20} /></div>
                                         <div>
                                             <h3>Cash on Delivery</h3>
                                             <p>Pay when you receive the item</p>
@@ -326,10 +362,10 @@ function CheckoutPageInner() {
                                         className={styles.radio}
                                     />
                                     <div className={styles.paymentInfo}>
-                                        <CreditCard size={24} />
+                                        <div className={styles.paymentIconWrap}><CreditCard size={20} /></div>
                                         <div>
-                                            <h3>GCash</h3>
-                                            <p>Pay securely with GCash</p>
+                                            <h3>GCash <span className={styles.gcashBadge}>E-Wallet</span></h3>
+                                            <p>Pay securely via GCash e-wallet</p>
                                         </div>
                                     </div>
                                 </div>
@@ -340,20 +376,19 @@ function CheckoutPageInner() {
                         <section className={styles.section}>
                             <div className={styles.sectionHeader}>
                                 <div className={styles.sectionTitle}>
-                                    <Truck size={20} />
+                                    <span className={styles.stepBadge}>03</span>
+                                    <Truck size={18} />
                                     <h2>Shipping Method</h2>
                                 </div>
                             </div>
 
                             <div className={styles.shippingCard}>
-                                <CheckCircle2 size={20} color="#4caf50" />
+                                <div className={styles.shippingIconWrap}><CheckCircle2 size={18} /></div>
                                 <div className={styles.shippingInfo}>
                                     <h3>Standard Delivery</h3>
-                                    <p>Estimated delivery: 3-5 business days</p>
+                                    <p>3–5 business days</p>
                                 </div>
-                                <span className={styles.shippingFee}>
-                                    ₱{shippingFee.toLocaleString()}
-                                </span>
+                                <span className={styles.shippingFee}>₱{shippingFee.toLocaleString()}</span>
                             </div>
                         </section>
                     </div>
@@ -372,8 +407,8 @@ function CheckoutPageInner() {
                                     />
                                 </div>
                                 <div className={styles.productDetails}>
+                                    <span className={styles.auctionTag}><Gavel size={10} /> Auction Win</span>
                                     <h3>{orderData.items[0]?.name}</h3>
-                                    <p>Auction Win</p>
                                     <span className={styles.price}>₱{subtotal.toLocaleString()}</span>
                                 </div>
                             </div>
@@ -421,6 +456,23 @@ function CheckoutPageInner() {
                         </div>
                     </aside>
                 </div>
+            </div>
+
+            {/* ── Sticky bottom bar (mobile only) ── */}
+            <div className={styles.mobileBar}>
+                <div className={styles.mobileBarInfo}>
+                    <span className={styles.mobileBarLabel}>Total</span>
+                    <span className={styles.mobileBarTotal}>₱{total.toLocaleString()}</span>
+                </div>
+                <button
+                    className={styles.mobileBarBtn}
+                    onClick={handlePlaceOrder}
+                    disabled={processing || !selectedAddressId}
+                >
+                    {processing
+                        ? <><Loader2 className={styles.spin} size={16} /> Processing…</>
+                        : 'Place Order'}
+                </button>
             </div>
         </div>
 

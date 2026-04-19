@@ -48,23 +48,41 @@
 
 .mapHeader {
   display: flex;
-  align-items: center;
-  justify-content: space-between;
-  padding: 1.5rem 2rem;
+  flex-direction: column;
+  align-items: flex-start;
+  gap: 0.5rem;
+  padding: 1rem 1.5rem;
   border-bottom: 1px solid #f0f0f0;
   background: #fafafa;
+}
+
+.closeBtn {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.35rem;
+  background: none;
+  border: none;
+  padding: 0.25rem 0;
+  cursor: pointer;
+  color: #666;
+  font-weight: 700;
+  font-size: 0.85rem;
+  transition: color 0.2s;
+}
+
+.closeBtn:hover {
+  color: var(--color-primary);
 }
 
 .headerContent {
   display: flex;
   align-items: center;
-  gap: 1rem;
-  flex: 1;
+  gap: 0.6rem;
 }
 
 .headerContent h2 {
-  font-size: 1.5rem;
-  font-weight: 700;
+  font-size: 1.15rem;
+  font-weight: 800;
   color: #111;
   margin: 0;
 }
@@ -75,34 +93,14 @@
   margin: 0.25rem 0 0 0;
 }
 
-.closeBtn {
-  background: none;
-  border: none;
-  cursor: pointer;
-  padding: 0.5rem;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  color: #666;
-  transition: all 0.2s;
-  border-radius: 10px;
-  flex-shrink: 0;
-}
-
-.closeBtn:hover {
-  background: #f0f0f0;
-  color: #111;
-  transform: rotate(90deg);
-}
-
 /* Search and Filter Row */
 .searchFilterRow {
   display: flex;
-  gap: 1rem;
-  padding: 1.5rem 1.5rem;
+  gap: 0.75rem;
+  padding: 0.75rem 1rem;
   background: white;
   border-bottom: 1px solid #f0f0f0;
-  align-items: flex-start;
+  align-items: center;
 }
 
 .searchBox {
@@ -115,8 +113,8 @@
   border: 2px solid #f0f0f0;
   border-radius: 12px;
   transition: all 0.2s;
-  flex: 1;
-  min-width: 200px;
+  flex: 1 1 0;
+  min-width: 0;
 }
 
 .searchBox:focus-within {
@@ -222,17 +220,25 @@
   flex: 1;
   position: relative;
   display: flex;
+  padding: 0.75rem;
+  background: #f5f5f5;
 }
 
 .map {
   flex: 1;
   background: #e0e0e0;
   position: relative;
+  border-radius: 12px;
+  overflow: hidden;
 }
 
 .map :global(.leaflet-container) {
   background: #f5f5f5;
-  border-radius: 0;
+  border-radius: 12px;
+}
+
+.map :global(.leaflet-control-zoom) {
+  display: none !important;
 }
 
 .map :global(.leaflet-control-attribution) {
@@ -337,6 +343,7 @@
   margin: 0;
   text-transform: uppercase;
   letter-spacing: 0.5px;
+  white-space: nowrap;
 }
 
 .infoTitle svg {
@@ -511,14 +518,14 @@
 
 /* Province Filter Section */
 .provinceFilterSection {
-  padding: 0.7rem 0;
+  padding: 0;
   background: transparent;
   border-bottom: none;
   display: flex;
   align-items: center;
-  gap: 0.75rem;
-  flex-shrink: 0;
-  white-space: nowrap;
+  gap: 0;
+  flex: 1 1 0;
+  min-width: 0;
 }
 
 .filterLabel {
@@ -540,15 +547,17 @@
 }
 
 .provinceSelect {
-  padding: 0.6rem 0.9rem;
-  border: 1px solid #e0e0e0;
-  border-radius: 8px;
+  padding: 0.75rem 0.9rem;
+  border: 2px solid #f0f0f0;
+  border-radius: 12px;
   font-size: 0.85rem;
   color: #333;
   background: white;
   cursor: pointer;
   transition: all 0.2s;
-  min-width: 150px;
+  flex: 1 1 0;
+  min-width: 0;
+  font-family: inherit;
 }
 
 .provinceSelect:focus {
@@ -915,28 +924,39 @@
 }
 
 @media (max-width: 768px) {
+  .mapOverlay {
+    align-items: stretch;
+    justify-content: stretch;
+    padding: 0;
+  }
+
+  /* Full-screen bottom-sheet style */
   .mapContainer {
-    width: 95%;
-    max-width: none;
-    height: 90vh;
+    width: 100%;
+    height: 100dvh;
     max-height: none;
+    max-width: none;
+    border-radius: 0;
+    margin: 0;
   }
 
   .mapHeader {
-    padding: 1rem;
+    padding: 0.6rem 0.85rem;
+    gap: 0.3rem;
+    flex-shrink: 0;
+  }
+
+  .closeBtn {
+    font-size: 0.78rem;
+    gap: 0.25rem;
   }
 
   .headerContent {
-    flex-direction: column;
-    align-items: flex-start;
+    gap: 0.4rem;
   }
 
   .headerContent h2 {
-    font-size: 1.25rem;
-  }
-
-  .headerSubtitle {
-    font-size: 0.75rem;
+    font-size: 0.9rem;
   }
 
   .mapControls {
@@ -946,12 +966,12 @@
   }
 
   .mapControl {
-    width: 40px;
-    height: 40px;
+    width: 38px;
+    height: 38px;
   }
 
   .controlDivider {
-    width: 40px;
+    width: 38px;
   }
 
   .infoContent {
@@ -960,140 +980,304 @@
   }
 
   .infoHeader {
-    flex-direction: column;
-    align-items: flex-start;
-    gap: 0.75rem;
+    flex-direction: row;
+    align-items: center;
+    gap: 0.5rem;
+    flex-wrap: nowrap;
+  }
+
+  .infoTitle {
+    min-width: 0;
+    flex: 1;
+    overflow: hidden;
+  }
+
+  .infoTitle svg {
+    display: none;
+  }
+
+  .infoTitle h3 {
+    font-size: 0.75rem;
+    letter-spacing: 0;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
   }
 
   .headerActions {
-    width: 100%;
+    flex-shrink: 0;
+    gap: 0.4rem;
     flex-direction: row;
+    width: auto;
   }
 
   .headerActions button {
-    flex: 1;
+    flex: none;
+  }
+
+  .editBtn {
+    width: 28px;
+    height: 28px;
+    padding: 0;
+    border-radius: 6px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
   }
 
   .clearBtn {
-    width: 100%;
+    padding: 0.35rem 0.6rem;
+    font-size: 0.72rem;
+    border-radius: 6px;
   }
 
   .mapActions {
-    flex-direction: column-reverse;
+    flex-direction: row;
   }
 
-  .cancelBtn,
   .confirmBtn {
-    width: 100%;
+    flex: 1;
+    padding: 0.6rem 1rem;
+    font-size: 0.8rem;
+    border-radius: 10px;
   }
 
   /* Mobile controls panel */
   .controlsPanel {
-    max-height: 240px;
+    max-height: 180px;
   }
 
   /* Mobile search and filter row */
   .searchFilterRow {
-    flex-direction: column;
-    gap: 0.75rem;
-    padding: 1rem 1.5rem;
+    flex-direction: row;
+    gap: 0.5rem;
+    padding: 0.6rem 0.75rem;
+    flex-wrap: nowrap;
   }
 
   .searchBox {
     flex: 1;
     margin: 0;
-    min-width: auto;
+    min-width: 0;
+    overflow: hidden;
   }
 
-  /* Mobile province filter */
-  .provinceFilterSection {
+  .searchInput {
+    padding: 0.65rem 0;
+    font-size: 0.82rem;
+    min-width: 0;
     width: 100%;
-    flex-direction: column;
-    gap: 0.5rem;
-    padding: 0.75rem;
-    background: #fafafa;
-    border-radius: 8px;
+  }
+
+  /* Mobile province filter - inline next to search */
+  .provinceFilterSection {
+    flex-direction: row;
+    gap: 0.4rem;
+    padding: 0;
+    background: transparent;
+    border-radius: 0;
     border-bottom: none;
-    white-space: normal;
+    white-space: nowrap;
+    width: auto;
+    flex-shrink: 0;
   }
 
   .filterLabel {
-    width: 100%;
+    display: none;
   }
 
   .provinceSelect {
-    width: 100%;
-    min-width: auto;
-  }
-
-  /* Mobile recent locations */
-  .recentLocationItem {
-    padding: 0.8rem 0.9rem;
-  }
-
-  /* Mobile address editor */
-  .addressEditor {
-    gap: 0.9rem;
-    padding: 0.9rem;
-  }
-
-  .twoColumns {
-    grid-template-columns: 1fr;
-    gap: 0.8rem;
-  }
-
-  .editActions {
-    flex-direction: column;
-    gap: 0.6rem;
-  }
-
-  .cancelEditBtn,
-  .saveEditBtn {
-    width: 100%;
-  }
-
-  /* Mobile guide */
-  .guideContent {
-    padding: 1.5rem;
-    max-width: 90vw;
-  }
-
-  .guideHeader h3 {
-    font-size: 1.1rem;
-  }
-
-  .guideStep {
-    gap: 0.75rem;
-  }
-
-  .stepNumber {
-    width: 28px;
-    height: 28px;
-    font-size: 0.85rem;
-  }
-
-  .stepContent {
-    font-size: 0.85rem;
+    width: auto;
+    min-width: 110px;
+    padding: 0.5rem 0.6rem;
+    font-size: 0.78rem;
   }
 
   /* Mobile content wrapper - stack vertically */
   .contentWrapper {
     flex-direction: column;
+    flex: 1;
+    min-height: 0;
   }
 
   .mapSide {
     flex: 1;
+    min-height: 0;
     border-right: none;
     border-bottom: 1px solid #f0f0f0;
   }
 
+  /* Details panel: fixed height so map gets the majority */
   .detailsSide {
     width: 100%;
-    max-height: 200px;
+    max-height: 38vh;
+    flex-shrink: 0;
     border-top: 1px solid #f0f0f0;
+    overflow-y: auto;
   }
 
   .selectedInfo {
+    padding: 0.75rem 1rem;
+    gap: 0.5rem;
+  }
+
+  .infoRow {
+    padding: 0.5rem 0;
+  }
+
+  .label {
+    font-size: 0.7rem;
+    min-width: 80px;
+  }
+
+  .value {
+    font-size: 0.82rem;
+  }
+
+  /* Mobile recent locations */
+  .recentLocationItem {
+    padding: 0.65rem 0.75rem;
+  }
+
+  /* Mobile address editor */
+  .addressEditor {
+    gap: 0.5rem;
+    padding: 0.6rem;
+    border-radius: 8px;
+  }
+
+  .editField {
+    gap: 0.25rem;
+  }
+
+  .editField label {
+    font-size: 0.65rem;
+    letter-spacing: 0;
+  }
+
+  .editInput {
+    padding: 0.5rem 0.65rem;
+    font-size: 0.8rem;
+    border-radius: 6px;
+  }
+
+  .twoColumns {
+    grid-template-columns: 1fr 1fr;
+    gap: 0.5rem;
+  }
+
+  .editActions {
+    flex-direction: row;
+    gap: 0.5rem;
+    margin-top: 0.25rem;
+  }
+
+  .cancelEditBtn,
+  .saveEditBtn {
+    flex: 1;
+    padding: 0.5rem 0.65rem;
+    font-size: 0.72rem;
+    border-radius: 6px;
+  }
+
+  /* Mobile guide */
+  .guideContent {
+    padding: 1.25rem;
+    max-width: 92vw;
+    gap: 1.25rem;
+    border-radius: 16px;
+  }
+
+  .guideHeader h3 {
+    font-size: 1rem;
+  }
+
+  .guideSteps {
+    gap: 0.75rem;
+  }
+
+  .guideStep {
+    gap: 0.75rem;
+    padding: 0.75rem;
+  }
+
+  .stepNumber {
+    width: 28px;
+    height: 28px;
+    font-size: 0.82rem;
+  }
+
+  .stepContent {
+    font-size: 0.82rem;
+  }
+
+  .guideActionBtn {
+    padding: 0.85rem 1.25rem;
+    font-size: 0.85rem;
+  }
+}
+
+@media (max-width: 360px) {
+  .mapHeader {
+    padding: 0.5rem 0.75rem;
+  }
+
+  .headerContent h2 {
+    font-size: 0.9rem;
+  }
+
+  .searchFilterRow {
+    padding: 0.5rem 0.6rem;
+    gap: 0.4rem;
+  }
+
+  .searchInput {
+    padding: 0.55rem 0;
+    font-size: 0.78rem;
+  }
+
+  .provinceSelect {
+    min-width: 95px;
+    font-size: 0.72rem;
+    padding: 0.45rem 0.5rem;
+  }
+
+  .detailsSide {
+    max-height: 35vh;
+  }
+
+  .selectedInfo {
+    padding: 0.6rem 0.75rem;
+  }
+
+  .guideContent {
     padding: 1rem;
+    gap: 1rem;
+    max-width: 95vw;
+    border-radius: 14px;
+  }
+
+  .guideHeader h3 {
+    font-size: 0.9rem;
+  }
+
+  .guideStep {
+    padding: 0.6rem;
+    gap: 0.6rem;
+  }
+
+  .stepNumber {
+    width: 24px;
+    height: 24px;
+    font-size: 0.75rem;
+  }
+
+  .stepContent {
+    font-size: 0.78rem;
+  }
+
+  .guideActionBtn {
+    padding: 0.75rem 1rem;
+    font-size: 0.78rem;
   }
 }

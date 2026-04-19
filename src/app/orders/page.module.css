@@ -171,17 +171,20 @@
     color: #2E7D32;
 }
 
-.ship {
+.ship,
+.processing {
     background: #FFF3E0;
     color: #EF6C00;
 }
 
-.pay {
+.pay,
+.pending_payment {
     background: #FFEBEE;
     color: #D32F2F;
 }
 
-.receive {
+.receive,
+.shipped {
     background: #E3F2FD;
     color: #1976D2;
 }
@@ -370,7 +373,11 @@
     }
 
     .headerBack {
-        margin-bottom: 1rem;
+        margin-bottom: 0.5rem;
+    }
+
+    .backBtn {
+        margin-bottom: 0.5rem;
     }
 
     .ordersHeader h1 {
@@ -401,16 +408,25 @@
         margin-bottom: 1rem;
         gap: 0.15rem;
         border-radius: 12px;
+        overflow-x: auto;
+        -webkit-overflow-scrolling: touch;
+        scrollbar-width: none;
+    }
+
+    .tabsNav::-webkit-scrollbar {
+        display: none;
     }
 
     .tabItem {
         flex: 1;
+        flex-shrink: 0;
         flex-direction: row;
         padding: 0.55rem 0;
         gap: 0;
         border-radius: 8px;
         justify-content: center;
         align-items: center;
+        min-width: 40px;
     }
 
     .tabLabel {
@@ -436,34 +452,52 @@
         border-radius: 14px;
     }
 
+    .orderCard:hover {
+        transform: none;
+    }
+
     .orderCardHeader {
         padding-bottom: 0.75rem;
         margin-bottom: 0.75rem;
+        flex-wrap: wrap;
+        gap: 0.4rem;
     }
 
     .sellerInfo {
         font-size: 0.85rem;
+        min-width: 0;
+        flex: 1;
     }
 
     .statusBadge {
         padding: 0.3rem 0.65rem;
-        font-size: 0.75rem;
+        font-size: 0.72rem;
+        flex-shrink: 0;
     }
 
     /* Items */
     .orderItem {
         gap: 0.75rem;
         margin-bottom: 0.75rem;
+        align-items: flex-start;
     }
 
     .itemImage {
-        width: 56px;
-        height: 56px;
+        width: 60px;
+        height: 60px;
         border-radius: 8px;
+        flex-shrink: 0;
+    }
+
+    .itemMeta {
+        flex: 1;
+        min-width: 0;
     }
 
     .itemMeta h3 {
         font-size: 0.85rem;
+        white-space: normal;
+        word-break: break-word;
     }
 
     .itemMeta p {
@@ -472,18 +506,21 @@
 
     .itemPrice {
         font-size: 0.85rem;
+        flex-shrink: 0;
+        white-space: nowrap;
     }
 
     /* Footer */
     .orderCardFooter {
         flex-direction: column;
         align-items: flex-start;
-        gap: 0.6rem;
-        padding: 0.75rem 0;
+        gap: 0.5rem;
+        padding: 0.75rem 0 0.5rem;
     }
 
     .orderId {
         font-size: 0.75rem;
+        word-break: break-all;
     }
 
     .orderDate {
@@ -507,28 +544,80 @@
     .orderActions {
         width: 100%;
         gap: 0.5rem;
+        flex-wrap: wrap;
+        padding-top: 0.5rem;
     }
 
+    /* Pay Now + Cancel Order share the top row equally */
     .orderActions button {
         flex: 1;
-        padding: 0.55rem 0.75rem;
+        min-width: 0;
+        padding: 0.65rem 0.5rem;
         font-size: 0.8rem;
-        border-radius: 9px;
+        border-radius: 10px;
+        justify-content: center;
+        text-align: center;
+        white-space: nowrap;
     }
 
     .payNowBtn,
-    .cancelBtn,
-    .receivedBtn {
-        padding: 0.45rem 0.75rem;
-        font-size: 0.75rem;
-        border-radius: 9px;
+    .cancelBtn {
+        flex: 1;
+        min-width: 0;
+        padding: 0.65rem 0.5rem;
+        font-size: 0.8rem;
+        border-radius: 10px;
         white-space: nowrap;
+        letter-spacing: 0;
+    }
+
+    .receivedBtn {
+        flex: 1;
+        padding: 0.65rem 0.5rem;
+        font-size: 0.8rem;
+        border-radius: 10px;
+        white-space: nowrap;
+        letter-spacing: 0;
+    }
+
+    /* Contact Seller always sits on its own full-width row */
+    .orderActions .primaryBtn {
+        flex: none;
+        width: 100%;
+        flex-basis: 100%;
+        padding: 0.7rem 1rem;
+        font-size: 0.85rem;
+        border-radius: 10px;
+        justify-content: center;
+        box-shadow: none;
+    }
+
+    /* Countdown + warning */
+    .countdownSection {
+        padding: 0.75rem;
+        border-radius: 10px;
+    }
+
+    .cancellationWarning {
+        margin: 0.35rem 0 0;
+        font-size: 0.7rem;
+        padding: 0.3rem 0.5rem;
+        border-radius: 5px;
     }
 
     /* Tracking */
     .trackingBanner {
         font-size: 0.75rem;
         padding: 0.6rem 0.75rem;
+        border-radius: 8px;
+        margin-bottom: 0.5rem;
+    }
+
+    /* Error banner */
+    .actionErrorBanner {
+        font-size: 0.82rem;
+        padding: 0.6rem 0.85rem;
+        margin-bottom: 0.75rem;
     }
 
     /* Empty state */
@@ -599,6 +688,41 @@
     gap: 0.25rem;
 }
 
+.cascadedBadge {
+    color: #0369a1;
+    font-weight: 700;
+    display: flex;
+    align-items: center;
+    gap: 0.25rem;
+}
+
+.cancelledNotice {
+    display: flex;
+    align-items: center;
+    gap: 0.4rem;
+    padding: 0.45rem 0.7rem;
+    background: #fef2f2;
+    border: 1px solid #fecaca;
+    border-left: 3px solid #ef4444;
+    border-radius: 6px;
+    font-size: 0.78rem;
+    font-weight: 600;
+    color: #dc2626;
+    margin-bottom: 0.75rem;
+}
+
+.cascadedNotice {
+    margin: 0 0 0.75rem;
+    padding: 0.5rem 0.75rem;
+    background: #eff6ff;
+    border: 1px solid #bfdbfe;
+    border-left: 3px solid #3b82f6;
+    border-radius: 6px;
+    font-size: 0.78rem;
+    color: #1d4ed8;
+    line-height: 1.5;
+}
+
 .payNowBtn {
     flex: 1;
     padding: 0.75rem 1.5rem;
@@ -657,15 +781,19 @@
 }
 
 .cancellationWarning {
-    padding: 0.75rem 1rem;
-    margin: 0 1rem;
-    background: linear-gradient(135deg, #fff3e0 0%, #ffe0b2 100%);
-    border: 2px solid #ffb74d;
-    border-radius: 8px;
-    color: #f57c00;
-    font-size: 0.875rem;
+    display: flex;
+    align-items: center;
+    gap: 0.35rem;
+    padding: 0.35rem 0.6rem;
+    margin: 0.4rem 0 0;
+    background: #fffbeb;
+    border: 1px solid #fde68a;
+    border-left: 3px solid #f59e0b;
+    border-radius: 6px;
+    color: #b45309;
+    font-size: 0.72rem;
     font-weight: 600;
-    text-align: center;
+    line-height: 1.3;
 }
 
 /* ── Review button & chip ── */
@@ -865,28 +993,40 @@
 
 @media (max-width: 360px) {
     .ordersContent { padding: 0 10px; }
-    .ordersHeader h1 { font-size: 1.35rem; }
+    .ordersHeader h1 { font-size: 1.3rem; }
     .tabsNav { gap: 0.1rem; padding: 4px; }
-    .tabItem { padding: 0.5rem 0; }
+    .tabItem { padding: 0.5rem 0; min-width: 36px; }
     .tabItem svg { width: 15px; height: 15px; }
     .orderCard { padding: 0.75rem; border-radius: 12px; }
-    .itemImage { width: 50px; height: 50px; border-radius: 8px; }
-    .itemMeta h3 { font-size: 0.75rem; }
+    .itemImage { width: 52px; height: 52px; }
+    .itemMeta h3 { font-size: 0.78rem; }
     .itemMeta p { font-size: 0.68rem; }
-    .itemPrice { font-size: 0.85rem; }
-    .orderId { font-size: 0.75rem; }
-    .orderDate { font-size: 0.75rem; }
-    .totalAmount { font-size: 0.9rem; }
+    .itemPrice { font-size: 0.78rem; }
+    .orderId { font-size: 0.7rem; }
+    .orderDate { font-size: 0.7rem; }
+    .totalAmount { font-size: 0.95rem; }
+    .orderActions button { min-width: 100px; font-size: 0.75rem; padding: 0.5rem 0.6rem; }
     .primaryBtn, .secondaryBtn, .payNowBtn, .cancelBtn, .receivedBtn, .reviewBtn, .viewReviewBtn {
-        padding: 0.4rem 0.65rem;
-        font-size: 0.72rem;
+        padding: 0.5rem 0.6rem;
+        font-size: 0.75rem;
         border-radius: 8px;
     }
     .reviewedChip { padding: 0.35rem 0.6rem; font-size: 0.7rem; }
     .emptyState { padding: 3rem 1rem; border-radius: 14px; }
-    .emptyState h2 { font-size: 1.25rem; margin: 0.75rem 0 0.35rem; }
+    .emptyState h2 { font-size: 1.2rem; margin: 0.75rem 0 0.35rem; }
     .emptyState p { font-size: 0.82rem; margin-bottom: 1.25rem; }
     .exploreBtn { padding: 0.6rem 1.5rem; font-size: 0.82rem; }
+}
+
+@media (max-width: 320px) {
+    .ordersContent { padding: 0 8px; }
+    .ordersHeader h1 { font-size: 1.2rem; }
+    .tabItem { min-width: 32px; }
+    .tabItem svg { width: 14px; height: 14px; }
+    .orderCard { padding: 0.65rem; }
+    .itemImage { width: 46px; height: 46px; }
+    .itemMeta h3 { font-size: 0.75rem; }
+    .orderActions button { min-width: 90px; font-size: 0.72rem; }
 }
 
 .reviewModalHead {
@@ -1100,6 +1240,21 @@
 }
 
 .reviewSubmitBtn:disabled { opacity: 0.6; cursor: not-allowed; }
+
+.actionSuccessBanner {
+    display: flex;
+    align-items: center;
+    gap: 0.5rem;
+    padding: 0.7rem 1rem;
+    background: #f0fdf4;
+    border: 1px solid #bbf7d0;
+    border-radius: 8px;
+    color: #16a34a;
+    font-size: 0.9rem;
+    font-weight: 600;
+    margin-bottom: 1rem;
+    cursor: pointer;
+}
 
 .actionErrorBanner {
     display: flex;

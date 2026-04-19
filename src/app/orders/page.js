@@ -19,7 +19,9 @@ export default function OrdersPage() {
     const [activeTab, setActiveTab] = useState('all');
     const [searchQuery, setSearchQuery] = useState('');
     const [paymentWindows, setPaymentWindows] = useState({});
+    const [expiredWindows, setExpiredWindows] = useState(new Set());
     const [cancellationLimit, setCancellationLimit] = useState(null);
+    const [violationRecord, setViolationRecord] = useState(null);
     const [cancellingOrder, setCancellingOrder] = useState(null);
     const [showCancellationModal, setShowCancellationModal] = useState(false);
     const [orderToCancel, setOrderToCancel] = useState(null);
@@ -34,6 +36,7 @@ export default function OrdersPage() {
     const [existingReviews, setExistingReviews] = useState({}); // { order_id: review }
     const [viewReviewTarget, setViewReviewTarget] = useState(null); // { order, review }
     const [actionError, setActionError] = useState('');
+    const [actionSuccess, setActionSuccess] = useState('');
 
     const tabs = [
         { id: 'all', label: 'All', icon: <Package size={18} /> },
@@ -98,35 +101,40 @@ export default function OrdersPage() {
         }
     };
 
-    // Fetch cancellation limit
+    // Fetch cancellation limit + violation record together
     useEffect(() => {
-        const fetchCancellationLimit = async () => {
+        const fetchViolationData = async () => {
             if (!user) return;
-
+            const apiUrl = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:5000';
             try {
-                const apiUrl = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:5000';
-                const res = await fetch(`${apiUrl}/api/violations/user/${user.user_id}/cancellation-limit`);
-                if (res.ok) {
-                    const data = await res.json();
-                    setCancellationLimit(data);
-                }
+                const [limitRes, recordRes] = await Promise.all([
+                    fetch(`${apiUrl}/api/violations/user/${user.user_id}/cancellation-limit`),
+                    fetch(`${apiUrl}/api/violations/user/${user.user_id}/record`)
+                ]);
+                if (limitRes.ok) setCancellationLimit(await limitRes.json());
+                if (recordRes.ok) setViolationRecord(await recordRes.json());
             } catch (err) {
-                console.error('Error fetching cancellation limit:', err);
+                console.error('Error fetching violation data:', err);
             }
         };
-
-        fetchCancellationLimit();
+        fetchViolationData();
     }, [user]);
 
-    // Build 24-hour payment deadline for pending auction orders
+    // Build payment deadlines for pending auction orders
+    // Prefer payment_deadline from the API (Payment_Windows table);
+    // fall back to placed_at_raw + 24h if no window record exists yet
     useEffect(() => {
         const pending = orders.filter(o => o.order_type === 'auction' && o.status === 'pending_payment');
         if (!pending.length) return;
         const windows = {};
         for (const order of pending) {
-            const base = new Date(order.date);
-            base.setHours(base.getHours() + 24);
-            windows[order.id] = base.toISOString();
+            if (order.payment_deadline) {
+                windows[order.id] = order.payment_deadline;
+            } else if (order.placed_at_raw) {
+                const base = new Date(order.placed_at_raw);
+                base.setHours(base.getHours() + 24);
+                windows[order.id] = base.toISOString();
+            }
         }
         setPaymentWindows(windows);
     }, [orders]);
@@ -245,11 +253,23 @@ export default function OrdersPage() {
             const data = await res.json();
 
             if (res.ok) {
+                // Optimistically mark as cancelled so the order disappears from "To Pay" immediately
+                setOrders(prev => prev.map(o =>
+                    o.id === orderToCancel.id ? { ...o, status: 'cancelled' } : o
+                ));
                 setShowCancellationModal(false);
                 setOrderToCancel(null);
-                fetchOrders();
-                const limitRes = await fetch(`${apiUrl}/api/violations/user/${user.user_id}/cancellation-limit`);
+                setActiveTab('cancelled');
+                setActionSuccess('Order cancelled successfully. The next eligible bidder has been notified.');
+                setTimeout(() => setActionSuccess(''), 5000);
+                // Delay refetch so DB has time to commit winner_user_id = null before we re-query
+                setTimeout(() => fetchOrders(), 1500);
+                const [limitRes, recordRes] = await Promise.all([
+                    fetch(`${apiUrl}/api/violations/user/${user.user_id}/cancellation-limit`),
+                    fetch(`${apiUrl}/api/violations/user/${user.user_id}/record`)
+                ]);
                 if (limitRes.ok) setCancellationLimit(await limitRes.json());
+                if (recordRes.ok) setViolationRecord(await recordRes.json());
             } else {
                 setActionError(data.error || 'Failed to cancel order.');
             }
@@ -353,6 +373,11 @@ export default function OrdersPage() {
                     ))}
                 </nav>
 
+                {actionSuccess && (
+                    <div className={styles.actionSuccessBanner} onClick={() => setActionSuccess('')}>
+                        <CheckCircle2 size={16} /> {actionSuccess}
+                    </div>
+                )}
                 {actionError && (
                     <div className={styles.actionErrorBanner} onClick={() => setActionError('')}>
                         <XCircle size={16} /> {actionError}
@@ -367,8 +392,10 @@ export default function OrdersPage() {
                                     <div className={styles.sellerInfo}>
                                         {order.order_type === 'auction' ? (
                                             <>
-                                                <Gavel size={16} color="#673AB7" />
-                                                <span className={styles.auctionBadge}>Auction Win</span>
+                                                <Gavel size={16} color={order.is_cascaded ? '#0369a1' : '#673AB7'} />
+                                                <span className={order.is_cascaded ? styles.cascadedBadge : styles.auctionBadge}>
+                                                    {order.is_cascaded ? 'Next Winner' : 'Auction Win'}
+                                                </span>
                                             </>
                                         ) : (
                                             <>
@@ -381,6 +408,12 @@ export default function OrdersPage() {
                                         {getStatusLabel(order.status)}
                                     </div>
                                 </div>
+
+                                {order.is_cascaded && order.status === 'pending_payment' && (
+                                    <div className={styles.cascadedNotice}>
+                                        The previous winner cancelled — you are now the winning bidder. Please pay or cancel within 24 hours.
+                                    </div>
+                                )}
 
                                 <div className={styles.orderItems}>
                                     {order.items.map((item, idx) => (
@@ -415,18 +448,34 @@ export default function OrdersPage() {
                                     <div className={styles.countdownSection}>
                                         <PaymentCountdown
                                             deadline={paymentWindows[order.id]}
-                                            onExpired={() => {
-                                                console.log('Payment window expired for order', order.id);
-                                                fetchOrders(); // Refresh to update status
+                                            onExpired={async () => {
+                                                setExpiredWindows(prev => new Set(prev).add(order.id));
+                                                try {
+                                                    const apiUrl = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:5000';
+                                                    await fetch(`${apiUrl}/api/violations/expire-payment`, {
+                                                        method: 'POST',
+                                                        headers: { 'Content-Type': 'application/json' },
+                                                        body: JSON.stringify({
+                                                            user_id: user.user_id,
+                                                            auction_id: order.auction_id,
+                                                            order_id: order.id
+                                                        })
+                                                    });
+                                                } catch (err) {
+                                                    console.error('Failed to expire payment window:', err);
+                                                } finally {
+                                                    fetchOrders();
+                                                }
                                             }}
                                         />
                                     </div>
                                 )}
 
-                                {/* Cancellation Limit Warning */}
-                                {order.status === 'pending_payment' && cancellationLimit && !cancellationLimit.canCancel && (
-                                    <div className={styles.cancellationWarning}>
-                                        ⚠️ {cancellationLimit.message}
+                                {/* Cancelled state notice — only show if not shipped/delivered */}
+                                {order.status === 'cancelled' && !order.tracking_number && (
+                                    <div className={styles.cancelledNotice}>
+                                        <XCircle size={14} />
+                                        <span>Order cancelled by buyer</span>
                                     </div>
                                 )}
 
@@ -444,29 +493,33 @@ export default function OrdersPage() {
                                 <div className={styles.orderActions}>
                                     {order.status === 'pending_payment' && order.order_type === 'auction' ? (
                                         <>
-                                            <button
-                                                className={styles.payNowBtn}
-                                                onClick={() => handlePayNow(order)}
-                                            >
-                                                Pay Now
-                                            </button>
-                                            <button
-                                                className={styles.cancelBtn}
-                                                onClick={() => handleCancelOrder(order)}
-                                                disabled={cancellingOrder === order.id}
-                                            >
-                                                {cancellingOrder === order.id ? (
-                                                    <>
-                                                        <Loader2 className={styles.spin} size={16} />
-                                                        <span>Cancelling...</span>
-                                                    </>
-                                                ) : (
-                                                    <>
-                                                        <Ban size={16} />
-                                                        <span>Cancel Order</span>
-                                                    </>
-                                                )}
-                                            </button>
+                                            {!expiredWindows.has(order.id) && (
+                                                <button
+                                                    className={styles.payNowBtn}
+                                                    onClick={() => handlePayNow(order)}
+                                                >
+                                                    Pay Now
+                                                </button>
+                                            )}
+                                            {!expiredWindows.has(order.id) && (
+                                                <button
+                                                    className={styles.cancelBtn}
+                                                    onClick={() => handleCancelOrder(order)}
+                                                    disabled={cancellingOrder === order.id}
+                                                >
+                                                    {cancellingOrder === order.id ? (
+                                                        <>
+                                                            <Loader2 className={styles.spin} size={16} />
+                                                            <span>Cancelling...</span>
+                                                        </>
+                                                    ) : (
+                                                        <>
+                                                            <Ban size={16} />
+                                                            <span>Cancel Order</span>
+                                                        </>
+                                                    )}
+                                                </button>
+                                            )}
                                         </>
                                     ) : order.status === 'shipped' ? (
                                         <button
@@ -491,10 +544,10 @@ export default function OrdersPage() {
                                                 Leave a Review
                                             </button>
                                         )
-                                    ) : (
+                                    ) : order.status === 'cancelled' ? null : (
                                         <button className={styles.secondaryBtn}>Order Details</button>
                                     )}
-                                    {order.order_type === 'auction' && (
+                                    {order.order_type === 'auction' && order.status !== 'cancelled' && (
                                         <button
                                             className={styles.primaryBtn}
                                             onClick={() => handleContactSeller(order)}
@@ -681,6 +734,7 @@ export default function OrdersPage() {
                     image: orderToCancel.items[0]?.image
                 } : null}
                 cancellationLimit={cancellationLimit}
+                violationRecord={violationRecord}
             />
         </div>
     );

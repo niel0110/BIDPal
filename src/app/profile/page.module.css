@@ -2542,13 +2542,14 @@ input:checked+.slider:before {
 .dialogOverlay {
     position: fixed;
     inset: 0;
-    background: rgba(0, 0, 0, 0.45);
+    background: rgba(0, 0, 0, 0.5);
     backdrop-filter: blur(4px);
     -webkit-backdrop-filter: blur(4px);
     display: flex;
     align-items: center;
     justify-content: center;
     z-index: 9999;
+    padding: 1rem;
     animation: fadeInOverlay 0.18s ease;
 }
 
@@ -2559,96 +2560,95 @@ input:checked+.slider:before {
 
 .dialogCard {
     background: #ffffff;
-    border-radius: 24px;
-    padding: 2.25rem 2rem 1.75rem;
+    border-radius: 20px;
+    padding: 1.75rem 1.5rem 1.5rem;
     width: 100%;
-    max-width: 400px;
-    margin: 1rem;
-    box-shadow: 0 24px 60px rgba(0, 0, 0, 0.18);
+    max-width: 340px;
+    box-shadow: 0 24px 60px rgba(0, 0, 0, 0.2);
     display: flex;
     flex-direction: column;
     align-items: center;
     text-align: center;
-    gap: 0.6rem;
+    gap: 0.5rem;
     animation: slideUpCard 0.22s cubic-bezier(0.34, 1.56, 0.64, 1);
 }
 
 @keyframes slideUpCard {
-    from {
-        opacity: 0;
-        transform: translateY(28px) scale(0.96);
-    }
-    to {
-        opacity: 1;
-        transform: translateY(0) scale(1);
-    }
+    from { opacity: 0; transform: translateY(20px) scale(0.97); }
+    to   { opacity: 1; transform: translateY(0) scale(1); }
 }
 
 .dialogIcon {
-    font-size: 2.4rem;
-    line-height: 1;
-    margin-bottom: 0.25rem;
+    width: 56px;
+    height: 56px;
+    border-radius: 16px;
+    background: #fff1f1;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    margin-bottom: 0.5rem;
 }
 
 .dialogTitle {
-    font-size: 1.2rem;
+    font-size: 1rem;
     font-weight: 800;
-    color: #1a1a1a;
+    color: #111;
     margin: 0;
-    letter-spacing: -0.02em;
+    letter-spacing: -0.01em;
 }
 
 .dialogMessage {
-    font-size: 0.9rem;
-    color: #666;
-    line-height: 1.55;
-    margin: 0 0 0.75rem;
-    max-width: 320px;
+    font-size: 0.8rem;
+    color: #777;
+    line-height: 1.5;
+    margin: 0 0 0.5rem;
 }
 
 .dialogActions {
     display: flex;
-    gap: 0.75rem;
+    gap: 0.6rem;
     width: 100%;
     margin-top: 0.5rem;
 }
 
 .dialogCancelBtn {
     flex: 1;
-    padding: 0.9rem 1rem;
+    padding: 0.7rem 0.75rem;
     border: 1.5px solid #e5e5e5;
-    border-radius: 14px;
-    background: #f9f9f9;
+    border-radius: 10px;
+    background: #f5f5f5;
     color: #555;
-    font-size: 0.9rem;
+    font-size: 0.8rem;
     font-weight: 700;
     cursor: pointer;
     transition: all 0.2s;
+    white-space: nowrap;
 }
 
 .dialogCancelBtn:hover {
-    background: #eeeeee;
+    background: #eee;
     border-color: #ccc;
 }
 
 .dialogConfirmBtn {
     flex: 1;
-    padding: 0.9rem 1rem;
+    padding: 0.7rem 0.75rem;
     border: none;
-    border-radius: 14px;
-    background: var(--color-primary, #d32f2f);
-    color: #ffffff;
-    font-size: 0.9rem;
+    border-radius: 10px;
+    background: #D32F2F;
+    color: #fff;
+    font-size: 0.8rem;
     font-weight: 700;
     cursor: pointer;
     transition: all 0.2s;
-    box-shadow: 0 4px 14px rgba(211, 47, 47, 0.35);
+    box-shadow: 0 4px 12px rgba(211, 47, 47, 0.3);
+    white-space: nowrap;
 }
 
 .dialogConfirmBtn:hover {
     background: #b71c1c;
-    box-shadow: 0 6px 18px rgba(211, 47, 47, 0.45);
     transform: translateY(-1px);
+    box-shadow: 0 6px 16px rgba(211, 47, 47, 0.4);
 }
 
 .dialogConfirmBtn:active {
@@ -2657,15 +2657,16 @@ input:checked+.slider:before {
 
 .dialogOkBtn {
     flex: 1;
-    padding: 0.9rem 1rem;
+    padding: 0.7rem 0.75rem;
     border: none;
-    border-radius: 14px;
-    background: #1a1a1a;
-    color: #ffffff;
-    font-size: 0.9rem;
+    border-radius: 10px;
+    background: #111;
+    color: #fff;
+    font-size: 0.8rem;
     font-weight: 700;
     cursor: pointer;
     transition: all 0.2s;
+    white-space: nowrap;
 }
 
 .dialogOkBtn:hover {
@@ -2837,40 +2838,91 @@ input:checked+.slider:before {
         max-width: 100%;
     }
 
+    .sectionHeader {
+        margin-bottom: 0.75rem;
+    }
+
+    .sectionHeader h1 {
+        font-size: 1.2rem;
+        margin-bottom: 0.3rem;
+    }
+
+    .sectionHeader p {
+        font-size: 0.8rem;
+    }
+
+    /* Back button inside content */
+    .backBtn {
+        font-size: 0.82rem;
+        padding: 0.35rem 0;
+        margin-bottom: 0.5rem;
+        gap: 0.35rem;
+    }
+
     /* Forms */
     .profileForm,
     .addressForm {
-        gap: 1rem;
+        gap: 0.75rem;
+    }
+
+    .formGroup {
+        gap: 0.4rem;
     }
 
     .formGroup label {
-        font-size: 0.82rem;
+        font-size: 0.8rem;
     }
 
     .formGroup input,
     .formGroup select,
     .formGroup textarea {
-        padding: 0.75rem 0.9rem;
+        padding: 0.65rem 0.85rem;
         font-size: 0.85rem;
         border-radius: 10px;
     }
 
     .primaryBtn {
-        padding: 0.9rem;
-        font-size: 0.9rem;
-        border-radius: 10px;
-        margin-top: 0.5rem;
+        padding: 0.5rem 0.85rem;
+        font-size: 0.75rem;
+        border-radius: 8px;
+        margin-top: 0.25rem;
+        font-weight: 700;
     }
 
     .secondaryBtn {
-        padding: 0.9rem;
-        font-size: 0.9rem;
-        border-radius: 10px;
+        padding: 0.5rem 0.85rem;
+        font-size: 0.75rem;
+        border-radius: 8px;
+        font-weight: 700;
     }
 
     .buttonGroup {
-        gap: 0.75rem;
-        padding-top: 0.75rem;
+        gap: 0.5rem;
+        padding-top: 0.5rem;
+    }
+
+    .buttonGroup .primaryBtn,
+    .buttonGroup .secondaryBtn {
+        flex: 1;
+        margin-top: 0;
+        text-align: center;
+    }
+
+    .checkboxGroup {
+        font-size: 0.75rem;
+        gap: 0.5rem;
+        padding: 0.4rem 0;
+    }
+
+    .checkboxGroup label {
+        font-size: 0.75rem;
+        font-weight: 600;
+    }
+
+    .checkboxGroup input[type="checkbox"] {
+        width: 14px;
+        height: 14px;
+        flex-shrink: 0;
     }
 
     .secondaryBtnLarge {
@@ -2893,44 +2945,110 @@ input:checked+.slider:before {
         gap: 0.85rem;
     }
 
+    .addressCard {
+        padding: 0.8rem 0.9rem;
+        gap: 0.6rem;
+        border-radius: 12px;
+        flex-wrap: nowrap;
+        align-items: center;
+    }
+
     .addressIcon {
-        width: 38px;
-        height: 38px;
-        border-radius: 10px;
+        width: 34px;
+        height: 34px;
+        border-radius: 9px;
         flex-shrink: 0;
     }
 
+    .addressIcon svg {
+        width: 16px;
+        height: 16px;
+    }
+
+    .addressInfo {
+        flex: 1;
+        min-width: 0;
+    }
+
     .addressTypeLine h3 {
-        font-size: 0.9rem;
+        font-size: 0.78rem;
+    }
+
+    .addressTypeLine {
+        gap: 0.35rem;
+        margin-bottom: 0.1rem;
     }
 
     .addressInfo p {
-        font-size: 0.82rem;
+        font-size: 0.78rem;
+        line-height: 1.35;
+        color: #888;
     }
 
+    .defaultBadge {
+        font-size: 0.6rem;
+        padding: 0.12rem 0.4rem;
+    }
+
+    /* Right-side column: [edit][delete] on top, [Set Default] below */
     .addressActions {
-        flex-direction: column;
-        gap: 0.4rem;
-        align-items: flex-end;
+        display: flex;
+        flex-direction: row;
+        flex-wrap: wrap;
+        gap: 0.3rem;
+        align-items: stretch;
+        justify-content: flex-end;
+        flex-shrink: 0;
+        width: 80px;
+    }
+
+    .editBtn {
+        order: 1;
+        flex: 1;
+        height: 28px;
+        border-radius: 7px;
+        width: auto;
+    }
+
+    .deleteBtn {
+        order: 2;
+        flex: 1;
+        height: 28px;
+        border-radius: 7px;
+        width: auto;
+    }
+
+    .editBtn svg,
+    .deleteBtn svg {
+        width: 13px;
+        height: 13px;
     }
 
     .setDefaultBtn,
     .unsetDefaultBtn {
-        font-size: 0.7rem;
-        padding: 0.35rem 0.65rem;
-    }
-
-    .editBtn,
-    .deleteBtn {
-        width: 30px;
-        height: 30px;
-        border-radius: 8px;
+        order: 3;
+        flex-basis: 100%;
+        height: 28px;
+        font-size: 0.62rem;
+        padding: 0;
+        border-radius: 7px;
+        white-space: nowrap;
+        text-align: center;
+        justify-content: center;
+        display: flex;
+        align-items: center;
     }
 
     .addFullBtn {
-        padding: 0.9rem;
-        font-size: 0.85rem;
-        border-radius: 12px;
+        padding: 0.65rem 0.9rem;
+        font-size: 0.78rem;
+        border-radius: 10px;
+        gap: 0.4rem;
+    }
+
+    .addressList {
+        gap: 0.65rem;
+        margin-bottom: 1rem;
     }
 
     /* Toggles / Notifications */
@@ -3050,14 +3168,23 @@ input:checked+.slider:before {
     }
 
     .geolocationBtn {
-        padding: 0.75rem 1rem;
-        font-size: 0.85rem;
+        padding: 0.65rem 0.9rem;
+        font-size: 0.82rem;
         border-radius: 10px;
+        width: 100%;
+        justify-content: center;
+    }
+
+    .addFullBtn {
+        padding: 0.8rem;
+        font-size: 0.82rem;
+        border-radius: 12px;
+        gap: 0.5rem;
     }
 
     .formGrid2 {
         grid-template-columns: 1fr;
-        gap: 0;
+        gap: 0.75rem;
     }
 
     /* Privacy / policy text */
@@ -3115,17 +3242,30 @@ input:checked+.slider:before {
         gap: 0.65rem;
     }
 
-    /* Addresses */
-    .addressCard {
-        flex-wrap: wrap;
-        gap: 0.75rem;
+    /* Addresses — handled in content sections block above */
+
+    /* Dialog */
+    .dialogCard {
+        max-width: 100%;
+        border-radius: 16px;
+        padding: 1.4rem 1.25rem 1.25rem;
     }
 
-    .addressActions {
-        flex-direction: row;
-        flex-wrap: wrap;
-        gap: 0.35rem;
-        justify-content: flex-end;
+    .dialogIcon {
+        width: 48px;
+        height: 48px;
+        border-radius: 13px;
+    }
+
+    .dialogTitle { font-size: 0.92rem; }
+    .dialogMessage { font-size: 0.75rem; }
+
+    .dialogCancelBtn,
+    .dialogConfirmBtn,
+    .dialogOkBtn {
+        padding: 0.62rem 0.6rem;
+        font-size: 0.75rem;
+        border-radius: 9px;
     }
 }
 
@@ -3134,23 +3274,36 @@ input:checked+.slider:before {
     .formGroup input,
     .formGroup select,
     .formGroup textarea {
-        padding: 0.65rem 0.75rem;
-        font-size: 0.82rem;
+        padding: 0.6rem 0.7rem;
+        font-size: 0.8rem;
         border-radius: 8px;
     }
 
-    .formGroup label { font-size: 0.75rem; }
+    .formGroup label { font-size: 0.72rem; }
 
     .primaryBtn,
     .secondaryBtn {
-        padding: 0.75rem;
-        font-size: 0.82rem;
-        border-radius: 8px;
+        padding: 0.45rem 0.75rem;
+        font-size: 0.72rem;
+        border-radius: 7px;
     }
+
+    .sectionHeader { margin-bottom: 0.6rem; }
+    .sectionHeader h1 { font-size: 1.05rem; }
+    .sectionHeader p { font-size: 0.75rem; }
+
+    .backBtn { font-size: 0.78rem; }
 
     .addressCard { padding: 0.75rem; border-radius: 12px; }
     .addressTypeLine h3 { font-size: 0.85rem; }
     .addressInfo p { font-size: 0.75rem; }
+
+    .geolocationBtn {
+        padding: 0.6rem 0.8rem;
+        font-size: 0.78rem;
+    }
+
+    .addFullBtn { padding: 0.7rem; font-size: 0.78rem; }
 
     .toggleItem,
     .navActionItem {
@@ -3179,7 +3332,6 @@ input:checked+.slider:before {
 
     .subTab { font-size: 0.82rem; }
     .catChip { padding: 0.4rem 0.85rem; font-size: 0.75rem; }
-    .addFullBtn { padding: 0.75rem; font-size: 0.82rem; }
 }
 
 /* ── Wishlist Mobile ── */

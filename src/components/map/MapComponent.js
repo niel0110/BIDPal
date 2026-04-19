@@ -1,7 +1,7 @@
 'use client';
 
 import { useState, useEffect, useRef } from 'react';
-import { MapPin, X, Search, Crosshair, ZoomIn, ZoomOut, Loader, ChevronDown, Clock, Edit2, Check } from 'lucide-react';
+import { MapPin, X, Search, Crosshair, ZoomIn, ZoomOut, Loader, ChevronDown, Clock, Edit2, Check, ChevronLeft } from 'lucide-react';
 import styles from './MapComponent.module.css';
 import 'leaflet/dist/leaflet.css';
 
@@ -57,7 +57,7 @@ export default function MapComponent({ onSelectLocation, onClose }) {
         // Default center (Davao City)
         const defaultCenter = [7.0731, 125.6263];
 
-        const leafletMap = L.map(mapContainer.current).setView(defaultCenter, 12);
+        const leafletMap = L.map(mapContainer.current, { zoomControl: false }).setView(defaultCenter, 12);
 
         // Add OpenStreetMap tiles
         L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
@@ -213,28 +213,23 @@ export default function MapComponent({ onSelectLocation, onClose }) {
   };
 
   const handleCurrentLocation = () => {
-    if (!navigator.geolocation) {
-      alert('Geolocation is not supported by this browser');
-      return;
-    }
+    if (!navigator.geolocation) return;
+    if (!map) return;
 
     setGeolocating(true);
     navigator.geolocation.getCurrentPosition(
       (position) => {
         const { latitude, longitude } = position.coords;
-        if (map) {
-          map.setView([latitude, longitude], 15);
-          import('leaflet').then((L) => {
-            handleLocationSelect(latitude, longitude, map, L);
-          });
-        }
+        map.flyTo([latitude, longitude], 16, { animate: true, duration: 1 });
+        import('leaflet').then((L) => {
+          handleLocationSelect(latitude, longitude, map, L);
+        });
         setGeolocating(false);
       },
-      (error) => {
-        console.error('Geolocation error:', error);
-        alert('Unable to get your location. Please try again.');
+      () => {
         setGeolocating(false);
-      }
+      },
+      { enableHighAccuracy: true, timeout: 10000, maximumAge: 0 }
     );
   };
 
@@ -311,16 +306,14 @@ export default function MapComponent({ onSelectLocation, onClose }) {
     <div className={styles.mapOverlay}>
       <div className={styles.mapContainer}>
         <div className={styles.mapHeader}>
-          <div className={styles.headerContent}>
-            <MapPin size={24} color="var(--color-primary)" />
-            <div>
-              <h2>Select Your Location</h2>
-              <p className={styles.headerSubtitle}>Click on the map or search to find your address</p>
-            </div>
-          </div>
-          <button className={styles.closeBtn} onClick={onClose} title="Close (ESC)">
-            <X size={24} />
+          <button className={styles.closeBtn} onClick={onClose} title="Back">
+            <ChevronLeft size={18} />
+            <span>Back</span>
           </button>
+          <div className={styles.headerContent}>
+            <MapPin size={18} color="var(--color-primary)" />
+            <h2>Select Your Location</h2>
+          </div>
         </div>
 
         <div className={styles.searchFilterRow}>
@@ -415,7 +408,7 @@ export default function MapComponent({ onSelectLocation, onClose }) {
                 <button
                   className={styles.mapControl}
                   onClick={handleZoomIn}
-                  title="Zoom In (+)"
+                  title="Zoom In"
                   aria-label="Zoom in"
                 >
                   <ZoomIn size={20} />
@@ -423,7 +416,7 @@ export default function MapComponent({ onSelectLocation, onClose }) {
                 <button
                   className={styles.mapControl}
                   onClick={handleZoomOut}
-                  title="Zoom Out (-)"
+                  title="Zoom Out"
                   aria-label="Zoom out"
                 >
                   <ZoomOut size={20} />
@@ -433,8 +426,8 @@ export default function MapComponent({ onSelectLocation, onClose }) {
                   className={`${styles.mapControl} ${geolocating ? styles.loading : ''}`}
                   onClick={handleCurrentLocation}
                   disabled={geolocating}
-                  title="Current Location"
-                  aria-label="Go to current location"
+                  title="Go to my location"
+                  aria-label="Go to my location"
                 >
                   {geolocating ? <Loader size={20} className={styles.spinnerIcon} /> : <Crosshair size={20} />}
                 </button>
@@ -571,9 +564,6 @@ export default function MapComponent({ onSelectLocation, onClose }) {
                 )}
 
                 <div className={styles.mapActions}>
-                  <button className={styles.cancelBtn} onClick={onClose}>
-                    Cancel
-                  </button>
                   <button className={styles.confirmBtn} onClick={handleConfirm}>
                     Confirm Location
                   </button>

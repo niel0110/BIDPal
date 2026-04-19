@@ -42,7 +42,15 @@ import {
     ShoppingBag,
     Users,
     DollarSign,
-    ChevronLeft
+    ChevronLeft,
+    Trash2,
+    AlertTriangle,
+    CheckCircle,
+    Shield,
+    ShieldAlert,
+    ShieldX,
+    Ban,
+    Clock
 } from 'lucide-react';
 import styles from './page.module.css';
 import { useAuth } from '@/context/AuthContext';
@@ -59,6 +67,7 @@ function AccountContent() {
     const router = useRouter();
     const searchParams = useSearchParams();
     const tabParam = searchParams.get('tab');
+    const returnTo = searchParams.get('returnTo');
     const isSeller = user?.role?.toLowerCase() === 'seller';
 
     const [activeTab, setActiveTab] = useState(isSeller ? 'merchant-insights' : 'profile');
@@ -74,7 +83,7 @@ function AccountContent() {
     };
 
     useEffect(() => {
-        const validTabs = ['profile', 'address', 'notifications', 'payment', 'wishlist', 'security', 'privacy', 'help', 'invite', 'merchant-insights', 'store-profile', 'pickup-address'];
+        const validTabs = ['profile', 'address', 'notifications', 'payment', 'wishlist', 'security', 'privacy', 'help', 'invite', 'merchant-insights', 'store-profile', 'pickup-address', 'account-standing'];
         if (tabParam && validTabs.includes(tabParam)) {
             setActiveTab(tabParam);
             setMobileView('content');
@@ -86,6 +95,7 @@ function AccountContent() {
         { id: 'address', label: 'Address', icon: <MapPin size={20} /> },
         { id: 'notifications', label: 'Notification', icon: <Bell size={20} /> },
         { id: 'payment', label: 'Payment', icon: <CreditCard size={20} /> },
+        { id: 'account-standing', label: 'Account Standing', icon: <Shield size={20} /> },
         { id: 'security', label: 'Security', icon: <ShieldCheck size={20} /> },
         { id: 'privacy', label: 'Privacy Policy', icon: <Lock size={20} /> },
         { id: 'help', label: 'Help Center', icon: <HelpCircle size={20} /> },
@@ -256,17 +266,23 @@ function AccountContent() {
 
             {/* Main Content Area */}
             <main className={`${styles.content} ${activeTab === 'wishlist' ? styles.fullWidth : ''}`}>
-                {/* Mobile back-to-menu button */}
-                <button className={styles.mobileMenuBack} onClick={() => setMobileView('menu')}>
-                    <ChevronLeft size={16} />
-                    <span>Back</span>
-                </button>
+                {/* Mobile back-to-menu button — hidden when inside address add/edit form */}
+                {!(activeTab === 'address' && addressState === 'add') && (
+                    <button
+                        className={styles.mobileMenuBack}
+                        onClick={() => returnTo ? router.replace(returnTo) : setMobileView('menu')}
+                    >
+                        <ChevronLeft size={16} />
+                        <span>Back</span>
+                    </button>
+                )}
 
                 {activeTab === 'profile' && <ProfileSection />}
                 {activeTab === 'address' && <AddressSection state={addressState} setState={setAddressState} />}
                 {activeTab === 'notifications' && <NotificationSection />}
                 {activeTab === 'payment' && <PaymentSection />}
                 {activeTab === 'wishlist' && <WishlistSection />}
+                {activeTab === 'account-standing' && <AccountStandingSection />}
                 {activeTab === 'security' && <SecuritySection />}
                 {activeTab === 'privacy' && <PrivacySection />}
                 {activeTab === 'help' && <HelpCenterSection />}
@@ -277,6 +293,123 @@ function AccountContent() {
                 {activeTab === 'store-profile' && <StoreProfileSection />}
                 {activeTab === 'pickup-address' && <SellerAddressSection state={sellerAddressState} setState={setSellerAddressState} />}
             </main>
+        </div>
+    );
+}
+
+function AccountStandingSection() {
+    const { user } = useAuth();
+    const apiUrl = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:5000';
+    const [data, setData] = useState(null);
+    const [loading, setLoading] = useState(true);
+
+    useEffect(() => {
+        if (!user?.user_id) return;
+        Promise.all([
+            fetch(`${apiUrl}/api/violations/user/${user.user_id}/cancellation-limit`).then(r => r.ok ? r.json() : null),
+            fetch(`${apiUrl}/api/violations/user/${user.user_id}/record`).then(r => r.ok ? r.json() : null),
+        ]).then(([limit, record]) => {
+            setData({ limit, record });
+        }).catch(() => {}).finally(() => setLoading(false));
+    }, [user]);
+
+    const STATUS_CONFIG = {
+        clean:      { label: 'Good Standing',      color: '#16a34a', bg: '#f0fdf4', border: '#bbf7d0', Icon: ShieldCheck },
+        warned:     { label: 'Strike 1 — Warned',  color: '#b45309', bg: '#fffbeb', border: '#fde68a', Icon: Shield },
+        restricted: { label: 'Strike 2 — Restricted', color: '#c2410c', bg: '#fff7ed', border: '#fed7aa', Icon: ShieldAlert },
+        suspended:  { label: 'Strike 3 — Suspended',  color: '#b91c1c', bg: '#fef2f2', border: '#fecaca', Icon: ShieldX },
+    };
+
+    const status = data?.record?.account_status || 'clean';
+    const cfg = STATUS_CONFIG[status] || STATUS_CONFIG.clean;
+    const StatusIcon = cfg.Icon;
+    const strikes = data?.record?.strike_count || 0;
+    const cancellationsThisWeek = data?.limit?.cancellationsThisWeek || 0;
+    const remaining = data?.limit?.remainingCancellations ?? 3;
+    const canCancel = data?.limit?.canCancel !== false;
+
+    const STRIKE_STEPS = [
+        { n: 1, Icon: Shield,      color: '#b45309', bg: '#fffbeb', border: '#fde68a', title: 'Strike 1 — Warning', desc: 'A formal warning is issued. You can still bid and cancel within limits.' },
+        { n: 2, Icon: ShieldAlert, color: '#c2410c', bg: '#fff7ed', border: '#fed7aa', title: 'Strike 2 — Restricted', desc: 'Payment pre-authorization is required before placing any bids.' },
+        { n: 3, Icon: ShieldX,     color: '#b91c1c', bg: '#fef2f2', border: '#fecaca', title: 'Strike 3 — Suspended', desc: 'Your account is suspended and placed under moderation review.' },
+    ];
+
+    if (loading) return <div style={{ padding: '1.5rem', color: '#9ca3af', textAlign: 'center' }}>Loading…</div>;
+
+    return (
+        <div style={{ maxWidth: 560, margin: '0 auto' }}>
+            <header style={{ marginBottom: '0.9rem' }}>
+                <h1 style={{ fontSize: '1.1rem', fontWeight: 800, color: '#111', margin: 0 }}>Account Standing</h1>
+                <p style={{ color: '#6b7280', fontSize: '0.78rem', margin: '0.2rem 0 0' }}>
+                    Your anti-bogus status and weekly cancellation usage.
+                </p>
+            </header>
+
+            {/* Status card */}
+            <div style={{ background: cfg.bg, border: `1.5px solid ${cfg.border}`, borderRadius: 12, padding: '0.8rem 1rem', display: 'flex', alignItems: 'center', gap: '0.65rem', marginBottom: '0.75rem' }}>
+                <StatusIcon size={24} color={cfg.color} style={{ flexShrink: 0 }} />
+                <div style={{ flex: 1, minWidth: 0 }}>
+                    <p style={{ margin: 0, fontWeight: 700, fontSize: '0.88rem', color: cfg.color }}>{cfg.label}</p>
+                    <p style={{ margin: '0.15rem 0 0', fontSize: '0.75rem', color: cfg.color, opacity: 0.85, lineHeight: 1.4 }}>
+                        {status === 'clean'      ? 'Your account is in good standing. Keep it up!' :
+                         status === 'warned'     ? 'You have received a warning. Avoid further cancellations.' :
+                         status === 'restricted' ? 'Pre-authorization required before bidding.' :
+                                                   'Your account is under moderation review.'}
+                    </p>
+                </div>
+                <div style={{ display: 'flex', gap: 5, flexShrink: 0 }}>
+                    {[1,2,3].map(n => (
+                        <div key={n} style={{ width: 9, height: 9, borderRadius: '50%', background: n <= strikes ? '#dc2626' : '#e5e7eb', boxShadow: n <= strikes ? '0 0 0 2px #fecaca' : 'none' }} />
+                    ))}
+                </div>
+            </div>
+
+            {/* Weekly cancellations */}
+            <div style={{ background: 'white', border: '1.5px solid #e5e7eb', borderRadius: 12, padding: '0.8rem 1rem', marginBottom: '0.75rem' }}>
+                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '0.45rem' }}>
+                    <p style={{ margin: 0, fontWeight: 700, fontSize: '0.7rem', color: '#6b7280', textTransform: 'uppercase', letterSpacing: '0.4px' }}>Cancellations This Week</p>
+                    <span style={{ fontWeight: 800, fontSize: '0.88rem', color: canCancel ? '#111' : '#dc2626' }}>{cancellationsThisWeek} / 3</span>
+                </div>
+                <div style={{ height: 6, background: '#f3f4f6', borderRadius: 6, overflow: 'hidden', marginBottom: '0.45rem' }}>
+                    <div style={{ height: '100%', width: `${Math.min((cancellationsThisWeek / 3) * 100, 100)}%`, background: cancellationsThisWeek >= 3 ? '#ef4444' : cancellationsThisWeek === 2 ? '#f59e0b' : '#673AB7', borderRadius: 6, transition: 'width 0.4s' }} />
+                </div>
+                <p style={{ margin: 0, fontSize: '0.75rem', color: canCancel ? '#6b7280' : '#dc2626', display: 'flex', alignItems: 'center', gap: '0.3rem' }}>
+                    {canCancel
+                        ? <><ShieldCheck size={12} color="#673AB7" /> {remaining} cancellation{remaining !== 1 ? 's' : ''} remaining this week</>
+                        : <><Ban size={12} color="#dc2626" /> Limit reached — next cancellation triggers a strike</>
+                    }
+                </p>
+            </div>
+
+            {/* Anti-bogus explanation */}
+            <div style={{ background: 'white', border: '1.5px solid #e5e7eb', borderRadius: 12, padding: '0.8rem 1rem', marginBottom: '0.75rem' }}>
+                <p style={{ margin: '0 0 0.6rem', fontWeight: 700, fontSize: '0.7rem', color: '#6b7280', textTransform: 'uppercase', letterSpacing: '0.4px' }}>How the Anti-Bogus System Works</p>
+                <p style={{ margin: '0 0 0.6rem', fontSize: '0.8rem', color: '#374151', lineHeight: 1.55 }}>
+                    BIDPal uses a <strong>three-strike system</strong> to keep auctions fair. You may cancel up to <strong>3 different orders per week</strong>. Each cancelled item counts as one cancellation — not each attempt.
+                </p>
+                <div style={{ display: 'flex', flexDirection: 'column', gap: '0.5rem' }}>
+                    {STRIKE_STEPS.map(({ n, Icon: SIcon, color, bg, border, title, desc }) => (
+                        <div key={n} style={{ display: 'flex', gap: '0.6rem', alignItems: 'flex-start', background: strikes >= n ? bg : '#fafafa', border: `1px solid ${strikes >= n ? border : '#e5e7eb'}`, borderRadius: 9, padding: '0.6rem 0.75rem' }}>
+                            <SIcon size={15} color={strikes >= n ? color : '#9ca3af'} style={{ flexShrink: 0, marginTop: 2 }} />
+                            <div>
+                                <p style={{ margin: 0, fontWeight: 700, fontSize: '0.78rem', color: strikes >= n ? color : '#374151' }}>{title}</p>
+                                <p style={{ margin: '0.1rem 0 0', fontSize: '0.73rem', color: '#6b7280', lineHeight: 1.4 }}>{desc}</p>
+                            </div>
+                        </div>
+                    ))}
+                </div>
+            </div>
+
+            {/* Reset info */}
+            <div style={{ display: 'flex', alignItems: 'flex-start', gap: '0.45rem', padding: '0.6rem 0.85rem', background: '#f9f9f9', border: '1px solid #e5e7eb', borderRadius: 9 }}>
+                <Clock size={13} color="#9ca3af" style={{ flexShrink: 0, marginTop: 2 }} />
+                <p style={{ margin: 0, fontSize: '0.73rem', color: '#6b7280', lineHeight: 1.5 }}>
+                    Weekly count resets every 7 days.
+                    {data?.limit?.weekResetDate && (
+                        <> Next reset: <strong>{new Date(new Date(data.limit.weekResetDate).getTime() + 7 * 24 * 60 * 60 * 1000).toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' })}</strong></>
+                    )}
+                </p>
+            </div>
         </div>
     );
 }
@@ -1099,7 +1232,10 @@ function AddressSection({ state, setState }) {
                 <div className={styles.dialogOverlay} onClick={() => !confirmDialog.onConfirm && setConfirmDialog(null)}>
                     <div className={styles.dialogCard} onClick={e => e.stopPropagation()}>
                         <div className={styles.dialogIcon}>
-                            {confirmDialog.icon || (confirmDialog.isAlert ? '⚠️' : '🗑️')}
+                            {confirmDialog.isAlert
+                                ? <AlertTriangle size={28} color="#f59e0b" />
+                                : <Trash2 size={28} color="#D32F2F" />
+                            }
                         </div>
                         <h2 className={styles.dialogTitle}>{confirmDialog.title || 'Confirm'}</h2>
                         <p className={styles.dialogMessage}>{confirmDialog.message}</p>
@@ -1344,7 +1480,10 @@ function AddressSection({ state, setState }) {
                 <div className={styles.dialogOverlay} onClick={() => !confirmDialog.onConfirm && setConfirmDialog(null)}>
                     <div className={styles.dialogCard} onClick={e => e.stopPropagation()}>
                         <div className={styles.dialogIcon}>
-                            {confirmDialog.icon || (confirmDialog.isAlert ? '⚠️' : '🗑️')}
+                            {confirmDialog.isAlert
+                                ? <AlertTriangle size={28} color="#f59e0b" />
+                                : <Trash2 size={28} color="#D32F2F" />
+                            }
                         </div>
                         <h2 className={styles.dialogTitle}>{confirmDialog.title || 'Confirm'}</h2>
                         <p className={styles.dialogMessage}>{confirmDialog.message}</p>
@@ -1793,7 +1932,10 @@ function SellerAddressSection({ state, setState }) {
         <div className={styles.dialogOverlay} onClick={() => !confirmDialog.onConfirm && setConfirmDialog(null)}>
             <div className={styles.dialogCard} onClick={e => e.stopPropagation()}>
                 <div className={styles.dialogIcon}>
-                    {confirmDialog.isAlert ? '⚠️' : '🗑️'}
+                    {confirmDialog.isAlert
+                        ? <AlertTriangle size={26} color="#f59e0b" />
+                        : <Trash2 size={26} color="#D32F2F" />
+                    }
                 </div>
                 <h2 className={styles.dialogTitle}>{confirmDialog.title || 'Confirm'}</h2>
                 <p className={styles.dialogMessage}>{confirmDialog.message}</p>

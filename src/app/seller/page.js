@@ -117,7 +117,8 @@ export default function SellerDashboard() {
                 }
             }
         } catch (err) {
-            console.error('Failed to fetch dashboard data:', err);
+            // Network errors are expected when backend is temporarily unreachable — don't spam console
+            if (err?.name !== 'TypeError') console.error('Dashboard data error:', err);
         }
     }, [user]);
 

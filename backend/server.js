@@ -26,14 +26,17 @@ const io = new SocketIOServer(httpServer, {
 
 app.use(cors({
   origin: [
-    'https://bidpal.shop',        // Your new production domain
-    'https://www.bidpal.shop',    // The www version of your domain
+    'https://bidpal.shop',
+    'https://www.bidpal.shop',
     'https://bid-pal-pink.vercel.app',
     'http://localhost:3000',
+    'http://localhost:3001',
+    'http://localhost:3002',
     'http://localhost:5000',
     'http://localhost:5173'
   ],
-  credentials: true
+  credentials: true,
+  allowedHeaders: ['Content-Type', 'Authorization']
 }))
 
 // Expose io to routes via app.locals

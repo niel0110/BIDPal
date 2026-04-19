@@ -1,292 +1,390 @@
+/* ── Base ──────────────────────────────────────────── */
 .checkoutContainer {
     min-height: 100vh;
-    background: linear-gradient(135deg, #f5f7fa 0%, #c3cfe2 100%);
-    padding: 2rem 1rem;
+    background: #f4f4f4;
+    padding: 2rem 1rem 3rem;
 }
 
 .checkoutContent {
-    max-width: 1400px;
+    max-width: 1200px;
     margin: 0 auto;
 }
 
+/* ── Header ──────────────────────────────────────── */
 .checkoutHeader {
+    display: flex;
+    align-items: center;
+    gap: 1rem;
     margin-bottom: 2rem;
 }
 
-.backBtn {
-    display: inline-flex;
-    align-items: center;
-    gap: 0.5rem;
-    background: white;
-    border: 1px solid #e0e0e0;
-    padding: 0.75rem 1.5rem;
-    border-radius: 8px;
-    font-size: 0.9rem;
-    color: #333;
-    cursor: pointer;
-    transition: all 0.2s;
-    margin-bottom: 1rem;
-}
-
-.backBtn:hover {
-    background: #f5f5f5;
-    border-color: #673AB7;
-    color: #673AB7;
-}
-
 .checkoutHeader h1 {
-    font-size: 2rem;
-    color: #1a1a1a;
+    font-size: 1.75rem;
+    font-weight: 800;
+    color: #111;
     margin: 0;
 }
 
+/* ── Main grid ───────────────────────────────────── */
 .checkoutMain {
     display: grid;
-    grid-template-columns: 1fr 400px;
-    gap: 2rem;
+    grid-template-columns: 1fr 380px;
+    gap: 1.5rem;
     align-items: start;
 }
 
-/* Forms Column */
 .checkoutForms {
     display: flex;
     flex-direction: column;
-    gap: 1.5rem;
+    gap: 1rem;
 }
 
+/* ── Step badge ──────────────────────────────────── */
+.stepBadge {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    width: 22px;
+    height: 22px;
+    border-radius: 50%;
+    background: #111;
+    color: white;
+    font-size: 0.6rem;
+    font-weight: 800;
+    flex-shrink: 0;
+}
+
+/* ── Section cards ───────────────────────────────── */
 .section {
     background: white;
-    border-radius: 12px;
-    padding: 1.5rem;
-    box-shadow: 0 2px 8px rgba(0, 0, 0, 0.08);
+    border-radius: 14px;
+    padding: 1.25rem 1.5rem;
+    box-shadow: 0 1px 6px rgba(0,0,0,0.07);
 }
 
 .sectionHeader {
     display: flex;
     justify-content: space-between;
     align-items: center;
-    margin-bottom: 1.25rem;
+    margin-bottom: 1.1rem;
 }
 
 .sectionTitle {
     display: flex;
     align-items: center;
-    gap: 0.75rem;
+    gap: 0.55rem;
 }
 
-.sectionTitle svg {
-    color: #673AB7;
-}
+.sectionTitle svg { color: #D32F2F; }
 
 .sectionTitle h2 {
-    font-size: 1.25rem;
-    color: #1a1a1a;
+    font-size: 0.95rem;
+    font-weight: 700;
+    color: #111;
     margin: 0;
 }
 
 .changeBtn {
     display: flex;
     align-items: center;
-    gap: 0.5rem;
+    gap: 0.35rem;
     background: transparent;
-    border: 1px solid #673AB7;
-    color: #673AB7;
-    padding: 0.5rem 1rem;
-    border-radius: 6px;
-    font-size: 0.875rem;
+    border: 1.5px solid #D32F2F;
+    color: #D32F2F;
+    padding: 0.35rem 0.8rem;
+    border-radius: 7px;
+    font-size: 0.78rem;
+    font-weight: 700;
     cursor: pointer;
     transition: all 0.2s;
 }
 
 .changeBtn:hover {
-    background: #673AB7;
+    background: #D32F2F;
     color: white;
 }
 
-/* Address Section */
+/* ── Address ─────────────────────────────────────── */
 .addressList {
     display: flex;
     flex-direction: column;
-    gap: 1rem;
+    gap: 0.75rem;
 }
 
 .addressCard {
     display: flex;
-    gap: 1rem;
-    padding: 1.25rem;
-    border: 2px solid #e0e0e0;
+    gap: 0.875rem;
+    padding: 1rem;
+    border: 1.5px solid #e8e8e8;
     border-radius: 10px;
     cursor: pointer;
-    transition: all 0.2s;
+    transition: all 0.18s;
+    background: #fafafa;
 }
 
 .addressCard:hover {
-    border-color: #673AB7;
-    background: #f9f9f9;
+    border-color: #D32F2F;
+    background: white;
 }
 
 .addressCard.selected {
-    border-color: #673AB7;
-    background: linear-gradient(135deg, #f3e5f5 0%, #e1bee7 100%);
+    border-color: #D32F2F;
+    background: #fff8f8;
+    box-shadow: 0 0 0 3px rgba(211,47,47,0.08);
 }
 
 .radio {
     flex-shrink: 0;
-    width: 20px;
-    height: 20px;
-    margin-top: 0.25rem;
+    width: 17px;
+    height: 17px;
+    margin-top: 0.2rem;
     cursor: pointer;
-    accent-color: #673AB7;
+    accent-color: #D32F2F;
 }
 
-.addressInfo {
-    flex: 1;
-}
+.addressInfo { flex: 1; min-width: 0; }
 
 .addressHeader {
     display: flex;
     align-items: center;
-    gap: 0.75rem;
-    margin-bottom: 0.5rem;
+    gap: 0.6rem;
+    margin-bottom: 0.3rem;
+    flex-wrap: wrap;
 }
 
 .addressName {
-    font-weight: 600;
-    color: #1a1a1a;
-    font-size: 1rem;
+    font-weight: 700;
+    color: #111;
+    font-size: 0.9rem;
 }
 
 .defaultBadge {
-    background: #4caf50;
+    background: #111;
     color: white;
-    padding: 0.25rem 0.75rem;
-    border-radius: 12px;
-    font-size: 0.75rem;
-    font-weight: 600;
+    padding: 0.15rem 0.55rem;
+    border-radius: 20px;
+    font-size: 0.67rem;
+    font-weight: 700;
+    letter-spacing: 0.02em;
 }
 
 .addressText {
     color: #666;
-    line-height: 1.6;
+    line-height: 1.55;
     margin: 0;
-    font-size: 0.9rem;
+    font-size: 0.83rem;
 }
 
-/* Payment Methods */
-.paymentMethods {
-    display: flex;
-    flex-direction: column;
-    gap: 1rem;
+/* ── Empty state ─────────────────────────────────── */
+.emptyState {
+    text-align: center;
+    padding: 2rem 1rem;
 }
 
-.paymentCard {
+.emptyIcon {
+    width: 52px;
+    height: 52px;
+    border-radius: 50%;
+    background: #f5f5f5;
     display: flex;
-    gap: 1rem;
-    padding: 1.25rem;
-    border: 2px solid #e0e0e0;
-    border-radius: 10px;
+    align-items: center;
+    justify-content: center;
+    margin: 0 auto 0.75rem;
+    color: #ccc;
+}
+
+.emptyState p {
+    color: #999;
+    font-size: 0.88rem;
+    margin: 0 0 1.25rem;
+}
+
+.addAddressBtn {
+    display: inline-flex;
+    align-items: center;
+    gap: 0.5rem;
+    background: #D32F2F;
+    color: white;
+    border: none;
+    padding: 0.7rem 1.5rem;
+    border-radius: 9px;
+    font-size: 0.875rem;
+    font-weight: 700;
     cursor: pointer;
     transition: all 0.2s;
 }
 
+.addAddressBtn:hover {
+    background: #b71c1c;
+    transform: translateY(-1px);
+    box-shadow: 0 4px 12px rgba(211,47,47,0.25);
+}
+
+/* ── Payment method ──────────────────────────────── */
+.paymentMethods {
+    display: flex;
+    flex-direction: column;
+    gap: 0.75rem;
+}
+
+.paymentCard {
+    display: flex;
+    gap: 0.875rem;
+    align-items: center;
+    padding: 1rem;
+    border: 1.5px solid #e8e8e8;
+    border-radius: 10px;
+    cursor: pointer;
+    transition: all 0.18s;
+    background: #fafafa;
+}
+
 .paymentCard:hover {
-    border-color: #673AB7;
-    background: #f9f9f9;
+    border-color: #D32F2F;
+    background: white;
 }
 
 .paymentCard.selected {
-    border-color: #673AB7;
-    background: linear-gradient(135deg, #f3e5f5 0%, #e1bee7 100%);
+    border-color: #D32F2F;
+    background: #fff8f8;
+    box-shadow: 0 0 0 3px rgba(211,47,47,0.08);
 }
 
 .paymentInfo {
     display: flex;
     align-items: center;
-    gap: 1rem;
+    gap: 0.85rem;
     flex: 1;
+    min-width: 0;
 }
 
-.paymentInfo svg {
-    color: #673AB7;
+.paymentIconWrap {
+    width: 38px;
+    height: 38px;
+    border-radius: 10px;
+    background: #f5f5f5;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    flex-shrink: 0;
+    color: #111;
+}
+
+.paymentCard.selected .paymentIconWrap {
+    background: #FFEBEE;
+    color: #D32F2F;
 }
 
 .paymentInfo h3 {
-    margin: 0 0 0.25rem 0;
-    font-size: 1rem;
-    color: #1a1a1a;
+    display: flex;
+    align-items: center;
+    gap: 0.5rem;
+    margin: 0 0 0.15rem 0;
+    font-size: 0.9rem;
+    font-weight: 700;
+    color: #111;
 }
 
 .paymentInfo p {
     margin: 0;
-    font-size: 0.875rem;
-    color: #666;
+    font-size: 0.78rem;
+    color: #888;
 }
 
-/* Shipping Method */
+.gcashBadge {
+    display: inline-block;
+    font-size: 0.62rem;
+    font-weight: 700;
+    background: #007eff20;
+    color: #007eff;
+    border: 1px solid #007eff40;
+    border-radius: 4px;
+    padding: 0.05rem 0.35rem;
+    letter-spacing: 0.03em;
+}
+
+/* ── Shipping method ─────────────────────────────── */
 .shippingCard {
     display: flex;
     align-items: center;
-    gap: 1rem;
-    padding: 1.25rem;
-    border: 2px solid #4caf50;
+    gap: 0.875rem;
+    padding: 1rem;
+    border: 1.5px solid #c8e6c9;
     border-radius: 10px;
-    background: linear-gradient(135deg, #e8f5e9 0%, #c8e6c9 100%);
+    background: #f1faf2;
 }
 
-.shippingInfo {
-    flex: 1;
+.shippingIconWrap {
+    width: 36px;
+    height: 36px;
+    border-radius: 50%;
+    background: #e8f5e9;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    flex-shrink: 0;
+    color: #2e7d32;
 }
+
+.shippingInfo { flex: 1; min-width: 0; }
 
 .shippingInfo h3 {
-    margin: 0 0 0.25rem 0;
-    font-size: 1rem;
+    margin: 0 0 0.15rem 0;
+    font-size: 0.9rem;
+    font-weight: 700;
     color: #1a1a1a;
 }
 
 .shippingInfo p {
     margin: 0;
-    font-size: 0.875rem;
-    color: #666;
+    font-size: 0.78rem;
+    color: #555;
 }
 
 .shippingFee {
-    font-weight: 700;
-    font-size: 1.125rem;
-    color: #1a1a1a;
+    font-weight: 800;
+    font-size: 1rem;
+    color: #111;
+    white-space: nowrap;
 }
 
-/* Order Summary */
+/* ── Order Summary ───────────────────────────────── */
 .orderSummary {
     position: sticky;
-    top: 2rem;
+    top: 1.5rem;
 }
 
 .summaryCard {
     background: white;
-    border-radius: 12px;
-    padding: 1.5rem;
-    box-shadow: 0 4px 12px rgba(0, 0, 0, 0.1);
+    border-radius: 14px;
+    padding: 1.25rem;
+    box-shadow: 0 2px 12px rgba(0,0,0,0.08);
 }
 
 .summaryCard h2 {
-    font-size: 1.25rem;
-    color: #1a1a1a;
-    margin: 0 0 1.5rem 0;
+    font-size: 0.78rem;
+    font-weight: 800;
+    color: #999;
+    text-transform: uppercase;
+    letter-spacing: 0.06em;
+    margin: 0 0 1rem 0;
 }
 
 .productInfo {
     display: flex;
-    gap: 1rem;
-    margin-bottom: 1.5rem;
+    gap: 0.875rem;
+    margin-bottom: 1rem;
+    align-items: flex-start;
 }
 
 .productImage {
-    width: 100px;
-    height: 100px;
-    border-radius: 8px;
+    width: 72px;
+    height: 72px;
+    border-radius: 10px;
     overflow: hidden;
     flex-shrink: 0;
     background: #f5f5f5;
+    border: 1px solid #eee;
 }
 
 .productImage img {
@@ -299,149 +397,128 @@
     flex: 1;
     display: flex;
     flex-direction: column;
+    gap: 0.2rem;
+    min-width: 0;
+}
+
+.auctionTag {
+    display: inline-flex;
+    align-items: center;
     gap: 0.25rem;
+    font-size: 0.65rem;
+    font-weight: 800;
+    text-transform: uppercase;
+    letter-spacing: 0.04em;
+    color: #D32F2F;
+    background: #FFEBEE;
+    padding: 0.15rem 0.5rem;
+    border-radius: 4px;
+    width: fit-content;
 }
 
 .productDetails h3 {
     margin: 0;
-    font-size: 1rem;
-    color: #1a1a1a;
+    font-size: 0.88rem;
+    font-weight: 700;
+    color: #111;
     line-height: 1.4;
 }
 
-.productDetails p {
-    margin: 0;
-    font-size: 0.875rem;
-    color: #999;
+.price {
+    font-weight: 800;
+    font-size: 1rem;
+    color: #D32F2F;
 }
 
-.productDetails .price {
-    font-weight: 700;
-    font-size: 1.125rem;
-    color: #673AB7;
-    margin-top: 0.25rem;
+.summaryDivider {
+    height: 1px;
+    background: #f0f0f0;
+    margin: 0.875rem 0;
 }
 
 .priceBreakdown {
     display: flex;
     flex-direction: column;
-    gap: 0.75rem;
+    gap: 0.55rem;
 }
 
 .summaryRow {
     display: flex;
     justify-content: space-between;
     align-items: center;
-    font-size: 0.9rem;
+    font-size: 0.85rem;
     color: #666;
 }
 
 .summaryRow span:last-child {
-    font-weight: 500;
-    color: #1a1a1a;
-}
-
-.summaryDivider {
-    height: 1px;
-    background: linear-gradient(90deg, transparent, #e0e0e0, transparent);
-    margin: 0.75rem 0;
+    font-weight: 600;
+    color: #111;
 }
 
 .totalRow {
-    font-size: 1.125rem;
+    font-size: 0.95rem;
     font-weight: 700;
-    color: #1a1a1a;
-    margin-top: 0.5rem;
+    color: #111;
 }
 
 .totalRow span:last-child {
-    color: #673AB7;
-    font-size: 1.5rem;
+    font-size: 1.2rem;
+    font-weight: 900;
+    color: #D32F2F;
 }
 
+/* ── Place Order button (desktop) ────────────────── */
 .placeOrderBtn {
     width: 100%;
     display: flex;
     justify-content: space-between;
     align-items: center;
-    background: linear-gradient(135deg, #673AB7 0%, #512DA8 100%);
+    background: #D32F2F;
     color: white;
     border: none;
-    padding: 1rem 1.5rem;
+    padding: 0.95rem 1.25rem;
     border-radius: 10px;
-    font-size: 1rem;
-    font-weight: 600;
+    font-size: 0.95rem;
+    font-weight: 800;
     cursor: pointer;
-    transition: all 0.3s;
-    margin-top: 1.5rem;
-    box-shadow: 0 4px 12px rgba(103, 58, 183, 0.3);
+    transition: all 0.2s;
+    margin-top: 1.25rem;
+    box-shadow: 0 4px 14px rgba(211,47,47,0.3);
+    letter-spacing: 0.01em;
 }
 
 .placeOrderBtn:hover:not(:disabled) {
-    background: linear-gradient(135deg, #512DA8 0%, #4527A0 100%);
-    box-shadow: 0 6px 16px rgba(103, 58, 183, 0.4);
-    transform: translateY(-2px);
+    background: #b71c1c;
+    transform: translateY(-1px);
+    box-shadow: 0 6px 18px rgba(211,47,47,0.38);
 }
 
 .placeOrderBtn:disabled {
-    opacity: 0.6;
+    opacity: 0.55;
     cursor: not-allowed;
     transform: none;
+    box-shadow: none;
 }
 
-.placeOrderBtn .spin {
-    animation: spin 1s linear infinite;
-}
+.spin { animation: spin 1s linear infinite; }
 
 @keyframes spin {
     from { transform: rotate(0deg); }
-    to { transform: rotate(360deg); }
+    to   { transform: rotate(360deg); }
 }
 
 .secureText {
-    text-align: center;
-    font-size: 0.875rem;
-    color: #666;
-    margin: 1rem 0 0 0;
-}
-
-/* Empty States */
-.emptyState {
-    text-align: center;
-    padding: 3rem 1rem;
-}
-
-.emptyState svg {
-    margin-bottom: 1rem;
-}
-
-.emptyState p {
-    color: #999;
-    margin: 0.5rem 0 1.5rem 0;
-}
-
-.addAddressBtn {
-    display: inline-flex;
+    display: flex;
     align-items: center;
-    gap: 0.5rem;
-    background: #673AB7;
-    color: white;
-    border: none;
-    padding: 0.75rem 1.5rem;
-    border-radius: 8px;
-    font-size: 0.9rem;
-    font-weight: 600;
-    cursor: pointer;
-    transition: all 0.2s;
+    justify-content: center;
+    gap: 0.35rem;
+    text-align: center;
+    font-size: 0.75rem;
+    color: #aaa;
+    margin: 0.875rem 0 0 0;
 }
 
-.addAddressBtn:hover {
-    background: #512DA8;
-    transform: translateY(-2px);
-    box-shadow: 0 4px 12px rgba(103, 58, 183, 0.3);
-}
-
-/* Loading & Error States */
+/* ── Loading / Error States ──────────────────────── */
 .loadingContainer,
 .errorState {
     display: flex;
@@ -451,35 +528,78 @@
     min-height: 60vh;
     text-align: center;
     padding: 2rem;
+    gap: 0.75rem;
 }
 
-.spinner {
-    animation: spin 1s linear infinite;
-    color: #673AB7;
+.errorStateIcon {
+    width: 72px;
+    height: 72px;
+    border-radius: 50%;
+    background: #FFF5F5;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    color: #D32F2F;
+    margin-bottom: 0.25rem;
 }
 
-.loadingContainer p,
-.errorState p {
-    color: #666;
-    margin-top: 1rem;
-    font-size: 1rem;
+.alreadyPaidIcon {
+    width: 72px;
+    height: 72px;
+    border-radius: 50%;
+    background: #E8F5E9;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    color: #2E7D32;
+    margin-bottom: 0.25rem;
 }
 
 .errorState h2 {
-    color: #1a1a1a;
-    margin: 1rem 0 0.5rem 0;
+    font-size: 1.2rem;
+    font-weight: 800;
+    color: #111;
+    margin: 0;
 }
 
-.errorState .backBtn {
-    margin-top: 1.5rem;
+.errorState p {
+    color: #777;
+    font-size: 0.9rem;
+    margin: 0;
+    max-width: 340px;
+    line-height: 1.6;
 }
 
-/* ── Modals ── */
+.goOrdersBtn {
+    display: inline-flex;
+    align-items: center;
+    gap: 0.4rem;
+    background: #111;
+    color: white;
+    border: none;
+    padding: 0.8rem 1.75rem;
+    border-radius: 9px;
+    font-size: 0.9rem;
+    font-weight: 700;
+    cursor: pointer;
+    transition: all 0.2s;
+    margin-top: 0.5rem;
+}
+
+.goOrdersBtn:hover {
+    background: #222;
+    transform: translateY(-1px);
+}
+
+/* ── Sticky mobile bar ───────────────────────────── */
+.mobileBar { display: none; }
+
+/* ── Modals ──────────────────────────────────────── */
 .modalOverlay {
     position: fixed;
     inset: 0;
-    background: rgba(0, 0, 0, 0.45);
-    backdrop-filter: blur(3px);
+    background: rgba(0,0,0,0.5);
+    backdrop-filter: blur(4px);
     display: flex;
     align-items: center;
     justify-content: center;
@@ -491,43 +611,33 @@
     background: white;
     border-radius: 16px;
     width: 100%;
-    max-width: 420px;
-    box-shadow: 0 24px 60px rgba(0, 0, 0, 0.2);
-    animation: modalIn 0.2s ease;
+    max-width: 400px;
+    box-shadow: 0 24px 60px rgba(0,0,0,0.2);
+    animation: modalIn 0.22s ease;
     position: relative;
+    overflow: hidden;
 }
 
 @keyframes modalIn {
-    from { opacity: 0; transform: scale(0.95) translateY(8px); }
+    from { opacity: 0; transform: scale(0.95) translateY(10px); }
     to   { opacity: 1; transform: scale(1) translateY(0); }
-}
-
-.modalCenter {
-    text-align: center;
-    padding: 2.5rem 2rem;
-    display: flex;
-    flex-direction: column;
-    align-items: center;
-    gap: 0.75rem;
 }
 
 .modalHeader {
     display: flex;
     align-items: center;
     gap: 0.75rem;
-    padding: 1.25rem 1.5rem;
+    padding: 1.1rem 1.25rem;
     border-bottom: 1px solid #f0f0f0;
+    background: #fafafa;
 }
 
-.modalIcon {
-    color: #673AB7;
-    flex-shrink: 0;
-}
+.modalIcon { color: #D32F2F; flex-shrink: 0; }
 
 .modalHeader h3 {
     flex: 1;
-    font-size: 1.1rem;
-    font-weight: 700;
+    font-size: 1rem;
+    font-weight: 800;
     color: #111;
     margin: 0;
 }
@@ -536,7 +646,7 @@
     background: none;
     border: none;
     cursor: pointer;
-    color: #9ca3af;
+    color: #aaa;
     padding: 0.25rem;
     display: flex;
     align-items: center;
@@ -544,244 +654,412 @@
     transition: color 0.15s, background 0.15s;
 }
 
-.modalClose:hover {
-    color: #374151;
-    background: #f3f4f6;
-}
+.modalClose:hover { color: #111; background: #f0f0f0; }
 
 .modalBody {
-    padding: 1.25rem 1.5rem;
+    padding: 1.1rem 1.25rem;
     display: flex;
     flex-direction: column;
-    gap: 1.25rem;
+    gap: 1rem;
+}
+
+.modalCenter {
+    text-align: center;
+    padding: 2.25rem 1.75rem;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 0.65rem;
 }
 
 /* Confirm product row */
 .confirmProduct {
     display: flex;
     align-items: center;
-    gap: 1rem;
+    gap: 0.875rem;
     padding: 0.75rem;
-    background: #f9fafb;
+    background: #f8f8f8;
     border-radius: 10px;
-    border: 1px solid #f0f0f0;
+    border: 1px solid #eee;
 }
 
 .confirmProductImg {
-    width: 56px;
-    height: 56px;
+    width: 52px;
+    height: 52px;
     object-fit: cover;
     border-radius: 8px;
     flex-shrink: 0;
+    border: 1px solid #eee;
 }
 
 .confirmProductName {
-    font-size: 0.9rem;
-    font-weight: 600;
+    font-size: 0.88rem;
+    font-weight: 700;
     color: #111;
-    margin: 0 0 0.2rem 0;
-    line-height: 1.3;
+    margin: 0 0 0.15rem 0;
+    line-height: 1.35;
 }
 
 .confirmProductSub {
-    font-size: 0.75rem;
-    color: #9ca3af;
+    font-size: 0.72rem;
+    color: #aaa;
     margin: 0;
 }
 
-/* Price breakdown inside modal */
 .confirmBreakdown {
     display: flex;
     flex-direction: column;
-    gap: 0.6rem;
+    gap: 0.55rem;
+    background: #fafafa;
+    border-radius: 10px;
+    padding: 0.875rem;
 }
 
 .confirmRow {
     display: flex;
     justify-content: space-between;
-    font-size: 0.9rem;
-    color: #6b7280;
+    font-size: 0.85rem;
+    color: #666;
 }
 
 .confirmRow span:last-child {
-    font-weight: 600;
+    font-weight: 700;
     color: #111;
 }
 
 .confirmDivider {
     height: 1px;
-    background: #e5e7eb;
-    margin: 0.25rem 0;
+    background: #e8e8e8;
+    margin: 0.2rem 0;
 }
 
-.confirmTotal {
-    font-size: 1rem;
-    font-weight: 700;
-}
+.confirmTotal { font-weight: 800; }
 
-.confirmTotal span:last-child {
-    font-size: 1.25rem;
-    color: #673AB7;
-}
+.confirmTotal span:first-child { color: #111; font-size: 0.9rem; }
+.confirmTotal span:last-child { font-size: 1.15rem; color: #D32F2F; }
 
 .modalFooter {
     display: flex;
-    gap: 0.75rem;
-    padding: 1rem 1.5rem 1.25rem;
+    gap: 0.65rem;
+    padding: 0.875rem 1.25rem 1.1rem;
     border-top: 1px solid #f0f0f0;
-    justify-content: flex-end;
 }
 
 .modalCancelBtn {
-    padding: 0.7rem 1.4rem;
+    flex: 1;
+    padding: 0.7rem 1rem;
     background: white;
-    border: 1.5px solid #e5e7eb;
-    border-radius: 8px;
-    font-size: 0.9rem;
-    font-weight: 600;
-    color: #6b7280;
+    border: 1.5px solid #e0e0e0;
+    border-radius: 9px;
+    font-size: 0.875rem;
+    font-weight: 700;
+    color: #666;
     cursor: pointer;
-    transition: all 0.2s;
+    transition: all 0.18s;
 }
 
-.modalCancelBtn:hover {
-    border-color: #9ca3af;
-    color: #374151;
-}
+.modalCancelBtn:hover { border-color: #bbb; color: #333; }
 
 .modalConfirmBtn {
+    flex: 1;
     display: flex;
     align-items: center;
-    gap: 0.5rem;
-    padding: 0.7rem 1.5rem;
-    background: linear-gradient(135deg, #673AB7, #512DA8);
+    justify-content: center;
+    gap: 0.4rem;
+    padding: 0.7rem 1rem;
+    background: #D32F2F;
     color: white;
     border: none;
-    border-radius: 8px;
-    font-size: 0.9rem;
-    font-weight: 700;
+    border-radius: 9px;
+    font-size: 0.875rem;
+    font-weight: 800;
     cursor: pointer;
-    transition: all 0.2s;
+    transition: all 0.18s;
 }
 
-.modalConfirmBtn:hover {
+.modalConfirmBtn:hover:not(:disabled) {
+    background: #b71c1c;
     transform: translateY(-1px);
-    box-shadow: 0 6px 16px rgba(103, 58, 183, 0.35);
+    box-shadow: 0 4px 14px rgba(211,47,47,0.3);
 }
+
+.modalConfirmBtn:disabled { opacity: 0.55; cursor: not-allowed; }
 
 /* Success modal */
 .successIcon {
-    width: 80px;
-    height: 80px;
-    background: linear-gradient(135deg, #d1fae5, #a7f3d0);
+    width: 72px;
+    height: 72px;
+    background: #E8F5E9;
     border-radius: 50%;
     display: flex;
     align-items: center;
     justify-content: center;
-    margin-bottom: 0.5rem;
-}
-
-.successIcon svg {
-    color: #059669;
+    color: #2E7D32;
 }
 
 .successTitle {
-    font-size: 1.3rem;
-    font-weight: 800;
+    font-size: 1.2rem;
+    font-weight: 900;
     color: #111;
     margin: 0;
 }
 
 .successMsg {
-    font-size: 0.9rem;
-    color: #6b7280;
+    font-size: 0.85rem;
+    color: #777;
     line-height: 1.6;
-    margin: 0 0 0.5rem 0;
+    margin: 0 0 0.5rem;
+    max-width: 280px;
 }
 
 /* Error modal */
 .errorIcon {
-    width: 80px;
-    height: 80px;
-    background: linear-gradient(135deg, #fee2e2, #fecaca);
+    width: 72px;
+    height: 72px;
+    background: #FFF5F5;
     border-radius: 50%;
     display: flex;
     align-items: center;
     justify-content: center;
-    margin-bottom: 0.5rem;
-}
-
-.errorIcon svg {
-    color: #dc2626;
+    color: #D32F2F;
 }
 
 .errorTitle {
-    font-size: 1.2rem;
-    font-weight: 700;
+    font-size: 1.1rem;
+    font-weight: 800;
     color: #111;
     margin: 0;
 }
 
 .errorMsg {
-    font-size: 0.9rem;
-    color: #6b7280;
-    line-height: 1.5;
-    margin: 0 0 0.5rem 0;
+    font-size: 0.85rem;
+    color: #777;
+    line-height: 1.55;
+    margin: 0 0 0.5rem;
+    max-width: 280px;
 }
 
 .modalDismissBtn {
     padding: 0.7rem 2rem;
-    background: #f3f4f6;
+    background: #111;
+    color: white;
     border: none;
-    border-radius: 8px;
-    font-size: 0.9rem;
+    border-radius: 9px;
+    font-size: 0.875rem;
     font-weight: 700;
-    color: #374151;
     cursor: pointer;
-    transition: background 0.2s;
+    transition: background 0.18s;
 }
 
-.modalDismissBtn:hover {
-    background: #e5e7eb;
-}
+.modalDismissBtn:hover { background: #222; }
 
-/* Responsive */
+/* ── Responsive ──────────────────────────────────── */
 @media (max-width: 1024px) {
-    .checkoutMain {
-        grid-template-columns: 1fr;
-    }
-
-    .orderSummary {
-        position: static;
-    }
+    .checkoutMain { grid-template-columns: 1fr; }
+    .orderSummary { position: static; }
 }
 
 @media (max-width: 768px) {
-    .checkoutContainer {
-        padding: 1rem 0.5rem;
-    }
+    .checkoutContainer { padding: 0.75rem 0.65rem 6rem; }
 
-    .checkoutHeader h1 {
-        font-size: 1.5rem;
+    /* Header */
+    .checkoutHeader {
+        gap: 0.6rem;
+        margin-bottom: 0.875rem;
     }
+    .checkoutHeader h1 { font-size: 1.15rem; }
 
-    .section {
-        padding: 1rem;
-    }
+    /* Layout */
+    .checkoutMain { gap: 0.65rem; }
+    .checkoutForms { gap: 0.65rem; }
 
-    .addressCard,
-    .paymentCard {
-        padding: 1rem;
-    }
+    /* Summary first on mobile */
+    .orderSummary { order: -1; }
 
-    .productInfo {
-        flex-direction: column;
+    /* Summary card */
+    .summaryCard { padding: 0.875rem; border-radius: 12px; }
+    .summaryCard h2 { font-size: 0.7rem; margin-bottom: 0.75rem; }
+
+    .productInfo { gap: 0.75rem; margin-bottom: 0.75rem; }
+    .productImage { width: 52px; height: 52px; border-radius: 8px; }
+    .productDetails h3 { font-size: 0.8rem; }
+    .price { font-size: 0.92rem; }
+    .summaryDivider { margin: 0.6rem 0; }
+    .priceBreakdown { gap: 0.4rem; }
+    .summaryRow { font-size: 0.78rem; }
+    .totalRow { font-size: 0.85rem; }
+    .totalRow span:last-child { font-size: 1rem; }
+
+    /* Hide desktop Place Order — use sticky bar instead */
+    .placeOrderBtn, .secureText { display: none; }
+
+    /* Section cards */
+    .section { padding: 0.875rem; border-radius: 12px; }
+    .sectionHeader { margin-bottom: 0.75rem; }
+    .sectionTitle { gap: 0.45rem; }
+    .stepBadge { width: 19px; height: 19px; font-size: 0.58rem; }
+    .sectionTitle svg { width: 15px; height: 15px; }
+    .sectionTitle h2 { font-size: 0.85rem; }
+    .changeBtn { padding: 0.3rem 0.6rem; font-size: 0.72rem; border-radius: 6px; }
+
+    /* Address */
+    .addressList { gap: 0.5rem; }
+    .addressCard { padding: 0.75rem; gap: 0.6rem; border-radius: 9px; }
+    .addressName { font-size: 0.82rem; }
+    .addressText { font-size: 0.74rem; line-height: 1.45; }
+    .addressHeader { margin-bottom: 0.2rem; gap: 0.4rem; }
+    .defaultBadge { font-size: 0.62rem; padding: 0.12rem 0.45rem; }
+    .radio { width: 15px; height: 15px; margin-top: 0.1rem; }
+
+    /* Empty state */
+    .emptyState { padding: 1.25rem 0.75rem; }
+    .emptyIcon { width: 44px; height: 44px; margin-bottom: 0.6rem; }
+    .emptyState p { font-size: 0.8rem; margin-bottom: 0.875rem; }
+    .addAddressBtn { padding: 0.65rem 1rem; font-size: 0.82rem; width: 100%; justify-content: center; }
+
+    /* Payment */
+    .paymentMethods { gap: 0.5rem; }
+    .paymentCard { padding: 0.75rem; gap: 0.6rem; border-radius: 9px; }
+    .paymentInfo { gap: 0.65rem; }
+    .paymentIconWrap { width: 32px; height: 32px; border-radius: 8px; }
+    .paymentIconWrap svg { width: 16px; height: 16px; }
+    .paymentInfo h3 { font-size: 0.83rem; gap: 0.35rem; }
+    .paymentInfo p { font-size: 0.71rem; }
+
+    /* Shipping */
+    .shippingCard { padding: 0.75rem; gap: 0.65rem; border-radius: 9px; }
+    .shippingIconWrap { width: 30px; height: 30px; }
+    .shippingIconWrap svg { width: 14px; height: 14px; }
+    .shippingInfo h3 { font-size: 0.83rem; }
+    .shippingInfo p { font-size: 0.71rem; }
+    .shippingFee { font-size: 0.88rem; }
+
+    /* ── Sticky bar ── */
+    .mobileBar {
+        display: flex;
         align-items: center;
-        text-align: center;
+        justify-content: space-between;
+        gap: 0.875rem;
+        position: fixed;
+        bottom: 0;
+        left: 0;
+        right: 0;
+        background: white;
+        border-top: 1px solid #e8e8e8;
+        padding: 0.875rem 1rem;
+        z-index: 200;
+        box-shadow: 0 -6px 24px rgba(0,0,0,0.1);
     }
 
-    .placeOrderBtn {
-        flex-direction: column;
-        gap: 0.5rem;
+    .mobileBarInfo { display: flex; flex-direction: column; gap: 0.05rem; }
+    .mobileBarLabel { font-size: 0.68rem; color: #aaa; font-weight: 700; text-transform: uppercase; letter-spacing: 0.04em; }
+    .mobileBarTotal { font-size: 1.1rem; font-weight: 900; color: #D32F2F; line-height: 1; }
+
+    .mobileBarBtn {
+        flex: 1;
+        max-width: 190px;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        gap: 0.4rem;
+        background: #D32F2F;
+        color: white;
+        border: none;
+        padding: 0.8rem 1rem;
+        border-radius: 10px;
+        font-size: 0.9rem;
+        font-weight: 800;
+        cursor: pointer;
+        transition: all 0.2s;
+        box-shadow: 0 4px 14px rgba(211,47,47,0.35);
+        letter-spacing: 0.01em;
     }
+
+    .mobileBarBtn:disabled { opacity: 0.5; cursor: not-allowed; box-shadow: none; }
+
+    /* Modals */
+    .modal { border-radius: 14px; max-width: 100%; }
+    .modalHeader { padding: 0.875rem 1rem; }
+    .modalHeader h3 { font-size: 0.92rem; }
+    .modalBody { padding: 0.875rem 1rem; gap: 0.875rem; }
+    .modalFooter { padding: 0.75rem 1rem 0.875rem; gap: 0.5rem; }
+    .modalCancelBtn, .modalConfirmBtn { padding: 0.65rem 0.875rem; font-size: 0.85rem; border-radius: 8px; }
+    .modalCenter { padding: 1.75rem 1.25rem; gap: 0.6rem; }
+    .successIcon, .errorIcon { width: 58px; height: 58px; }
+    .successIcon svg, .errorIcon svg { width: 26px; height: 26px; }
+    .successTitle, .errorTitle { font-size: 1rem; }
+    .successMsg, .errorMsg { font-size: 0.8rem; }
+    .modalConfirmBtn, .modalDismissBtn { width: 100%; }
+    .modalDismissBtn { padding: 0.65rem 1rem; font-size: 0.85rem; }
+
+    /* Error / already-paid state */
+    .errorStateIcon, .alreadyPaidIcon { width: 62px; height: 62px; }
+    .errorState h2 { font-size: 1.05rem; }
+    .errorState p { font-size: 0.82rem; }
+    .goOrdersBtn { padding: 0.7rem 1.5rem; font-size: 0.85rem; }
+}
+
+@media (max-width: 360px) {
+    .checkoutContainer { padding: 0.6rem 0.5rem 6rem; }
+    .checkoutHeader h1 { font-size: 1.05rem; }
+    .section, .summaryCard { padding: 0.75rem; border-radius: 10px; }
+    .sectionTitle h2 { font-size: 0.8rem; }
+    .addressCard, .paymentCard, .shippingCard { padding: 0.65rem; }
+    .addressName { font-size: 0.78rem; }
+    .addressText, .paymentInfo p, .shippingInfo p { font-size: 0.68rem; }
+    .paymentInfo h3, .shippingInfo h3 { font-size: 0.78rem; }
+    .productImage { width: 46px; height: 46px; }
+    .productDetails h3 { font-size: 0.75rem; }
+    .summaryRow { font-size: 0.74rem; }
+    .mobileBarTotal { font-size: 1rem; }
+    .mobileBarBtn { font-size: 0.82rem; padding: 0.72rem 0.875rem; }
+    .mobileBar { padding: 0.72rem 0.875rem; }
+
+    .modalOverlay { padding: 1.25rem; }
+    .modal { width: 90%; }
+    .modalHeader { padding: 0.75rem; }
+    .modalBody { padding: 0.75rem; gap: 0.75rem; }
+    .modalFooter { 
+        padding: 0.75rem; 
+        flex-direction: column-reverse; 
+        gap: 0.5rem; 
+    }
+    .modalConfirmBtn, .modalCancelBtn { 
+        width: 100%; 
+        padding: 0.75rem; 
+        flex: none;
+    }
+    .confirmProductImg { width: 46px; height: 46px; }
+    .confirmProductName { font-size: 0.82rem; }
+    .confirmRow { font-size: 0.8rem; }
+    .confirmTotal span:first-child { font-size: 0.85rem; }
+    .confirmTotal span:last-child { font-size: 1.1rem; }
+}
+
+@media (max-width: 320px) {
+    .checkoutContainer { padding: 0.5rem 0.4rem 6rem; }
+    .section, .summaryCard { padding: 0.65rem; }
+    .checkoutHeader h1 { font-size: 0.95rem; }
+    .stepBadge { width: 17px; height: 17px; font-size: 0.52rem; }
+    .productImage { width: 40px; height: 40px; }
+    .paymentIconWrap { width: 28px; height: 28px; }
+    
+    /* Further modal adjustments */
+    .modalOverlay { padding: 1.25rem; }
+    .modal { width: 88%; }
+    .confirmRow { font-size: 0.75rem; }
+    .confirmProduct { gap: 0.4rem; padding: 0.4rem; }
+    .confirmProductName { font-size: 0.75rem; }
+    .confirmBreakdown { padding: 0.5rem; gap: 0.35rem; }
+    .modalHeader { padding: 0.6rem; }
+    .modalHeader h3 { font-size: 0.8rem; }
+    .modalBody { padding: 0.6rem; gap: 0.6rem; }
+    .modalFooter { padding: 0.6rem; gap: 0.4rem; }
+    .modalConfirmBtn, .modalCancelBtn {
+        padding: 0.55rem;
+        font-size: 0.75rem;
+        width: 100%;
+    }
+    .confirmTotal span:first-child { font-size: 0.8rem; }
+    .confirmTotal span:last-child { font-size: 1rem; }
 }

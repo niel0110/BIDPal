@@ -1,7 +1,7 @@
 .page {
     max-width: 1100px;
     margin: 0 auto;
-    padding: 1.5rem 1.25rem 4rem;
+    padding: 1rem 1rem 3rem;
 }
 
 /* ── Top bar ── */
@@ -66,10 +66,10 @@
 .iconBtn:hover { border-color: #673AB7; color: #673AB7; }
 
 .pageTitle {
-    font-size: 1.6rem;
+    font-size: 1.35rem;
     font-weight: 800;
     color: #111;
-    margin: 0 0 1.5rem 0;
+    margin: 0 0 1rem 0;
 }
 .pageTitle span { color: #673AB7; font-family: monospace; }
 
@@ -85,9 +85,9 @@
 .card {
     background: white;
     border: 1.5px solid #e5e7eb;
-    border-radius: 14px;
-    padding: 1.25rem;
-    margin-bottom: 1.25rem;
+    border-radius: 12px;
+    padding: 1rem;
+    margin-bottom: 1rem;
 }
 .card:last-child { margin-bottom: 0; }
 
@@ -112,6 +112,14 @@
     font-size: 0.92rem;
     border-color: #fca5a5;
     background: #fff5f5;
+}
+
+.pendingCard {
+    display: flex;
+    align-items: flex-start;
+    gap: 0.75rem;
+    border-color: #fcd34d;
+    background: #fffbeb;
 }
 
 /* ── Timeline ── */
@@ -498,4 +506,242 @@
 @media (max-width: 768px) {
     .grid { grid-template-columns: 1fr; }
     .formRow { grid-template-columns: 1fr; }
+}
+
+@media (max-width: 640px) {
+    .page {
+        padding: 0.75rem 0.75rem 2.5rem;
+    }
+
+    .pageTitle {
+        font-size: 1.05rem;
+        margin-bottom: 0.75rem;
+    }
+
+    .topBar {
+        gap: 0.4rem;
+        margin-bottom: 0.6rem;
+    }
+
+    .topBarRight {
+        gap: 0.3rem;
+    }
+
+    .statusPill {
+        font-size: 0.65rem;
+        padding: 0.25rem 0.55rem;
+    }
+
+    .iconBtn {
+        width: 30px;
+        height: 30px;
+    }
+
+    .card {
+        padding: 0.75rem;
+        border-radius: 10px;
+        margin-bottom: 0.75rem;
+    }
+
+    .cardTitle {
+        font-size: 0.72rem;
+        margin-bottom: 0.65rem;
+    }
+
+    /* Timeline */
+    .stepCircle {
+        width: 28px;
+        height: 28px;
+    }
+
+    .stepLabel {
+        font-size: 0.8rem;
+    }
+
+    .stepTime {
+        font-size: 0.72rem;
+    }
+
+    .timelineRight {
+        padding-bottom: 1rem;
+    }
+
+    /* CTA button */
+    .ctaBtn {
+        width: 100%;
+        justify-content: center;
+        font-size: 0.8rem;
+        padding: 0.55rem 0.85rem;
+    }
+
+    /* Ship form actions */
+    .shipFormActions {
+        flex-direction: column;
+    }
+    .cancelShipBtn,
+    .confirmShipBtn {
+        width: 100%;
+        justify-content: center;
+    }
+
+    /* Tracking banner */
+    .trackingBanner {
+        flex-wrap: wrap;
+        gap: 0.35rem;
+        font-size: 0.8rem;
+        padding: 0.55rem 0.75rem;
+    }
+
+    /* Product — keep thumbnail layout on mobile */
+    .productRow {
+        flex-direction: row;
+        align-items: flex-start;
+        gap: 0.65rem;
+    }
+    .productImg {
+        width: 64px;
+        height: 64px;
+        border-radius: 8px;
+        flex-shrink: 0;
+    }
+
+    .productName { font-size: 0.88rem; }
+    .productDesc {
+        font-size: 0.78rem;
+        /* clamp description to 2 lines */
+        display: -webkit-box;
+        -webkit-line-clamp: 2;
+        -webkit-box-orient: vertical;
+        overflow: hidden;
+    }
+
+    /* Summary / info rows */
+    .summaryRow,
+    .infoRow {
+        font-size: 0.8rem;
+        flex-wrap: wrap;
+        gap: 0.15rem;
+    }
+
+    .totalRow { font-size: 0.92rem; }
+    .totalRow span:last-child { font-size: 1rem; }
+
+    /* Buyer */
+    .buyerRow { gap: 0.55rem; }
+    .buyerAvatar,
+    .buyerAvatarFallback {
+        width: 38px;
+        height: 38px;
+    }
+    .buyerName { font-size: 0.85rem; }
+    .buyerEmail { font-size: 0.75rem; }
+    .msgBuyerBtn { font-size: 0.82rem; }
+
+    /* Address */
+    .addressText { font-size: 0.85rem; }
+
+    /* Review */
+    .reviewComment { font-size: 0.85rem; }
+}
+
+@media (max-width: 400px) {
+    .page {
+        padding: 0.6rem 0.6rem 2rem;
+    }
+
+    .pageTitle { font-size: 0.97rem; }
+
+    .statusPill {
+        font-size: 0.6rem;
+        padding: 0.22rem 0.45rem;
+        letter-spacing: 0;
+    }
+
+    .iconBtn { width: 28px; height: 28px; }
+
+    .card {
+        padding: 0.65rem 0.6rem;
+        border-radius: 9px;
+        margin-bottom: 0.6rem;
+    }
+
+    .cardTitle { font-size: 0.68rem; margin-bottom: 0.5rem; }
+
+    .stepCircle { width: 24px; height: 24px; }
+    .stepLabel  { font-size: 0.77rem; }
+    .stepTime   { font-size: 0.7rem; }
+
+    .ctaBtn { font-size: 0.78rem; padding: 0.5rem 0.75rem; }
+
+    .shipFormHeader h3 { font-size: 0.82rem; }
+    .formGroup label   { font-size: 0.68rem; }
+    .formGroup select,
+    .formGroup input   { font-size: 0.82rem; padding: 0.45rem 0.6rem; }
+
+    .productImg { width: 56px; height: 56px; }
+    .productName { font-size: 0.82rem; }
+
+    .summaryRow,
+    .infoRow { font-size: 0.77rem; }
+
+    .totalRow { font-size: 0.88rem; }
+    .totalRow span:last-child { font-size: 0.95rem; }
+
+    .paidChip,
+    .pendingChip { font-size: 0.67rem; padding: 0.15rem 0.4rem; }
+
+    .buyerAvatar,
+    .buyerAvatarFallback { width: 34px; height: 34px; }
+
+    .buyerName  { font-size: 0.8rem; }
+    .buyerEmail { font-size: 0.72rem; }
+    .msgBuyerBtn { font-size: 0.78rem; padding: 0.5rem; }
+
+    .addressText    { font-size: 0.78rem; }
+    .reviewComment  { font-size: 0.78rem; }
+}
+
+@media (max-width: 320px) {
+    .page {
+        padding: 0.5rem 0.5rem 2rem;
+    }
+
+    .pageTitle { font-size: 0.9rem; }
+
+    .statusPill {
+        font-size: 0.56rem;
+        padding: 0.2rem 0.38rem;
+    }
+
+    .iconBtn { width: 26px; height: 26px; }
+
+    .card { padding: 0.55rem 0.5rem; margin-bottom: 0.5rem; }
+
+    .cardTitle { font-size: 0.63rem; }
+
+    .stepCircle { width: 22px; height: 22px; }
+    .stepLine   { min-height: 20px; }
+    .stepLabel  { font-size: 0.72rem; }
+    .stepTime   { font-size: 0.65rem; }
+
+    .ctaBtn { font-size: 0.73rem; padding: 0.45rem 0.65rem; }
+
+    .productImg  { width: 48px; height: 48px; }
+    .productName { font-size: 0.78rem; }
+
+    .summaryRow,
+    .infoRow { font-size: 0.73rem; }
+
+    .totalRow span:last-child { font-size: 0.9rem; }
+
+    .paidChip,
+    .pendingChip { font-size: 0.62rem; padding: 0.12rem 0.35rem; }
+
+    .buyerAvatar,
+    .buyerAvatarFallback { width: 30px; height: 30px; }
+
+    .msgBuyerBtn { font-size: 0.73rem; padding: 0.45rem; }
+
+    .addressText   { font-size: 0.73rem; }
+    .reviewComment { font-size: 0.73rem; }
 }

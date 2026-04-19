@@ -42,7 +42,7 @@ export const getNotifications = async (req, res) => {
   }
 };
 
-// GET /api/notifications/unread-count — count where read_at is still the far-future sentinel
+// GET /api/notifications/unread-count — count where read_at is still in the far future
 export const getUnreadNotificationCount = async (req, res) => {
   try {
     const { user_id } = req.user;
@@ -51,7 +51,7 @@ export const getUnreadNotificationCount = async (req, res) => {
       .from('Notifications')
       .select('*', { count: 'exact', head: true })
       .eq('user_id', user_id)
-      .eq('read_at', UNREAD_SENTINEL)
+      .gt('read_at', new Date().toISOString())  // any future read_at = unread
       .neq('type', 'notif_seen');
 
     if (error) throw error;
@@ -91,7 +91,7 @@ export const markNotificationsSeen = async (req, res) => {
       .from('Notifications')
       .update({ read_at: now })
       .eq('user_id', user_id)
-      .eq('read_at', UNREAD_SENTINEL);
+      .gt('read_at', new Date().toISOString());
 
     if (error) throw error;
     return res.json({ seen_at: now });
@@ -109,7 +109,7 @@ export const markAllNotificationsRead = async (req, res) => {
       .from('Notifications')
       .update({ read_at: new Date().toISOString() })
       .eq('user_id', user_id)
-      .eq('read_at', UNREAD_SENTINEL);
+      .gt('read_at', new Date().toISOString());
 
     if (error) throw error;
     res.json({ success: true });

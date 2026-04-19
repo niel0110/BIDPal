@@ -482,6 +482,188 @@ export const getModerationStats = async (req, res) => {
   }
 };
 
+// ── Cancellation Reviews ────────────────────────────────────────────────────
+
+// GET /moderation/cancellation-reviews — all cancellations with reason + violation info
+export const getCancellationReviews = async (req, res) => {
+  try {
+    const { data, error } = await supabase
+      .from('Order_Cancellations')
+      .select(`
+        cancellation_id,
+        auction_id,
+        order_id,
+        reason,
+        within_window,
+        weekly_cancellation_number,
+        triggered_violation,
+        cancelled_at,
+        violation_event_id,
+        User:user_id (
+          user_id,
+          email,
+          Fname,
+          Lname
+        ),
+        Auctions:auction_id (
+          auction_id,
+          Products (
+            name,
+            Product_Images ( image_url )
+          )
+        ),
+        Violation_Events:violation_event_id (
+          violation_event_id,
+          strike_number,
+          resolution_status,
+          Moderation_Cases (
+            moderation_case_id,
+            case_status,
+            decision
+          )
+        )
+      `)
+      .order('cancelled_at', { ascending: false })
+      .limit(200);
+
+    if (error) throw error;
+    res.json(data || []);
+  } catch (err) {
+    console.error('Error getting cancellation reviews:', err);
+    res.status(500).json({ error: err.message });
+  }
+};
+
+// POST /moderation/cancellation-reviews/:cancellation_id/validate — accept reason, reduce/clear strike
+export const validateCancellation = async (req, res) => {
+  try {
+    const { cancellation_id } = req.params;
+    const { moderator_note } = req.body;
+
+    const { data: cancellation, error: cErr } = await supabase
+      .from('Order_Cancellations')
+      .select('*, Violation_Events:violation_event_id(*)')
+      .eq('cancellation_id', cancellation_id)
+      .single();
+
+    if (cErr || !cancellation) return res.status(404).json({ error: 'Cancellation not found' });
+
+    const violationEvent = cancellation.Violation_Events;
+
+    if (violationEvent) {
+      // Reduce the strike
+      await reduceStrike(violationEvent.user_id, {
+        reason: moderator_note || 'Cancellation reason validated by admin',
+        violation_event_id: violationEvent.violation_event_id
+      });
+
+      // Update violation event resolution
+      await supabase
+        .from('Violation_Events')
+        .update({ resolution_status: 'resolved' })
+        .eq('violation_event_id', violationEvent.violation_event_id);
+
+      // Update related moderation case
+      const { data: mc } = await supabase
+        .from('Moderation_Cases')
+        .select('moderation_case_id')
+        .eq('violation_event_id', violationEvent.violation_event_id)
+        .maybeSingle();
+
+      if (mc) {
+        await supabase
+          .from('Moderation_Cases')
+          .update({ case_status: 'resolved', decision: 'reduce_strike', resolved_at: new Date().toISOString() })
+          .eq('moderation_case_id', mc.moderation_case_id);
+      }
+    }
+
+    // Notify buyer
+    await supabase.from('Notifications').insert([{
+      user_id: cancellation.user_id,
+      type: 'order_update',
+      payload: {
+        title: '✅ Cancellation Validated',
+        message: `Your cancellation reason has been reviewed and validated by our team. ${violationEvent ? 'Your strike has been reduced.' : ''}`
+      },
+      reference_type: 'cancellation',
+      read_at: '2099-12-31T23:59:59.000Z'
+    }]);
+
+    res.json({ success: true, action: 'validated' });
+  } catch (err) {
+    console.error('Error validating cancellation:', err);
+    res.status(500).json({ error: err.message });
+  }
+};
+
+// POST /moderation/cancellation-reviews/:cancellation_id/flag — flag as bogus buyer
+export const flagBogus = async (req, res) => {
+  try {
+    const { cancellation_id } = req.params;
+    const { moderator_note } = req.body;
+
+    const { data: cancellation, error: cErr } = await supabase
+      .from('Order_Cancellations')
+      .select('*, Violation_Events:violation_event_id(*)')
+      .eq('cancellation_id', cancellation_id)
+      .single();
+
+    if (cErr || !cancellation) return res.status(404).json({ error: 'Cancellation not found' });
+
+    const violationEvent = cancellation.Violation_Events;
+
+    // Update violation event to 'confirmed'
+    if (violationEvent) {
+      await supabase
+        .from('Violation_Events')
+        .update({ resolution_status: 'confirmed' })
+        .eq('violation_event_id', violationEvent.violation_event_id);
+
+      const { data: mc } = await supabase
+        .from('Moderation_Cases')
+        .select('moderation_case_id')
+        .eq('violation_event_id', violationEvent.violation_event_id)
+        .maybeSingle();
+
+      if (mc) {
+        await supabase
+          .from('Moderation_Cases')
+          .update({
+            case_status: 'resolved',
+            decision: 'confirm_violation',
+            decision_reason: moderator_note || 'Flagged as bogus buyer',
+            resolved_at: new Date().toISOString()
+          })
+          .eq('moderation_case_id', mc.moderation_case_id);
+      }
+    }
+
+    // Flag buyer in Violation_Records
+    await supabase
+      .from('Violation_Records')
+      .update({ account_status: 'flagged_bogus' })
+      .eq('user_id', cancellation.user_id);
+
+    // Notify buyer
+    await supabase.from('Notifications').insert([{
+      user_id: cancellation.user_id,
+      type: 'account_violation',
+      payload: {
+        title: '🚫 Account Flagged: Bogus Buyer',
+        message: `Your account has been flagged as a bogus buyer based on your cancellation history. Further violations may result in a permanent ban.`
+      },
+      reference_type: 'violation',
+      read_at: '2099-12-31T23:59:59.000Z'
+    }]);
+
+    res.json({ success: true, action: 'flagged_bogus' });
+  } catch (err) {
+    console.error('Error flagging bogus buyer:', err);
+    res.status(500).json({ error: err.message });
+  }
+};
+
 export default {
   getPendingModerationCases,
   getModerationCaseDetails,
@@ -490,5 +672,8 @@ export default {
   resolveReduceStrike,
   resolveClearStrike,
   denyAppeal,
-  getModerationStats
+  getModerationStats,
+  getCancellationReviews,
+  validateCancellation,
+  flagBogus
 };

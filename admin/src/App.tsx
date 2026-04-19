@@ -6,6 +6,7 @@ import KycReview from './pages/KycReview';
 import Moderation from './pages/Moderation';
 import UserManagement from './pages/UserManagement';
 import Disputes from './pages/Disputes';
+import CancellationReviews from './pages/CancellationReviews';
 import Login from './pages/Login';
 
 // Protected Route Component
@@ -55,6 +56,7 @@ function App() {
             <Route path="/kyc" element={<ProtectedRoute><KycReview /></ProtectedRoute>} />
             <Route path="/moderation" element={<ProtectedRoute><Moderation /></ProtectedRoute>} />
             <Route path="/disputes" element={<ProtectedRoute><Disputes /></ProtectedRoute>} />
+            <Route path="/cancellations" element={<ProtectedRoute><CancellationReviews /></ProtectedRoute>} />
             <Route path="/users" element={<ProtectedRoute><UserManagement /></ProtectedRoute>} />
             <Route path="/settings" element={<ProtectedRoute><Placeholder title="Admin Settings" /></ProtectedRoute>} />
             

@@ -10,7 +10,8 @@ import {
   notifySuccessfulTransaction,
   checkCancellationLimit,
   cancelOrder,
-  getCancellationHistory
+  getCancellationHistory,
+  expirePaymentWindow
 } from '../controllers/violationsController.js';
 import {
   getPendingModerationCases,
@@ -20,7 +21,10 @@ import {
   resolveReduceStrike,
   resolveClearStrike,
   denyAppeal,
-  getModerationStats
+  getModerationStats,
+  getCancellationReviews,
+  validateCancellation,
+  flagBogus
 } from '../controllers/moderationController.js';
 
 const router = express.Router();
@@ -43,6 +47,9 @@ router.get('/user/:user_id/cancellation-limit', checkCancellationLimit);
 
 // Cancel order
 router.post('/cancel-order', cancelOrder);
+
+// Expire payment window (buyer didn't pay in time — triggers Strike)
+router.post('/expire-payment', expirePaymentWindow);
 
 // Get cancellation history
 router.get('/user/:user_id/cancellation-history', getCancellationHistory);
@@ -93,5 +100,10 @@ router.post('/moderation/cases/:case_id/clear-strike', resolveClearStrike);
 
 // Deny appeal
 router.post('/moderation/cases/:case_id/deny-appeal', denyAppeal);
+
+// ── Cancellation Reviews (Admin) ────────────────────────────────────────────
+router.get('/moderation/cancellation-reviews', getCancellationReviews);
+router.post('/moderation/cancellation-reviews/:cancellation_id/validate', validateCancellation);
+router.post('/moderation/cancellation-reviews/:cancellation_id/flag', flagBogus);
 
 export default router;

@@ -5,9 +5,9 @@ import BackButton from '@/components/BackButton';
 import { useState, useEffect } from 'react';
 import { useParams, useRouter } from 'next/navigation';
 import {
-    ChevronLeft, Package, Truck, CheckCircle2, Clock, XCircle,
+    Package, Truck, CheckCircle2, Clock, XCircle,
     User, CreditCard, MapPin, Star, Send, AlertCircle, X,
-    MessageSquare, ExternalLink, DollarSign, ShoppingBag
+    MessageSquare, ExternalLink, DollarSign
 } from 'lucide-react';
 import { useAuth } from '@/context/AuthContext';
 import styles from './page.module.css';
@@ -55,7 +55,7 @@ function formatAddress(addr) {
 export default function SellerOrderDetailPage() {
     const { id: orderId } = useParams();
     const router = useRouter();
-    const { user } = useAuth();
+    useAuth();
 
     const [order, setOrder]       = useState(null);
     const [loading, setLoading]   = useState(true);
@@ -130,6 +130,7 @@ export default function SellerOrderDetailPage() {
 
     const stepIndex = getStepIndex(order.status);
     const isCancelled = order.status === 'cancelled';
+    const isPending   = order.status === 'pending_payment';
     const addressStr = formatAddress(order.shipping_address);
 
     return (
@@ -160,7 +161,7 @@ export default function SellerOrderDetailPage() {
             </div>
 
             <h1 className={styles.pageTitle}>
-                Order <span>#{orderId?.slice(0, 8).toUpperCase()}</span>
+                Order <span>#{(orderId?.startsWith('pending_') ? orderId.replace('pending_', '') : orderId)?.slice(0, 8).toUpperCase()}</span>
             </h1>
 
             <div className={styles.grid}>
@@ -168,8 +169,23 @@ export default function SellerOrderDetailPage() {
                 {/* ══ LEFT COLUMN ══ */}
                 <div className={styles.leftCol}>
 
+                    {/* ── Pending payment banner ── */}
+                    {isPending && (
+                        <section className={`${styles.card} ${styles.pendingCard}`}>
+                            <Clock size={20} color="#d97706" />
+                            <div>
+                                <p style={{ margin: 0, fontWeight: 700, color: '#92400e' }}>Awaiting payment from buyer</p>
+                                {order.payment_deadline && (
+                                    <p style={{ margin: '0.25rem 0 0', fontSize: '0.82rem', color: '#b45309' }}>
+                                        Deadline: {fmt(order.payment_deadline)}
+                                    </p>
+                                )}
+                            </div>
+                        </section>
+                    )}
+
                     {/* ── Progress timeline ── */}
-                    {!isCancelled && (
+                    {!isCancelled && !isPending && (
                         <section className={styles.card}>
                             <h2 className={styles.cardTitle}>Order Progress</h2>
                             <div className={styles.timeline}>
@@ -362,27 +378,36 @@ export default function SellerOrderDetailPage() {
                     <section className={styles.card}>
                         <h2 className={styles.cardTitle}><CreditCard size={16}/> Payment</h2>
                         <div className={styles.infoRows}>
-                            <div className={styles.infoRow}>
-                                <span>Method</span>
-                                <span>{order.payment_method === 'cash_on_delivery' ? 'Cash on Delivery' : order.payment_method || '—'}</span>
-                            </div>
-                            <div className={styles.infoRow}>
-                                <span>Buyer paid</span>
-                                <span className={styles.paidChip}>
-                                    <CheckCircle2 size={13} /> Paid
-                                </span>
-                            </div>
-                            <div className={styles.infoRow}>
-                                <span>Seller confirmed</span>
-                                {order.payment_confirmed
-                                    ? <span className={styles.paidChip}><CheckCircle2 size={13}/> Confirmed {order.payment_confirmed_at ? fmt(order.payment_confirmed_at) : ''}</span>
-                                    : <span className={styles.pendingChip}><Clock size={13}/> Pending confirmation</span>
-                                }
-                            </div>
-                            <div className={styles.infoRow}>
-                                <span>Date placed</span>
-                                <span>{order.placed_at ? fmt(order.placed_at) : '—'}</span>
-                            </div>
+                            {isPending ? (
+                                <div className={styles.infoRow}>
+                                    <span>Status</span>
+                                    <span className={styles.pendingChip}><Clock size={13}/> Awaiting payment</span>
+                                </div>
+                            ) : (
+                                <>
+                                    <div className={styles.infoRow}>
+                                        <span>Method</span>
+                                        <span>{order.payment_method === 'cash_on_delivery' ? 'Cash on Delivery' : order.payment_method || '—'}</span>
+                                    </div>
+                                    <div className={styles.infoRow}>
+                                        <span>Buyer paid</span>
+                                        <span className={styles.paidChip}>
+                                            <CheckCircle2 size={13} /> Paid
+                                        </span>
+                                    </div>
+                                    <div className={styles.infoRow}>
+                                        <span>Seller confirmed</span>
+                                        {order.payment_confirmed
+                                            ? <span className={styles.paidChip}><CheckCircle2 size={13}/> Confirmed {order.payment_confirmed_at ? fmt(order.payment_confirmed_at) : ''}</span>
+                                            : <span className={styles.pendingChip}><Clock size={13}/> Pending confirmation</span>
+                                        }
+                                    </div>
+                                    <div className={styles.infoRow}>
+                                        <span>Date placed</span>
+                                        <span>{order.placed_at ? fmt(order.placed_at) : '—'}</span>
+                                    </div>
+                                </>
+                            )}
                         </div>
                     </section>
 

@@ -5,7 +5,7 @@ import BackButton from '@/components/BackButton';
 import { useState, useEffect, useCallback } from 'react';
 import { useRouter } from 'next/navigation';
 import {
-    ChevronLeft, Package, Truck, CheckCircle2, Clock, XCircle,
+    Package, Truck, CheckCircle2, Clock, XCircle,
     Search, Send, AlertCircle, X, MessageSquare, Eye, Star
 } from 'lucide-react';
 import { useAuth } from '@/context/AuthContext';
@@ -14,15 +14,16 @@ import styles from './page.module.css';
 const COURIERS = ['LBC', 'J&T Express', 'Ninja Van', 'GoGo Xpress', 'Flash Express', 'Grab Express', 'Lalamove'];
 
 const STATUS_TABS = [
-    { id: 'all',        label: 'All',       icon: <Package size={16} /> },
-    { id: 'processing', label: 'To Ship',   icon: <Clock size={16} /> },
-    { id: 'shipped',    label: 'Shipped',   icon: <Truck size={16} /> },
-    { id: 'completed',  label: 'Completed', icon: <CheckCircle2 size={16} /> },
-    { id: 'cancelled',  label: 'Cancelled', icon: <XCircle size={16} /> },
+    { id: 'all',             label: 'All',         icon: <Package size={16} /> },
+    { id: 'pending_payment', label: 'Awaiting Pay', icon: <Clock size={16} /> },
+    { id: 'processing',      label: 'To Ship',      icon: <Clock size={16} /> },
+    { id: 'shipped',         label: 'Shipped',      icon: <Truck size={16} /> },
+    { id: 'completed',       label: 'Completed',    icon: <CheckCircle2 size={16} /> },
+    { id: 'cancelled',       label: 'Cancelled',    icon: <XCircle size={16} /> },
 ];
 
 const STATUS_LABEL = {
-    pending_payment: 'Pending Payment',
+    pending_payment: 'Awaiting Payment',
     processing:      'To Ship',
     shipped:         'Shipped',
     completed:       'Completed',
@@ -122,11 +123,12 @@ export default function SellerOrdersPage() {
     });
 
     const counts = {
-        all:        orders.length,
-        processing: orders.filter(o => o.status === 'processing').length,
-        shipped:    orders.filter(o => o.status === 'shipped').length,
-        completed:  orders.filter(o => o.status === 'completed').length,
-        cancelled:  orders.filter(o => o.status === 'cancelled').length,
+        all:             orders.length,
+        pending_payment: orders.filter(o => o.status === 'pending_payment').length,
+        processing:      orders.filter(o => o.status === 'processing').length,
+        shipped:         orders.filter(o => o.status === 'shipped').length,
+        completed:       orders.filter(o => o.status === 'completed').length,
+        cancelled:       orders.filter(o => o.status === 'cancelled').length,
     };
 
     // ── Ship order ──
@@ -364,7 +366,21 @@ function getFlowStep(order) {
 
 /* ── Next-action banner ── */
 function ActionBanner({ order, onConfirmPay, onShip }) {
-    const { status, payment_confirmed } = order;
+    const { status, payment_confirmed, payment_deadline } = order;
+
+    if (status === 'pending_payment') {
+        const deadline = payment_deadline ? new Date(payment_deadline) : null;
+        const hoursLeft = deadline ? Math.max(0, Math.floor((deadline - Date.now()) / 36e5)) : null;
+        return (
+            <div className={`${styles.actionBanner} ${styles.bannerWaiting}`}>
+                <Clock size={15} />
+                <span>
+                    <strong>Awaiting payment</strong> from buyer.
+                    {hoursLeft !== null && <> {hoursLeft}h left to pay.</>}
+                </span>
+            </div>
+        );
+    }
     if (status === 'processing' && !payment_confirmed) {
         return (
             <div className={`${styles.actionBanner} ${styles.bannerPay}`}>
@@ -403,6 +419,7 @@ function OrderCard({ order, review, onConfirmPay, onShip, onManage, onContact, o
     const status = order.status;
     const flowStep = getFlowStep(order);
     const isCancelled = status === 'cancelled';
+    const isPending = status === 'pending_payment';
 
     return (
         <div className={`${styles.card} ${styles[`card_${status}`]}`}>
@@ -425,8 +442,8 @@ function OrderCard({ order, review, onConfirmPay, onShip, onManage, onContact, o
                 </span>
             </div>
 
-            {/* Step progress bar */}
-            {!isCancelled && (
+            {/* Step progress bar — not shown for pending/cancelled */}
+            {!isCancelled && !isPending && (
                 <div className={styles.stepBar}>
                     {FLOW_STEPS.map((label, i) => (
                         <div key={label} className={styles.stepBarItem}>
@@ -445,7 +462,7 @@ function OrderCard({ order, review, onConfirmPay, onShip, onManage, onContact, o
                 </div>
             )}
 
-            {/* Action banner — only for actionable states */}
+            {/* Action banner */}
             {!isCancelled && (
                 <ActionBanner order={order} onConfirmPay={onConfirmPay} onShip={onShip} />
             )}

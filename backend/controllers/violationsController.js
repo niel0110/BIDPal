@@ -3,9 +3,11 @@ import {
   getOrCreateViolationRecord,
   createSellerReport,
   hashIdentity,
-  incrementSuccessfulTransactions
+  incrementSuccessfulTransactions,
+  triggerPaymentViolation
 } from '../services/violationService.js';
 import {
+  processStrike,
   checkUserRestrictions,
   reduceStrike,
   clearStrike
@@ -15,6 +17,7 @@ import {
   processCancellation,
   getUserCancellationHistory
 } from '../services/cancellationService.js';
+import { cascadeToNextWinner } from '../services/cascadeService.js';
 
 /**
  * API Controllers for Violation System
@@ -437,6 +440,99 @@ export const cancelOrder = async (req, res) => {
     });
   } catch (err) {
     console.error('Error cancelling order:', err);
+    res.status(500).json({ error: err.message });
+  }
+};
+
+// Expire payment window — order auto-cancelled, strike issued (bogus bidder)
+export const expirePaymentWindow = async (req, res) => {
+  try {
+    const { user_id, auction_id, order_id } = req.body;
+
+    if (!user_id || (!auction_id && !order_id)) {
+      return res.status(400).json({ error: 'user_id and auction_id or order_id required' });
+    }
+
+    // Resolve order_id from auction_id if not provided
+    let actualOrderId = order_id;
+    if (!actualOrderId && auction_id) {
+      const { data: ord } = await supabase
+        .from('Orders')
+        .select('order_id, status')
+        .eq('auction_id', auction_id)
+        .eq('user_id', user_id)
+        .maybeSingle();
+      if (ord) actualOrderId = ord.order_id;
+    }
+
+    // Idempotency guard — if order already moved out of pending_payment, skip
+    if (actualOrderId) {
+      const { data: order } = await supabase
+        .from('Orders')
+        .select('status')
+        .eq('order_id', actualOrderId)
+        .maybeSingle();
+
+      if (!order || order.status !== 'pending_payment') {
+        return res.json({ success: true, already_processed: true });
+      }
+    }
+
+    // Fetch the payment window
+    let paymentWindow = null;
+    if (auction_id) {
+      const { data: pw } = await supabase
+        .from('Payment_Windows')
+        .select('*')
+        .eq('auction_id', auction_id)
+        .eq('payment_completed', false)
+        .maybeSingle();
+      paymentWindow = pw;
+    }
+
+    if (paymentWindow && new Date() < new Date(paymentWindow.payment_deadline)) {
+      return res.status(400).json({ error: 'Payment window has not expired yet' });
+    }
+
+    // Cancel the order in Orders table
+    if (actualOrderId) {
+      await supabase
+        .from('Orders')
+        .update({ status: 'cancelled' })
+        .eq('order_id', actualOrderId);
+    }
+
+    // Trigger violation + strike via the existing service (handles Payment_Windows update,
+    // Violation_Events insert, Violation_Records update, and processStrike consequences)
+    if (paymentWindow) {
+      await triggerPaymentViolation(paymentWindow);
+    }
+
+    console.log(`⚠️  Payment window expired for user ${user_id} — order ${actualOrderId} cancelled`);
+
+    // Clear this buyer as winner so they stop seeing the "To Pay" fallback
+    if (auction_id) {
+      await supabase
+        .from('Auctions')
+        .update({ winner_user_id: null, winning_bid_id: null, final_price: null })
+        .eq('auction_id', auction_id)
+        .eq('winner_user_id', user_id);
+    }
+
+    // Cascade to next highest bidder (non-blocking)
+    if (auction_id) {
+      cascadeToNextWinner(auction_id, user_id).catch(err =>
+        console.warn('Cascade after payment expiry failed:', err.message)
+      );
+    }
+
+    res.json({
+      success: true,
+      already_processed: false,
+      order_cancelled: true
+    });
+  } catch (err) {
+    console.error('Error expiring payment window:', err);
     res.status(500).json({ error: err.message });
   }
 };

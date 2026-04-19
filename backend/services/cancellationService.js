@@ -1,6 +1,7 @@
 import { supabase } from '../config/supabase.js';
 import { getOrCreateViolationRecord } from './violationService.js';
 import { processStrike } from './strikeEngine.js';
+import { cascadeToNextWinner } from './cascadeService.js';
 
 /**
  * EARLY CANCELLATION SYSTEM
@@ -14,8 +15,10 @@ export const checkCancellationEligibility = async (userId) => {
     const violationRecord = await getOrCreateViolationRecord(userId);
 
     // Check if week needs reset
-    const weekResetDate = new Date(violationRecord.week_reset_date);
     const now = new Date();
+    const weekResetDate = violationRecord.week_reset_date
+      ? new Date(violationRecord.week_reset_date)
+      : new Date(0); // treat null as epoch → always reset
     const daysSinceReset = (now - weekResetDate) / (1000 * 60 * 60 * 24);
 
     if (daysSinceReset >= 7) {
@@ -36,7 +39,56 @@ export const checkCancellationEligibility = async (userId) => {
       };
     }
 
-    const cancellationsThisWeek = violationRecord.cancellations_this_week || 0;
+    // Count distinct auctions cancelled this week — one item = one cancellation regardless of retries
+    const weekStart = violationRecord.week_reset_date
+      ? new Date(violationRecord.week_reset_date)
+      : new Date(now.getTime() - 7 * 24 * 60 * 60 * 1000);
+
+    const { data: weekCancels } = await supabase
+      .from('Order_Cancellations')
+      .select('auction_id, order_id, cancelled_at')
+      .eq('user_id', userId)
+      .gte('cancelled_at', weekStart.toISOString());
+
+    // Deduplicate: one unique auction_id (or order_id if no auction) = one cancellation
+    const uniqueKeys = new Set(
+      (weekCancels || []).map(c => c.auction_id || c.order_id).filter(Boolean)
+    );
+    const cancellationsThisWeek = uniqueKeys.size;
+
+    // ── Self-heal: if account is flagged but has no real Violation_Events, reset to clean ──
+    // This corrects records inflated by test runs or cascading bugs.
+    if (violationRecord.account_status !== 'clean' || violationRecord.strike_count > 0) {
+      const { data: realViolations } = await supabase
+        .from('Violation_Events')
+        .select('violation_event_id')
+        .eq('user_id', userId)
+        .neq('resolution_status', 'cleared');
+
+      if (!realViolations?.length) {
+        await supabase
+          .from('Violation_Records')
+          .update({ strike_count: 0, account_status: 'clean', cancellations_this_week: cancellationsThisWeek })
+          .eq('user_id', userId);
+
+        return {
+          canCancel: true,
+          cancellationsThisWeek,
+          remainingCancellations: Math.max(0, 3 - cancellationsThisWeek),
+          weekResetDate: violationRecord.week_reset_date,
+          message: `You can cancel ${3 - cancellationsThisWeek} more order(s) this week`
+        };
+      }
+    }
+
+    // Sync stored count if it drifted
+    if (cancellationsThisWeek !== (violationRecord.cancellations_this_week || 0)) {
+      await supabase
+        .from('Violation_Records')
+        .update({ cancellations_this_week: cancellationsThisWeek })
+        .eq('user_id', userId);
+    }
+
     const canCancel = cancellationsThisWeek < 3;
 
     return {
@@ -67,6 +119,49 @@ export const processCancellation = async (cancellationData) => {
 
     console.log(`🚫 Processing cancellation for user ${user_id}`);
 
+    // Resolve the real order_id — the frontend may pass auction_id as order_id
+    // for fallback orders (getOrdersByUser uses auction_id as id when no Order row exists yet)
+    let resolvedOrderId = order_id;
+    if (order_id) {
+      const { data: existingOrder } = await supabase
+        .from('Orders')
+        .select('order_id')
+        .eq('order_id', order_id)
+        .maybeSingle();
+      if (!existingOrder) resolvedOrderId = null; // id was actually an auction_id
+    }
+
+    // If still no order_id, look it up from auction_id
+    if (!resolvedOrderId && auction_id) {
+      const { data: orderByAuction } = await supabase
+        .from('Orders')
+        .select('order_id')
+        .eq('auction_id', auction_id)
+        .eq('user_id', user_id)
+        .maybeSingle();
+      if (orderByAuction) resolvedOrderId = orderByAuction.order_id;
+    }
+
+    // ── Guard: if user already has a cancellation for this auction, don't double-count ──
+    // 3 cancellations/week = 3 different items, not 3 attempts on the same item.
+    if (auction_id) {
+      const { data: alreadyCancelled } = await supabase
+        .from('Order_Cancellations')
+        .select('cancellation_id')
+        .eq('auction_id', auction_id)
+        .eq('user_id', user_id)
+        .maybeSingle();
+
+      if (alreadyCancelled) {
+        console.log(`ℹ️ User ${user_id} already has a cancellation for auction ${auction_id} — skipping duplicate count`);
+        // Still cascade in case the previous attempt failed
+        cascadeToNextWinner(auction_id, user_id).catch(err =>
+          console.warn('Cascade (dedup path) failed:', err.message)
+        );
+        return { success: true, already_cancelled: true, weekly_cancellation_number: 0, triggered_violation: false, remaining_cancellations: 3 };
+      }
+    }
+
     // Check eligibility
     const eligibility = await checkCancellationEligibility(user_id);
     const weeklyCancellationNumber = eligibility.cancellationsThisWeek + 1;
@@ -88,71 +183,150 @@ export const processCancellation = async (cancellationData) => {
       }
     }
 
-    // Create cancellation record
-    const { data: cancellation, error: cancellationError } = await supabase
-      .from('Order_Cancellations')
-      .insert([{
-        user_id,
-        auction_id,
-        order_id,
-        payment_window_id,
-        reason,
-        within_window: withinWindow,
-        weekly_cancellation_number: weeklyCancellationNumber,
-        triggered_violation: weeklyCancellationNumber > 3
-      }])
-      .select()
-      .single();
+    // Cancel the order using the resolved real order_id
+    if (resolvedOrderId) {
+      const { error: orderUpdateError } = await supabase
+        .from('Orders')
+        .update({ status: 'cancelled' })
+        .eq('order_id', resolvedOrderId);
 
-    if (cancellationError) throw cancellationError;
-
-    // Update order status to cancelled
-    if (order_id) {
+      if (orderUpdateError) {
+        console.error('Failed to update order status:', orderUpdateError.message);
+        throw new Error('Failed to cancel order: ' + orderUpdateError.message);
+      }
+    } else if (auction_id) {
+      // Last-resort fallback: cancel by auction_id
       await supabase
         .from('Orders')
-        .update({
-          status: 'cancelled',
-          cancellation_reason: reason,
-          cancelled_at: new Date()
-        })
-        .eq('order_id', order_id);
+        .update({ status: 'cancelled' })
+        .eq('auction_id', auction_id)
+        .eq('user_id', user_id);
     }
 
-    // Mark payment window as cancelled (won't trigger violation)
-    if (payment_window_id) {
-      await supabase
+    // Try to create cancellation record (non-fatal if table doesn't exist)
+    let cancellation = { user_id, auction_id, order_id: resolvedOrderId, reason, weekly_cancellation_number: weeklyCancellationNumber };
+    try {
+      const { data: cancellationData, error: cancellationError } = await supabase
+        .from('Order_Cancellations')
+        .insert([{
+          user_id,
+          auction_id,
+          order_id: resolvedOrderId || null,
+          payment_window_id: payment_window_id || null,
+          reason,
+          within_window: withinWindow,
+          weekly_cancellation_number: weeklyCancellationNumber,
+          triggered_violation: weeklyCancellationNumber > 3
+        }])
+        .select()
+        .single();
+
+      if (!cancellationError && cancellationData) {
+        cancellation = cancellationData;
+      }
+    } catch (cancellationTableError) {
+      console.warn('Order_Cancellations table may not exist, skipping record:', cancellationTableError.message);
+    }
+
+    // ── Save step 1: close ALL payment windows for this auction ─────────────
+    // Must happen before cascade so the next winner gets a fresh window.
+    if (auction_id) {
+      const { error: pwErr } = await supabase
         .from('Payment_Windows')
         .update({
-          payment_completed: true, // Technically not completed, but prevents violation
-          payment_completed_at: new Date(),
-          violation_triggered: false // Explicitly prevent violation
+          payment_completed: true,
+          payment_completed_at: new Date().toISOString(),
+          violation_triggered: false
         })
-        .eq('payment_window_id', payment_window_id);
+        .eq('auction_id', auction_id)
+        .eq('payment_completed', false);
+
+      if (pwErr) console.warn('Payment_Windows close error:', pwErr.message);
+      else console.log(`✅ Payment window closed for auction ${auction_id}`);
     }
 
-    // Increment weekly cancellation count
-    await supabase
-      .from('Violation_Records')
-      .update({
-        cancellations_this_week: weeklyCancellationNumber
-      })
-      .eq('user_id', user_id);
+    // ── Save step 2: re-derive unique cancellation count (distinct auctions this week) ──
+    // Always recalculate from source rather than blindly incrementing, to prevent
+    // double-counting when the same auction appears in multiple cancellation records.
+    const freshEligibility = await checkCancellationEligibility(user_id);
+    const actualCount = freshEligibility.cancellationsThisWeek;
+    console.log(`✅ Cancellation count (unique auctions this week): ${actualCount}`);
 
-    // If 4th+ cancellation, trigger violation
-    if (weeklyCancellationNumber > 3) {
-      console.log(`⚠️  User ${user_id} exceeded weekly cancellation limit (${weeklyCancellationNumber}/3)`);
+    // ── Save step 3: clear buyer as winner → stops "To Pay" fallback ─────────
+    if (auction_id) {
+      const { error: auctErr } = await supabase
+        .from('Auctions')
+        .update({ winner_user_id: null, winning_bid_id: null, final_price: null })
+        .eq('auction_id', auction_id)
+        .eq('winner_user_id', user_id);
+
+      if (auctErr) console.warn('Auction winner clear error:', auctErr.message);
+      else console.log(`✅ Auction ${auction_id} winner cleared`);
+    }
+
+    // ── Save step 4: notify seller of cancellation synchronously (direct lookup — reliable) ──
+    if (auction_id) {
+      try {
+        const { data: auctionRow } = await supabase
+          .from('Auctions')
+          .select('seller_id, Products(name)')
+          .eq('auction_id', auction_id)
+          .maybeSingle();
+
+        if (auctionRow?.seller_id) {
+          const { data: sellerRow } = await supabase
+            .from('Seller')
+            .select('user_id')
+            .eq('seller_id', auctionRow.seller_id)
+            .maybeSingle();
+
+          if (sellerRow?.user_id) {
+            const productName = auctionRow.Products?.name || 'the item';
+            await supabase.from('Notifications').insert([{
+              user_id: sellerRow.user_id,
+              type: 'order_cancelled',
+              payload: {
+                title: '❌ Order Cancelled by Buyer',
+                message: `A buyer cancelled their order for "${productName}". We are assigning the next eligible bidder.`
+              },
+              reference_id: auction_id,
+              reference_type: 'auction',
+              read_at: '2099-12-31T23:59:59.000Z'
+            }]);
+            console.log(`🔔 Seller (user ${sellerRow.user_id}) notified of cancellation for auction ${auction_id}`);
+          }
+        }
+      } catch (sellerNotifErr) {
+        console.warn('Seller cancellation notification failed:', sellerNotifErr.message);
+      }
+    }
+
+    // ── Save step 5: cascade to next bidder (async — opens new payment window,
+    //    updates Auctions.winner_user_id, notifies seller of new winner) ───────
+    if (auction_id) {
+      cascadeToNextWinner(auction_id, user_id).catch(err =>
+        console.warn('Cascade after cancellation failed:', err.message)
+      );
+    }
+
+    // If 4th+ unique cancellation this week, trigger violation
+    if (actualCount > 3) {
+      console.log(`⚠️  User ${user_id} exceeded weekly cancellation limit (${actualCount}/3)`);
       await triggerExcessiveCancellationViolation(cancellation, violationRecord);
+    } else {
+      try {
+        await sendCancellationNotification(user_id, actualCount);
+      } catch (notifError) {
+        console.warn('Cancellation notification failed:', notifError.message);
+      }
     }
-
-    // Send notification
-    await sendCancellationNotification(user_id, weeklyCancellationNumber, withinWindow);
 
     return {
       success: true,
       cancellation,
-      weekly_cancellation_number: weeklyCancellationNumber,
-      triggered_violation: weeklyCancellationNumber > 3,
-      remaining_cancellations: Math.max(0, 3 - weeklyCancellationNumber)
+      weekly_cancellation_number: actualCount,
+      triggered_violation: actualCount > 3,
+      remaining_cancellations: Math.max(0, 3 - actualCount)
     };
   } catch (err) {
     console.error('Error processing cancellation:', err);
@@ -164,6 +338,12 @@ export const processCancellation = async (cancellationData) => {
 const triggerExcessiveCancellationViolation = async (cancellation, violationRecord) => {
   try {
     console.log(`🚨 Triggering excessive cancellation violation for user ${cancellation.user_id}`);
+
+    // Already at max strikes — skip creating another violation event
+    if (violationRecord.strike_count >= 3) {
+      console.log(`ℹ️ User already at max strikes (${violationRecord.strike_count}), skipping violation event`);
+      return null;
+    }
 
     // Create violation event
     const { data: violationEvent, error: eventError } = await supabase
@@ -180,8 +360,8 @@ const triggerExcessiveCancellationViolation = async (cancellation, violationReco
         description: `Excessive order cancellations: ${cancellation.weekly_cancellation_number} cancellations this week (limit: 3)`,
         evidence_data: {
           weekly_cancellation_number: cancellation.weekly_cancellation_number,
-          cancellation_id: cancellation.cancellation_id,
-          cancelled_at: cancellation.cancelled_at,
+          cancellation_id: cancellation.cancellation_id || null,
+          cancelled_at: cancellation.cancelled_at || null,
           reason: cancellation.reason
         }
       }])
@@ -210,7 +390,7 @@ const triggerExcessiveCancellationViolation = async (cancellation, violationReco
 };
 
 // Send cancellation notification
-const sendCancellationNotification = async (userId, weeklyCancellationNumber, withinWindow) => {
+const sendCancellationNotification = async (userId, weeklyCancellationNumber) => {
   try {
     let title, message, type;
 
@@ -233,13 +413,9 @@ const sendCancellationNotification = async (userId, weeklyCancellationNumber, wi
       .insert([{
         user_id: userId,
         type,
-        title,
-        message,
-        data: {
-          weekly_cancellation_number: weeklyCancellationNumber,
-          remaining_cancellations: Math.max(0, 3 - weeklyCancellationNumber),
-          within_window: withinWindow
-        }
+        payload: { title, message },
+        reference_type: 'cancellation',
+        read_at: '2099-12-31T23:59:59.000Z'
       }]);
 
     console.log(`📧 Cancellation notification sent to user ${userId}`);
