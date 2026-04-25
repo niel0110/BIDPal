@@ -29,6 +29,7 @@ app.use(cors({
     'https://bidpal.shop',
     'https://www.bidpal.shop',
     'https://bid-pal-pink.vercel.app',
+    'https://admin.bidpal.shop',
     'http://localhost:3000',
     'http://localhost:3001',
     'http://localhost:3002',
