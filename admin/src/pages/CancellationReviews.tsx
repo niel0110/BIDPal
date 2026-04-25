@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { AlertTriangle, CheckCircle, XCircle, RefreshCw, ChevronDown, ChevronUp, User } from 'lucide-react';
-import api from '../api/axios';
+import { supabase } from '../lib/supabase';
 
 interface CancellationRecord {
   cancellation_id: string;
@@ -43,25 +43,72 @@ const CancellationReviews = () => {
   const [note, setNote] = useState('');
 
   const fetchRecords = async () => {
-    try {
-      setLoading(true);
-      const res = await api.get('/violations/moderation/cancellation-reviews');
-      setRecords(res.data);
-    } catch (err) {
-      console.error('Error fetching cancellation reviews:', err);
-    } finally {
-      setLoading(false);
-    }
+    setLoading(true);
+    const { data, error } = await supabase
+      .from('Order_Cancellations')
+      .select(`
+        cancellation_id,
+        auction_id,
+        order_id,
+        reason,
+        within_window,
+        weekly_cancellation_number,
+        triggered_violation,
+        cancelled_at,
+        violation_event_id,
+        User:user_id (user_id, email, Fname, Lname),
+        Auctions:auction_id (
+          auction_id,
+          products_id,
+          Products:products_id (name, Product_Images(image_url))
+        ),
+        Violation_Events:violation_event_id (
+          violation_event_id,
+          strike_number,
+          resolution_status,
+          Moderation_Cases (moderation_case_id, case_status, decision)
+        )
+      `)
+      .order('cancelled_at', { ascending: false })
+      .limit(200);
+
+    if (!error && data) setRecords(data as CancellationRecord[]);
+    setLoading(false);
   };
 
-  useEffect(() => { fetchRecords(); }, []);
+  useEffect(() => {
+    fetchRecords();
+
+    const channel = supabase
+      .channel('cancellations-realtime')
+      .on('postgres_changes', { event: '*', schema: 'public', table: 'Order_Cancellations' }, fetchRecords)
+      .on('postgres_changes', { event: '*', schema: 'public', table: 'Moderation_Cases' }, fetchRecords)
+      .subscribe();
+
+    return () => { supabase.removeChannel(channel); };
+  }, []);
 
   const handleAction = async (cancellationId: string, action: 'validate' | 'flag') => {
     setActionLoading(cancellationId + action);
     try {
-      await api.post(`/violations/moderation/cancellation-reviews/${cancellationId}/${action}`, {
-        moderator_note: note
-      });
+      const record = records.find(r => r.cancellation_id === cancellationId);
+      const ve = record?.Violation_Events;
+
+      if (ve?.Moderation_Cases?.moderation_case_id) {
+        const decision = action === 'validate' ? 'validated' : 'bogus';
+        await supabase
+          .from('Moderation_Cases')
+          .update({ case_status: 'resolved', decision, moderator_note: note || null })
+          .eq('moderation_case_id', ve.Moderation_Cases.moderation_case_id);
+      }
+
+      if (ve?.violation_event_id) {
+        await supabase
+          .from('Violation_Events')
+          .update({ resolution_status: 'resolved' })
+          .eq('violation_event_id', ve.violation_event_id);
+      }
+
       setNote('');
       setExpanded(null);
       await fetchRecords();
@@ -98,11 +145,10 @@ const CancellationReviews = () => {
           onClick={fetchRecords}
           style={{ display: 'flex', alignItems: 'center', gap: '6px', padding: '8px 16px', borderRadius: '8px', border: '1px solid #e5e7eb', background: 'white', cursor: 'pointer', fontSize: '13px' }}
         >
-          <RefreshCw size={14} /> Refresh
+          <RefreshCw size={14} className={loading ? 'spin' : ''} /> Refresh
         </button>
       </header>
 
-      {/* Filter tabs */}
       <div style={{ display: 'flex', gap: '8px', marginBottom: '24px' }}>
         {(['all', 'pending', 'resolved'] as const).map(f => (
           <button
@@ -137,8 +183,8 @@ const CancellationReviews = () => {
             const ve = record.Violation_Events;
             const mc = ve?.Moderation_Cases;
             const isResolved = mc?.case_status === 'resolved';
-            const productName = record.Auctions?.Products?.name || 'Unknown Item';
-            const image = record.Auctions?.Products?.Product_Images?.[0]?.image_url;
+            const productName = (record.Auctions as any)?.Products?.name || 'Unknown Item';
+            const image = (record.Auctions as any)?.Products?.Product_Images?.[0]?.image_url;
             const buyerName = record.User ? `${record.User.Fname} ${record.User.Lname}` : 'Unknown';
 
             return (
@@ -147,7 +193,6 @@ const CancellationReviews = () => {
                 className="glass"
                 style={{ borderRadius: '12px', overflow: 'hidden', border: ve ? `2px solid ${strikeColor(ve.strike_number)}22` : '1px solid #e5e7eb' }}
               >
-                {/* Row header */}
                 <div
                   onClick={() => setExpanded(isExpanded ? null : record.cancellation_id)}
                   style={{ padding: '16px 20px', display: 'flex', alignItems: 'center', gap: '14px', cursor: 'pointer' }}
@@ -163,18 +208,16 @@ const CancellationReviews = () => {
                   <div style={{ flex: 1 }}>
                     <div style={{ fontWeight: 700, fontSize: '14px' }}>{productName}</div>
                     <div style={{ fontSize: '12px', color: 'var(--text-secondary)' }}>
-                      <User size={11} style={{ marginRight: '3px' }} />
                       {buyerName} · {record.User?.email}
                     </div>
                   </div>
 
                   <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
-                    {ve && (
+                    {ve ? (
                       <span style={{ background: strikeColor(ve.strike_number) + '20', color: strikeColor(ve.strike_number), padding: '3px 10px', borderRadius: '20px', fontSize: '12px', fontWeight: 700 }}>
                         Strike {ve.strike_number}
                       </span>
-                    )}
-                    {!ve && (
+                    ) : (
                       <span style={{ background: '#f3f4f6', color: '#6b7280', padding: '3px 10px', borderRadius: '20px', fontSize: '12px' }}>
                         No violation
                       </span>
@@ -182,7 +225,7 @@ const CancellationReviews = () => {
                     <span style={{
                       background: isResolved ? '#d1fae5' : '#fef3c7',
                       color: isResolved ? '#065f46' : '#92400e',
-                      padding: '3px 10px', borderRadius: '20px', fontSize: '12px', fontWeight: 600
+                      padding: '3px 10px', borderRadius: '20px', fontSize: '12px', fontWeight: 600,
                     }}>
                       {isResolved ? mc?.decision || 'Resolved' : 'Pending'}
                     </span>
@@ -191,7 +234,6 @@ const CancellationReviews = () => {
                   </div>
                 </div>
 
-                {/* Expanded details */}
                 {isExpanded && (
                   <div style={{ padding: '0 20px 20px', borderTop: '1px solid #f3f4f6' }}>
                     <div style={{ paddingTop: '16px', display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '16px', marginBottom: '16px' }}>
@@ -259,6 +301,11 @@ const CancellationReviews = () => {
           })}
         </div>
       )}
+
+      <style>{`
+        @keyframes spin { from { transform: rotate(0deg); } to { transform: rotate(360deg); } }
+        .spin { animation: spin 1s linear infinite; }
+      `}</style>
     </div>
   );
 };

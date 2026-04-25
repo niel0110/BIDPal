@@ -4,7 +4,7 @@ import { NavLink, useNavigate } from 'react-router-dom';
 
 const navItems = [
   { icon: LayoutDashboard, label: 'Dashboard', path: '/' },
-  { icon: ShieldCheck, label: 'KYC Review', path: '/kyc' },
+  { icon: ShieldCheck, label: 'Seller Verification', path: '/seller-verification' },
   { icon: AlertOctagon, label: 'Listing Moderation', path: '/moderation' },
   { icon: Ban, label: 'Cancellation Reviews', path: '/cancellations' },
   { icon: Scale, label: 'Disputes', path: '/disputes' },

@@ -2,7 +2,7 @@ import React from 'react';
 import { BrowserRouter as Router, Routes, Route, Navigate } from 'react-router-dom';
 import Sidebar from './components/Sidebar';
 import Dashboard from './pages/Dashboard';
-import KycReview from './pages/KycReview';
+import SellerVerification from './pages/SellerVerification';
 import Moderation from './pages/Moderation';
 import UserManagement from './pages/UserManagement';
 import Disputes from './pages/Disputes';
@@ -53,7 +53,7 @@ function App() {
             
             {/* Protected Routes */}
             <Route path="/" element={<ProtectedRoute><Dashboard /></ProtectedRoute>} />
-            <Route path="/kyc" element={<ProtectedRoute><KycReview /></ProtectedRoute>} />
+            <Route path="/seller-verification" element={<ProtectedRoute><SellerVerification /></ProtectedRoute>} />
             <Route path="/moderation" element={<ProtectedRoute><Moderation /></ProtectedRoute>} />
             <Route path="/disputes" element={<ProtectedRoute><Disputes /></ProtectedRoute>} />
             <Route path="/cancellations" element={<ProtectedRoute><CancellationReviews /></ProtectedRoute>} />
