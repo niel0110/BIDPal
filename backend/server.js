@@ -18,7 +18,7 @@ const httpServer = createServer(app)
 // Socket.IO setup for real-time events (future native clients)
 const io = new SocketIOServer(httpServer, {
   cors: {
-    origin: ["https://bidpal.shop", "https://www.bidpal.shop", "https://bid-pal-pink.vercel.app"],
+    origin: ["https://bidpal.shop", "https://www.bidpal.shop", 'https://admin.bidpal.shop', "https://bid-pal-pink.vercel.app"],
     methods: ['GET', 'POST'],
     credentials: true
   }
