@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import { useState, useEffect } from 'react';
 import { AlertTriangle, CheckCircle, XCircle, RefreshCw, ChevronDown, ChevronUp, User } from 'lucide-react';
 import { supabase } from '../lib/supabase';
 
@@ -72,7 +72,7 @@ const CancellationReviews = () => {
       .order('cancelled_at', { ascending: false })
       .limit(200);
 
-    if (!error && data) setRecords(data as CancellationRecord[]);
+    if (!error && data) setRecords(data as unknown as CancellationRecord[]);
     setLoading(false);
   };
 

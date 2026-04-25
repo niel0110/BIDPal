@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import { useState, useEffect } from 'react';
 import { Scale, Clock, RefreshCw, X, MessageSquare } from 'lucide-react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { supabase } from '../lib/supabase';
@@ -31,7 +31,7 @@ const Disputes = () => {
     if (filter !== 'all') query = query.eq('status', filter);
 
     const { data, error } = await query;
-    if (!error && data) setDisputes(data as Dispute[]);
+    if (!error && data) setDisputes(data as unknown as Dispute[]);
     setLoading(false);
   };
 

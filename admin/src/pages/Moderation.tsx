@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import { useState, useEffect } from 'react';
 import { AlertCircle, Check, X, Search, Eye, RefreshCw } from 'lucide-react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { supabase } from '../lib/supabase';
@@ -28,7 +28,7 @@ const Moderation = () => {
       .eq('status', 'under_review')
       .order('products_id', { ascending: false });
 
-    if (!error && data) setListings(data as Product[]);
+    if (!error && data) setListings(data as unknown as Product[]);
     setLoading(false);
   };
 
