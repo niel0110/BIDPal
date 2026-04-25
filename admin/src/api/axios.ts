@@ -1,15 +1,15 @@
 import axios from 'axios';
 
-const API_BASE_URL = import.meta.env.VITE_API_URL || 'http://localhost:5000/api/admin';
+const BACKEND_URL = import.meta.env.VITE_BACKEND_URL || 'http://localhost:5000';
 
 const api = axios.create({
-  baseURL: API_BASE_URL,
+  baseURL: `${BACKEND_URL}/api/admin`,
   headers: {
     'Content-Type': 'application/json',
   },
 });
 
-// Request interceptor to add JWT (assuming it's stored in localStorage)
+// Request interceptor to add JWT
 api.interceptors.request.use(
   (config) => {
     const token = localStorage.getItem('admin_token');
@@ -23,4 +23,11 @@ api.interceptors.request.use(
   }
 );
 
+// Separate instance for non-admin endpoints (e.g. /api/auth)
+export const authApi = axios.create({
+  baseURL: `${BACKEND_URL}/api`,
+  headers: { 'Content-Type': 'application/json' },
+});
+
 export default api;
+

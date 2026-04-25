@@ -1,7 +1,7 @@
-import React, { useState } from 'react';
+import { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { Lock, Mail, AlertCircle, ArrowRight, Loader2 } from 'lucide-react';
-import axios from 'axios';
+import { authApi } from '../api/axios';
 
 const Login = () => {
   const [email, setEmail] = useState('');
@@ -16,8 +16,7 @@ const Login = () => {
     setLoading(true);
 
     try {
-      // Use the general auth login endpoint
-      const response = await axios.post('http://localhost:5000/api/auth/login', {
+      const response = await authApi.post('/auth/login', {
         email,
         password
       });
