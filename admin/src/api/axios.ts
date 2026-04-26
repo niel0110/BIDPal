@@ -1,9 +1,9 @@
 import axios from 'axios';
 
-const BACKEND_URL = import.meta.env.VITE_API_URL || 'http://localhost:5000';
+const API_URL = import.meta.env.VITE_API_URL || 'http://localhost:5000';
 
 const api = axios.create({
-  baseURL: `${BACKEND_URL}/api/admin`,
+  baseURL: `${API_URL}/api/admin`,
   headers: {
     'Content-Type': 'application/json',
   },
@@ -25,7 +25,7 @@ api.interceptors.request.use(
 
 // Separate instance for non-admin endpoints (e.g. /api/auth)
 export const authApi = axios.create({
-  baseURL: `${BACKEND_URL}/api`,
+  baseURL: `${API_URL}/api`,
   headers: { 'Content-Type': 'application/json' },
 });
 
