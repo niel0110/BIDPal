@@ -29,15 +29,28 @@ export const getNotifications = async (req, res) => {
 
     const { data, error } = await supabase
       .from('Notifications')
-      .select('*')
+      .select('notification_id, user_id, type, payload, read_at, created_at, reference_id, reference_type')
       .eq('user_id', user_id)
       .neq('type', 'notif_seen')
       .order('created_at', { ascending: false })
       .limit(50);
 
-    if (error) throw error;
+    if (error) {
+      console.error('[Notifications] getNotifications Supabase error:', error);
+      // If created_at column doesn't exist, fall back without ordering
+      if (error.message?.includes('created_at') || error.code === '42703') {
+        const fallback = await supabase
+          .from('Notifications')
+          .select('*')
+          .eq('user_id', user_id)
+          .limit(50);
+        return res.json(fallback.data || []);
+      }
+      throw error;
+    }
     res.json(data || []);
   } catch (err) {
+    console.error('[Notifications] getNotifications error:', err.message);
     res.status(500).json({ error: err.message });
   }
 };
@@ -51,10 +64,13 @@ export const getUnreadNotificationCount = async (req, res) => {
       .from('Notifications')
       .select('*', { count: 'exact', head: true })
       .eq('user_id', user_id)
-      .gt('read_at', new Date().toISOString())  // any future read_at = unread
+      .gt('read_at', new Date().toISOString())
       .neq('type', 'notif_seen');
 
-    if (error) throw error;
+    if (error) {
+      console.error('[Notifications] getUnreadNotificationCount error:', error);
+      return res.json({ count: 0 });
+    }
     res.json({ count: count || 0 });
   } catch (err) {
     res.status(500).json({ error: err.message });
@@ -86,14 +102,16 @@ export const markNotificationsSeen = async (req, res) => {
     const { user_id } = req.user;
     const now = new Date().toISOString();
 
-    // Set read_at = now on all unread notifications for this user
     const { error } = await supabase
       .from('Notifications')
       .update({ read_at: now })
       .eq('user_id', user_id)
-      .gt('read_at', new Date().toISOString());
+      .gt('read_at', now);
 
-    if (error) throw error;
+    if (error) {
+      console.error('[Notifications] markNotificationsSeen error:', error);
+      return res.json({ seen_at: now }); // non-critical — don't fail the request
+    }
     return res.json({ seen_at: now });
   } catch (err) {
     res.status(500).json({ error: err.message });

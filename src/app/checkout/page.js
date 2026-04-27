@@ -4,7 +4,7 @@ import BIDPalLoader from '@/components/BIDPalLoader';
 import BackButton from '@/components/BackButton';
 import { useState, useEffect, useCallback, Suspense } from 'react';
 import { useRouter, useSearchParams } from 'next/navigation';
-import { MapPin, Plus, CreditCard, Truck, CheckCircle2, Loader2, AlertCircle, X, ShoppingBag, Gavel, Lock } from 'lucide-react';
+import { MapPin, Plus, CreditCard, Truck, CheckCircle2, Loader2, AlertCircle, X, ShoppingBag, Gavel, Smartphone, Copy } from 'lucide-react';
 import { useAuth } from '@/context/AuthContext';
 import styles from './page.module.css';
 
@@ -28,9 +28,11 @@ function CheckoutPageInner() {
 
     // Modal state
     const [showConfirmModal, setShowConfirmModal] = useState(false);
+    const [showGcashModal, setShowGcashModal] = useState(false);
     const [showSuccessModal, setShowSuccessModal] = useState(false);
     const [showErrorModal, setShowErrorModal] = useState(false);
     const [modalError, setModalError] = useState('');
+    const [gcashCopied, setGcashCopied] = useState(false);
 
     // Fetch order/auction data — check real order status first
     useEffect(() => {
@@ -143,8 +145,17 @@ function CheckoutPageInner() {
         setShowConfirmModal(true);
     };
 
-    const handleConfirmOrder = async () => {
+    const handleConfirmOrder = () => {
         setShowConfirmModal(false);
+        if (paymentMethod === 'gcash') {
+            setShowGcashModal(true);
+        } else {
+            submitPayment();
+        }
+    };
+
+    const submitPayment = async () => {
+        setShowGcashModal(false);
         setProcessing(true);
         setError(null);
 
@@ -164,7 +175,9 @@ function CheckoutPageInner() {
             const data = await res.json();
 
             if (res.ok) {
-                setShowSuccessModal(true);
+                router.push(
+                    `/orders/receipt/${data.order_id}?ref=${encodeURIComponent(data.payment_reference || '')}&paid_at=${encodeURIComponent(data.paid_at || '')}&method=${encodeURIComponent(paymentMethod)}`
+                );
             } else {
                 throw new Error(data.error || 'Failed to create order');
             }
@@ -176,6 +189,12 @@ function CheckoutPageInner() {
         } finally {
             setProcessing(false);
         }
+    };
+
+    const copyGcashNumber = () => {
+        navigator.clipboard.writeText('09171234567').catch(() => {});
+        setGcashCopied(true);
+        setTimeout(() => setGcashCopied(false), 2000);
     };
 
     const formatAddress = (address) => {
@@ -535,20 +554,48 @@ function CheckoutPageInner() {
             </div>
         )}
 
-        {/* ── Success Modal ── */}
-        {showSuccessModal && (
+        {/* ── GCash Simulation Modal ── */}
+        {showGcashModal && (
             <div className={styles.modalOverlay}>
-                <div className={`${styles.modal} ${styles.modalCenter}`}>
-                    <div className={styles.successIcon}>
-                        <CheckCircle2 size={48} />
+                <div className={`${styles.modal} ${styles.gcashModal}`}>
+                    <div className={styles.modalHeader}>
+                        <Smartphone size={22} className={styles.modalIcon} style={{ color: '#0070f3' }} />
+                        <h3>Pay via GCash</h3>
+                        <button className={styles.modalClose} onClick={() => setShowGcashModal(false)}>
+                            <X size={20} />
+                        </button>
                     </div>
-                    <h3 className={styles.successTitle}>Order Placed!</h3>
-                    <p className={styles.successMsg}>
-                        Your order has been placed successfully. The seller will prepare your item for shipping.
-                    </p>
-                    <button className={styles.modalConfirmBtn} onClick={() => router.push('/orders')}>
-                        View My Orders
-                    </button>
+                    <div className={styles.modalBody}>
+                        <div className={styles.gcashInstructions}>
+                            <p className={styles.gcashStep}>1. Open your GCash app and tap <strong>Send Money</strong></p>
+                            <p className={styles.gcashStep}>2. Send payment to the BIDPal GCash number:</p>
+                            <div className={styles.gcashNumberBox}>
+                                <span className={styles.gcashNumber}>0917-123-4567</span>
+                                <button className={styles.copyBtn} onClick={copyGcashNumber}>
+                                    {gcashCopied ? <CheckCircle2 size={14} /> : <Copy size={14} />}
+                                    {gcashCopied ? 'Copied!' : 'Copy'}
+                                </button>
+                            </div>
+                            <p className={styles.gcashStep}>3. Enter the exact amount:</p>
+                            <div className={styles.gcashAmount}>₱{((orderData?.total || 0) + shippingFee).toLocaleString()}</div>
+                            <p className={styles.gcashStep}>4. In the message/note field, enter your name</p>
+                            <div className={styles.gcashNotice}>
+                                <AlertCircle size={14} />
+                                <span>This is a payment simulation. No real money will be transferred.</span>
+                            </div>
+                        </div>
+                    </div>
+                    <div className={styles.modalFooter}>
+                        <button className={styles.modalCancelBtn} onClick={() => setShowGcashModal(false)}>
+                            Go Back
+                        </button>
+                        <button className={styles.modalConfirmBtn} onClick={submitPayment} disabled={processing}>
+                            {processing
+                                ? <><Loader2 className={styles.spin} size={18} /> Processing…</>
+                                : <><CheckCircle2 size={18} /> I&apos;ve Completed Payment</>
+                            }
+                        </button>
+                    </div>
                 </div>
             </div>
         )}

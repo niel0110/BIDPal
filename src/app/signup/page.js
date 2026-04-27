@@ -12,7 +12,7 @@ import styles from './page.module.css';
 export default function SignUp() {
     console.log('=== RENDERING SIGNUP PAGE ===');
     const [showPassword, setShowPassword] = useState(false);
-    const [selectedRole, setSelectedRole] = useState('buyer');
+    const [selectedRole, setSelectedRole] = useState('Buyer');
     const router = useRouter();
     const { register, loginWithGoogle } = useAuth();
 
@@ -62,7 +62,7 @@ export default function SignUp() {
                 }
 
                 console.log('Registration successful!');
-                if (selectedRole === 'seller') {
+                if (selectedRole === 'Seller') {
                     router.push('/seller/setup');
                 } else {
                     router.push('/');
@@ -82,7 +82,7 @@ export default function SignUp() {
                 setError(result.error);
                 return;
             }
-            if (selectedRole === 'seller') {
+            if (selectedRole === 'Seller') {
                 router.push('/seller/setup');
             } else {
                 router.push('/');
@@ -124,15 +124,15 @@ export default function SignUp() {
 
                     <div className={styles.roleGrid}>
                         <div
-                            className={`${styles.roleOption} ${selectedRole === 'buyer' ? styles.roleActive : ''}`}
-                            onClick={() => setSelectedRole('buyer')}
+                            className={`${styles.roleOption} ${selectedRole === 'Buyer' ? styles.roleActive : ''}`}
+                            onClick={() => setSelectedRole('Buyer')}
                         >
                             <div className={styles.roleLabel}>Buyer</div>
                             <div className={styles.roleSub}>I want to bid</div>
                         </div>
                         <div
-                            className={`${styles.roleOption} ${selectedRole === 'seller' ? styles.roleActive : ''}`}
-                            onClick={() => setSelectedRole('seller')}
+                            className={`${styles.roleOption} ${selectedRole === 'Seller' ? styles.roleActive : ''}`}
+                            onClick={() => setSelectedRole('Seller')}
                         >
                             <div className={styles.roleLabel}>Seller</div>
                             <div className={styles.roleSub}>I want to sell</div>

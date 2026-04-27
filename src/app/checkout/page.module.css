@@ -785,6 +785,77 @@
 
 .modalConfirmBtn:disabled { opacity: 0.55; cursor: not-allowed; }
 
+/* GCash simulation modal */
+.gcashModal { max-width: 420px; }
+
+.gcashInstructions {
+    display: flex;
+    flex-direction: column;
+    gap: 0.6rem;
+}
+
+.gcashStep {
+    font-size: 0.875rem;
+    color: #444;
+    margin: 0;
+}
+
+.gcashNumberBox {
+    display: flex;
+    align-items: center;
+    gap: 0.75rem;
+    background: #EEF6FF;
+    border: 1.5px solid #3B82F6;
+    border-radius: 10px;
+    padding: 0.75rem 1rem;
+}
+
+.gcashNumber {
+    font-size: 1.25rem;
+    font-weight: 800;
+    letter-spacing: 1.5px;
+    color: #1D4ED8;
+    flex: 1;
+}
+
+.copyBtn {
+    display: flex;
+    align-items: center;
+    gap: 0.3rem;
+    padding: 0.3rem 0.65rem;
+    background: #3B82F6;
+    color: white;
+    border: none;
+    border-radius: 6px;
+    font-size: 0.75rem;
+    font-weight: 600;
+    cursor: pointer;
+    transition: background 0.15s;
+    white-space: nowrap;
+}
+.copyBtn:hover { background: #2563EB; }
+
+.gcashAmount {
+    font-size: 1.6rem;
+    font-weight: 900;
+    color: #111;
+    text-align: center;
+    padding: 0.5rem 0;
+}
+
+.gcashNotice {
+    display: flex;
+    align-items: center;
+    gap: 0.4rem;
+    background: #FFFBEB;
+    border: 1px solid #FCD34D;
+    border-radius: 8px;
+    padding: 0.5rem 0.75rem;
+    font-size: 0.78rem;
+    color: #92400E;
+    margin-top: 0.25rem;
+}
+
 /* Success modal */
 .successIcon {
     width: 72px;

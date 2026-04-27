@@ -31,6 +31,7 @@ function HomeInner() {
   const [error, setError] = useState('');
 
   const [allAuctions, setAllAuctions] = useState([]);
+  const [fixedProducts, setFixedProducts] = useState([]);
   const [loadingContent, setLoadingContent] = useState(true);
   const [selectedCategory, setSelectedCategory] = useState('all');
 
@@ -44,10 +45,14 @@ function HomeInner() {
   const redirectAfterAuth = useRef(null);
 
   useEffect(() => {
-    if (!loading && user?.role?.toLowerCase() === 'seller') {
+    if (loading) return;
+    if (user?.role?.toLowerCase() === 'seller') {
       const target = redirectAfterAuth.current || '/seller';
       redirectAfterAuth.current = null;
       router.replace(target);
+    } else if (user && !user.Fname) {
+      // Buyer hasn't completed their profile yet
+      router.replace('/buyer/setup');
     }
   }, [user, loading, router]);
 
@@ -57,11 +62,18 @@ function HomeInner() {
     const fetchData = async () => {
       try {
         const apiUrl = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:5000';
-        
-        // Fetch auctions
-        const auctionRes = await fetch(`${apiUrl}/api/auctions?limit=50`);
+
+        // Fetch auctions and fixed-price products in parallel
+        const [auctionRes, productsRes] = await Promise.all([
+          fetch(`${apiUrl}/api/auctions?limit=50`),
+          fetch(`${apiUrl}/api/products?has_price=true&sort=recent&limit=20`),
+        ]);
         const auctionJson = await auctionRes.json();
         const fetchedAuctions = auctionJson.data || [];
+        if (productsRes.ok) {
+          const productsJson = await productsRes.json();
+          setFixedProducts(productsJson.data || []);
+        }
 
         // Fetch wishlist if logged in
         if (user?.user_id) {
@@ -451,6 +463,26 @@ function HomeInner() {
                 : <div className={styles.emptyState}>No scheduled auctions at the moment.</div>}
             </div>
           </section>
+
+          {fixedProducts.length > 0 && (
+            <section className={styles.section}>
+              <div className={`${styles.sectionHeader} ${styles.staticIndicator}`}>
+                <h2 className={styles.sectionTitle}>
+                  Fixed Price <span className={styles.redText}>Products</span>
+                </h2>
+              </div>
+              <div className={styles.productGrid}>
+                {fixedProducts.map(item => (
+                  <ProductCard key={item.products_id} data={{
+                    ...item,
+                    title: item.name,
+                    image: item.images?.[0]?.image_url,
+                    wishlistCount: item.wishlist_count || 0,
+                  }} />
+                ))}
+              </div>
+            </section>
+          )}
         </>
       )}
     </main>

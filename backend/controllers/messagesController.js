@@ -17,32 +17,51 @@ export const getConversations = async (req, res) => {
 
     const conversationIds = participants.map(p => p.conversation_id);
 
-    // Fetch conversation details with other participant info
+    // Fetch conversation details (no nested FK joins to avoid PostgREST schema cache issues)
     const { data: conversations, error: convError } = await supabase
       .from('Coversations')
-      .select(`
-        conversation_id,
-        subject,
-        last_message_at,
-        created_at,
-        Conversation_participant (
-          user_id,
-          User (
-            user_id,
-            Fname,
-            Lname,
-            Avatar,
-            Seller (
-              store_name,
-              logo_url
-            )
-          )
-        )
-      `)
+      .select('conversation_id, subject, last_message_at, created_at')
       .in('conversation_id', conversationIds)
       .order('last_message_at', { ascending: false });
 
     if (convError) throw convError;
+
+    // Fetch all participants for these conversations in one query
+    const { data: allParticipants, error: allPartErr } = await supabase
+      .from('Conversation_participant')
+      .select('conversation_id, user_id')
+      .in('conversation_id', conversationIds);
+
+    if (allPartErr) throw allPartErr;
+
+    // Collect unique other-user IDs
+    const otherUserIds = [...new Set(
+      (allParticipants || [])
+        .filter(p => p.user_id !== user_id)
+        .map(p => p.user_id)
+    )];
+
+    // Fetch user info for all other users
+    let userMap = {};
+    if (otherUserIds.length > 0) {
+      const { data: users } = await supabase
+        .from('User')
+        .select('user_id, Fname, Lname, Avatar')
+        .in('user_id', otherUserIds);
+
+      // Fetch seller info separately
+      const { data: sellers } = await supabase
+        .from('Seller')
+        .select('seller_id, user_id, store_name, logo_url')
+        .in('user_id', otherUserIds);
+
+      const sellerByUser = {};
+      (sellers || []).forEach(s => { sellerByUser[s.user_id] = s; });
+
+      (users || []).forEach(u => {
+        userMap[u.user_id] = { ...u, seller: sellerByUser[u.user_id] || null };
+      });
+    }
 
     // For each conversation, fetch last message + unread count from the JSONB body
     const conversationsWithMeta = await Promise.all(
@@ -62,23 +81,26 @@ export const getConversations = async (req, res) => {
           unreadCount = msgs.filter(m => m.sender_id !== user_id && m.read_at === null).length;
         }
 
+        const otherParticipant = (allParticipants || []).find(
+          p => p.conversation_id === conv.conversation_id && p.user_id !== user_id
+        );
+        const otherUser = otherParticipant ? (userMap[otherParticipant.user_id] || {}) : {};
+
         return {
           ...conv,
           lastMessageBody: lastMsg?.text || null,
           lastMsgAt: lastMsg?.sent_at || conv.last_message_at,
-          unreadCount
+          unreadCount,
+          otherUser
         };
       })
     );
 
-    // Format response, highlighting the "other" user
+    // Format response
     const formatted = conversationsWithMeta.map(conv => {
-      const otherPart = conv.Conversation_participant.find(p => p.user_id !== user_id);
-      const otherUser = otherPart?.User || {};
-
-      const displayName = otherUser.Seller?.[0]?.store_name ||
+      const otherUser = conv.otherUser;
+      const displayName = otherUser.seller?.store_name ||
         (otherUser.Fname ? `${otherUser.Fname} ${otherUser.Lname || ''}`.trim() : 'Unknown User');
-
       const realName = otherUser.Fname
         ? `${otherUser.Fname} ${otherUser.Lname || ''}`.trim()
         : 'Unknown User';
@@ -86,7 +108,7 @@ export const getConversations = async (req, res) => {
       return {
         id: conv.conversation_id,
         name: displayName,
-        avatar: otherUser.Seller?.[0]?.logo_url || otherUser.Avatar || null,
+        avatar: otherUser.seller?.logo_url || otherUser.Avatar || null,
         lastMessage: conv.lastMessageBody || conv.subject || 'New Inquiry',
         lastMessageAt: conv.lastMsgAt,
         unreadCount: conv.unreadCount,
@@ -94,8 +116,9 @@ export const getConversations = async (req, res) => {
           id: otherUser.user_id,
           name: displayName,
           realName,
-          storeName: otherUser.Seller?.[0]?.store_name || null,
-          avatar: otherUser.Seller?.[0]?.logo_url || otherUser.Avatar || null
+          storeName: otherUser.seller?.store_name || null,
+          sellerId: otherUser.seller?.seller_id || null,
+          avatar: otherUser.seller?.logo_url || otherUser.Avatar || null
         }
       };
     });
@@ -327,11 +350,17 @@ export const sendMessage = async (req, res) => {
     // Fetch sender display name for notification
     const { data: senderData } = await supabase
       .from('User')
-      .select('Fname, Lname, Seller(store_name)')
+      .select('Fname, Lname')
       .eq('user_id', user_id)
       .single();
 
-    const senderName = senderData?.Seller?.[0]?.store_name ||
+    const { data: senderSeller } = await supabase
+      .from('Seller')
+      .select('store_name')
+      .eq('user_id', user_id)
+      .maybeSingle();
+
+    const senderName = senderSeller?.store_name ||
       (senderData?.Fname ? `${senderData.Fname} ${senderData.Lname || ''}`.trim() : 'Someone');
 
     // Create notification for receiver

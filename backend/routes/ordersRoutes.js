@@ -11,7 +11,8 @@ import {
     getSellerOrderDetail,
     confirmPayment,
     shipOrder,
-    confirmDelivery
+    confirmDelivery,
+    getOrderReceipt
 } from '../controllers/ordersController.js';
 
 const router = express.Router();
@@ -33,5 +34,8 @@ router.get('/seller/detail/:order_id', getSellerOrderDetail);
 router.put('/:order_id/confirm-payment', confirmPayment);
 router.put('/:order_id/ship', shipOrder);
 router.put('/:order_id/confirm-delivery', confirmDelivery);
+
+// Receipt
+router.get('/:order_id/receipt', getOrderReceipt);
 
 export default router;

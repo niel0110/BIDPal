@@ -1,10 +1,10 @@
 import React, { useState, useEffect } from 'react';
-import { Users, Search, Shield, ShieldAlert, ShieldOff, UserCheck, MoreHorizontal, X } from 'lucide-react';
+import { Users, Search, Shield, ShieldAlert, ShieldOff, UserCheck, MoreHorizontal, X, Ban } from 'lucide-react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { supabase } from '../lib/supabase';
 
 interface ViolationRecord {
-  standing: string;
+  account_status: string;
   strike_count: number;
 }
 
@@ -17,28 +17,53 @@ interface User {
   is_verified: boolean;
   Avatar?: string;
   kyc_status?: string;
-  Violation_Records: ViolationRecord[] | null;
+  violation_record: ViolationRecord | null;
 }
 
+// DB account_status → display standing
+const STATUS_TO_STANDING: Record<string, string> = {
+  clean:      'Active',
+  warned:     'Probationary',
+  restricted: 'Suspended',
+  suspended:  'Blacklisted',
+};
+
+// Display standing → DB account_status
+const STANDING_TO_STATUS: Record<string, string> = {
+  Active:       'clean',
+  Probationary: 'warned',
+  Suspended:    'restricted',
+  Blacklisted:  'suspended',
+};
+
 const getStanding = (user: User): string => {
-  const vr = user.Violation_Records?.[0];
-  return vr?.standing || 'Active';
+  const status = user.violation_record?.account_status;
+  return STATUS_TO_STANDING[status || 'clean'] || 'Active';
+};
+
+const STANDING_CONFIG: Record<string, { bg: string; color: string; border: string }> = {
+  Active:       { bg: '#d1fae5', color: '#065f46', border: '#a7f3d0' },
+  Probationary: { bg: '#fef3c7', color: '#92400e', border: '#fde68a' },
+  Suspended:    { bg: '#fee2e2', color: '#991b1b', border: '#fca5a5' },
+  Blacklisted:  { bg: '#111',    color: '#fff',    border: '#000' },
 };
 
 const StandingBadge = ({ standing }: { standing: string }) => {
-  const map: Record<string, { bg: string; color: string }> = {
-    Active: { bg: '#d1fae5', color: '#065f46' },
-    Probationary: { bg: '#fef3c7', color: '#92400e' },
-    Suspended: { bg: '#fee2e2', color: '#991b1b' },
-    Blacklisted: { bg: '#000', color: '#fff' },
-  };
-  const style = map[standing] || { bg: '#f3f4f6', color: '#6b7280' };
+  const cfg = STANDING_CONFIG[standing] || { bg: '#f3f4f6', color: '#6b7280', border: '#e5e7eb' };
   return (
-    <span style={{ background: style.bg, color: style.color, padding: '3px 10px', borderRadius: '20px', fontSize: '12px', fontWeight: 600 }}>
+    <span style={{ background: cfg.bg, color: cfg.color, border: `1px solid ${cfg.border}`, padding: '3px 10px', borderRadius: '20px', fontSize: '12px', fontWeight: 600 }}>
       {standing}
     </span>
   );
 };
+
+const standingCounts = (users: User[]) => ({
+  all:          users.length,
+  Active:       users.filter(u => getStanding(u) === 'Active').length,
+  Probationary: users.filter(u => getStanding(u) === 'Probationary').length,
+  Suspended:    users.filter(u => getStanding(u) === 'Suspended').length,
+  Blacklisted:  users.filter(u => getStanding(u) === 'Blacklisted').length,
+});
 
 const UserManagement = () => {
   const [users, setUsers] = useState<User[]>([]);
@@ -50,28 +75,55 @@ const UserManagement = () => {
 
   const fetchUsers = async () => {
     setLoading(true);
-    const { data, error } = await supabase
+    const { data: userData, error } = await supabase
       .from('User')
-      .select('user_id, Fname, Lname, email, role, is_verified, Avatar, kyc_status, Violation_Records(standing, strike_count)')
+      .select('user_id, Fname, Lname, email, role, is_verified, Avatar, kyc_status')
+      .or('role.eq.Buyer,role.eq.buyer')
       .order('Fname', { ascending: true });
 
-    if (!error && data) setUsers(data as User[]);
+    if (error) {
+      console.error('UserManagement fetch error:', error);
+      setLoading(false);
+      return;
+    }
+
+    if (!userData || userData.length === 0) {
+      setUsers([]);
+      setLoading(false);
+      return;
+    }
+
+    const ids = userData.map((u: any) => u.user_id);
+    const { data: vrData, error: vrError } = await supabase
+      .from('Violation_Records')
+      .select('user_id, account_status, strike_count')
+      .in('user_id', ids);
+
+    if (vrError) console.error('Violation_Records fetch error:', vrError);
+
+    const vrMap: Record<string, ViolationRecord> = {};
+    if (vrData) {
+      for (const vr of vrData as any[]) {
+        vrMap[vr.user_id] = { account_status: vr.account_status, strike_count: vr.strike_count };
+      }
+    }
+
+    setUsers(userData.map((u: any) => ({ ...u, violation_record: vrMap[u.user_id] || null })));
     setLoading(false);
   };
 
   useEffect(() => {
     fetchUsers();
-
     const channel = supabase
       .channel('users-realtime')
       .on('postgres_changes', { event: '*', schema: 'public', table: 'User' }, fetchUsers)
       .on('postgres_changes', { event: '*', schema: 'public', table: 'Violation_Records' }, fetchUsers)
       .subscribe();
-
     return () => { supabase.removeChannel(channel); };
   }, []);
 
   const handleUpdateStanding = async (userId: string, standing: string) => {
+    const account_status = STANDING_TO_STATUS[standing] || 'clean';
     setUpdating(true);
     try {
       const { data: existing } = await supabase
@@ -81,16 +133,19 @@ const UserManagement = () => {
         .maybeSingle();
 
       if (existing) {
-        await supabase.from('Violation_Records').update({ standing }).eq('user_id', userId);
+        await supabase.from('Violation_Records').update({ account_status }).eq('user_id', userId);
       } else {
-        await supabase.from('Violation_Records').insert([{ user_id: userId, standing, strike_count: 0 }]);
+        await supabase.from('Violation_Records').insert([{ user_id: userId, account_status, strike_count: 0 }]);
       }
 
       if (standing === 'Blacklisted') {
         await supabase.from('User').update({ role: 'Banned' }).eq('user_id', userId);
       }
 
-      setSelectedUser(prev => prev ? { ...prev, Violation_Records: [{ standing, strike_count: prev.Violation_Records?.[0]?.strike_count || 0 }] } : null);
+      setSelectedUser(prev => prev ? {
+        ...prev,
+        violation_record: { account_status, strike_count: prev.violation_record?.strike_count || 0 }
+      } : null);
       await fetchUsers();
     } catch (err) {
       console.error('Error updating standing:', err);
@@ -100,6 +155,8 @@ const UserManagement = () => {
     }
   };
 
+  const counts = standingCounts(users);
+
   const filtered = users.filter(u => {
     const nameMatch = `${u.Fname} ${u.Lname}`.toLowerCase().includes(searchTerm.toLowerCase()) ||
       u.email.toLowerCase().includes(searchTerm.toLowerCase());
@@ -107,14 +164,20 @@ const UserManagement = () => {
     return nameMatch && standingMatch;
   });
 
-  const standings = ['all', 'Active', 'Probationary', 'Suspended', 'Blacklisted'];
+  const filterTabs = [
+    { key: 'all', label: 'All Buyers', count: counts.all, color: 'var(--accent-primary)' },
+    { key: 'Active', label: 'Active', count: counts.Active, color: '#16a34a' },
+    { key: 'Probationary', label: 'Probationary', count: counts.Probationary, color: '#d97706' },
+    { key: 'Suspended', label: 'Suspended', count: counts.Suspended, color: '#dc2626' },
+    { key: 'Blacklisted', label: 'Blacklisted', count: counts.Blacklisted, color: '#111' },
+  ];
 
   return (
-    <div className="user-management">
-      <header style={{ marginBottom: '40px', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+    <div>
+      <header style={{ marginBottom: '32px', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
         <div>
-          <h1 style={{ fontSize: '32px', marginBottom: '8px' }}>User Standing</h1>
-          <p style={{ color: 'var(--text-secondary)' }}>Manage account health and platform access restrictions.</p>
+          <h1 style={{ fontSize: '32px', marginBottom: '8px' }}>Buyer Standing</h1>
+          <p style={{ color: 'var(--text-secondary)' }}>Manage buyer account health and platform access restrictions.</p>
         </div>
         <div className="glass" style={{ padding: '8px 16px', display: 'flex', alignItems: 'center', gap: '10px' }}>
           <Search size={18} color="var(--text-secondary)" />
@@ -128,158 +191,193 @@ const UserManagement = () => {
         </div>
       </header>
 
-      {/* Standing filter */}
-      <div style={{ display: 'flex', gap: '8px', marginBottom: '24px' }}>
-        {standings.map(s => (
+      {/* Filter tabs */}
+      <div style={{ display: 'flex', gap: '8px', marginBottom: '24px', flexWrap: 'wrap' }}>
+        {filterTabs.map(tab => (
           <button
-            key={s}
-            onClick={() => setStandingFilter(s)}
+            key={tab.key}
+            onClick={() => setStandingFilter(tab.key)}
             style={{
-              padding: '6px 16px', borderRadius: '20px', border: 'none', cursor: 'pointer', fontSize: '13px', fontWeight: 600,
-              background: standingFilter === s ? 'var(--accent-primary)' : '#f3f4f6',
-              color: standingFilter === s ? 'white' : 'var(--text-secondary)',
+              padding: '7px 16px', borderRadius: '20px', border: 'none', cursor: 'pointer',
+              fontSize: '13px', fontWeight: 600, display: 'flex', alignItems: 'center', gap: '6px',
+              background: standingFilter === tab.key ? tab.color : '#f3f4f6',
+              color: standingFilter === tab.key ? 'white' : 'var(--text-secondary)',
             }}
           >
-            {s === 'all' ? 'All Users' : s}
+            {tab.label}
+            <span style={{
+              background: standingFilter === tab.key ? 'rgba(255,255,255,0.25)' : '#e5e7eb',
+              color: standingFilter === tab.key ? 'white' : 'var(--text-secondary)',
+              borderRadius: '10px', padding: '1px 7px', fontSize: '11px', fontWeight: 700,
+            }}>
+              {tab.count}
+            </span>
           </button>
         ))}
       </div>
 
       {loading ? (
-        <div className="glass" style={{ padding: '100px', textAlign: 'center' }}>Loading user directory...</div>
+        <div className="glass" style={{ padding: '100px', textAlign: 'center' }}>Loading buyers...</div>
       ) : (
-        <div style={{ display: 'grid', gridTemplateColumns: selectedUser ? '1fr 400px' : '1fr', gap: '24px', transition: 'all 0.3s ease' }}>
-          <div className="glass" style={{ padding: '24px' }}>
-            <div className="table-container">
-              <table>
-                <thead>
-                  <tr>
-                    <th>User</th>
-                    <th>Role</th>
-                    <th>Verified</th>
-                    <th>Strikes</th>
-                    <th>Standing</th>
-                    <th>Actions</th>
-                  </tr>
-                </thead>
-                <tbody>
-                  <AnimatePresence>
-                    {filtered.map(user => (
-                      <motion.tr
-                        key={user.user_id}
-                        initial={{ opacity: 0 }}
-                        animate={{ opacity: 1 }}
-                        exit={{ opacity: 0 }}
-                        onClick={() => setSelectedUser(user)}
-                        style={{ cursor: 'pointer', background: selectedUser?.user_id === user.user_id ? '#FEF2F2' : 'transparent' }}
-                      >
-                        <td>
-                          <div style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
-                            <div style={{ width: '32px', height: '32px', borderRadius: '50%', background: 'var(--border)', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: '12px', fontWeight: 'bold', overflow: 'hidden', flexShrink: 0 }}>
-                              {user.Avatar ? <img src={user.Avatar} alt="" style={{ width: '100%', height: '100%', objectFit: 'cover' }} /> : `${user.Fname?.[0] || '?'}${user.Lname?.[0] || '?'}`}
-                            </div>
-                            <div>
-                              <div style={{ fontWeight: 500 }}>{user.Fname} {user.Lname}</div>
-                              <div style={{ fontSize: '12px', color: 'var(--text-secondary)' }}>{user.email}</div>
-                            </div>
+        <div className="glass" style={{ padding: '24px' }}>
+          <div className="table-container">
+            <table>
+              <thead>
+                <tr>
+                  <th>Buyer</th>
+                  <th>ID Verified</th>
+                  <th>Strikes</th>
+                  <th>Standing</th>
+                  <th>Actions</th>
+                </tr>
+              </thead>
+              <tbody>
+                <AnimatePresence>
+                  {filtered.map(user => (
+                    <motion.tr
+                      key={user.user_id}
+                      initial={{ opacity: 0 }}
+                      animate={{ opacity: 1 }}
+                      exit={{ opacity: 0 }}
+                      onClick={() => setSelectedUser(user)}
+                      style={{ cursor: 'pointer', background: selectedUser?.user_id === user.user_id ? '#FEF2F2' : 'transparent' }}
+                    >
+                      <td>
+                        <div style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
+                          <div style={{ width: '36px', height: '36px', borderRadius: '50%', background: 'linear-gradient(135deg,var(--accent-primary),var(--accent-secondary))', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: '13px', fontWeight: 700, color: 'white', overflow: 'hidden', flexShrink: 0 }}>
+                            {user.Avatar ? <img src={user.Avatar} alt="" style={{ width: '100%', height: '100%', objectFit: 'cover' }} /> : `${user.Fname?.[0] || '?'}${user.Lname?.[0] || '?'}`}
                           </div>
-                        </td>
-                        <td style={{ textTransform: 'capitalize', fontSize: '14px' }}>{user.role}</td>
-                        <td>
-                          {user.is_verified
-                            ? <div style={{ display: 'flex', alignItems: 'center', gap: '4px', color: 'var(--success)', fontSize: '14px' }}><UserCheck size={14} /> Verified</div>
-                            : <div style={{ display: 'flex', alignItems: 'center', gap: '4px', color: 'var(--text-secondary)', fontSize: '14px' }}><ShieldOff size={14} /> Unverified</div>
-                          }
-                        </td>
-                        <td style={{ fontSize: '14px', fontWeight: 600, color: (user.Violation_Records?.[0]?.strike_count || 0) > 0 ? 'var(--danger)' : 'var(--text-secondary)' }}>
-                          {user.Violation_Records?.[0]?.strike_count || 0}
-                        </td>
-                        <td><StandingBadge standing={getStanding(user)} /></td>
-                        <td>
-                          <button className="btn btn-outline" style={{ padding: '6px' }} onClick={e => { e.stopPropagation(); setSelectedUser(user); }}>
-                            <MoreHorizontal size={16} />
-                          </button>
-                        </td>
-                      </motion.tr>
-                    ))}
-                  </AnimatePresence>
-                  {filtered.length === 0 && (
-                    <tr>
-                      <td colSpan={6} style={{ textAlign: 'center', padding: '40px', color: 'var(--text-secondary)' }}>No users found.</td>
-                    </tr>
-                  )}
-                </tbody>
-              </table>
-            </div>
-          </div>
-
-          <AnimatePresence>
-            {selectedUser && (
-              <motion.div
-                initial={{ opacity: 0, x: 20 }}
-                animate={{ opacity: 1, x: 0 }}
-                exit={{ opacity: 0, x: 20 }}
-                className="glass"
-                style={{ padding: '30px', display: 'flex', flexDirection: 'column', gap: '24px' }}
-              >
-                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-                  <h3 style={{ fontSize: '20px' }}>User Details</h3>
-                  <button onClick={() => setSelectedUser(null)} style={{ background: 'none', border: 'none', color: 'var(--text-secondary)', cursor: 'pointer' }}>
-                    <X size={20} />
-                  </button>
-                </div>
-
-                <div style={{ textAlign: 'center' }}>
-                  <div style={{ width: '80px', height: '80px', borderRadius: '50%', background: 'linear-gradient(45deg, var(--accent-primary), var(--accent-secondary))', margin: '0 auto 16px', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: '24px', fontWeight: 'bold', color: 'white', overflow: 'hidden' }}>
-                    {selectedUser.Avatar ? <img src={selectedUser.Avatar} alt="" style={{ width: '100%', height: '100%', objectFit: 'cover' }} /> : `${selectedUser.Fname?.[0] || '?'}${selectedUser.Lname?.[0] || '?'}`}
-                  </div>
-                  <h4 style={{ fontSize: '18px', fontWeight: 700 }}>{selectedUser.Fname} {selectedUser.Lname}</h4>
-                  <p style={{ color: 'var(--text-secondary)', fontSize: '14px' }}>{selectedUser.email}</p>
-                  <p style={{ color: 'var(--text-secondary)', fontSize: '13px', textTransform: 'capitalize' }}>{selectedUser.role}</p>
-                </div>
-
-                <div style={{ display: 'flex', flexDirection: 'column', gap: '12px' }}>
-                  <div style={{ padding: '16px', background: '#F8FAFC', borderRadius: '12px', border: '1px solid var(--border)' }}>
-                    <p style={{ fontSize: '12px', color: 'var(--text-secondary)', marginBottom: '8px' }}>Account Info</p>
-                    <div style={{ display: 'flex', flexDirection: 'column', gap: '6px', fontSize: '13px' }}>
-                      <div style={{ display: 'flex', justifyContent: 'space-between' }}>
-                        <span style={{ color: 'var(--text-secondary)' }}>ID Verification</span>
-                        <span style={{ fontWeight: 600, color: selectedUser.is_verified ? 'var(--success)' : 'var(--text-secondary)' }}>
-                          {selectedUser.kyc_status || (selectedUser.is_verified ? 'approved' : 'unverified')}
+                          <div>
+                            <div style={{ fontWeight: 600, fontSize: '14px' }}>{user.Fname} {user.Lname}</div>
+                            <div style={{ fontSize: '12px', color: 'var(--text-secondary)' }}>{user.email}</div>
+                          </div>
+                        </div>
+                      </td>
+                      <td>
+                        {user.is_verified
+                          ? <div style={{ display: 'flex', alignItems: 'center', gap: '4px', color: 'var(--success)', fontSize: '13px', fontWeight: 600 }}><UserCheck size={14} /> Verified</div>
+                          : <div style={{ display: 'flex', alignItems: 'center', gap: '4px', color: 'var(--text-secondary)', fontSize: '13px' }}><ShieldOff size={14} /> Unverified</div>
+                        }
+                      </td>
+                      <td>
+                        <span style={{ fontSize: '14px', fontWeight: 700, color: (user.violation_record?.strike_count || 0) > 0 ? 'var(--danger)' : 'var(--text-secondary)' }}>
+                          {user.violation_record?.strike_count || 0}
                         </span>
-                      </div>
-                      <div style={{ display: 'flex', justifyContent: 'space-between' }}>
-                        <span style={{ color: 'var(--text-secondary)' }}>Current Standing</span>
-                        <StandingBadge standing={getStanding(selectedUser)} />
-                      </div>
-                      <div style={{ display: 'flex', justifyContent: 'space-between' }}>
-                        <span style={{ color: 'var(--text-secondary)' }}>Strike Count</span>
-                        <span style={{ fontWeight: 600 }}>{selectedUser.Violation_Records?.[0]?.strike_count || 0}</span>
-                      </div>
-                    </div>
-                  </div>
-
-                  <div style={{ display: 'flex', flexDirection: 'column', gap: '8px' }}>
-                    <p style={{ fontSize: '13px', fontWeight: 600, color: 'var(--text-secondary)' }}>Update Standing</p>
-                    <button disabled={updating} onClick={() => handleUpdateStanding(selectedUser.user_id, 'Active')} className="btn btn-outline" style={{ justifyContent: 'flex-start', color: 'var(--success)' }}>
-                      <Shield size={18} /> Re-activate Account
-                    </button>
-                    <button disabled={updating} onClick={() => handleUpdateStanding(selectedUser.user_id, 'Probationary')} className="btn btn-outline" style={{ justifyContent: 'flex-start', color: 'var(--warning)' }}>
-                      <ShieldAlert size={18} /> Place on Probation
-                    </button>
-                    <button disabled={updating} onClick={() => handleUpdateStanding(selectedUser.user_id, 'Suspended')} className="btn btn-outline" style={{ justifyContent: 'flex-start', color: 'var(--danger)' }}>
-                      <ShieldOff size={18} /> Suspend Account
-                    </button>
-                    <button disabled={updating} onClick={() => handleUpdateStanding(selectedUser.user_id, 'Blacklisted')} className="btn btn-outline" style={{ justifyContent: 'flex-start', color: '#000', borderColor: '#000' }}>
-                      <Users size={18} /> Blacklist Identity
-                    </button>
-                  </div>
-                </div>
-              </motion.div>
-            )}
-          </AnimatePresence>
+                      </td>
+                      <td><StandingBadge standing={getStanding(user)} /></td>
+                      <td>
+                        <button className="btn btn-outline" style={{ padding: '6px 10px', fontSize: '12px' }}
+                          onClick={e => { e.stopPropagation(); setSelectedUser(user); }}>
+                          Manage
+                        </button>
+                      </td>
+                    </motion.tr>
+                  ))}
+                </AnimatePresence>
+                {filtered.length === 0 && (
+                  <tr>
+                    <td colSpan={5} style={{ textAlign: 'center', padding: '48px', color: 'var(--text-secondary)' }}>
+                      No buyers found.
+                    </td>
+                  </tr>
+                )}
+              </tbody>
+            </table>
+          </div>
         </div>
       )}
+
+      {/* User Detail Modal */}
+      <AnimatePresence>
+        {selectedUser && (
+          <motion.div
+            initial={{ opacity: 0 }}
+            animate={{ opacity: 1 }}
+            exit={{ opacity: 0 }}
+            style={{ position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.6)', backdropFilter: 'blur(4px)', display: 'flex', alignItems: 'center', justifyContent: 'center', zIndex: 1000, padding: '20px' }}
+            onClick={() => setSelectedUser(null)}
+          >
+            <motion.div
+              initial={{ opacity: 0, scale: 0.96, y: 20 }}
+              animate={{ opacity: 1, scale: 1, y: 0 }}
+              exit={{ opacity: 0, scale: 0.96, y: 20 }}
+              style={{ background: 'white', borderRadius: '20px', width: '100%', maxWidth: '460px', overflow: 'hidden', boxShadow: '0 24px 64px rgba(0,0,0,0.25)' }}
+              onClick={e => e.stopPropagation()}
+            >
+              {/* Banner */}
+              {(() => {
+                const standing = getStanding(selectedUser);
+                const cfg = STANDING_CONFIG[standing] || STANDING_CONFIG['Active'];
+                return (
+                  <div style={{ background: standing === 'Active' ? 'linear-gradient(135deg,#16a34a,#22c55e)' : standing === 'Probationary' ? 'linear-gradient(135deg,#d97706,#f59e0b)' : standing === 'Suspended' ? 'linear-gradient(135deg,#dc2626,#f87171)' : 'linear-gradient(135deg,#111,#374151)', padding: '20px 24px', display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
+                    <div style={{ display: 'flex', alignItems: 'center', gap: '14px' }}>
+                      <div style={{ width: '52px', height: '52px', borderRadius: '50%', background: 'rgba(255,255,255,0.2)', border: '2px solid rgba(255,255,255,0.4)', overflow: 'hidden', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: '18px', fontWeight: 700, color: 'white', flexShrink: 0 }}>
+                        {selectedUser.Avatar ? <img src={selectedUser.Avatar} alt="" style={{ width: '100%', height: '100%', objectFit: 'cover' }} /> : `${selectedUser.Fname?.[0] || '?'}${selectedUser.Lname?.[0] || '?'}`}
+                      </div>
+                      <div>
+                        <div style={{ fontWeight: 800, fontSize: '16px', color: 'white' }}>{selectedUser.Fname} {selectedUser.Lname}</div>
+                        <div style={{ fontSize: '12px', color: 'rgba(255,255,255,0.75)' }}>{selectedUser.email}</div>
+                      </div>
+                    </div>
+                    <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
+                      <span style={{ background: 'rgba(255,255,255,0.2)', border: '1px solid rgba(255,255,255,0.35)', color: 'white', padding: '4px 12px', borderRadius: '20px', fontSize: '12px', fontWeight: 700 }}>
+                        {standing}
+                      </span>
+                      <button onClick={() => setSelectedUser(null)} style={{ background: 'rgba(255,255,255,0.2)', border: '1px solid rgba(255,255,255,0.35)', borderRadius: '8px', color: 'white', cursor: 'pointer', padding: '5px', display: 'flex', alignItems: 'center' }}>
+                        <X size={16} />
+                      </button>
+                    </div>
+                  </div>
+                );
+              })()}
+
+              {/* Body */}
+              <div style={{ padding: '24px', display: 'flex', flexDirection: 'column', gap: '20px' }}>
+                {/* Account info */}
+                <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr 1fr', gap: '10px' }}>
+                  {[
+                    { label: 'ID Verification', value: selectedUser.kyc_status || (selectedUser.is_verified ? 'approved' : 'none'), ok: selectedUser.is_verified },
+                    { label: 'Strike Count', value: String(selectedUser.violation_record?.strike_count || 0), ok: (selectedUser.violation_record?.strike_count || 0) === 0 },
+                    { label: 'Role', value: selectedUser.role, ok: true },
+                  ].map(item => (
+                    <div key={item.label} style={{ padding: '12px', background: '#F8FAFC', borderRadius: '10px', border: '1px solid #E2E8F0', textAlign: 'center' }}>
+                      <div style={{ fontSize: '10px', fontWeight: 700, color: 'var(--text-secondary)', textTransform: 'uppercase', letterSpacing: '0.5px', marginBottom: '4px' }}>{item.label}</div>
+                      <div style={{ fontSize: '13px', fontWeight: 700, color: item.ok ? 'var(--text-primary)' : 'var(--danger)', textTransform: 'capitalize' }}>{item.value}</div>
+                    </div>
+                  ))}
+                </div>
+
+                {/* Standing actions */}
+                <div>
+                  <p style={{ fontSize: '11px', fontWeight: 700, color: 'var(--text-secondary)', textTransform: 'uppercase', letterSpacing: '0.5px', marginBottom: '10px' }}>Update Standing</p>
+                  <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '8px' }}>
+                    <button disabled={updating} onClick={() => handleUpdateStanding(selectedUser.user_id, 'Active')}
+                      className="btn btn-outline"
+                      style={{ justifyContent: 'flex-start', gap: '8px', color: '#16a34a', borderColor: '#bbf7d0', background: '#f0fdf4', fontSize: '13px' }}>
+                      <Shield size={15} /> Re-activate
+                    </button>
+                    <button disabled={updating} onClick={() => handleUpdateStanding(selectedUser.user_id, 'Probationary')}
+                      className="btn btn-outline"
+                      style={{ justifyContent: 'flex-start', gap: '8px', color: '#d97706', borderColor: '#fde68a', background: '#fffbeb', fontSize: '13px' }}>
+                      <ShieldAlert size={15} /> Probationary
+                    </button>
+                    <button disabled={updating} onClick={() => handleUpdateStanding(selectedUser.user_id, 'Suspended')}
+                      className="btn btn-outline"
+                      style={{ justifyContent: 'flex-start', gap: '8px', color: '#dc2626', borderColor: '#fca5a5', background: '#fef2f2', fontSize: '13px' }}>
+                      <ShieldOff size={15} /> Suspend
+                    </button>
+                    <button disabled={updating} onClick={() => handleUpdateStanding(selectedUser.user_id, 'Blacklisted')}
+                      className="btn btn-outline"
+                      style={{ justifyContent: 'flex-start', gap: '8px', color: 'white', borderColor: '#111', background: '#111', fontSize: '13px' }}>
+                      <Ban size={15} /> Blacklist
+                    </button>
+                  </div>
+                </div>
+              </div>
+            </motion.div>
+          </motion.div>
+        )}
+      </AnimatePresence>
     </div>
   );
 };

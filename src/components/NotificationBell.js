@@ -2,7 +2,7 @@
 
 import { useState, useEffect, useRef } from 'react';
 import { useRouter } from 'next/navigation';
-import { Bell, MessageCircle, Gavel, Package, X, CheckCheck, Users } from 'lucide-react';
+import { Bell, MessageCircle, Gavel, Package, X, CheckCheck, Users, ShieldCheck, ShieldX } from 'lucide-react';
 import { useNotifications, isUnread } from '@/hooks/useNotifications';
 import styles from './NotificationBell.module.css';
 
@@ -24,6 +24,8 @@ function getNotificationIcon(type) {
         case 'auction_reserve_not_met': return <Gavel size={16} />;
         case 'order_update':
         case 'order_cancelled': return <Package size={16} />;
+        case 'kyc_approved': return <ShieldCheck size={16} />;
+        case 'kyc_rejected': return <ShieldX size={16} />;
         case 'account_violation':
         case 'warning':
         case 'buyer_violation': return <Bell size={16} />;
@@ -57,6 +59,20 @@ function getNotificationTarget(notification) {
         case 'order_update':
         case 'order_cancelled':
             return isSeller ? '/seller/orders' : '/orders';
+
+        // KYC decisions → re-submit or view profile
+        case 'kyc_approved':
+            return '/profile';
+        case 'kyc_rejected':
+            return '/buyer/setup';
+
+        // Legacy system notifications — route based on payload title
+        case 'system': {
+            const title = notification.payload?.title || '';
+            if (title.includes('Rejected')) return '/buyer/setup';
+            if (title.includes('Approved')) return '/profile';
+            return '/';
+        }
 
         // Buyer violations/warnings → Account Standing in profile
         case 'account_violation':
@@ -169,13 +185,16 @@ export default function NotificationBell() {
                                             {(n.type === 'auction_won' || n.type === 'auction_sold' || n.type === 'auction_reserve_not_met') && (
                                                 <><strong>{n.payload?.title}</strong>{n.payload?.message && <><br />{n.payload.message}</>}</>
                                             )}
+                                            {(n.type === 'kyc_approved' || n.type === 'kyc_rejected' || n.type === 'system') && (
+                                                <><strong>{n.payload?.title}</strong>{n.payload?.message && <><br />{n.payload.message}</>}</>
+                                            )}
                                             {(n.type === 'order_cancelled' || n.type === 'account_violation' || n.type === 'warning' || (n.type === 'order_update' && n.payload?.title)) && (
                                                 <><strong>{n.payload?.title}</strong>{n.payload?.message && <><br />{n.payload.message}</>}</>
                                             )}
                                             {n.type === 'order_update' && !n.payload?.title && (
                                                 <>Your order has been updated</>
                                             )}
-                                            {!['new_bid', 'order_update', 'order_cancelled', 'auction_won', 'auction_sold', 'auction_reserve_not_met', 'account_violation', 'warning'].includes(n.type) && (
+                                            {!['new_bid', 'order_update', 'order_cancelled', 'auction_won', 'auction_sold', 'auction_reserve_not_met', 'account_violation', 'warning', 'kyc_approved', 'kyc_rejected', 'system'].includes(n.type) && (
                                                 <>{n.payload?.title ? <><strong>{n.payload.title}</strong>{n.payload.message && <><br />{n.payload.message}</>}</> : n.payload?.message || 'You have a new notification'}</>
                                             )}
                                         </p>

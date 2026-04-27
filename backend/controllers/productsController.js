@@ -11,6 +11,7 @@ export const getAllProducts = async (req, res) => {
       condition,
       category,
       search,
+      has_price,
       sort = 'recent',
       limit = 50,
       offset = 0
@@ -24,6 +25,7 @@ export const getAllProducts = async (req, res) => {
     if (condition) query = query.eq('condition', condition);
     if (category)  query = query.ilike('category', `%${category}%`);
     if (search)    query = query.or(`name.ilike.%${search}%,description.ilike.%${search}%`);
+    if (has_price === 'true') query = query.not('price', 'is', null);
 
     // Sorting
     switch (sort) {
@@ -78,7 +80,7 @@ export const getProductById = async (req, res) => {
 export const getProductsBySeller = async (req, res) => {
   try {
     const { seller_id } = req.params;
-    const { status, limit = 50, offset = 0 } = req.query;
+    const { status, has_price, limit = 50, offset = 0 } = req.query;
 
     let final_seller_id = seller_id;
 
@@ -99,6 +101,7 @@ export const getProductsBySeller = async (req, res) => {
       .eq('seller_id', final_seller_id);
 
     if (status) query = query.eq('status', status);
+    if (has_price === 'true') query = query.not('price', 'is', null);
     query = query.range(offset, offset + parseInt(limit) - 1);
 
     const { data, error, count } = await query;

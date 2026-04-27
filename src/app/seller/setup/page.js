@@ -357,14 +357,45 @@ function AddressStep({ data, onChange, onNext, onBack }) {
 }
 
 // ─── Step 4: ID Verification ────────────────────────────────────────────────
-function VerificationStep({ onVerify, onBack }) {
+function VerificationStep({ onVerify, onBack, submitting }) {
     return (
         <div className={styles.formArea}>
             <h2 className={styles.formTitle}>Identity <span className={styles.redText}>Verification</span></h2>
             <p className={styles.formSubtitle}>Upload a valid Philippine government-issued ID to complete your registration.</p>
-            <PhilippineIDVerification onVerify={onVerify} />
+            <PhilippineIDVerification onVerify={onVerify} submitting={submitting} />
             <div className={styles.formActions}>
-                <button className={styles.backBtn} onClick={onBack}>Back</button>
+                <button className={styles.backBtn} onClick={onBack} disabled={submitting}>Back</button>
+            </div>
+        </div>
+    );
+}
+
+// ─── Pending Verification Page ─────────────────────────────────────────────
+function PendingVerificationPage() {
+    return (
+        <div className={styles.successPage}>
+            <div className={styles.successLeft}>
+                <div className={styles.successContent}>
+                    <div className={styles.successIconWrap}>
+                        <Logo />
+                    </div>
+                    <p className={styles.successEyebrow}>Submission Received</p>
+                    <h1 className={styles.successTitle}>
+                        Pending<br /><span>Review</span>
+                    </h1>
+                    <p className={styles.successSubtitle}>
+                        Your ID has been submitted for review. An admin will verify your account
+                        within 1–2 business days. You'll receive a notification once approved.
+                    </p>
+                    <p className={styles.successQuoteInline}>
+                        "Your store is almost ready. Hang tight — great things take a moment."
+                    </p>
+                </div>
+            </div>
+            <div className={styles.successRight}>
+                <p className={styles.successQuote}>
+                    "Your store is almost ready.<br />Hang tight — great things take a moment."
+                </p>
             </div>
         </div>
     );
@@ -409,11 +440,13 @@ function GetStartedPage() {
 function SetupPageInner() {
     const searchParams = useSearchParams();
     const isDone = searchParams.get('done') === '1';
+    const isResubmit = searchParams.get('resubmit') === '1';
     const { user } = useAuth();
 
     const router = useRouter();
-    const [step, setStep] = useState(1);
+    const [step, setStep] = useState(isResubmit ? 4 : 1);
     const [setupComplete, setSetupComplete] = useState(false);
+    const [submitting, setSubmitting] = useState(false);
     const [submitError, setSubmitError] = useState('');
     const [checkingSetup, setCheckingSetup] = useState(true);
 
@@ -422,9 +455,14 @@ function SetupPageInner() {
     const [store, setStore] = useState({ storeName: '', category: '', handle: '', description: '' });
     const [address, setAddress] = useState({ region: '', province: '', municipality_city: '', Barangay: '', Line1: '', Line2: '', zip_code: '', household_blk_st: '' });
 
-    // If user already has a seller account, redirect to dashboard immediately
+    // If user already has a seller account, redirect to dashboard — unless resubmitting KYC
     useEffect(() => {
         if (!user?.user_id) {
+            setCheckingSetup(false);
+            return;
+        }
+        if (isResubmit) {
+            // Skip redirect — seller is here only to re-upload their ID
             setCheckingSetup(false);
             return;
         }
@@ -435,7 +473,6 @@ function SetupPageInner() {
         })
             .then(res => {
                 if (res.ok) {
-                    // Already has a seller account — kick them to the dashboard
                     router.replace('/seller');
                 } else {
                     setCheckingSetup(false);
@@ -454,80 +491,96 @@ function SetupPageInner() {
 
     const merge = (setter) => (patch) => setter(prev => ({ ...prev, ...patch }));
 
-    const handleSetupComplete = async () => {
+    const handleSetupComplete = async ({ type, number, frontFile, backFile } = {}) => {
         if (!user?.user_id) return;
         setSubmitError('');
+        setSubmitting(true);
         try {
             const apiUrl = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:5000';
             const token = localStorage.getItem('bidpal_token');
+            const headers = { 'Content-Type': 'application/json', ...(token && { Authorization: `Bearer ${token}` }) };
 
-            // Step 1: Update personal info & set role to Seller
-            const userRes = await fetch(`${apiUrl}/api/users/${user.user_id}`, {
-                method: 'PUT',
-                headers: {
-                    'Content-Type': 'application/json',
-                    ...(token && { Authorization: `Bearer ${token}` }),
-                },
-                body: JSON.stringify({
-                    Fname: personal.firstName,
-                    Lname: personal.lastName,
-                    Mname: personal.middleName || null,
-                    Birthday: personal.birthday && personal.birthday.length === 10 ? `${personal.birthday.slice(6)}-${personal.birthday.slice(0, 2)}-${personal.birthday.slice(3, 5)}` : null,
-                    Gender: personal.gender,
-                    contact_num: personal.contactNumber,
-                    Bio: personal.bio || null,
-                    role: 'Seller',
-                }),
-            });
-            const userData = await userRes.json();
-            if (!userRes.ok) throw new Error(userData.error || 'Failed to save profile.');
+            if (!isResubmit) {
+                // Step 1: Update personal info & set role to Seller
+                const userRes = await fetch(`${apiUrl}/api/users/${user.user_id}`, {
+                    method: 'PUT',
+                    headers,
+                    body: JSON.stringify({
+                        Fname: personal.firstName,
+                        Lname: personal.lastName,
+                        Mname: personal.middleName || null,
+                        Birthday: personal.birthday && personal.birthday.length === 10 ? `${personal.birthday.slice(6)}-${personal.birthday.slice(0, 2)}-${personal.birthday.slice(3, 5)}` : null,
+                        Gender: personal.gender,
+                        contact_num: personal.contactNumber,
+                        Bio: personal.bio || null,
+                        role: 'Seller',
+                    }),
+                });
+                const userData = await userRes.json();
+                if (!userRes.ok) throw new Error(userData.error || 'Failed to save profile.');
 
-            // Step 2: Create seller profile with store details
-            const sellerRes = await fetch(`${apiUrl}/api/sellers`, {
+                // Step 2: Create seller profile with store details
+                const sellerRes = await fetch(`${apiUrl}/api/sellers`, {
+                    method: 'POST',
+                    headers,
+                    body: JSON.stringify({
+                        store_name: store.storeName,
+                        business_category: store.category || null,
+                        store_handle: store.handle || null,
+                        store_description: store.description || null,
+                        user_id: user.user_id,
+                    }),
+                });
+                const sellerData = await sellerRes.json();
+                if (!sellerRes.ok) throw new Error(sellerData.error || 'Failed to create seller profile.');
+
+                // Step 3: Save pick-up address
+                const addressRes = await fetch(`${apiUrl}/api/addresses`, {
+                    method: 'POST',
+                    headers,
+                    body: JSON.stringify({
+                        user_id: user.user_id,
+                        Line1: address.Line1,
+                        Line2: address.Line2 || null,
+                        household_blk_st: address.household_blk_st || null,
+                        Barangay: address.Barangay || null,
+                        municipality_city: address.municipality_city || null,
+                        zip_code: address.zip_code || null,
+                        region: address.region || null,
+                        province: address.province || null,
+                        address_type: 'pickup',
+                        is_default: true,
+                        Country: 'Philippines',
+                    }),
+                });
+                const addressData = await addressRes.json();
+                if (!addressRes.ok) throw new Error(addressData.error || 'Failed to save address.');
+            }
+
+            // Clear the toast-shown flag so the seller gets notified again after re-submission
+            localStorage.removeItem(`kyc_notified_${user.user_id}`);
+
+            // Submit KYC — upload front & back ID photos, set kyc_status = 'pending'
+            const kycForm = new FormData();
+            kycForm.append('id_type', type || '');
+            kycForm.append('id_number', number || '');
+            if (frontFile) kycForm.append('id_photo_front', frontFile);
+            if (backFile) kycForm.append('id_photo_back', backFile);
+            const kycRes = await fetch(`${apiUrl}/api/users/${user.user_id}/kyc`, {
                 method: 'POST',
-                headers: {
-                    'Content-Type': 'application/json',
-                    ...(token && { Authorization: `Bearer ${token}` }),
-                },
-                body: JSON.stringify({
-                    store_name: store.storeName,
-                    business_category: store.category || null,
-                    store_handle: store.handle || null,
-                    store_description: store.description || null,
-                    user_id: user.user_id,
-                }),
+                headers: { ...(token && { Authorization: `Bearer ${token}` }) },
+                body: kycForm,
             });
-            const sellerData = await sellerRes.json();
-            if (!sellerRes.ok) throw new Error(sellerData.error || 'Failed to create seller profile.');
+            if (!kycRes.ok) {
+                const kycErr = await kycRes.json().catch(() => ({}));
+                throw new Error(kycErr.error || 'Verification submission failed. Please try again.');
+            }
 
-            // Step 3: Save pick-up address
-            const addressRes = await fetch(`${apiUrl}/api/addresses`, {
-                method: 'POST',
-                headers: {
-                    'Content-Type': 'application/json',
-                    ...(token && { Authorization: `Bearer ${token}` }),
-                },
-                body: JSON.stringify({
-                    user_id: user.user_id,
-                    Line1: address.Line1,
-                    Line2: address.Line2 || null,
-                    household_blk_st: address.household_blk_st || null,
-                    Barangay: address.Barangay || null,
-                    municipality_city: address.municipality_city || null,
-                    zip_code: address.zip_code || null,
-                    region: address.region || null,
-                    province: address.province || null,
-                    address_type: 'pickup',
-                    is_default: true,
-                    Country: 'Philippines',
-                }),
-            });
-            const addressData = await addressRes.json();
-            if (!addressRes.ok) throw new Error(addressData.error || 'Failed to save address.');
-
-            setSetupComplete(true);
+            router.replace('/seller');
         } catch (err) {
             setSubmitError(err.message);
+        } finally {
+            setSubmitting(false);
         }
     };
 
@@ -559,7 +612,7 @@ function SetupPageInner() {
                 {step === 4 && (
                     <>
                         {submitError && <p style={{ color: 'red', padding: '0 2rem' }}>{submitError}</p>}
-                        <VerificationStep onVerify={handleSetupComplete} onBack={() => setStep(3)} />
+                        <VerificationStep onVerify={handleSetupComplete} onBack={isResubmit ? () => router.push('/seller') : () => setStep(3)} submitting={submitting} />
                     </>
                 )}
             </div>

@@ -63,6 +63,43 @@ const MapComponent = dynamic(() => import('@/components/map/MapComponent'), {
     loading: () => <div className={styles.loadingFallback}>Loading map...</div>
 });
 
+const STANDING_CFG = {
+    clean:      { label: 'Good Standing',        color: '#16a34a', bg: '#f0fdf4', border: '#bbf7d0', Icon: ShieldCheck },
+    warned:     { label: 'Strike 1 — Warned',    color: '#b45309', bg: '#fffbeb', border: '#fde68a', Icon: Shield },
+    restricted: { label: 'Strike 2 — Restricted',color: '#c2410c', bg: '#fff7ed', border: '#fed7aa', Icon: ShieldAlert },
+    suspended:  { label: 'Strike 3 — Suspended', color: '#b91c1c', bg: '#fef2f2', border: '#fecaca', Icon: ShieldX },
+};
+
+function StandingPill({ userId }) {
+    const apiUrl = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:5000';
+    const [cfg, setCfg] = useState(null);
+
+    useEffect(() => {
+        if (!userId) return;
+        fetch(`${apiUrl}/api/violations/user/${userId}/record`)
+            .then(r => r.ok ? r.json() : null)
+            .then(data => {
+                const status = data?.account_status || 'clean';
+                setCfg(STANDING_CFG[status] || STANDING_CFG.clean);
+            })
+            .catch(() => setCfg(STANDING_CFG.clean));
+    }, [userId]);
+
+    if (!cfg) return null;
+    const { Icon } = cfg;
+    return (
+        <div style={{
+            display: 'inline-flex', alignItems: 'center', gap: '5px',
+            background: cfg.bg, border: `1px solid ${cfg.border}`,
+            borderRadius: 20, padding: '3px 10px', marginTop: '6px',
+            fontSize: '0.72rem', fontWeight: 700, color: cfg.color,
+        }}>
+            <Icon size={12} color={cfg.color} />
+            {cfg.label}
+        </div>
+    );
+}
+
 function AccountContent() {
     const { user, logout, updateUser } = useAuth();
     const router = useRouter();
@@ -166,13 +203,14 @@ function AccountContent() {
     };
 
     const [sidebarName, setSidebarName] = useState('');
+    const [kycStatus, setKycStatus] = useState(null);
 
-    // Fetch the latest user name from the API so the sidebar is always up to date
+    // Fetch the latest user name and kyc_status from the API so the sidebar is always up to date
     useEffect(() => {
         if (!user?.user_id) return;
-        // Seed immediately from cached data
         const cached = [user.Fname, user.Mname, user.Lname].filter(Boolean).join(' ');
         if (cached) setSidebarName(cached);
+        if (user?.kyc_status) setKycStatus(user.kyc_status);
 
         const apiUrl = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:5000';
         const token = localStorage.getItem('bidpal_token');
@@ -184,6 +222,7 @@ function AccountContent() {
                 if (!data) return;
                 const name = [data.Fname, data.Mname, data.Lname].filter(Boolean).join(' ');
                 setSidebarName(name || data.email || '');
+                setKycStatus(data.kyc_status || null);
             })
             .catch(() => { });
     }, [user?.user_id]);
@@ -246,6 +285,23 @@ function AccountContent() {
                         </div>
                         <h2 className={styles.userName}>{getUserDisplayName()}</h2>
                         <p className={styles.userRole}>{getUserRole()} Member</p>
+                        <StandingPill userId={user?.user_id} />
+
+                        {isSeller && kycStatus === 'rejected' && (
+                            <div style={{ display: 'inline-flex', alignItems: 'center', gap: '6px', marginTop: '8px', background: '#fef2f2', border: '1px solid #fecaca', borderRadius: '20px', padding: '4px 12px', fontSize: '0.72rem', fontWeight: 700, color: '#b91c1c', cursor: 'pointer' }} onClick={() => router.push('/seller/setup')}>
+                                <ShieldX size={13} color="#b91c1c" /> Verification Rejected — Re-submit
+                            </div>
+                        )}
+                        {isSeller && kycStatus === 'pending' && (
+                            <div style={{ display: 'inline-flex', alignItems: 'center', gap: '6px', marginTop: '8px', background: '#fffbeb', border: '1px solid #fde68a', borderRadius: '20px', padding: '4px 12px', fontSize: '0.72rem', fontWeight: 700, color: '#b45309' }}>
+                                <Clock size={13} color="#b45309" /> Verification Pending
+                            </div>
+                        )}
+                        {isSeller && (kycStatus === 'approved' || kycStatus === null) && kycStatus === 'approved' && (
+                            <div style={{ display: 'inline-flex', alignItems: 'center', gap: '6px', marginTop: '8px', background: '#f0fdf4', border: '1px solid #bbf7d0', borderRadius: '20px', padding: '4px 12px', fontSize: '0.72rem', fontWeight: 700, color: '#15803d' }}>
+                                <ShieldCheck size={13} color="#15803d" /> Verified Seller
+                            </div>
+                        )}
                     </div>
 
                     <nav className={styles.nav}>
@@ -424,11 +480,104 @@ export default function AccountPage() {
 }
 
 function MerchantInsightsSection() {
+    const { user } = useAuth();
+    const apiUrl = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:5000';
+    const token = typeof window !== 'undefined' ? localStorage.getItem('bidpal_token') : null;
+
+    const [loading, setLoading] = useState(true);
+    const [stats, setStats] = useState({
+        revenue: 0, itemsSold: 0, followers: 0,
+        revenueByDay: Array(7).fill(0),
+        thisWeek: 0, prevWeek: 0,
+        thisMonthItems: 0, prevMonthItems: 0,
+    });
+
+    useEffect(() => {
+        if (!user?.user_id) return;
+        let cancelled = false;
+
+        const load = async () => {
+            try {
+                const headers = { ...(token && { Authorization: `Bearer ${token}` }) };
+
+                // Fetch seller profile (for seller_id)
+                const sellerRes = await fetch(`${apiUrl}/api/sellers/user/${user.user_id}`, { headers });
+                if (!sellerRes.ok) { setLoading(false); return; }
+                const sellerData = await sellerRes.json();
+                const seller_id = sellerData.seller_id;
+
+                // Fetch seller detail (for follower count + rating)
+                const detailRes = await fetch(`${apiUrl}/api/sellers/${seller_id}`, { headers });
+                const detail = detailRes.ok ? await detailRes.json() : null;
+                const followers = detail?.stats?.followerCount || 0;
+
+                // Fetch seller orders
+                const ordersRes = await fetch(`${apiUrl}/api/orders/seller/${seller_id}`, { headers });
+                const orders = ordersRes.ok ? await ordersRes.json() : [];
+
+                // Only count completed/delivered orders
+                const done = orders.filter(o =>
+                    o.status === 'completed' || o.status === 'delivered'
+                );
+
+                const now = new Date();
+                const msPerDay = 1000 * 60 * 60 * 24;
+
+                // Revenue by day — last 7 days (index 0 = 6 days ago, index 6 = today)
+                const revenueByDay = Array(7).fill(0);
+                let thisWeek = 0, prevWeek = 0;
+                let thisMonthItems = 0, prevMonthItems = 0;
+
+                done.forEach(o => {
+                    const amount = o.total || o.total_amount || 0;
+                    const date = new Date(o.placed_at || o.created_at);
+                    const daysAgo = Math.floor((now - date) / msPerDay);
+                    const monthsAgo = (now.getFullYear() - date.getFullYear()) * 12 + (now.getMonth() - date.getMonth());
+
+                    if (daysAgo >= 0 && daysAgo < 7) { revenueByDay[6 - daysAgo] += amount; thisWeek += amount; thisMonthItems++; }
+                    if (daysAgo >= 7 && daysAgo < 14) { prevWeek += amount; }
+                    if (monthsAgo === 0) thisMonthItems++;
+                    if (monthsAgo === 1) prevMonthItems++;
+                });
+
+                const totalRevenue = done.reduce((s, o) => s + (o.total || o.total_amount || 0), 0);
+
+                if (!cancelled) {
+                    setStats({ revenue: totalRevenue, itemsSold: done.length, followers, revenueByDay, thisWeek, prevWeek, thisMonthItems, prevMonthItems });
+                    setLoading(false);
+                }
+            } catch (err) {
+                console.error('Merchant insights error:', err);
+                if (!cancelled) setLoading(false);
+            }
+        };
+
+        load();
+        return () => { cancelled = true; };
+    }, [user?.user_id]);
+
+    const pct = (curr, prev) => {
+        if (prev === 0 && curr === 0) return { label: '0%', pos: true };
+        if (prev === 0) return { label: '+100%', pos: true };
+        const v = ((curr - prev) / prev * 100).toFixed(1);
+        return { label: `${v > 0 ? '+' : ''}${v}%`, pos: Number(v) >= 0 };
+    };
+
+    const revChange = pct(stats.thisWeek, stats.prevWeek);
+    const itemChange = pct(stats.thisMonthItems, stats.prevMonthItems);
+
     const kpis = [
-        { label: 'Total Revenue', value: '₱ 0', change: '0%', isPositive: true, icon: <DollarSign size={24} />, color: 'purple' },
-        { label: 'Items Sold', value: '0', change: '0%', isPositive: true, icon: <ShoppingBag size={24} />, color: 'blue' },
-        { label: 'Followers', value: '0', change: '0%', isPositive: true, icon: <Users size={24} />, color: 'orange' },
+        { label: 'Total Revenue', value: `₱${stats.revenue.toLocaleString('en-PH', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`, change: revChange.label, isPositive: revChange.pos, icon: <DollarSign size={24} />, color: 'purple' },
+        { label: 'Items Sold', value: stats.itemsSold.toLocaleString(), change: itemChange.label, isPositive: itemChange.pos, icon: <ShoppingBag size={24} />, color: 'blue' },
+        { label: 'Followers', value: stats.followers.toLocaleString(), change: '—', isPositive: true, icon: <Users size={24} />, color: 'orange' },
     ];
+
+    const maxBar = Math.max(...stats.revenueByDay, 1);
+    const dayLabels = Array.from({ length: 7 }, (_, i) => {
+        const d = new Date();
+        d.setDate(d.getDate() - (6 - i));
+        return ['S', 'M', 'T', 'W', 'T', 'F', 'S'][d.getDay()];
+    });
 
     return (
         <div className={styles.section}>
@@ -437,40 +586,53 @@ function MerchantInsightsSection() {
                 <p>Overview of your store performance and business growth.</p>
             </header>
 
-            <div className={styles.kpiGrid}>
-                {kpis.map((kpi, idx) => (
-                    <div key={idx} className={styles.kpiCard}>
-                        <div className={`${styles.iconBox} ${styles[kpi.color]}`}>
-                            {kpi.icon}
-                        </div>
-                        <div className={styles.kpiInfo}>
-                            <span className={styles.mLabel}>{kpi.label}</span>
-                            <h2 className={styles.mValue}>{kpi.value}</h2>
-                            <div className={`${styles.kpiChange} ${kpi.isPositive ? styles.positive : styles.negative}`}>
-                                {kpi.isPositive ? <ArrowUpRight size={14} /> : <ArrowDownRight size={14} />}
-                                <span>{kpi.change}</span>
+            {loading ? (
+                <div style={{ textAlign: 'center', padding: '60px 0', color: '#888' }}>Loading insights…</div>
+            ) : (
+                <>
+                    <div className={styles.kpiGrid}>
+                        {kpis.map((kpi, idx) => (
+                            <div key={idx} className={styles.kpiCard}>
+                                <div className={`${styles.iconBox} ${styles[kpi.color]}`}>
+                                    {kpi.icon}
+                                </div>
+                                <div className={styles.kpiInfo}>
+                                    <span className={styles.mLabel}>{kpi.label}</span>
+                                    <h2 className={styles.mValue}>{kpi.value}</h2>
+                                    <div className={`${styles.kpiChange} ${kpi.isPositive ? styles.positive : styles.negative}`}>
+                                        {kpi.change !== '—' && (kpi.isPositive ? <ArrowUpRight size={14} /> : <ArrowDownRight size={14} />)}
+                                        <span>{kpi.change}</span>
+                                    </div>
+                                </div>
                             </div>
+                        ))}
+                    </div>
+
+                    <div className={styles.chartMock}>
+                        <h3>Revenue Growth <span style={{ fontSize: '0.75rem', fontWeight: 400, color: '#888' }}>— last 7 days</span></h3>
+                        <div className={styles.barChart}>
+                            {stats.revenueByDay.map((amount, i) => (
+                                <div key={i} className={styles.barWrapper} title={`₱${amount.toLocaleString('en-PH', { minimumFractionDigits: 2 })}`}>
+                                    <div className={styles.bar} style={{ height: `${Math.max((amount / maxBar) * 100, amount > 0 ? 8 : 4)}%`, background: amount > 0 ? 'var(--accent-primary, #cc2b41)' : undefined }}></div>
+                                    <span className={styles.barLabel}>{dayLabels[i]}</span>
+                                </div>
+                            ))}
                         </div>
                     </div>
-                ))}
-            </div>
 
-            <div className={styles.chartMock}>
-                <h3>Revenue Growth</h3>
-                <div className={styles.barChart}>
-                    {[0, 0, 0, 0, 0, 0, 0].map((h, i) => (
-                        <div key={i} className={styles.barWrapper}>
-                            <div className={styles.bar} style={{ height: `10%` }}></div>
-                            <span className={styles.barLabel}>{['M', 'T', 'W', 'T', 'F', 'S', 'S'][i]}</span>
+                    {stats.itemsSold === 0 ? (
+                        <div className={styles.insightAlert}>
+                            <Zap size={20} fill="#FBC02D" color="#FBC02D" />
+                            <p>No completed orders yet. List your first product to start selling!</p>
                         </div>
-                    ))}
-                </div>
-            </div>
-
-            <div className={styles.insightAlert}>
-                <Zap size={20} fill="#FBC02D" color="#FBC02D" />
-                <p>Your store engagement is up <strong>15%</strong> this week. Keep going!</p>
-            </div>
+                    ) : (
+                        <div className={styles.insightAlert}>
+                            <Zap size={20} fill="#FBC02D" color="#FBC02D" />
+                            <p>You've sold <strong>{stats.itemsSold}</strong> item{stats.itemsSold !== 1 ? 's' : ''} with total revenue of <strong>₱{stats.revenue.toLocaleString('en-PH', { minimumFractionDigits: 2 })}</strong>. Keep it up!</p>
+                        </div>
+                    )}
+                </>
+            )}
         </div>
     );
 }
@@ -633,35 +795,66 @@ function StoreProfileSection() {
 }
 
 
+function getAge(isoDate) {
+    if (!isoDate) return 0;
+    const today = new Date();
+    const dob = new Date(isoDate);
+    let age = today.getFullYear() - dob.getFullYear();
+    const m = today.getMonth() - dob.getMonth();
+    if (m < 0 || (m === 0 && today.getDate() < dob.getDate())) age--;
+    return age;
+}
+
+function getMaxDate(minAge) {
+    const d = new Date();
+    d.setFullYear(d.getFullYear() - minAge);
+    return d.toISOString().split('T')[0];
+}
+
+function toISODate(raw) {
+    if (!raw) return '';
+    if (raw.includes('T')) return raw.split('T')[0];
+    if (/^\d{4}-\d{2}-\d{2}$/.test(raw)) return raw;
+    // MM/DD/YYYY legacy format
+    const [m, d, y] = raw.split('/');
+    if (!m || !d || !y || y.length < 4) return '';
+    return `${y}-${m.padStart(2, '0')}-${d.padStart(2, '0')}`;
+}
+
 function ProfileSection() {
-    const { user } = useAuth();
+    const { user, updateUser } = useAuth();
     const [firstName, setFirstName] = useState('');
     const [middleName, setMiddleName] = useState('');
     const [lastName, setLastName] = useState('');
     const [email, setEmail] = useState('');
     const [phone, setPhone] = useState('');
-    const [birthday, setBirthday] = useState('');
-    const birthdayPickerRef = useRef(null);
+    const [birthday, setBirthday] = useState(''); // YYYY-MM-DD
     const [gender, setGender] = useState('');
     const [bio, setBio] = useState('');
     const [loading, setLoading] = useState(false);
     const [message, setMessage] = useState('');
+    const initRef = useRef(null);
 
     const apiUrl = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:5000';
 
+    const seedForm = (data) => {
+        const bday = toISODate(data.Birthday || '');
+        setFirstName(data.Fname || '');
+        setMiddleName(data.Mname || '');
+        setLastName(data.Lname || '');
+        setEmail(data.email || '');
+        setPhone(data.contact_num || '');
+        setBirthday(bday);
+        setGender(data.Gender || '');
+        setBio(data.Bio || '');
+        return { firstName: data.Fname || '', middleName: data.Mname || '', lastName: data.Lname || '', phone: data.contact_num || '', birthday: bday, gender: data.Gender || '', bio: data.Bio || '' };
+    };
+
     useEffect(() => {
         if (!user?.user_id) return;
-        // Seed form from cached user data immediately
-        setFirstName(user.Fname || '');
-        setMiddleName(user.Mname || '');
-        setLastName(user.Lname || '');
-        setEmail(user.email || '');
-        setPhone(user.contact_num || '');
-        setBirthday(user.Birthday ? toDisplayBirthday(user.Birthday.split('T')[0]) : '');
-        setGender(user.Gender || '');
-        setBio(user.Bio || '');
+        const init = seedForm(user);
+        initRef.current = init;
 
-        // Then refresh from the API to get the latest values
         const token = localStorage.getItem('bidpal_token');
         fetch(`${apiUrl}/api/users/${user.user_id}`, {
             headers: { ...(token && { Authorization: `Bearer ${token}` }) },
@@ -669,40 +862,31 @@ function ProfileSection() {
             .then(r => r.ok ? r.json() : null)
             .then(data => {
                 if (!data) return;
-                setFirstName(data.Fname || '');
-                setMiddleName(data.Mname || '');
-                setLastName(data.Lname || '');
-                setEmail(data.email || '');
-                setPhone(data.contact_num || '');
-                setBirthday(data.Birthday ? toDisplayBirthday(data.Birthday.split('T')[0]) : '');
-                setGender(data.Gender || '');
-                setBio(data.Bio || '');
+                const init2 = seedForm(data);
+                initRef.current = init2;
             })
             .catch(() => { });
     }, [user?.user_id]);
 
-    const toDisplayBirthday = (iso) => {
-        if (!iso) return '';
-        const [y, m, d] = iso.split('-');
-        return `${m}/${d}/${y}`;
-    };
+    const hasChanges = (() => {
+        const init = initRef.current;
+        if (!init) return false;
+        return (
+            firstName !== init.firstName ||
+            middleName !== init.middleName ||
+            lastName !== init.lastName ||
+            phone !== init.phone ||
+            birthday !== init.birthday ||
+            gender !== init.gender ||
+            bio !== init.bio
+        );
+    })();
 
-    const toISOBirthday = (display) => {
-        if (!display) return '';
-        const [m, d, y] = display.split('/');
-        if (!m || !d || !y || y.length < 4) return '';
-        return `${y}-${m.padStart(2, '0')}-${d.padStart(2, '0')}`;
-    };
-
-    const handleBirthdayChange = (e) => {
-        let val = e.target.value.replace(/\D/g, '');
-        if (val.length > 2) val = val.slice(0, 2) + '/' + val.slice(2);
-        if (val.length > 5) val = val.slice(0, 5) + '/' + val.slice(5);
-        setBirthday(val.slice(0, 10));
-    };
+    const ageErr = birthday ? getAge(birthday) < 18 : false;
+    const canSave = hasChanges && !ageErr && firstName.trim() && lastName.trim() && !loading;
 
     const handleSaveProfile = async () => {
-        if (!user) return;
+        if (!user || !canSave) return;
         setLoading(true);
         setMessage('');
         try {
@@ -718,15 +902,17 @@ function ProfileSection() {
                     Mname: middleName,
                     Lname: lastName,
                     contact_num: phone,
-                    Birthday: birthday ? toISOBirthday(birthday) : null,
+                    Birthday: birthday || null,
                     Gender: gender || null,
                     Bio: bio || null,
                 }),
             });
             const data = await res.json();
             if (!res.ok) throw new Error(data.error || 'Error updating profile.');
-            const updatedUser = { ...user, Fname: firstName, Mname: middleName, Lname: lastName, contact_num: phone, Birthday: birthday, Gender: gender, Bio: bio };
-            localStorage.setItem('bidpal_user', JSON.stringify(updatedUser));
+
+            updateUser({ Fname: firstName, Mname: middleName, Lname: lastName, contact_num: phone, Birthday: birthday, Gender: gender, Bio: bio });
+            initRef.current = { firstName, middleName, lastName, phone, birthday, gender, bio };
+
             setMessage({ type: 'success', text: '✓ Profile updated successfully!' });
             setTimeout(() => setMessage(''), 5000);
         } catch (err) {
@@ -753,7 +939,7 @@ function ProfileSection() {
                 {/* Name row — 3 columns */}
                 <div className={styles.formGrid3}>
                     <div className={styles.formGroup}>
-                        <label>First Name</label>
+                        <label>First Name <span style={{ color: '#cc2b41' }}>*</span></label>
                         <input type="text" value={firstName} onChange={e => setFirstName(e.target.value.replace(/[^a-zA-ZÀ-ÖØ-öø-ÿ\s\-]/g, ''))} placeholder="Juan" />
                     </div>
                     <div className={styles.formGroup}>
@@ -761,7 +947,7 @@ function ProfileSection() {
                         <input type="text" value={middleName} onChange={e => setMiddleName(e.target.value.replace(/[^a-zA-ZÀ-ÖØ-öø-ÿ\s\-]/g, ''))} placeholder="Santos" />
                     </div>
                     <div className={styles.formGroup}>
-                        <label>Last Name</label>
+                        <label>Last Name <span style={{ color: '#cc2b41' }}>*</span></label>
                         <input type="text" value={lastName} onChange={e => setLastName(e.target.value.replace(/[^a-zA-ZÀ-ÖØ-öø-ÿ\s\-]/g, ''))} placeholder="Dela Cruz" />
                     </div>
                 </div>
@@ -798,29 +984,19 @@ function ProfileSection() {
                 {/* Birthday + Gender row */}
                 <div className={styles.formGrid2}>
                     <div className={styles.formGroup}>
-                        <label><Calendar size={14} style={{ display: 'inline', marginRight: 5 }} />Birthday</label>
-                        <div className={styles.dateWrapper}>
-                            <input
-                                type="text"
-                                placeholder="mm/dd/yyyy"
-                                value={birthday}
-                                maxLength={10}
-                                onChange={handleBirthdayChange}
-                            />
-                            <button
-                                type="button"
-                                className={styles.calendarBtn}
-                                onClick={() => birthdayPickerRef.current?.showPicker()}
-                            >
-                                <Calendar size={16} />
-                            </button>
-                            <input
-                                ref={birthdayPickerRef}
-                                type="date"
-                                max={new Date().toISOString().split('T')[0]}
-                                onChange={e => setBirthday(toDisplayBirthday(e.target.value))}
-                            />
-                        </div>
+                        <label>Birthday</label>
+                        <input
+                            type="date"
+                            value={birthday}
+                            max={getMaxDate(18)}
+                            onChange={e => setBirthday(e.target.value)}
+                            style={ageErr ? { borderColor: '#cc2b41', background: '#fff8f8' } : {}}
+                        />
+                        {ageErr && (
+                            <span style={{ fontSize: '0.78rem', color: '#cc2b41', fontWeight: 600, marginTop: '-2px' }}>
+                                You must be at least 18 years old.
+                            </span>
+                        )}
                     </div>
                     <div className={styles.formGroup}>
                         <label>Gender</label>
@@ -849,9 +1025,22 @@ function ProfileSection() {
                     />
                 </div>
 
-                <button className={styles.primaryBtn} onClick={handleSaveProfile} disabled={loading}>
-                    {loading ? 'Saving...' : 'Save Changes'}
-                </button>
+                <div style={{ display: 'flex', alignItems: 'center', gap: '14px', marginTop: '0.5rem' }}>
+                    <button
+                        className={styles.primaryBtn}
+                        onClick={handleSaveProfile}
+                        disabled={!canSave}
+                        style={{ flex: 1, marginTop: 0 }}
+                    >
+                        {loading ? 'Saving…' : 'Save Changes'}
+                    </button>
+                    {!hasChanges && !loading && (
+                        <span style={{ fontSize: '0.78rem', color: '#9ca3af', whiteSpace: 'nowrap' }}>No changes yet</span>
+                    )}
+                    {hasChanges && ageErr && (
+                        <span style={{ fontSize: '0.78rem', color: '#cc2b41', fontWeight: 600, whiteSpace: 'nowrap' }}>Fix errors above</span>
+                    )}
+                </div>
             </div>
         </div>
     );

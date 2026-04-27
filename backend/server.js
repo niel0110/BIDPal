@@ -179,6 +179,7 @@ import violationsRoutes from './routes/violationsRoutes.js'
 import reviewsRoutes from './routes/reviewsRoutes.js'
 import imageModerationRoutes from './routes/imageModerationRoutes.js'
 import adminRoutes from './routes/adminRoutes.js'
+import disputesRoutes from './routes/disputesRoutes.js'
 
 app.get('/', (req, res) => {
   res.json({ message: 'Backend running' })
@@ -207,6 +208,7 @@ app.use('/api/violations', violationsRoutes)
 app.use('/api/reviews', reviewsRoutes)
 app.use('/api/image-moderation', imageModerationRoutes)
 app.use('/api/admin', adminRoutes)
+app.use('/api/disputes', disputesRoutes)
 
 httpServer.listen(process.env.PORT, '0.0.0.0', () => {
   console.log(`Server running on port ${process.env.PORT}`)

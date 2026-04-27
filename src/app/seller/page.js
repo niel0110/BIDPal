@@ -23,15 +23,19 @@ import {
     Video,
     Mic,
     MicOff,
-    VideoOff
+    VideoOff,
+    ShieldX,
+    AlertTriangle,
+    Trash2,
 } from 'lucide-react';
+import Logo from '@/components/Logo';
 import styles from './page.module.css';
 
 // Dynamically import Agora to avoid SSR issues
 let AgoraRTC = null;
 
 export default function SellerDashboard() {
-    const { user } = useAuth();
+    const { user, logout } = useAuth();
     const router = useRouter();
     const [isLive, setIsLive] = useState(false);
     const [messageInput, setMessageInput] = useState('');
@@ -55,6 +59,15 @@ export default function SellerDashboard() {
     const [mobileTab, setMobileTab] = useState('live');
     const [showSetupModal, setShowSetupModal] = useState(false);
     const [setupPermissions, setSetupPermissions] = useState({ cam: 'pending', mic: 'pending' });
+    const [kycStatus, setKycStatus] = useState(null);
+    const [kycLoading, setKycLoading] = useState(true);
+    const [kycToast, setKycToast] = useState(null);
+    const [deletedAt, setDeletedAt] = useState(null);
+    const [showCancelConfirm, setShowCancelConfirm] = useState(false);
+    const [cancelling, setCancelling] = useState(false);
+    const kycStatusRef = useRef(null);
+    const kycLoadedRef = useRef(false);
+    const kycNotifRef = useRef(null); // tracks notification_id currently shown (prevents duplicate toasts)
 
     // Agora refs
     const agoraClientRef = useRef(null);
@@ -65,11 +78,73 @@ export default function SellerDashboard() {
     const setupVideoRef = useRef(null);
     const chatScrollRef = useRef(null);
 
+    // Fetch fresh kyc_status and poll every 30s to detect admin decisions in real-time
+    useEffect(() => {
+        if (!user?.user_id) return;
+        const apiUrl = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:5000';
+
+        const checkKyc = async () => {
+            try {
+                const token = localStorage.getItem('bidpal_token');
+                const authHeader = token ? { Authorization: `Bearer ${token}` } : {};
+
+                const res = await fetch(`${apiUrl}/api/users/${user.user_id}`, { headers: authHeader });
+                if (!res.ok) return;
+                const data = await res.json();
+                const newStatus = data.kyc_status ?? null;
+                if (data.deleted_at) setDeletedAt(data.deleted_at);
+
+                kycStatusRef.current = newStatus;
+                setKycStatus(newStatus);
+
+                // Check Supabase for an unread KYC decision notification (replaces localStorage tracking)
+                const notifRes = await fetch(`${apiUrl}/api/notifications`, { headers: authHeader }).catch(() => null);
+                if (notifRes?.ok) {
+                    const notifs = await notifRes.json().catch(() => []);
+                    const now = new Date().toISOString();
+                    const kycNotif = Array.isArray(notifs) ? notifs.find(n =>
+                        n.type === 'system' &&
+                        n.read_at > now &&
+                        (n.payload?.title?.includes('Verification Approved') || n.payload?.title?.includes('Verification Rejected'))
+                    ) : null;
+
+                    if (kycNotif && kycNotifRef.current !== kycNotif.notification_id) {
+                        kycNotifRef.current = kycNotif.notification_id;
+                        const isApproved = kycNotif.payload?.title?.includes('Approved');
+                        setKycToast({ status: isApproved ? 'approved' : 'rejected', notification_id: kycNotif.notification_id });
+                    }
+                }
+            } catch {}  finally {
+                if (!kycLoadedRef.current) {
+                    kycLoadedRef.current = true;
+                    setKycLoading(false);
+                }
+            }
+        };
+
+        checkKyc();
+        const interval = setInterval(checkKyc, 30000);
+        return () => clearInterval(interval);
+    }, [user?.user_id]);
+
+    const dismissKycToast = async () => {
+        if (kycToast?.notification_id) {
+            const apiUrl = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:5000';
+            const token = localStorage.getItem('bidpal_token');
+            await fetch(`${apiUrl}/api/notifications/${kycToast.notification_id}/read`, {
+                method: 'PATCH',
+                headers: { Authorization: `Bearer ${token}` },
+            }).catch(() => {});
+        }
+        setKycToast(null);
+    };
+
     const fetchDashboardData = useCallback(async () => {
         if (!user) {
             router.push('/');
             return;
         }
+        if (kycStatusRef.current === 'rejected' || kycStatusRef.current === 'cancelled') return;
         try {
             const apiUrl = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:5000';
             const token = localStorage.getItem('bidpal_token');
@@ -125,6 +200,7 @@ export default function SellerDashboard() {
     // Fetch latest conversation messages for Engagement panel
     const fetchLatestMessages = useCallback(async () => {
         if (!user) return;
+        if (kycStatusRef.current === 'rejected' || kycStatusRef.current === 'cancelled') return;
         try {
             const apiUrl = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:5000';
             const token = localStorage.getItem('bidpal_token');
@@ -760,8 +836,447 @@ export default function SellerDashboard() {
         }
     };
 
+    const handleCancelAccount = async () => {
+        if (!user?.user_id) return;
+        setCancelling(true);
+        try {
+            const apiUrl = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:5000';
+            const token = localStorage.getItem('bidpal_token');
+            const res = await fetch(`${apiUrl}/api/users/${user.user_id}/cancel-account`, {
+                method: 'POST',
+                headers: { ...(token && { Authorization: `Bearer ${token}` }) },
+            });
+            const data = await res.json();
+            if (data.deletion_date) setDeletedAt(data.deletion_date);
+            setKycStatus('cancelled');
+            setShowCancelConfirm(false);
+            logout();
+        } catch {
+            alert('Something went wrong. Please try again.');
+        } finally {
+            setCancelling(false);
+        }
+    };
+
+    // ── Shared KYC page styles ─────────────────────────────────────────────────
+    const kycStyles = `
+        .kycWrap {
+            position: fixed;
+            inset: 0;
+            z-index: 9000;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            padding: 1.25rem 1rem;
+            overflow-y: auto;
+        }
+        .kycWrap--red {
+            background: linear-gradient(160deg, #fff0f0 0%, #fff5f5 50%, #fffafa 100%);
+        }
+        .kycWrap--gray {
+            background: linear-gradient(160deg, #f0f4ff 0%, #f8fafc 60%, #ffffff 100%);
+        }
+        /* Decorative blobs */
+        .kycBlob1, .kycBlob2 {
+            position: absolute;
+            border-radius: 50%;
+            filter: blur(60px);
+            opacity: 0.35;
+            pointer-events: none;
+        }
+        .kycWrap--red .kycBlob1 { width: 260px; height: 260px; background: #fca5a5; top: -80px; right: -80px; }
+        .kycWrap--red .kycBlob2 { width: 180px; height: 180px; background: #fda4af; bottom: -60px; left: -60px; }
+        .kycWrap--gray .kycBlob1 { width: 260px; height: 260px; background: #c7d2fe; top: -80px; right: -80px; }
+        .kycWrap--gray .kycBlob2 { width: 180px; height: 180px; background: #e0e7ff; bottom: -60px; left: -60px; }
+
+        .kycCard {
+            position: relative;
+            width: 100%;
+            max-width: 420px;
+            margin: auto;
+            background: white;
+            border-radius: 24px;
+            padding: 0;
+            text-align: center;
+            box-shadow: 0 8px 40px rgba(0,0,0,0.10), 0 1px 3px rgba(0,0,0,0.06);
+            overflow: hidden;
+        }
+        .kycCardAccent {
+            height: 5px;
+            width: 100%;
+        }
+        .kycCardAccent--red { background: linear-gradient(90deg, #cc2b41, #f87171, #cc2b41); }
+        .kycCardAccent--gray { background: linear-gradient(90deg, #6366f1, #818cf8, #6366f1); }
+        .kycCardBody { padding: 1.5rem 1.75rem 1.75rem; }
+
+        .kycLogoWrap {
+            display: flex;
+            justify-content: center;
+            margin-bottom: 0.875rem;
+        }
+        .kycDivider {
+            width: 40px; height: 2px;
+            background: #f1f5f9;
+            border-radius: 2px;
+            margin: 0 auto 0.875rem;
+        }
+        .kycIconRing {
+            width: 64px; height: 64px;
+            border-radius: 50%;
+            display: flex; align-items: center; justify-content: center;
+            margin: 0 auto 0.875rem;
+        }
+        .kycIconRing--red {
+            background: linear-gradient(135deg, #fef2f2, #ffe4e6);
+            box-shadow: 0 0 0 8px rgba(204,43,65,0.06);
+        }
+        .kycIconRing--gray {
+            background: linear-gradient(135deg, #eef2ff, #e0e7ff);
+            box-shadow: 0 0 0 8px rgba(99,102,241,0.06);
+        }
+
+        .kycTitle {
+            font-weight: 800;
+            font-size: 1.25rem;
+            line-height: 1.25;
+            margin-bottom: 0.5rem;
+        }
+        .kycTitle--red { color: #be123c; }
+        .kycTitle--dark { color: #1e293b; }
+
+        .kycSubtitle {
+            color: #64748b;
+            font-size: 0.82rem;
+            line-height: 1.6;
+            margin-bottom: 0.375rem;
+        }
+        .kycInfoBox {
+            background: #fff8f8;
+            border: 1px solid #fecdd3;
+            border-radius: 12px;
+            padding: 0.75rem 0.875rem;
+            margin: 0.75rem 0 1.25rem;
+            font-size: 0.82rem;
+            color: #9f1239;
+            line-height: 1.6;
+            text-align: left;
+            display: flex;
+            gap: 0.625rem;
+            align-items: flex-start;
+        }
+        .kycInfoBox--gray {
+            background: #f8fafc;
+            border-color: #e2e8f0;
+            color: #475569;
+        }
+        .kycInfoDot {
+            width: 6px; height: 6px; border-radius: 50%;
+            background: #cc2b41; flex-shrink: 0; margin-top: 5px;
+        }
+        .kycInfoDot--gray { background: #6366f1; }
+
+        .kycActions { display: flex; flex-direction: column; gap: 0.625rem; }
+        .kycBtn {
+            width: 100%; border: none; border-radius: 12px;
+            padding: 0.75rem 1rem; font-weight: 700;
+            font-size: 0.88rem; cursor: pointer;
+            transition: transform 0.1s, opacity 0.15s;
+            letter-spacing: 0.01em;
+        }
+        .kycBtn:active { transform: scale(0.98); }
+        .kycBtn:disabled { opacity: 0.6; cursor: not-allowed; }
+        .kycBtn--primary {
+            background: linear-gradient(135deg, #cc2b41, #e8455a);
+            color: white;
+            box-shadow: 0 4px 14px rgba(204,43,65,0.35);
+        }
+        .kycBtn--ghost {
+            background: transparent; color: #94a3b8;
+            border: 1.5px solid #e2e8f0; font-weight: 600;
+            font-size: 0.83rem;
+        }
+        .kycBtn--muted { background: #f1f5f9; color: #475569; font-weight: 600; }
+
+        /* Bottom sheet */
+        .kycOverlay {
+            position: fixed; inset: 0;
+            background: rgba(15,23,42,0.6);
+            z-index: 9999;
+            display: flex; align-items: flex-end; justify-content: center;
+            backdrop-filter: blur(2px);
+        }
+        .kycSheet {
+            background: white; width: 100%; max-width: 480px;
+            border-radius: 24px 24px 0 0;
+            padding: 1.5rem 1.5rem 2.5rem;
+            text-align: center;
+            box-shadow: 0 -4px 32px rgba(0,0,0,0.14);
+            animation: slideUp 0.25s ease;
+        }
+        @keyframes slideUp { from { transform: translateY(100%); } to { transform: translateY(0); } }
+        .kycSheetHandle { width: 36px; height: 4px; background: #e2e8f0; border-radius: 2px; margin: 0 auto 1.25rem; }
+        .kycSheetIcon { width: 56px; height: 56px; border-radius: 50%; background: #fff7ed; display: flex; align-items: center; justify-content: center; margin: 0 auto 0.875rem; }
+        .kycSheetTitle { font-weight: 800; font-size: 1.1rem; color: #1e293b; margin-bottom: 0.5rem; }
+        .kycSheetBody { color: #64748b; font-size: 0.82rem; line-height: 1.75; margin-bottom: 1.25rem; }
+        .kycSheetWarning { background: #fff7ed; border: 1px solid #fed7aa; border-radius: 10px; padding: 0.75rem 0.875rem; font-size: 0.78rem; color: #c2410c; line-height: 1.6; margin-bottom: 1.5rem; text-align: left; }
+        .kycSheetActions { display: flex; gap: 0.625rem; }
+        .kycSheetActions .kycBtn { font-size: 0.85rem; padding: 0.8rem; }
+
+        @media (max-width: 480px) {
+            .kycCard { border-radius: 20px; }
+            .kycCardBody { padding: 1.25rem 1.25rem 1.5rem; }
+            .kycTitle { font-size: 1.15rem; }
+        }
+        @media (max-width: 360px) {
+            .kycCardBody { padding: 1rem 1rem 1.25rem; }
+            .kycBtn { font-size: 0.83rem; padding: 0.7rem; }
+            .kycSheetActions { flex-direction: column; }
+            .kycSheet { padding: 1.25rem 1rem 2rem; }
+            .kycLogoWrap { margin-bottom: 0.625rem; }
+            .kycDivider { margin-bottom: 0.625rem; }
+            .kycIconRing { width: 56px; height: 56px; margin-bottom: 0.625rem; }
+            .kycInfoBox { margin: 0.5rem 0 1rem; padding: 0.625rem 0.75rem; }
+        }
+        @media (max-width: 320px) {
+            .kycTitle { font-size: 1.05rem; }
+            .kycSubtitle { font-size: 0.78rem; }
+            .kycCardBody { padding: 0.875rem 0.875rem 1rem; }
+            .kycIconRing { width: 50px; height: 50px; }
+        }
+        @media (max-height: 620px) {
+            .kycCardBody { padding: 1rem 1.5rem 1.25rem; }
+            .kycLogoWrap { margin-bottom: 0.5rem; }
+            .kycDivider { margin-bottom: 0.5rem; }
+            .kycIconRing { width: 54px; height: 54px; margin-bottom: 0.5rem; }
+            .kycInfoBox { margin: 0.5rem 0 0.875rem; padding: 0.625rem 0.75rem; }
+            .kycBtn { padding: 0.65rem 1rem; }
+        }
+    `;
+
+    // ── Wait for first KYC check before rendering anything ────────────────────
+    if (kycLoading) {
+        return (
+            <div style={{ position: 'fixed', inset: 0, display: 'flex', alignItems: 'center', justifyContent: 'center', background: '#fff', zIndex: 9999 }}>
+                <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: '1rem' }}>
+                    <div style={{ width: 48, height: 48, border: '4px solid #f3f3f3', borderTop: '4px solid #e53e3e', borderRadius: '50%', animation: 'spin 0.8s linear infinite' }} />
+                    <style>{`@keyframes spin { to { transform: rotate(360deg); } }`}</style>
+                    <p style={{ fontSize: '0.875rem', color: '#888', margin: 0 }}>Checking your account…</p>
+                </div>
+            </div>
+        );
+    }
+
+    // ── Blocking page: verification pending ───────────────────────────────────
+    if (kycStatus === 'pending') {
+        return (
+            <>
+                <style>{kycStyles}</style>
+                <div className="kycWrap kycWrap--gray">
+                    <div className="kycBlob1" /><div className="kycBlob2" />
+                    <div className="kycCard" style={{ margin: 'auto' }}>
+                        <div className="kycCardBody">
+                            <div className="kycLogoWrap"><Logo /></div>
+                            <div className="kycDivider" />
+                            <div className="kycIconRing kycIconRing--gray">
+                                <span style={{ fontSize: '2rem' }}>⏳</span>
+                            </div>
+                            <h1 className="kycTitle">Verification<br />Under Review</h1>
+                            <p className="kycSubtitle">Our admin team is reviewing your submitted ID. This usually takes 1–2 business days.</p>
+                            <div className="kycInfoBox">
+                                <div className="kycInfoDot" style={{ marginTop: '6px', background: '#6366f1' }} />
+                                <span>You will be notified once your identity has been <strong>verified</strong>. You can re-submit if your ID was unclear.</span>
+                            </div>
+                            <div className="kycActions">
+                                <button className="kycBtn kycBtn--primary" style={{ background: 'linear-gradient(135deg,#6366f1,#818cf8)' }} onClick={() => router.push('/seller/setup?resubmit=1')}>
+                                    Re-submit ID →
+                                </button>
+                                <button className="kycBtn kycBtn--ghost" onClick={() => logout()}>
+                                    Sign Out
+                                </button>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </>
+        );
+    }
+
+    // ── Blocking page: verification rejected ──────────────────────────────────
+    if (kycStatus === 'rejected') {
+        return (
+            <>
+                <style>{kycStyles}</style>
+                <div className="kycWrap kycWrap--red">
+                    <div className="kycBlob1" /><div className="kycBlob2" />
+                    <div className="kycCard">
+                        <div className="kycCardBody">
+                            <div className="kycLogoWrap"><Logo /></div>
+                            <div className="kycDivider" />
+                            <div className="kycIconRing kycIconRing--red">
+                                <ShieldX size={34} color="#cc2b41" strokeWidth={1.75} />
+                            </div>
+                            <h1 className="kycTitle kycTitle--red">Verification<br />Rejected</h1>
+                            <p className="kycSubtitle">Your submitted ID was not accepted by our admin team.</p>
+                            <div className="kycInfoBox">
+                                <div className="kycInfoDot" style={{ marginTop: '6px' }} />
+                                <span>To <strong>go live and sell</strong> on BIDPal, re-submit a clear, valid Philippine government-issued ID for review.</span>
+                            </div>
+                            <div className="kycActions">
+                                <button className="kycBtn kycBtn--primary" onClick={() => router.push('/seller/setup?resubmit=1')}>
+                                    Re-submit Verification →
+                                </button>
+                                <button className="kycBtn kycBtn--ghost" onClick={() => setShowCancelConfirm(true)}>
+                                    Cancel my account
+                                </button>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                {/* Cancellation bottom-sheet */}
+                {showCancelConfirm && (
+                    <div className="kycOverlay" onClick={() => setShowCancelConfirm(false)}>
+                        <div className="kycSheet" onClick={e => e.stopPropagation()}>
+                            <div className="kycSheetHandle" />
+                            <div className="kycSheetIcon">
+                                <AlertTriangle size={26} color="#ea580c" strokeWidth={2} />
+                            </div>
+                            <h2 className="kycSheetTitle">Cancel your account?</h2>
+                            <p className="kycSheetBody">
+                                You are about to cancel your BIDPal seller account. Here's what will happen:
+                            </p>
+                            <div className="kycSheetWarning">
+                                🗓 Your account and all data will be <strong>permanently deleted within 30 days</strong>.<br />
+                                🔒 You'll be logged out immediately.<br />
+                                ❌ This action <strong>cannot be undone</strong>.
+                            </div>
+                            <div className="kycSheetActions">
+                                <button className="kycBtn kycBtn--muted" onClick={() => setShowCancelConfirm(false)}>Go Back</button>
+                                <button className="kycBtn kycBtn--primary" onClick={handleCancelAccount} disabled={cancelling} style={{ background: 'linear-gradient(135deg,#be123c,#e11d48)' }}>
+                                    {cancelling ? 'Processing…' : 'Yes, Cancel'}
+                                </button>
+                            </div>
+                        </div>
+                    </div>
+                )}
+            </>
+        );
+    }
+
+    // ── Blocking page: account cancelled / scheduled for deletion ─────────────
+    if (kycStatus === 'cancelled') {
+        const deletionDateStr = deletedAt
+            ? new Date(deletedAt).toLocaleDateString('en-US', { month: 'long', day: 'numeric', year: 'numeric' })
+            : '30 days from now';
+        return (
+            <>
+                <style>{kycStyles}</style>
+                <div className="kycWrap kycWrap--gray">
+                    <div className="kycBlob1" /><div className="kycBlob2" />
+                    <div className="kycCard">
+                        <div className="kycCardBody">
+                            <div className="kycLogoWrap"><Logo /></div>
+                            <div className="kycDivider" />
+                            <div className="kycIconRing kycIconRing--gray">
+                                <Trash2 size={32} color="#6366f1" strokeWidth={1.75} />
+                            </div>
+                            <h1 className="kycTitle kycTitle--dark">Account Scheduled<br />for Deletion</h1>
+                            <p className="kycSubtitle">Your cancellation has been processed.</p>
+                            <div className="kycInfoBox kycInfoBox--gray">
+                                <div className="kycInfoDot kycInfoDot--gray" style={{ marginTop: '6px' }} />
+                                <span>Your account and all data will be permanently deleted on <strong>{deletionDateStr}</strong>. You cannot access BIDPal during this period.</span>
+                            </div>
+                            <p className="kycSubtitle" style={{ marginBottom: '1.5rem' }}>
+                                Think this is a mistake? Contact us at<br /><strong style={{ color: '#475569' }}>support@bidpal.ph</strong> before the deletion date.
+                            </p>
+                            <button className="kycBtn kycBtn--muted" onClick={logout}>Log Out</button>
+                        </div>
+                    </div>
+                </div>
+            </>
+        );
+    }
+
     return (
         <>
+            {/* KYC decision modal */}
+            {kycToast && (
+                <div style={{ position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.65)', backdropFilter: 'blur(6px)', zIndex: 9999, display: 'flex', alignItems: 'center', justifyContent: 'center', padding: '1rem' }}>
+                    <div style={{ background: 'white', borderRadius: '24px', width: '100%', maxWidth: '380px', overflow: 'hidden', boxShadow: '0 32px 80px rgba(0,0,0,0.35)' }}>
+                        {/* Gradient header */}
+                        <div style={{
+                            background: kycToast.status === 'approved'
+                                ? 'linear-gradient(135deg, #16a34a 0%, #22c55e 100%)'
+                                : 'linear-gradient(135deg, #dc2626 0%, #f87171 100%)',
+                            padding: '2rem 2rem 1.5rem',
+                            textAlign: 'center',
+                        }}>
+                            <div style={{ width: '72px', height: '72px', background: 'rgba(255,255,255,0.2)', border: '3px solid rgba(255,255,255,0.45)', borderRadius: '50%', margin: '0 auto 1rem', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+                                {kycToast.status === 'approved'
+                                    ? <svg width="36" height="36" viewBox="0 0 24 24" fill="none" stroke="white" strokeWidth="3" strokeLinecap="round" strokeLinejoin="round"><polyline points="20 6 9 17 4 12" /></svg>
+                                    : <svg width="36" height="36" viewBox="0 0 24 24" fill="none" stroke="white" strokeWidth="3" strokeLinecap="round" strokeLinejoin="round"><line x1="18" y1="6" x2="6" y2="18" /><line x1="6" y1="6" x2="18" y2="18" /></svg>
+                                }
+                            </div>
+                            <h2 style={{ color: 'white', fontSize: '1.45rem', fontWeight: 800, margin: 0, letterSpacing: '-0.02em' }}>
+                                {kycToast.status === 'approved' ? "You're Verified!" : "Verification Rejected"}
+                            </h2>
+                        </div>
+
+                        {/* Body */}
+                        <div style={{ padding: '1.75rem 2rem 2rem', textAlign: 'center' }}>
+                            {kycToast.status === 'approved' ? (
+                                <>
+                                    <p style={{ color: '#374151', fontSize: '0.9rem', lineHeight: 1.7, margin: '0 0 1rem' }}>
+                                        Your identity has been verified by an admin. You can now{' '}
+                                        <strong style={{ color: '#15803d' }}>go live</strong>, list products, and start selling on BIDPal.
+                                    </p>
+                                    <div style={{ background: '#f0fdf4', border: '1px solid #bbf7d0', borderRadius: '10px', padding: '0.85rem 1rem', fontSize: '0.8rem', color: '#166534', textAlign: 'left', lineHeight: 1.8 }}>
+                                        ✅ Full seller access unlocked<br />
+                                        ✅ Go Live button enabled<br />
+                                        ✅ Products &amp; auctions available
+                                    </div>
+                                </>
+                            ) : (
+                                <>
+                                    <p style={{ color: '#374151', fontSize: '0.9rem', lineHeight: 1.7, margin: '0 0 1rem' }}>
+                                        Your submitted ID was not accepted. Please re-submit a clear, valid Philippine government-issued ID.
+                                    </p>
+                                    <div style={{ background: '#fff1f2', border: '1px solid #fecdd3', borderRadius: '10px', padding: '0.85rem 1rem', fontSize: '0.8rem', color: '#be123c', textAlign: 'left', lineHeight: 1.8 }}>
+                                        💡 Make sure your ID is clear and not expired.<br />
+                                        Go to Seller Hub → Re-submit Verification.
+                                    </div>
+                                </>
+                            )}
+
+                            <div style={{ display: 'flex', gap: '0.75rem', marginTop: '1.5rem' }}>
+                                {kycToast.status === 'rejected' && (
+                                    <button
+                                        onClick={() => { dismissKycToast(); router.push('/seller/setup?resubmit=1'); }}
+                                        style={{ flex: 1, background: 'linear-gradient(135deg, #dc2626, #ef4444)', color: 'white', border: 'none', borderRadius: '10px', padding: '0.8rem', fontWeight: 700, fontSize: '0.85rem', cursor: 'pointer' }}
+                                    >
+                                        Re-submit ID →
+                                    </button>
+                                )}
+                                <button
+                                    onClick={dismissKycToast}
+                                    style={{
+                                        flex: 1,
+                                        background: kycToast.status === 'approved' ? 'linear-gradient(135deg, #16a34a, #22c55e)' : '#f1f5f9',
+                                        color: kycToast.status === 'approved' ? 'white' : '#334155',
+                                        border: 'none', borderRadius: '10px', padding: '0.8rem',
+                                        fontWeight: 700, fontSize: '0.85rem', cursor: 'pointer',
+                                    }}
+                                >
+                                    {kycToast.status === 'approved' ? 'Start Selling 🚀' : 'Dismiss'}
+                                </button>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            )}
+
+
+
             {/* Header */}
             <header className={styles.header}>
                 <div className={styles.titleInfo}>

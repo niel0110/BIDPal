@@ -1,5 +1,13 @@
 import { supabase } from '../config/supabase.js';
 
+const generatePaymentReference = () => {
+  const d = new Date();
+  const date = `${d.getFullYear()}${String(d.getMonth()+1).padStart(2,'0')}${String(d.getDate()).padStart(2,'0')}`;
+  const chars = 'ABCDEFGHJKLMNPQRSTUVWXYZ23456789';
+  const rand = Array.from({ length: 6 }, () => chars[Math.floor(Math.random() * chars.length)]).join('');
+  return `BDP-${date}-${rand}`;
+};
+
 // Fetch auction wins for a buyer (items they won)
 export const getAuctionWinsByUser = async (req, res) => {
   try {
@@ -526,7 +534,18 @@ export const processAuctionPayment = async (req, res) => {
       .update({ status: 'completed' })
       .eq('auction_id', auction_id);
 
-    // 4. Send notification to seller
+    // 4. Generate payment reference
+    const payment_reference = generatePaymentReference();
+    const paid_at = new Date().toISOString();
+
+    // Best-effort: save payment_reference to Orders (column may not exist yet)
+    await supabase
+      .from('Orders')
+      .update({ payment_reference, paid_at })
+      .eq('order_id', orderId)
+      .catch(() => {});
+
+    // 5. Send notification to seller
     let sellerNotifUserId = null;
     try {
       const { data: sellerProfile } = await supabase
@@ -551,7 +570,9 @@ export const processAuctionPayment = async (req, res) => {
           type: 'order_update',
           payload: {
             title: '💰 Payment Received — Prepare to Ship',
-            message: `Buyer has paid for "${auction.Products.name}". Please confirm payment and prepare the item for shipping.`
+            message: `Buyer has paid for "${auction.Products.name}". Ref: ${payment_reference}. Please confirm payment and prepare the item for shipping.`,
+            payment_reference,
+            order_id: orderId
           },
           reference_id: auction_id,
           reference_type: 'auction',
@@ -578,7 +599,7 @@ export const processAuctionPayment = async (req, res) => {
 
       await supabase
         .from('Payment_Windows')
-        .update({ payment_completed: true, payment_completed_at: new Date().toISOString(), order_id: orderId })
+        .update({ payment_completed: true, payment_completed_at: paid_at, order_id: orderId })
         .eq('auction_id', auction_id)
         .catch(() => {});
     } catch (_) {}
@@ -587,6 +608,8 @@ export const processAuctionPayment = async (req, res) => {
       success: true,
       message: 'Payment processed successfully',
       order_id: orderId,
+      payment_reference,
+      paid_at,
       status: 'processing'
     });
 
@@ -1147,6 +1170,84 @@ export const getAuctionSeller = async (req, res) => {
 
   } catch (err) {
     console.error('Error fetching seller info:', err);
+    res.status(500).json({ error: err.message });
+  }
+};
+
+// Fetch receipt data for a single order (accessible by buyer and seller)
+export const getOrderReceipt = async (req, res) => {
+  try {
+    const { order_id } = req.params;
+
+    const { data: order, error } = await supabase
+      .from('Orders')
+      .select('*')
+      .eq('order_id', order_id)
+      .single();
+
+    if (error || !order) return res.status(404).json({ error: 'Order not found' });
+
+    // Buyer info
+    const { data: buyer } = await supabase
+      .from('User')
+      .select('user_id, Fname, Lname, email')
+      .eq('user_id', order.user_id)
+      .maybeSingle();
+
+    // Auction + product
+    const { data: auction } = await supabase
+      .from('Auctions')
+      .select('auction_id, final_price, Products(name, Product_Images(image_url))')
+      .eq('auction_id', order.auction_id)
+      .maybeSingle();
+
+    // Seller store info
+    const { data: seller } = await supabase
+      .from('Seller')
+      .select('seller_id, store_name, logo_url')
+      .eq('seller_id', order.seller_id)
+      .maybeSingle();
+
+    // Shipping address
+    let shippingAddress = null;
+    if (order.shipping_address_id) {
+      const { data: addr } = await supabase
+        .from('Addresses')
+        .select('*')
+        .eq('address_id', order.shipping_address_id)
+        .maybeSingle();
+      shippingAddress = addr;
+    }
+
+    res.json({
+      order_id:          order.order_id,
+      payment_reference: order.payment_reference || null,
+      paid_at:           order.paid_at || null,
+      payment_method:    order.payment_method,
+      total_amount:      order.total_amount,
+      shipping_fee:      order.shipping_fee,
+      status:            order.status,
+      placed_at:         order.placed_at,
+      tracking_number:   order.tracking_number || null,
+      courier:           order.courier || null,
+      auction_id:        order.auction_id,
+      buyer: buyer ? {
+        name:  `${buyer.Fname || ''} ${buyer.Lname || ''}`.trim(),
+        email: buyer.email
+      } : null,
+      seller: seller ? {
+        name:  seller.store_name,
+        logo:  seller.logo_url || null
+      } : null,
+      product: auction?.Products ? {
+        name:  auction.Products.name,
+        image: auction.Products.Product_Images?.[0]?.image_url || null,
+        price: auction.final_price
+      } : null,
+      shipping_address: shippingAddress
+    });
+  } catch (err) {
+    console.error('getOrderReceipt error:', err.message);
     res.status(500).json({ error: err.message });
   }
 };

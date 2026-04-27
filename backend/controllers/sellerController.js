@@ -15,47 +15,56 @@ export const getAllSellers = async (req, res) => {
 export const getSellerById = async (req, res) => {
   try {
     const { seller_id } = req.params;
-    const { data, error } = await supabase
-      .from('Seller')
-      .select(`
-        *,
-        User (
-          create_at,
-          Avatar
-        )
-      `)
-      .eq('seller_id', seller_id)
-      .single();
-    // Fetch followers count
-    const { count: followerCount } = await supabase
-      .from('Follows')
-      .select('*', { count: 'exact', head: true })
-      .eq('followed_seller_id', seller_id);
 
-    // Fetch reviews stats
-    const { data: reviews } = await supabase
-      .from('Reviews')
-      .select('rating')
-      .eq('seller_id', seller_id);
+    const [
+      { data, error },
+      { count: followerCount },
+      { data: reviews },
+      { count: salesCount },
+    ] = await Promise.all([
+      supabase
+        .from('Seller')
+        .select(`
+          *,
+          User (
+            user_id,
+            Fname,
+            Lname,
+            Avatar,
+            create_at,
+            kyc_status
+          )
+        `)
+        .eq('seller_id', seller_id)
+        .single(),
+      supabase
+        .from('Follows')
+        .select('*', { count: 'exact', head: true })
+        .eq('followed_seller_id', seller_id),
+      supabase
+        .from('Reviews')
+        .select('rating')
+        .eq('seller_id', seller_id),
+      supabase
+        .from('Orders')
+        .select('*', { count: 'exact', head: true })
+        .eq('seller_id', seller_id)
+        .eq('status', 'completed'),
+    ]);
 
-    const avgRating = reviews && reviews.length > 0
+    if (error) return res.status(404).json({ error: error.message });
+
+    const avgRating = reviews?.length > 0
       ? (reviews.reduce((acc, r) => acc + r.rating, 0) / reviews.length).toFixed(1)
-      : "0.0";
-
-    // Fetch sales count (completed orders)
-    const { count: salesCount } = await supabase
-      .from('Orders')
-      .select('*', { count: 'exact', head: true })
-      .eq('seller_id', seller_id)
-      .eq('status', 'completed'); // Only count completed orders as sales
+      : '0.0';
 
     res.json({
       ...data,
       stats: {
         followerCount: followerCount || 0,
         rating: avgRating,
+        reviewCount: reviews?.length || 0,
         salesCount: salesCount || 0,
-        responseRate: "98%" // Placeholder as response rate tracking is complex
       }
     });
   } catch (err) {

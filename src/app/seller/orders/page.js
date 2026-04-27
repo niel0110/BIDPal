@@ -6,7 +6,7 @@ import { useState, useEffect, useCallback } from 'react';
 import { useRouter } from 'next/navigation';
 import {
     Package, Truck, CheckCircle2, Clock, XCircle,
-    Search, Send, AlertCircle, X, MessageSquare, Eye, Star
+    Search, Send, AlertCircle, X, MessageSquare, Eye, Star, Receipt
 } from 'lucide-react';
 import { useAuth } from '@/context/AuthContext';
 import styles from './page.module.css';
@@ -226,6 +226,7 @@ export default function SellerOrdersPage() {
                             onContact={() => router.push(`/messages?receiverId=${order.buyer?.user_id}`)}
                             onViewAuction={() => router.push(`/seller/auctions/${order.auction_id}/results`)}
                             onViewReview={() => setReviewTarget({ order, review: reviews[order.order_id] })}
+                            onViewReceipt={() => router.push(`/orders/receipt/${order.order_id}`)}
                         />
                     ))}
                 </div>
@@ -385,7 +386,13 @@ function ActionBanner({ order, onConfirmPay, onShip }) {
         return (
             <div className={`${styles.actionBanner} ${styles.bannerPay}`}>
                 <AlertCircle size={15} />
-                <span><strong>Action needed:</strong> Buyer has paid. Confirm you received the payment to unlock shipping.</span>
+                <span>
+                    <strong>Action needed:</strong> Buyer has paid.
+                    {order.payment_reference && (
+                        <> Ref: <strong>{order.payment_reference}</strong>.</>
+                    )}
+                    {' '}Confirm you received the payment to unlock shipping.
+                </span>
                 <button className={styles.confirmPayBtn} onClick={onConfirmPay}>
                     <CheckCircle2 size={14} /> Confirm Payment
                 </button>
@@ -415,7 +422,7 @@ function ActionBanner({ order, onConfirmPay, onShip }) {
 }
 
 /* ─────────────────────── Order Card ─────────────────────── */
-function OrderCard({ order, review, onConfirmPay, onShip, onManage, onContact, onViewAuction, onViewReview }) {
+function OrderCard({ order, review, onConfirmPay, onShip, onManage, onContact, onViewAuction, onViewReview, onViewReceipt }) {
     const status = order.status;
     const flowStep = getFlowStep(order);
     const isCancelled = status === 'cancelled';
@@ -535,6 +542,11 @@ function OrderCard({ order, review, onConfirmPay, onShip, onManage, onContact, o
                 <button className={styles.viewBtn} onClick={onViewAuction}>
                     <Eye size={15} /> Auction
                 </button>
+                {(status === 'processing' || status === 'shipped' || status === 'completed') && (
+                    <button className={styles.receiptBtn} onClick={onViewReceipt}>
+                        <Receipt size={15} /> Receipt
+                    </button>
+                )}
             </div>
         </div>
     );

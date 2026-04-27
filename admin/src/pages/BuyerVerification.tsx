@@ -61,14 +61,15 @@ function KycPhoto({ userId, side, label }: { userId: string; side: 'front' | 'ba
   );
 }
 
-function statusBadge(kyc_status: string) {
+function statusBadge(kyc_status: string | null) {
   if (kyc_status === 'approved') return <span className="badge badge-success">Approved</span>;
   if (kyc_status === 'rejected') return <span className="badge badge-danger">Rejected</span>;
   if (kyc_status === 'pending') return <span className="badge badge-pending">Pending Review</span>;
+  if (!kyc_status) return <span className="badge" style={{ background: '#f3f4f6', color: '#6b7280', padding: '3px 10px', borderRadius: '20px', fontSize: '12px', fontWeight: 600 }}>Not Submitted</span>;
   return <span className="badge badge-pending" style={{ background: '#e0e7ff', color: '#3730a3' }}>ID Submitted</span>;
 }
 
-const SellerVerification = () => {
+const BuyerVerification = () => {
   const [users, setUsers] = useState<User[]>([]);
   const [loading, setLoading] = useState(true);
   const [selectedUser, setSelectedUser] = useState<User | null>(null);
@@ -76,57 +77,55 @@ const SellerVerification = () => {
   const [actionLoading, setActionLoading] = useState(false);
   const [statusFilter, setStatusFilter] = useState<'all' | 'pending' | 'approved' | 'rejected'>('pending');
 
-  const fetchAllSellers = async () => {
-    const { data: sellers, error: sellersError } = await supabase
-      .from('Seller')
-      .select('user_id');
+  const fetchAllBuyers = async () => {
+    const { data, error } = await supabase
+      .from('User')
+      .select('user_id, Fname, Lname, email, contact_num, create_at, kyc_status, Avatar')
+      .or('role.eq.Buyer,role.eq.buyer')
+      .order('create_at', { ascending: false });
 
-    if (sellersError || !sellers || sellers.length === 0) {
+    if (error) {
+      console.error('BuyerVerification fetch error:', error);
+      setLoading(false);
+      return;
+    }
+
+    if (!data || data.length === 0) {
       setUsers([]);
       setLoading(false);
       return;
     }
 
-    const sellerIds = sellers.map((s: { user_id: string }) => s.user_id);
+    const buyerIds = data.map((u: { user_id: string }) => u.user_id);
 
-    const { data, error } = await supabase
-      .from('User')
-      .select('user_id, Fname, Lname, email, contact_num, create_at, kyc_status, Avatar')
-      .in('user_id', sellerIds)
-      .eq('role', 'Seller')
-      .order('create_at', { ascending: false });
+    const { data: notifs } = await supabase
+      .from('Notifications')
+      .select('user_id, created_at, payload')
+      .in('user_id', buyerIds)
+      .eq('type', 'system')
+      .order('created_at', { ascending: false });
 
-    if (!error && data) {
-      // Pull review timestamps from Notifications (created when admin approved/rejected)
-      const { data: notifs } = await supabase
-        .from('Notifications')
-        .select('user_id, created_at, payload')
-        .in('user_id', sellerIds)
-        .eq('type', 'system')
-        .order('created_at', { ascending: false });
-
-      const reviewMap: Record<string, string> = {};
-      if (notifs) {
-        for (const n of notifs) {
-          if (!reviewMap[n.user_id] &&
-            (n.payload?.title?.includes('Verification Approved') || n.payload?.title?.includes('Verification Rejected'))) {
-            reviewMap[n.user_id] = n.created_at;
-          }
+    const reviewMap: Record<string, string> = {};
+    if (notifs) {
+      for (const n of notifs) {
+        if (!reviewMap[n.user_id] &&
+          (n.payload?.title?.includes('Verification Approved') || n.payload?.title?.includes('Verification Rejected'))) {
+          reviewMap[n.user_id] = n.created_at;
         }
       }
-
-      setUsers(data.map(u => ({ ...u, kyc_reviewed_at: reviewMap[u.user_id] ?? null })));
     }
+
+    setUsers(data.map((u: any) => ({ ...u, kyc_reviewed_at: reviewMap[u.user_id] ?? null })));
     setLoading(false);
   };
 
   useEffect(() => {
-    fetchAllSellers();
+    fetchAllBuyers();
 
     const channel = supabase
-      .channel('seller-verification')
+      .channel('buyer-verification')
       .on('postgres_changes', { event: '*', schema: 'public', table: 'User' }, () => {
-        fetchAllSellers();
+        fetchAllBuyers();
       })
       .subscribe();
 
@@ -147,18 +146,17 @@ const SellerVerification = () => {
 
       await supabase.from('Notifications').insert([{
         user_id: userId,
-        type: 'system',
+        type: status === 'approved' ? 'kyc_approved' : 'kyc_rejected',
         payload: {
-          title: status === 'approved' ? '✅ Seller Verification Approved' : '❌ Seller Verification Rejected',
+          title: status === 'approved' ? 'Buyer Verification Approved' : 'Buyer Verification Rejected',
           message: status === 'approved'
-            ? 'Congratulations! Your identity has been verified. You can now go live, list products, and start selling on BIDPal.'
-            : 'Your submitted ID was not accepted. Please re-submit a clear, valid Philippine government-issued ID to enable live selling on BIDPal. Go to your Seller Hub → Re-submit Verification.',
+            ? 'Your identity has been verified. You now have full access to bidding and purchasing on BIDPal.'
+            : 'Your submitted ID was not accepted. Please re-submit a clear, valid Philippine government-issued ID to complete verification.',
         },
         read_at: '2099-12-31T23:59:59.000Z',
         created_at: reviewedAt,
       }]);
 
-      // Update user in-place so they remain visible in the history list
       setUsers(prev => prev.map(u =>
         u.user_id === userId ? { ...u, kyc_status: status, kyc_reviewed_at: reviewedAt } : u
       ));
@@ -171,11 +169,11 @@ const SellerVerification = () => {
     }
   };
 
-  const isDecided = (kyc_status: string) => kyc_status === 'approved' || kyc_status === 'rejected';
+  const isDecided = (kyc_status: string | null) => kyc_status === 'approved' || kyc_status === 'rejected';
 
   const statusCounts = {
-    all: users.length,
-    pending: users.filter(u => !isDecided(u.kyc_status)).length,
+    all:      users.length,
+    pending:  users.filter(u => !isDecided(u.kyc_status)).length,
     approved: users.filter(u => u.kyc_status === 'approved').length,
     rejected: users.filter(u => u.kyc_status === 'rejected').length,
   };
@@ -186,13 +184,13 @@ const SellerVerification = () => {
     const statusMatch =
       statusFilter === 'all' ||
       (statusFilter === 'pending' && !isDecided(u.kyc_status)) ||
-      statusFilter === u.kyc_status;
+      u.kyc_status === statusFilter;
     return nameMatch && statusMatch;
   });
 
   const filterTabs: { key: typeof statusFilter; label: string; color: string }[] = [
     { key: 'all', label: 'All', color: 'var(--accent-primary)' },
-    { key: 'pending', label: 'Pending', color: '#f59e0b' },
+    { key: 'pending', label: 'Needs Review', color: '#f59e0b' },
     { key: 'approved', label: 'Approved', color: '#16a34a' },
     { key: 'rejected', label: 'Rejected', color: '#dc2626' },
   ];
@@ -201,14 +199,14 @@ const SellerVerification = () => {
     <div>
       <header style={{ marginBottom: '32px', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
         <div>
-          <h1 style={{ fontSize: '32px', marginBottom: '8px' }}>Seller Verification</h1>
-          <p style={{ color: 'var(--text-secondary)' }}>Review and approve seller identity verifications.</p>
+          <h1 style={{ fontSize: '32px', marginBottom: '8px' }}>Buyer Verification</h1>
+          <p style={{ color: 'var(--text-secondary)' }}>Review and approve buyer identity verifications.</p>
         </div>
         <div className="glass" style={{ padding: '8px 16px', display: 'flex', alignItems: 'center', gap: '10px' }}>
           <Search size={18} color="var(--text-secondary)" />
           <input
             type="text"
-            placeholder="Search sellers..."
+            placeholder="Search buyers..."
             value={searchTerm}
             onChange={e => setSearchTerm(e.target.value)}
             style={{ background: 'none', border: 'none', color: 'var(--text-primary)', outline: 'none', width: '200px' }}
@@ -243,14 +241,14 @@ const SellerVerification = () => {
       </div>
 
       {loading ? (
-        <div className="glass" style={{ padding: '100px', textAlign: 'center' }}>Loading seller verifications...</div>
+        <div className="glass" style={{ padding: '100px', textAlign: 'center' }}>Loading buyer verifications...</div>
       ) : (
         <div className="glass" style={{ padding: '24px' }}>
           <div className="table-container">
             <table>
               <thead>
                 <tr>
-                  <th>Seller</th>
+                  <th>Buyer</th>
                   <th>Submitted</th>
                   <th>Contact</th>
                   <th>Status</th>
@@ -259,60 +257,50 @@ const SellerVerification = () => {
               </thead>
               <tbody>
                 <AnimatePresence>
-                  {filtered.map((user, idx) => {
-                    const isLatest = idx === 0 && filtered[0]?.user_id === users[0]?.user_id;
-                    return (
-                      <motion.tr
-                        key={user.user_id}
-                        initial={{ opacity: 0 }}
-                        animate={{ opacity: 1 }}
-                        exit={{ opacity: 0, x: -20 }}
-                        onClick={() => setSelectedUser(user)}
-                        style={{ cursor: 'pointer', background: selectedUser?.user_id === user.user_id ? '#FEF2F2' : 'transparent' }}
-                      >
-                        <td>
-                          <div style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
-                            {user.Avatar ? (
-                              <img src={user.Avatar} alt="" style={{ width: '32px', height: '32px', borderRadius: '50%', objectFit: 'cover', flexShrink: 0 }} />
-                            ) : (
-                              <div style={{ width: '32px', height: '32px', borderRadius: '50%', background: 'linear-gradient(45deg, var(--accent-primary), var(--accent-secondary))', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: '12px', fontWeight: 'bold', color: 'white', flexShrink: 0 }}>
-                                {user.Fname?.[0]}{user.Lname?.[0]}
-                              </div>
-                            )}
-                            <div>
-                              <div style={{ fontWeight: 500, display: 'flex', alignItems: 'center', gap: '6px' }}>
-                                {user.Fname} {user.Lname}
-                                {isLatest && user.kyc_status === 'pending' && (
-                                  <span style={{ fontSize: '10px', fontWeight: 700, background: '#dc2626', color: 'white', padding: '1px 6px', borderRadius: '20px', letterSpacing: '0.3px' }}>
-                                    NEW
-                                  </span>
-                                )}
-                              </div>
-                              <div style={{ fontSize: '12px', color: 'var(--text-secondary)' }}>{user.email}</div>
+                  {filtered.map((user) => (
+                    <motion.tr
+                      key={user.user_id}
+                      initial={{ opacity: 0 }}
+                      animate={{ opacity: 1 }}
+                      exit={{ opacity: 0, x: -20 }}
+                      onClick={() => setSelectedUser(user)}
+                      style={{ cursor: 'pointer', background: selectedUser?.user_id === user.user_id ? '#FEF2F2' : 'transparent' }}
+                    >
+                      <td>
+                        <div style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
+                          {user.Avatar ? (
+                            <img src={user.Avatar} alt="" style={{ width: '32px', height: '32px', borderRadius: '50%', objectFit: 'cover', flexShrink: 0 }} />
+                          ) : (
+                            <div style={{ width: '32px', height: '32px', borderRadius: '50%', background: 'linear-gradient(45deg, #3b82f6, #6366f1)', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: '12px', fontWeight: 'bold', color: 'white', flexShrink: 0 }}>
+                              {user.Fname?.[0]}{user.Lname?.[0]}
                             </div>
+                          )}
+                          <div>
+                            <div style={{ fontWeight: 500 }}>{user.Fname} {user.Lname}</div>
+                            <div style={{ fontSize: '12px', color: 'var(--text-secondary)' }}>{user.email}</div>
                           </div>
-                        </td>
-                        <td>
-                          <div style={{ display: 'flex', alignItems: 'center', gap: '6px', fontSize: '14px' }}>
-                            <Clock size={14} color="var(--text-secondary)" />
-                            {new Date(user.create_at).toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' })}
-                          </div>
-                        </td>
-                        <td style={{ fontSize: '14px' }}>{user.contact_num || '—'}</td>
-                        <td>{statusBadge(user.kyc_status)}</td>
-                        <td>
-                          <button onClick={e => { e.stopPropagation(); setSelectedUser(user); }} className="btn btn-outline" style={{ padding: '6px 12px', fontSize: '12px' }}>
-                            Review
-                          </button>
-                        </td>
-                      </motion.tr>
-                    );
-                  })}
+                        </div>
+                      </td>
+                      <td>
+                        <div style={{ display: 'flex', alignItems: 'center', gap: '6px', fontSize: '14px' }}>
+                          <Clock size={14} color="var(--text-secondary)" />
+                          {new Date(user.create_at).toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' })}
+                        </div>
+                      </td>
+                      <td style={{ fontSize: '14px' }}>{user.contact_num || '—'}</td>
+                      <td>{statusBadge(user.kyc_status)}</td>
+                      <td>
+                        <button onClick={e => { e.stopPropagation(); setSelectedUser(user); }} className="btn btn-outline" style={{ padding: '6px 12px', fontSize: '12px' }}>
+                          Review
+                        </button>
+                      </td>
+                    </motion.tr>
+                  ))}
                 </AnimatePresence>
                 {filtered.length === 0 && (
                   <tr>
                     <td colSpan={5} style={{ textAlign: 'center', padding: '40px', color: 'var(--text-secondary)' }}>
-                      No {statusFilter === 'all' ? '' : statusFilter} sellers found.
+                      No {statusFilter === 'pending' ? 'unreviewed' : statusFilter === 'all' ? '' : statusFilter} buyers found.
                     </td>
                   </tr>
                 )}
@@ -345,8 +333,8 @@ const SellerVerification = () => {
                   ? 'linear-gradient(135deg,#16a34a,#22c55e)'
                   : selectedUser.kyc_status === 'rejected'
                     ? 'linear-gradient(135deg,#dc2626,#f87171)'
-                    : 'linear-gradient(135deg,#f59e0b,#fcd34d)';
-                const bannerLabel = selectedUser.kyc_status === 'approved' ? 'Verified Seller' : selectedUser.kyc_status === 'rejected' ? 'Verification Rejected' : 'Pending Review';
+                    : 'linear-gradient(135deg,#3b82f6,#6366f1)';
+                const bannerLabel = selectedUser.kyc_status === 'approved' ? 'Verified Buyer' : selectedUser.kyc_status === 'rejected' ? 'Verification Rejected' : 'Pending Review';
                 return (
                   <div style={{ background: bannerBg, padding: '20px 24px', display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
                     <div style={{ display: 'flex', alignItems: 'center', gap: '14px' }}>
@@ -404,13 +392,6 @@ const SellerVerification = () => {
                   </div>
                 )}
 
-                {/* Unreviewed warning */}
-                {!selectedUser.kyc_status && (
-                  <div style={{ background: '#fffbeb', border: '1px solid #fcd34d', borderRadius: '10px', padding: '10px 14px', fontSize: '12px', color: '#92400e' }}>
-                    ⚠️ Status was not saved during submission — ID photos may still be on file. Review images below and approve or reject.
-                  </div>
-                )}
-
                 {/* ID Photos */}
                 <div>
                   <p style={{ fontSize: '11px', fontWeight: 700, color: 'var(--text-secondary)', textTransform: 'uppercase', letterSpacing: '0.6px', marginBottom: '12px' }}>Submitted ID Document</p>
@@ -421,7 +402,7 @@ const SellerVerification = () => {
                   <p style={{ fontSize: '11px', color: 'var(--text-secondary)', marginTop: '8px' }}>Click an image to open full size.</p>
                 </div>
 
-                {/* Actions — only shown for unreviewed / pending sellers */}
+                {/* Actions — only shown for unreviewed / pending buyers */}
                 {!isDecided(selectedUser.kyc_status) && (
                   <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '12px', paddingTop: '4px', borderTop: '1px solid #E2E8F0' }}>
                     <button
@@ -451,4 +432,4 @@ const SellerVerification = () => {
   );
 };
 
-export default SellerVerification;
+export default BuyerVerification;

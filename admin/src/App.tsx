@@ -3,6 +3,7 @@ import { BrowserRouter as Router, Routes, Route, Navigate } from 'react-router-d
 import Sidebar from './components/Sidebar';
 import Dashboard from './pages/Dashboard';
 import SellerVerification from './pages/SellerVerification';
+import BuyerVerification from './pages/BuyerVerification';
 import Moderation from './pages/Moderation';
 import UserManagement from './pages/UserManagement';
 import Disputes from './pages/Disputes';
@@ -58,7 +59,7 @@ function App() {
             <Route path="/disputes" element={<ProtectedRoute><Disputes /></ProtectedRoute>} />
             <Route path="/cancellations" element={<ProtectedRoute><CancellationReviews /></ProtectedRoute>} />
             <Route path="/users" element={<ProtectedRoute><UserManagement /></ProtectedRoute>} />
-            <Route path="/settings" element={<ProtectedRoute><Placeholder title="Admin Settings" /></ProtectedRoute>} />
+            <Route path="/buyer-verification" element={<ProtectedRoute><BuyerVerification /></ProtectedRoute>} />
             
             {/* Fallback */}
             <Route path="*" element={<Navigate to="/" replace />} />

@@ -34,11 +34,11 @@ const upload = multer({
 // Get all sellers
 router.get('/', getAllSellers);
 
+// Get seller by user_id — must be before /:seller_id to avoid being swallowed by the wildcard
+router.get('/user/:user_id', getSellerByUserId);
+
 // Get seller by seller_id
 router.get('/:seller_id', getSellerById);
-
-// Get seller by user_id (for logged-in seller user)
-router.get('/user/:user_id', getSellerByUserId);
 
 // Create new seller (open a shop)
 router.post('/', createSeller);

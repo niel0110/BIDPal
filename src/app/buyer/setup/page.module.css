@@ -1,0 +1,487 @@
+/* ── Layout ───────────────────────────────────────────────────────────── */
+.page {
+    min-height: 100vh;
+    display: flex;
+    background: #fff;
+}
+
+/* Left accent panel — desktop only */
+.side {
+    display: none;
+}
+
+@media (min-width: 768px) {
+    .side {
+        display: flex;
+        width: 240px;
+        flex-shrink: 0;
+        background: #cc2b41;
+        align-items: center;
+        justify-content: center;
+        padding: 2.5rem 1.75rem;
+        position: sticky;
+        top: 0;
+        height: 100vh;
+    }
+}
+
+@media (min-width: 1024px) {
+    .side {
+        width: 300px;
+        padding: 2.5rem 2rem;
+    }
+}
+
+.sideContent {
+    display: flex;
+    flex-direction: column;
+    gap: 1rem;
+}
+
+.sideHeading {
+    font-size: 1.5rem;
+    font-weight: 800;
+    color: white;
+    line-height: 1.25;
+    margin: 0;
+}
+
+@media (min-width: 1024px) {
+    .sideHeading { font-size: 1.75rem; }
+}
+
+.sideText {
+    font-size: 0.8rem;
+    color: rgba(255,255,255,0.72);
+    line-height: 1.6;
+    margin: 0;
+}
+
+.sideDots {
+    display: flex;
+    gap: 6px;
+    margin-top: 0.25rem;
+}
+.sideDots span {
+    width: 7px;
+    height: 7px;
+    border-radius: 50%;
+    background: rgba(255,255,255,0.3);
+}
+.sideDots span:first-child {
+    background: white;
+    width: 22px;
+    border-radius: 4px;
+}
+
+/* ── Form side ────────────────────────────────────────────────────────── */
+.formWrap {
+    flex: 1;
+    display: flex;
+    flex-direction: column;
+    align-items: stretch;
+    justify-content: center;
+    padding: 2rem 2.5rem;
+    background: #fff;
+}
+
+.mobileLogo {
+    margin-bottom: 1.25rem;
+}
+@media (min-width: 768px) {
+    .mobileLogo { display: none; }
+}
+
+.card {
+    background: white;
+    border-radius: 16px;
+    padding: 2rem 2.25rem;
+    width: 100%;
+    max-width: 680px;
+    border: 1.5px solid #f0f0f0;
+    box-shadow: 0 2px 16px rgba(0,0,0,0.06);
+}
+
+/* ── Card header ──────────────────────────────────────────────────────── */
+.cardHeader {
+    margin-bottom: 1rem;
+    padding-bottom: 0.875rem;
+    border-bottom: 1px solid #f3f4f6;
+}
+
+.title {
+    font-size: 1.35rem;
+    font-weight: 800;
+    color: #111;
+    margin: 0 0 0.25rem;
+    line-height: 1.2;
+}
+.title span { color: #cc2b41; }
+
+.sub {
+    font-size: 0.8rem;
+    color: #6b7280;
+    margin: 0;
+    line-height: 1.55;
+}
+
+/* ── Form ─────────────────────────────────────────────────────────────── */
+.form {
+    display: flex;
+    flex-direction: column;
+    gap: 0.85rem;
+}
+
+.row {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 0.75rem;
+}
+
+.field {
+    display: flex;
+    flex-direction: column;
+    gap: 0.25rem;
+}
+
+.field label {
+    font-size: 0.68rem;
+    font-weight: 700;
+    color: #374151;
+    text-transform: uppercase;
+    letter-spacing: 0.5px;
+}
+
+.req { color: #cc2b41; margin-left: 2px; }
+.opt { font-weight: 400; text-transform: none; color: #9ca3af; letter-spacing: 0; font-size: 0.68rem; }
+
+.input {
+    padding: 9px 12px;
+    border: 1.5px solid #e5e7eb;
+    border-radius: 9px;
+    font-size: 0.858rem;
+    background: #fafafa;
+    color: #111;
+    width: 100%;
+    box-sizing: border-box;
+    transition: border-color 0.15s, box-shadow 0.15s, background 0.15s;
+    appearance: none;
+    -webkit-appearance: none;
+    font-family: inherit;
+}
+.input:focus {
+    outline: none;
+    border-color: #cc2b41;
+    background: white;
+    box-shadow: 0 0 0 3px rgba(204,43,65,0.09);
+}
+.input.err {
+    border-color: #cc2b41;
+    background: #fff8f8;
+}
+
+.input[type="date"]::-webkit-calendar-picker-indicator {
+    opacity: 0.45;
+    cursor: pointer;
+}
+.input[type="date"]::-webkit-calendar-picker-indicator:hover {
+    opacity: 1;
+}
+
+.dateWrap { position: relative; }
+
+.fieldErr {
+    font-size: 0.7rem;
+    color: #cc2b41;
+    font-weight: 500;
+}
+
+/* ── Phone input ──────────────────────────────────────────────────────── */
+.phoneWrap {
+    display: flex;
+    align-items: stretch;
+    border: 1.5px solid #e5e7eb;
+    border-radius: 9px;
+    overflow: hidden;
+    background: #fafafa;
+    transition: border-color 0.15s, box-shadow 0.15s;
+}
+.phoneWrap:focus-within {
+    border-color: #cc2b41;
+    background: white;
+    box-shadow: 0 0 0 3px rgba(204,43,65,0.09);
+}
+
+.phonePrefix {
+    padding: 9px 10px 9px 12px;
+    font-size: 0.858rem;
+    font-weight: 600;
+    color: #6b7280;
+    background: #f3f4f6;
+    border-right: 1.5px solid #e5e7eb;
+    white-space: nowrap;
+    display: flex;
+    align-items: center;
+}
+
+.phoneInput {
+    flex: 1;
+    border: none !important;
+    border-radius: 0 !important;
+    background: transparent !important;
+    box-shadow: none !important;
+    outline: none;
+}
+.phoneInput:focus {
+    border: none !important;
+    box-shadow: none !important;
+}
+
+/* ── Student toggle ───────────────────────────────────────────────────── */
+.studentToggle {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    padding: 10px 12px;
+    border-radius: 9px;
+    border: 1.5px solid #e5e7eb;
+    background: #fafafa;
+    cursor: pointer;
+    user-select: none;
+    transition: border-color 0.15s, background 0.15s;
+}
+.studentToggle:hover {
+    border-color: #cc2b41;
+    background: #fff8f8;
+}
+
+.toggleTrack {
+    width: 36px;
+    height: 20px;
+    border-radius: 10px;
+    background: #d1d5db;
+    position: relative;
+    flex-shrink: 0;
+    transition: background 0.2s;
+}
+.toggleTrack.toggleOn { background: #cc2b41; }
+
+.toggleThumb {
+    position: absolute;
+    top: 2px;
+    left: 2px;
+    width: 16px;
+    height: 16px;
+    border-radius: 50%;
+    background: white;
+    box-shadow: 0 1px 3px rgba(0,0,0,0.2);
+    transition: left 0.2s;
+}
+.toggleOn .toggleThumb { left: 18px; }
+
+.toggleLabel {
+    display: block;
+    font-size: 0.83rem;
+    font-weight: 600;
+    color: #111;
+    line-height: 1;
+}
+.toggleHint {
+    display: block;
+    font-size: 0.7rem;
+    color: #9ca3af;
+    margin-top: 2px;
+}
+
+/* ── Buttons & submit ─────────────────────────────────────────────────── */
+.errorMsg {
+    font-size: 0.78rem;
+    color: #cc2b41;
+    font-weight: 500;
+    margin: 0;
+    padding: 8px 12px;
+    background: #fff8f8;
+    border-radius: 8px;
+    border: 1px solid #fecaca;
+}
+
+.btn {
+    background: linear-gradient(135deg, #cc2b41, #a8213a);
+    color: white;
+    border: none;
+    border-radius: 9px;
+    padding: 0.78rem;
+    font-size: 0.875rem;
+    font-weight: 700;
+    cursor: pointer;
+    transition: opacity 0.2s, transform 0.1s;
+    letter-spacing: 0.01em;
+    width: 100%;
+    font-family: inherit;
+}
+.btn:hover:not(:disabled) { opacity: 0.92; transform: translateY(-1px); }
+.btn:active:not(:disabled) { transform: translateY(0); }
+.btn:disabled { opacity: 0.45; cursor: not-allowed; }
+
+.disclaimer {
+    font-size: 0.7rem;
+    color: #9ca3af;
+    text-align: center;
+    margin: 0;
+    line-height: 1.5;
+}
+
+/* ── Step progress bar ────────────────────────────────────────────────── */
+.stepBar {
+    display: flex;
+    align-items: center;
+    margin-bottom: 1.5rem;
+    padding-bottom: 1rem;
+    position: relative;
+}
+
+.stepNode {
+    width: 26px;
+    height: 26px;
+    border-radius: 50%;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 0.72rem;
+    font-weight: 700;
+    flex-shrink: 0;
+    z-index: 1;
+    position: relative;
+}
+
+.stepDone {
+    background: #cc2b41;
+    color: white;
+    border: 2px solid #cc2b41;
+}
+
+.stepTodo {
+    background: white;
+    color: #9ca3af;
+    border: 2px solid #e5e7eb;
+}
+
+.stepConnector {
+    flex: 1;
+    height: 2px;
+    background: #e5e7eb;
+    transition: background 0.3s;
+}
+.stepConnectorDone { background: #cc2b41; }
+
+.stepLabels {
+    position: absolute;
+    bottom: 0;
+    left: 0;
+    right: 0;
+    display: flex;
+    justify-content: space-between;
+}
+
+.stepLabels span {
+    font-size: 0.62rem;
+    font-weight: 700;
+    color: #c4cdd6;
+    text-transform: uppercase;
+    letter-spacing: 0.4px;
+}
+.stepLabelActive { color: #cc2b41 !important; }
+
+/* ── Side panel features ──────────────────────────────────────────────── */
+.sideFeatures {
+    display: flex;
+    flex-direction: column;
+    gap: 7px;
+}
+
+.sideFeatureItem {
+    display: flex;
+    align-items: center;
+    gap: 9px;
+    font-size: 0.78rem;
+    color: rgba(255,255,255,0.82);
+    font-weight: 500;
+}
+
+.sideFeatureDot {
+    width: 5px;
+    height: 5px;
+    border-radius: 50%;
+    background: rgba(255,255,255,0.45);
+    flex-shrink: 0;
+}
+
+/* ── Rejection banner ─────────────────────────────────────────────────── */
+.rejectionBanner {
+    display: flex;
+    gap: 10px;
+    align-items: flex-start;
+    padding: 10px 13px;
+    border-radius: 9px;
+    background: #fff1f2;
+    border: 1.5px solid #fecdd3;
+    margin-bottom: 0.75rem;
+}
+
+.rejectionIcon {
+    font-size: 0.85rem;
+    flex-shrink: 0;
+    margin-top: 1px;
+    line-height: 1;
+}
+
+.rejectionBanner strong {
+    display: block;
+    font-size: 0.76rem;
+    font-weight: 700;
+    color: #be123c;
+    margin-bottom: 2px;
+}
+
+.rejectionBanner p {
+    margin: 0;
+    font-size: 0.72rem;
+    color: #9f1239;
+    line-height: 1.5;
+}
+
+/* ── Skip button ──────────────────────────────────────────────────────── */
+.skipBtn {
+    display: block;
+    width: 100%;
+    margin-top: 0.5rem;
+    padding: 0.6rem;
+    background: transparent;
+    border: 1.5px solid #e5e7eb;
+    border-radius: 9px;
+    font-size: 0.74rem;
+    font-weight: 600;
+    color: #9ca3af;
+    cursor: pointer;
+    text-align: center;
+    transition: border-color 0.15s, color 0.15s, background 0.15s;
+    font-family: inherit;
+}
+.skipBtn:hover {
+    border-color: #d1d5db;
+    color: #6b7280;
+    background: #f9fafb;
+}
+
+/* ── Responsive ───────────────────────────────────────────────────────── */
+@media (max-width: 767px) {
+    .formWrap { padding: 1.25rem 1rem; align-items: stretch; }
+    .card { padding: 1.4rem 1.1rem; border-radius: 14px; box-shadow: none; border: none; }
+    .row { grid-template-columns: 1fr; }
+    .title { font-size: 1.2rem; }
+}
+
+@media (max-width: 320px) {
+    .card { padding: 1.1rem 0.9rem; }
+    .title { font-size: 1.1rem; }
+}

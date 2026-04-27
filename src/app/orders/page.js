@@ -5,7 +5,7 @@ import BackButton from '@/components/BackButton';
 import { useState, useEffect, useCallback } from 'react';
 import Link from 'next/link';
 import { useRouter } from 'next/navigation';
-import { Search, Package, Truck, CreditCard, Clock, CheckCircle2, XCircle, Loader2, Gavel, Ban, MapPin, Star, X, MessageCircle } from 'lucide-react';
+import { Search, Package, Truck, CreditCard, Clock, CheckCircle2, XCircle, Loader2, Gavel, Ban, MapPin, Star, X, MessageCircle, Receipt } from 'lucide-react';
 import { useAuth } from '@/context/AuthContext';
 import PaymentCountdown from '@/components/PaymentCountdown';
 import CancellationModal from '@/components/CancellationModal';
@@ -530,21 +530,32 @@ export default function OrdersPage() {
                                             Order Received
                                         </button>
                                     ) : order.status === 'completed' ? (
-                                        existingReviews[order.id] ? (
-                                            <button
-                                                className={styles.viewReviewBtn}
-                                                onClick={() => setViewReviewTarget({ order, review: existingReviews[order.id] })}
-                                            >
-                                                <Star size={13} fill="#FBC02D" stroke="#FBC02D" />
-                                                Reviewed
+                                        <>
+                                            {existingReviews[order.id] ? (
+                                                <button
+                                                    className={styles.viewReviewBtn}
+                                                    onClick={() => setViewReviewTarget({ order, review: existingReviews[order.id] })}
+                                                >
+                                                    <Star size={13} fill="#FBC02D" stroke="#FBC02D" />
+                                                    Reviewed
+                                                </button>
+                                            ) : (
+                                                <button className={styles.reviewBtn} onClick={() => openReviewModal(order)}>
+                                                    <Star size={15} />
+                                                    Leave a Review
+                                                </button>
+                                            )}
+                                            <button className={styles.receiptBtn} onClick={() => router.push(`/orders/receipt/${order.id}`)}>
+                                                <Receipt size={14} />
+                                                View Receipt
                                             </button>
-                                        ) : (
-                                            <button className={styles.reviewBtn} onClick={() => openReviewModal(order)}>
-                                                <Star size={15} />
-                                                Leave a Review
-                                            </button>
-                                        )
-                                    ) : order.status === 'cancelled' ? null : (
+                                        </>
+                                    ) : order.status === 'cancelled' ? null : order.status === 'processing' || order.status === 'shipped' ? (
+                                        <button className={styles.receiptBtn} onClick={() => router.push(`/orders/receipt/${order.id}`)}>
+                                            <Receipt size={14} />
+                                            View Receipt
+                                        </button>
+                                    ) : (
                                         <button className={styles.secondaryBtn}>Order Details</button>
                                     )}
                                     {order.order_type === 'auction' && order.status !== 'cancelled' && (

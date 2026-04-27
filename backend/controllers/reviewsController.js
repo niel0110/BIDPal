@@ -138,22 +138,36 @@ export const getSellerReviews = async (req, res) => {
   try {
     const { seller_id } = req.params;
 
+    // Step 1: fetch reviews with reviewer info
     const { data, error } = await supabase
       .from('Reviews')
       .select(`
+        review_id,
         rating,
         comment,
         created_at,
-        User!user_id ( Fname, Lname, Avatar ),
-        Orders!order_id (
-          auction_id,
-          Auctions!auction_id ( Products ( name ) )
-        )
+        products_id,
+        order_id,
+        User!reviewers_id ( Fname, Lname, Avatar )
       `)
       .eq('seller_id', seller_id)
       .order('created_at', { ascending: false });
 
     if (error) return res.status(500).json({ error: error.message });
+    if (!data || data.length === 0) return res.json([]);
+
+    // Step 2: batch-fetch product names for reviews that have a products_id
+    const productIds = [...new Set(data.filter(r => r.products_id).map(r => r.products_id))];
+    let productMap = {};
+    if (productIds.length > 0) {
+      const { data: products } = await supabase
+        .from('Products')
+        .select('products_id, name')
+        .in('products_id', productIds);
+      if (products) {
+        products.forEach(p => { productMap[p.products_id] = p.name; });
+      }
+    }
 
     const formatted = data.map(r => ({
       review_id: r.review_id,
@@ -161,10 +175,10 @@ export const getSellerReviews = async (req, res) => {
       comment: r.comment,
       created_at: r.created_at,
       reviewer: {
-        name: `${r.User?.Fname || ''} ${r.User?.Lname || ''}`.trim() || 'Anonymous',
+        name: `${r.User?.Fname || ''} ${r.User?.Lname || ''}`.trim() || 'Buyer',
         avatar: r.User?.Avatar || null
       },
-      product_name: r.Orders?.Auctions?.Products?.name || 'Auction Item'
+      product_name: r.products_id ? (productMap[r.products_id] || null) : null
     }));
 
     res.json(formatted);

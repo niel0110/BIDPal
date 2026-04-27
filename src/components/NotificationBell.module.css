@@ -203,6 +203,8 @@
 .iconWrap.warning { background: #fffbeb; color: #d97706; }
 .iconWrap.buyer_violation { background: #fff7ed; color: #ea580c; }
 .iconWrap.auction_upcoming { background: #fff7ed; color: #f97316; }
+.iconWrap.kyc_approved { background: #dcfce7; color: #16a34a; }
+.iconWrap.kyc_rejected { background: #fee2e2; color: #dc2626; }
 
 /* Violation/warning items get a stronger unread highlight */
 .item.unread.account_violation,
@@ -214,6 +216,29 @@
 .item.unread.account_violation:hover,
 .item.unread.warning:hover {
     background: #fee2e2;
+}
+
+/* KYC decision items */
+.item.unread.kyc_rejected {
+    background: #fef2f2;
+    border-left: 3px solid #dc2626;
+}
+
+.item.unread.kyc_rejected:hover {
+    background: #fee2e2;
+}
+
+.item.unread.kyc_approved {
+    background: #f0fdf4;
+    border-left: 3px solid #16a34a;
+}
+
+.item.unread.kyc_approved:hover {
+    background: #dcfce7;
+}
+
+.item.unread.kyc_approved .unreadDot {
+    background: #16a34a;
 }
 
 .itemContent {

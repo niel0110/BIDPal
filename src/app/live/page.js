@@ -47,6 +47,11 @@ function LivePageInner() {
     const [followerCount, setFollowerCount] = useState(0);
     const [currentBidAmount, setCurrentBidAmount] = useState(0);
     const [showLoginPrompt, setShowLoginPrompt] = useState(false);
+    const [showVerifyPrompt, setShowVerifyPrompt] = useState(false);
+    const [standingMap, setStandingMap] = useState({});
+    const [biddingEligibility, setBiddingEligibility] = useState(null); // { canBid, requiresPreAuthorization }
+    const [myStanding, setMyStanding] = useState('clean');
+    const [showPreAuthModal, setShowPreAuthModal] = useState(false);
 
     // Permission and Stream State
     const [permissionStatus, setPermissionStatus] = useState('idle'); // idle, requesting, granted, denied
@@ -73,6 +78,22 @@ function LivePageInner() {
 
     // Determine if the current user is the seller (host)
     const isHost = auction && user && String(auction.seller_info?.seller_id) === String(user.seller_id || user.id);
+
+    // ── Fetch own bidding eligibility + standing when user is known ──────────
+    useEffect(() => {
+        if (!user) return;
+        const userId = user.user_id || user.id;
+        if (!userId) return;
+        Promise.all([
+            fetch(`${apiUrl}/api/violations/user/${userId}/bidding-eligibility`)
+                .then(r => r.ok ? r.json() : null).catch(() => null),
+            fetch(`${apiUrl}/api/violations/user/${userId}/record`)
+                .then(r => r.ok ? r.json() : null).catch(() => null),
+        ]).then(([eligibility, record]) => {
+            if (eligibility) setBiddingEligibility(eligibility);
+            if (record?.account_status) setMyStanding(record.account_status);
+        });
+    }, [user?.user_id, user?.id, apiUrl]);
 
     // ── Fetch existing comments from DB on mount ─────────────────────────────
     useEffect(() => {
@@ -122,6 +143,20 @@ function LivePageInner() {
                     amount: bid.amount?.toLocaleString ? bid.amount.toLocaleString() : bid.amount,
                     time: bid.time || bid.timeAgo || new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })
                 };
+
+                // Fetch standing for new bidder user_ids
+                if (bid.user_id) {
+                    setStandingMap(prev => {
+                        if (prev[bid.user_id] !== undefined) return prev;
+                        fetch(`${apiUrl}/api/violations/user/${bid.user_id}/record`)
+                            .then(r => r.ok ? r.json() : null)
+                            .then(data => {
+                                setStandingMap(m => ({ ...m, [bid.user_id]: data?.account_status || 'clean' }));
+                            })
+                            .catch(() => {});
+                        return { ...prev, [bid.user_id]: 'loading' };
+                    });
+                }
 
                 return [formattedBid, ...prev];
             });
@@ -559,6 +594,18 @@ function LivePageInner() {
         }
     };
 
+    const handleBidButtonClick = () => {
+        if (!user) { setShowLoginPrompt(true); return; }
+        if (!user.is_verified) { setShowVerifyPrompt(true); return; }
+        if (biddingEligibility && !biddingEligibility.canBid) return; // suspended — button is disabled
+        if (biddingEligibility?.requiresPreAuthorization) {
+            setShowPreAuthModal(true);
+            return;
+        }
+        if (minBid) setBidAmount(minBid);
+        setShowModal(true);
+    };
+
     const handleSendMessage = () => {
         if (!user) { setShowLoginPrompt(true); return; }
         if (!inputValue.trim()) return;
@@ -579,7 +626,13 @@ function LivePageInner() {
 
     const handlePlaceBid = async () => {
         if (!user) { setShowLoginPrompt(true); return; }
+        if (!user.is_verified) { setShowVerifyPrompt(true); return; }
         if (!bidAmount) return;
+
+        if (biddingEligibility && !biddingEligibility.canBid) {
+            alert('Your bidding privileges are suspended. You cannot place bids at this time.');
+            return;
+        }
 
         if (!auctionId) {
             console.error('❌ No auction ID available');
@@ -1263,9 +1316,11 @@ function LivePageInner() {
                                 </div>
                                 <button
                                     className={styles.mobileBidBtn}
-                                    onClick={() => { if (!user) { setShowLoginPrompt(true); return; } if (minBid) setBidAmount(minBid); setShowModal(true); }}
+                                    onClick={handleBidButtonClick}
+                                    disabled={!isHost && biddingEligibility && !biddingEligibility.canBid}
+                                    style={!isHost && biddingEligibility && !biddingEligibility.canBid ? { background: '#9ca3af', cursor: 'not-allowed' } : (!isHost && user && !user.is_verified ? { background: '#ea580c' } : undefined)}
                                 >
-                                    Bid
+                                    {!isHost && biddingEligibility && !biddingEligibility.canBid ? '🚫' : (!isHost && user && !user.is_verified ? '🔒 Verify to Bid' : 'Bid')}
                                 </button>
                             </div>
 
@@ -1423,6 +1478,18 @@ function LivePageInner() {
 
                     {/* LEFT: AUCTION & BIDS */}
                     <div className={styles.auctionControl}>
+                        {/* Strike 1 warning — buyer only */}
+                        {!isHost && myStanding === 'warned' && (
+                            <div style={{ background: '#fffbeb', border: '1px solid #fde68a', borderRadius: 8, padding: '8px 12px', marginBottom: '0.5rem', fontSize: '0.79rem', color: '#92400e', fontWeight: 600 }}>
+                                ⚠ Strike 1: This is a warning. Further violations will restrict your bidding privileges.
+                            </div>
+                        )}
+                        {/* Strike 2 notice — buyer only */}
+                        {!isHost && myStanding === 'restricted' && (
+                            <div style={{ background: '#fff7ed', border: '1px solid #fed7aa', borderRadius: 8, padding: '8px 12px', marginBottom: '0.5rem', fontSize: '0.79rem', color: '#c2410c', fontWeight: 600 }}>
+                                ⚠ Strike 2: Payment pre-authorization is required before each bid.
+                            </div>
+                        )}
                         <div className={styles.productRow}>
                             <img
                                 src={product?.images?.[0]?.image_url || "https://placehold.co/150x150"}
@@ -1452,11 +1519,14 @@ function LivePageInner() {
                                     </div>
                                 </div>
                             </div>
-                            <button className={styles.bidButton} onClick={() => {
-                                // Pre-fill bid amount with minimum required
-                                if (minBid) setBidAmount(minBid);
-                                setShowModal(true);
-                            }}>Bid</button>
+                            <button
+                                className={styles.bidButton}
+                                onClick={handleBidButtonClick}
+                                disabled={!isHost && biddingEligibility && !biddingEligibility.canBid}
+                                style={!isHost && biddingEligibility && !biddingEligibility.canBid ? { background: '#9ca3af', cursor: 'not-allowed', opacity: 0.7 } : (!isHost && user && !user.is_verified ? { background: '#ea580c' } : undefined)}
+                            >
+                                {!isHost && biddingEligibility && !biddingEligibility.canBid ? '🚫 Suspended' : (!isHost && user && !user.is_verified ? '🔒 Verify to Bid' : 'Bid')}
+                            </button>
                         </div>
 
                         {/* Stats Section */}
@@ -1476,20 +1546,44 @@ function LivePageInner() {
                         </div>
 
                         <div className={styles.bidTicker}>
-                            {bids.length > 0 ? bids.map((bid, index) => (
-                                <div key={bid.id ? `bid-${bid.id}-${index}` : `bid-${index}`} className={styles.bidItem}>
-                                    <div className={styles.bidderInfo}>
-                                        <div className={styles.bidderAvatar} />
-                                        <span className={styles.bidderName}>
-                                            {user && (bid.user_id === (user?.user_id || user?.id)) ? 'You' : bid.user}
-                                        </span>
+                            {bids.length > 0 ? bids.map((bid, index) => {
+                                const standing = standingMap[bid.user_id];
+                                const isAlert = standing && standing !== 'clean' && standing !== 'loading';
+                                const LIVE_STANDING = {
+                                    warned:     { label: 'Strike 1', color: '#b45309', bg: '#fffbeb' },
+                                    restricted: { label: 'Strike 2', color: '#c2410c', bg: '#fff7ed' },
+                                    suspended:  { label: 'Suspended', color: '#b91c1c', bg: '#fef2f2' },
+                                    flagged_bogus: { label: 'Bogus', color: '#7c2d12', bg: '#fff1f2' },
+                                };
+                                const scfg = LIVE_STANDING[standing];
+                                return (
+                                    <div key={bid.id ? `bid-${bid.id}-${index}` : `bid-${index}`} className={styles.bidItem}
+                                        style={isAlert ? { background: 'rgba(254,242,242,0.5)', borderRadius: 6 } : {}}>
+                                        <div className={styles.bidderInfo}>
+                                            <div className={styles.bidderAvatar} />
+                                            <div style={{ display: 'flex', flexDirection: 'column', gap: 2 }}>
+                                                <span className={styles.bidderName}>
+                                                    {user && (bid.user_id === (user?.user_id || user?.id)) ? 'You' : bid.user}
+                                                </span>
+                                                {isHost && isAlert && scfg && (
+                                                    <span style={{
+                                                        fontSize: '0.62rem', fontWeight: 700,
+                                                        color: scfg.color, background: scfg.bg,
+                                                        padding: '1px 6px', borderRadius: 10,
+                                                        display: 'inline-block', width: 'fit-content',
+                                                    }}>
+                                                        ⚠ {scfg.label}
+                                                    </span>
+                                                )}
+                                            </div>
+                                        </div>
+                                        <div style={{ display: 'flex', gap: '1rem', alignItems: 'center' }}>
+                                            <span className={styles.bidTime}>{bid.time}</span>
+                                            <span className={styles.bidAmount}>₱ {bid.amount}</span>
+                                        </div>
                                     </div>
-                                    <div style={{ display: 'flex', gap: '1rem', alignItems: 'center' }}>
-                                        <span className={styles.bidTime}>{bid.time}</span>
-                                        <span className={styles.bidAmount}>₱ {bid.amount}</span>
-                                    </div>
-                                </div>
-                            )) : (
+                                );
+                            }) : (
                                 <div className={styles.emptyBids}>No bids yet. Be the first!</div>
                             )}
                         </div>
@@ -1556,6 +1650,12 @@ function LivePageInner() {
                                 <X size={12} />
                             </button>
                         </div>
+
+                        {myStanding === 'warned' && (
+                            <div style={{ background: '#fffbeb', border: '1px solid #fde68a', borderRadius: 7, padding: '7px 12px', marginBottom: '0.6rem', fontSize: '0.78rem', color: '#92400e', fontWeight: 600 }}>
+                                ⚠ Strike 1 active — this is your warning. Win and pay to avoid further strikes.
+                            </div>
+                        )}
 
                         <div className={styles.bidInfoRow}>
                             <span className={styles.bidLabel}>Current Bid ({bids.length} Bids)</span>
@@ -1704,10 +1804,12 @@ function LivePageInner() {
                                         className={styles.mainBidBtn}
                                         onClick={() => {
                                             setShowProductModal(false);
-                                            setShowModal(true);
+                                            handleBidButtonClick();
                                         }}
+                                        disabled={!isHost && biddingEligibility && !biddingEligibility.canBid}
+                                        style={!isHost && biddingEligibility && !biddingEligibility.canBid ? { background: '#9ca3af', cursor: 'not-allowed' } : (!isHost && user && !user.is_verified ? { background: '#ea580c' } : undefined)}
                                     >
-                                        Join Bid
+                                        {!isHost && biddingEligibility && !biddingEligibility.canBid ? '🚫 Bidding Suspended' : (!isHost && user && !user.is_verified ? '🔒 Verify to Bid' : 'Join Bid')}
                                     </button>
                                     <button className={styles.wishlistBtn}>
                                         <Heart size={24} />
@@ -1848,6 +1950,76 @@ function LivePageInner() {
                                 <button className={styles.finalPayBtn}>Pay Now</button>
                             </div>
                         </div>
+                    </div>
+                </div>
+            )}
+
+            {/* PRE-AUTHORIZATION MODAL (Strike 2) */}
+            {showPreAuthModal && (
+                <div className={styles.modalOverlay}>
+                    <div className={styles.modalContent}>
+                        <div className={styles.modalHeader}>
+                            <h2 className={styles.modalTitle}>Pre-Authorization Required</h2>
+                            <button className={styles.closeBtn} onClick={() => setShowPreAuthModal(false)}>
+                                <X size={12} />
+                            </button>
+                        </div>
+                        <div style={{ padding: '0.25rem 0 0.75rem' }}>
+                            <div style={{ background: '#fff7ed', border: '1.5px solid #fed7aa', borderRadius: 8, padding: '12px 14px', marginBottom: '1rem' }}>
+                                <p style={{ color: '#c2410c', fontWeight: 700, fontSize: '0.85rem', margin: '0 0 6px' }}>
+                                    ⚠ Strike 2 — Payment Pre-Authorization
+                                </p>
+                                <p style={{ color: '#78350f', fontSize: '0.8rem', margin: 0, lineHeight: 1.5 }}>
+                                    Your account is on Strike 2. By proceeding, you confirm that your payment method will be held as pre-authorization for any winning bid. Failure to pay if you win will result in immediate suspension.
+                                </p>
+                            </div>
+                            <button
+                                style={{ width: '100%', padding: '12px', borderRadius: 8, background: '#D32F2F', color: 'white', border: 'none', fontWeight: 700, cursor: 'pointer', fontSize: '0.9rem' }}
+                                onClick={() => {
+                                    setShowPreAuthModal(false);
+                                    if (minBid) setBidAmount(minBid);
+                                    setShowModal(true);
+                                }}
+                            >
+                                I Understand — Proceed to Bid
+                            </button>
+                            <button
+                                style={{ width: '100%', padding: '10px', marginTop: '0.5rem', borderRadius: 8, background: 'transparent', color: '#666', border: '1px solid #ddd', cursor: 'pointer', fontSize: '0.85rem' }}
+                                onClick={() => setShowPreAuthModal(false)}
+                            >
+                                Cancel
+                            </button>
+                        </div>
+                    </div>
+                </div>
+            )}
+
+            {/* VERIFY ID PROMPT MODAL */}
+            {showVerifyPrompt && (
+                <div className={styles.modalOverlay} onClick={() => setShowVerifyPrompt(false)}>
+                    <div className={styles.loginPromptContent} onClick={(e) => e.stopPropagation()}>
+                        <button className={styles.closeBtn} style={{ position: 'absolute', top: '0.75rem', right: '0.75rem' }} onClick={() => setShowVerifyPrompt(false)}>
+                            <X size={12} />
+                        </button>
+                        <div className={styles.loginPromptIcon} style={{ background: '#fff7ed', color: '#ea580c' }}>
+                            <Lock size={28} strokeWidth={2.5} />
+                        </div>
+                        <h2 className={styles.loginPromptTitle}>ID Verification Required</h2>
+                        <p className={styles.loginPromptDesc}>
+                            You need to verify your identity before you can place bids. Submit a valid Philippine government-issued ID to get started.
+                        </p>
+                        <button
+                            className={styles.loginPromptBtn}
+                            onClick={() => window.location.href = '/buyer/setup'}
+                        >
+                            Verify My ID
+                        </button>
+                        <button
+                            className={styles.loginPromptSecondary}
+                            onClick={() => setShowVerifyPrompt(false)}
+                        >
+                            Maybe Later
+                        </button>
                     </div>
                 </div>
             )}

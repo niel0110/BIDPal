@@ -399,6 +399,22 @@
 .msgBtn:hover { border-color: #673AB7; color: #673AB7; }
 .viewBtn:hover { border-color: #6b7280; color: #111; }
 
+.receiptBtn {
+    display: flex;
+    align-items: center;
+    gap: 0.4rem;
+    padding: 0.55rem 1rem;
+    background: none;
+    border: 1.5px solid #7C3AED;
+    border-radius: 10px;
+    font-size: 0.8rem;
+    color: #7C3AED;
+    cursor: pointer;
+    transition: all 0.2s;
+    font-weight: 600;
+}
+.receiptBtn:hover { background: #7C3AED; color: white; }
+
 .waitingChip, .completedChip, .noReviewChip {
     display: flex;
     align-items: center;
@@ -649,7 +665,7 @@
     .reviewRow { font-size: 0.8rem; padding: 0.5rem 0.7rem; }
 
     .cardActions { gap: 0.5rem; }
-    .manageBtn, .msgBtn, .viewBtn {
+    .manageBtn, .msgBtn, .viewBtn, .receiptBtn {
         flex: 1;
         justify-content: center;
         font-size: 0.78rem;

@@ -14,7 +14,7 @@ import {
     MessageCircle
 } from 'lucide-react';
 import { useAuth } from '@/context/AuthContext';
-import { useSearchParams } from 'next/navigation';
+import { useSearchParams, useRouter } from 'next/navigation';
 import styles from './page.module.css';
 
 const API_URL = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:5000';
@@ -35,6 +35,7 @@ function avatarFallback(e) {
 
 function MessagesPageInner() {
     const { user } = useAuth();
+    const router = useRouter();
     const isSeller = user?.role?.toLowerCase() === 'seller';
 
     const searchParams = useSearchParams();
@@ -169,6 +170,7 @@ function MessagesPageInner() {
 
     const handleSendMessage = async () => {
         if (!messageInput.trim() || !selectedChat || sending) return;
+        if (!isSeller && !user?.is_verified) return; // unverified buyers cannot send messages
         const msg = messageInput.trim();
         setMessageInput('');
         setSending(true);
@@ -377,14 +379,28 @@ function MessagesPageInner() {
                                         <ChevronLeft size={20} />
                                     </button>
                                     <div className={styles.chatInfo}>
-                                        <img
-                                            src={currentChat.otherUser?.avatar || currentChat.otherUser?.Avatar || currentChat.avatar || 'https://placehold.co/36x36?text=?'}
-                                            alt={getChatDisplayName(currentChat)}
-                                            onError={avatarFallback}
-                                        />
-                                        <div className={styles.chatInfoText}>
-                                            <h3>{getChatDisplayName(currentChat)}</h3>
-                                            <span className={styles.chatRole}>{isSeller ? 'Buyer' : 'Seller'}</span>
+                                        <div
+                                            className={styles.chatInfoClickable}
+                                            onClick={() => {
+                                                const other = currentChat.otherUser;
+                                                if (!other) return;
+                                                if (other.sellerId) {
+                                                    router.push(`/store/${other.sellerId}`);
+                                                } else {
+                                                    router.push(`/profile`);
+                                                }
+                                            }}
+                                            title="View profile"
+                                        >
+                                            <img
+                                                src={currentChat.otherUser?.avatar || currentChat.otherUser?.Avatar || currentChat.avatar || 'https://placehold.co/36x36?text=?'}
+                                                alt={getChatDisplayName(currentChat)}
+                                                onError={avatarFallback}
+                                            />
+                                            <div className={styles.chatInfoText}>
+                                                <h3>{getChatDisplayName(currentChat)}</h3>
+                                                <span className={styles.chatRole}>{isSeller ? 'Buyer' : 'Seller'}</span>
+                                            </div>
                                         </div>
                                     </div>
                                     <div className={styles.chatActions}>
@@ -433,28 +449,38 @@ function MessagesPageInner() {
                                     )}
                                 </div>
 
-                                <footer className={styles.inputBar}>
-                                    <div className={styles.inputActions}>
-                                        <button title="Attach file"><Paperclip size={20} /></button>
-                                        <button title="Send image"><ImageIcon size={20} /></button>
-                                        <button title="Emoji"><Smile size={20} /></button>
-                                    </div>
-                                    <textarea
-                                        className={styles.messageTextbox}
-                                        placeholder="Type a message..."
-                                        value={messageInput}
-                                        onChange={(e) => setMessageInput(e.target.value)}
-                                        onKeyDown={handleKeyDown}
-                                        rows={1}
-                                    />
-                                    <button
-                                        className={styles.sendBtn}
-                                        disabled={!messageInput.trim() || sending}
-                                        onClick={handleSendMessage}
-                                    >
-                                        <Send size={18} />
-                                    </button>
-                                </footer>
+                                {!isSeller && !user?.is_verified ? (
+                                    <footer className={styles.inputBar} style={{ justifyContent: 'center', padding: '12px 16px', background: '#fff7ed', borderTop: '1px solid #fed7aa' }}>
+                                        <div style={{ display: 'flex', alignItems: 'center', gap: 10, fontSize: '0.82rem', color: '#9a3412' }}>
+                                            <span style={{ fontSize: '1rem' }}>🔒</span>
+                                            <span>Verify your ID to send messages.</span>
+                                            <a href="/buyer/setup" style={{ fontWeight: 700, color: '#ea580c', textDecoration: 'none', whiteSpace: 'nowrap' }}>Verify Now →</a>
+                                        </div>
+                                    </footer>
+                                ) : (
+                                    <footer className={styles.inputBar}>
+                                        <div className={styles.inputActions}>
+                                            <button title="Attach file"><Paperclip size={20} /></button>
+                                            <button title="Send image"><ImageIcon size={20} /></button>
+                                            <button title="Emoji"><Smile size={20} /></button>
+                                        </div>
+                                        <textarea
+                                            className={styles.messageTextbox}
+                                            placeholder="Type a message..."
+                                            value={messageInput}
+                                            onChange={(e) => setMessageInput(e.target.value)}
+                                            onKeyDown={handleKeyDown}
+                                            rows={1}
+                                        />
+                                        <button
+                                            className={styles.sendBtn}
+                                            disabled={!messageInput.trim() || sending}
+                                            onClick={handleSendMessage}
+                                        >
+                                            <Send size={18} />
+                                        </button>
+                                    </footer>
+                                )}
                             </>
                         ) : (
                             <div className={styles.noChatSelected}>

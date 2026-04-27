@@ -123,7 +123,7 @@ export const getDashboardSummary = async (req, res) => {
       .order('end_time', { ascending: false })
       .limit(10);
 
-    if (completedError) throw completedError;
+    if (completedError) { console.warn('Completed auctions query error:', completedError.message); }
 
     // Fetch product details, bid counts, and winner info for completed auctions
     const completed = await Promise.all(
@@ -144,20 +144,26 @@ export const getDashboardSummary = async (req, res) => {
         if (auction.winner_user_id && auction.winning_bid_id) {
           const { data: winningBid } = await supabase
             .from('Bids')
-            .select('bid_id, bid_amount, placed_at, user_id, bidder:User(user_id, Fname, Lname, Avatar, email)')
+            .select('bid_id, bid_amount, placed_at, user_id')
             .eq('bid_id', auction.winning_bid_id)
             .maybeSingle();
 
           if (winningBid) {
-            const fName = winningBid.bidder?.Fname;
-            const lName = winningBid.bidder?.Lname;
-            const emailName = winningBid.bidder?.email ? winningBid.bidder.email.split('@')[0] : 'Winner';
+            const { data: bidderUser } = await supabase
+              .from('User')
+              .select('user_id, Fname, Lname, Avatar, email')
+              .eq('user_id', winningBid.user_id)
+              .maybeSingle();
+
+            const fName = bidderUser?.Fname;
+            const lName = bidderUser?.Lname;
+            const emailName = bidderUser?.email ? bidderUser.email.split('@')[0] : 'Winner';
             const fullName = (fName || lName) ? `${fName || ''} ${lName || ''}`.trim() : emailName;
 
             winner = {
               user_id: winningBid.user_id,
               name: fullName,
-              avatar: winningBid.bidder?.Avatar || null,
+              avatar: bidderUser?.Avatar || null,
               bid_amount: winningBid.bid_amount,
               placed_at: winningBid.placed_at
             };
@@ -197,34 +203,20 @@ export const getDashboardSummary = async (req, res) => {
     const auctionId = currentActiveAuction?.auction_id;
     const liveViewers = auctionId ? getViewerCount(auctionId) : 0;
 
-    // Get shares and likes count from database
+    // Get shares, likes and views — wrapped individually so a missing table doesn't 500 the endpoint
     let shares = 0;
     let likes = 0;
-
-    if (auctionId) {
-      // Count shares
-      const { count: sharesCount } = await supabase
-        .from('Auction_Shares')
-        .select('*', { count: 'exact', head: true })
-        .eq('auction_id', auctionId);
-      shares = sharesCount || 0;
-
-      // Count likes
-      const { count: likesCount } = await supabase
-        .from('Auction_Likes')
-        .select('*', { count: 'exact', head: true })
-        .eq('auction_id', auctionId);
-      likes = likesCount || 0;
-    }
-
-    // Count persisted total views from Auction_Views table
     let totalViews = 0;
+
     if (auctionId) {
-      const { count: viewsCount } = await supabase
-        .from('Auction_Views')
-        .select('*', { count: 'exact', head: true })
-        .eq('auction_id', auctionId);
-      totalViews = viewsCount || 0;
+      const [sharesRes, likesRes, viewsRes] = await Promise.allSettled([
+        supabase.from('Auction_Shares').select('*', { count: 'exact', head: true }).eq('auction_id', auctionId),
+        supabase.from('Auction_Likes').select('*', { count: 'exact', head: true }).eq('auction_id', auctionId),
+        supabase.from('Auction_Views').select('*', { count: 'exact', head: true }).eq('auction_id', auctionId),
+      ]);
+      if (sharesRes.status === 'fulfilled' && !sharesRes.value.error) shares = sharesRes.value.count || 0;
+      if (likesRes.status === 'fulfilled' && !likesRes.value.error) likes = likesRes.value.count || 0;
+      if (viewsRes.status === 'fulfilled' && !viewsRes.value.error) totalViews = viewsRes.value.count || 0;
     }
 
     res.json({
@@ -254,7 +246,7 @@ export const getAuctionBids = async (req, res) => {
     // Get recent bids with bidder information
     const { data: bids, error } = await supabase
       .from('Bids')
-      .select('bid_id, bid_amount, placed_at, user_id, bidder:User(user_id, Fname, Lname, Avatar, email)')
+      .select('bid_id, bid_amount, placed_at, user_id')
       .eq('auction_id', id)
       .order('placed_at', { ascending: false })
       .limit(20);
@@ -271,22 +263,33 @@ export const getAuctionBids = async (req, res) => {
 
     const uniqueBidderCount = new Set(uniqueBidders?.map(b => b.user_id)).size;
 
-    // Format response with additional info
+    // Fetch user info separately to avoid FK join issues
+    const bidderIds = [...new Set((bids || []).map(b => b.user_id))];
+    let bidderMap = {};
+    if (bidderIds.length > 0) {
+      const { data: bidderUsers } = await supabase
+        .from('User')
+        .select('user_id, Fname, Lname, Avatar, email')
+        .in('user_id', bidderIds);
+      (bidderUsers || []).forEach(u => { bidderMap[u.user_id] = u; });
+    }
+
     const formattedBids = bids.map(bid => {
-      const fName = bid.bidder?.Fname;
-      const lName = bid.bidder?.Lname;
-      const emailName = bid.bidder?.email ? bid.bidder.email.split('@')[0] : 'User';
+      const bidder = bidderMap[bid.user_id] || {};
+      const fName = bidder.Fname;
+      const lName = bidder.Lname;
+      const emailName = bidder.email ? bidder.email.split('@')[0] : 'User';
       const fullName = (fName || lName) ? `${fName || ''} ${lName || ''}`.trim() : emailName;
-      
+
       return {
         bid_id: bid.bid_id,
         user_id: bid.user_id,
         amount: bid.bid_amount,
         bidder_name: fullName,
-      bidder_avatar: bid.bidder?.Avatar || null,
-      timestamp: bid.placed_at,
-      timeAgo: getTimeAgo(bid.placed_at)
-    };
+        bidder_avatar: bidder.Avatar || null,
+        timestamp: bid.placed_at,
+        timeAgo: getTimeAgo(bid.placed_at)
+      };
     });
 
     res.json({

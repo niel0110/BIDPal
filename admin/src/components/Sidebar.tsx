@@ -1,15 +1,15 @@
 import React from 'react';
-import { LayoutDashboard, ShieldCheck, AlertOctagon, Scale, Users, Settings, LogOut, Ban } from 'lucide-react';
+import { LayoutDashboard, ShieldCheck, AlertOctagon, Scale, Users, LogOut, Ban, UserCheck } from 'lucide-react';
 import { NavLink, useNavigate } from 'react-router-dom';
 
 const navItems = [
   { icon: LayoutDashboard, label: 'Dashboard', path: '/' },
   { icon: ShieldCheck, label: 'Seller Verification', path: '/seller-verification' },
+  { icon: UserCheck, label: 'Buyer Verification', path: '/buyer-verification' },
   { icon: AlertOctagon, label: 'Listing Moderation', path: '/moderation' },
   { icon: Ban, label: 'Cancellation Reviews', path: '/cancellations' },
   { icon: Scale, label: 'Disputes', path: '/disputes' },
-  { icon: Users, label: 'User standing', path: '/users' },
-  { icon: Settings, label: 'Settings', path: '/settings' },
+  { icon: Users, label: 'Buyer Standing', path: '/users' },
 ];
 
 const Sidebar = () => {
