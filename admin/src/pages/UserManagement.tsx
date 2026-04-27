@@ -1,5 +1,5 @@
-import React, { useState, useEffect } from 'react';
-import { Users, Search, Shield, ShieldAlert, ShieldOff, UserCheck, MoreHorizontal, X, Ban } from 'lucide-react';
+import { useState, useEffect } from 'react';
+import { Search, Shield, ShieldAlert, ShieldOff, UserCheck, X, Ban } from 'lucide-react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { supabase } from '../lib/supabase';
 
@@ -307,7 +307,6 @@ const UserManagement = () => {
               {/* Banner */}
               {(() => {
                 const standing = getStanding(selectedUser);
-                const cfg = STANDING_CONFIG[standing] || STANDING_CONFIG['Active'];
                 return (
                   <div style={{ background: standing === 'Active' ? 'linear-gradient(135deg,#16a34a,#22c55e)' : standing === 'Probationary' ? 'linear-gradient(135deg,#d97706,#f59e0b)' : standing === 'Suspended' ? 'linear-gradient(135deg,#dc2626,#f87171)' : 'linear-gradient(135deg,#111,#374151)', padding: '20px 24px', display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
                     <div style={{ display: 'flex', alignItems: 'center', gap: '14px' }}>

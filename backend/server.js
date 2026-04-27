@@ -50,6 +50,9 @@ app.locals.io = io
 // Track active viewers per auction
 const auctionViewers = new Map() // auctionId -> Set of socket IDs
 
+// Track blocked users per auction
+const blockedUsers = new Map() // auctionId -> Set of user_ids
+
 // Helper to get viewer count
 const getViewerCount = (auctionId) => {
   return auctionViewers.get(auctionId)?.size || 0
@@ -101,6 +104,9 @@ io.on('connection', (socket) => {
 
   // Broadcast new bid to everyone in the auction room
   socket.on('new-bid', async ({ auctionId, bid }) => {
+    // Drop bid broadcast if user is blocked
+    if (bid.user_id && blockedUsers.get(auctionId)?.has(String(bid.user_id))) return
+
     // Broadcast the new bid
     io.to(`auction:${auctionId}`).emit('bid-update', bid)
 
@@ -122,8 +128,25 @@ io.on('connection', (socket) => {
     }
   })
 
+  // Seller blocks a buyer from the live auction
+  socket.on('block-buyer', ({ auctionId, userId }) => {
+    if (socket.currentRole !== 'seller') return
+
+    if (!blockedUsers.has(auctionId)) blockedUsers.set(auctionId, new Set())
+    blockedUsers.get(auctionId).add(String(userId))
+
+    // Notify the blocked user directly via their user room
+    io.to(`user:${userId}`).emit('you-are-blocked', { auctionId })
+
+    // Tell everyone else this user was removed so their msgs can be filtered
+    io.to(`auction:${auctionId}`).emit('buyer-blocked', { userId })
+  })
+
   // Broadcast a comment to everyone in the auction room AND persist to DB
   socket.on('send-comment', ({ auctionId, comment }) => {
+    // Drop comment if user is blocked
+    if (comment.user_id && blockedUsers.get(auctionId)?.has(String(comment.user_id))) return
+
     // Broadcast immediately so all viewers see it in real time
     io.to(`auction:${auctionId}`).emit('new-comment', comment)
 

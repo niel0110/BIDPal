@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import { useState, useEffect } from 'react';
 import { AlertTriangle, CheckCircle, XCircle, RefreshCw, ChevronDown, ChevronUp, User, Bell } from 'lucide-react';
 import { supabase } from '../lib/supabase';
 
@@ -136,7 +136,6 @@ const CancellationReviews = () => {
     const buyerId = record.User?.user_id;
     const sellerId = (record.Auctions as any)?.Seller?.user_id;
     const productName = (record.Auctions as any)?.Products?.name || 'the item';
-    const storeName = (record.Auctions as any)?.Seller?.store_name || 'the seller';
     const isValidate = action === 'validate';
 
     try {
@@ -416,7 +415,7 @@ const CancellationReviews = () => {
                         }
                         <span style={{ fontSize: '13px', color: resolutionLabel.includes('Validated') ? '#065f46' : '#991b1b' }}>
                           Decision: <strong>{resolutionLabel}</strong>
-                          {mc?.decision_reason && <span style={{ marginLeft: '6px', opacity: 0.8 }}>— {(mc as any).decision_reason}</span>}
+                          {(mc as any)?.decision_reason && <span style={{ marginLeft: '6px', opacity: 0.8 }}>— {(mc as any).decision_reason}</span>}
                         </span>
                       </div>
                     )}

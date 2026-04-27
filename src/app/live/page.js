@@ -48,6 +48,8 @@ function LivePageInner() {
     const [currentBidAmount, setCurrentBidAmount] = useState(0);
     const [showLoginPrompt, setShowLoginPrompt] = useState(false);
     const [showVerifyPrompt, setShowVerifyPrompt] = useState(false);
+    const [blockedFromAuction, setBlockedFromAuction] = useState(false);
+    const [blockedUserIds, setBlockedUserIds] = useState(new Set());
     const [standingMap, setStandingMap] = useState({});
     const [biddingEligibility, setBiddingEligibility] = useState(null); // { canBid, requiresPreAuthorization }
     const [myStanding, setMyStanding] = useState('clean');
@@ -164,7 +166,17 @@ function LivePageInner() {
 
         socket.on('new-comment', (comment) => {
             const time = comment.time || new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
-            setComments(prev => [...prev, { id: comment.id, user: comment.user, text: comment.text, time }]);
+            setComments(prev => [...prev, { id: comment.id, user_id: comment.user_id, user: comment.user, text: comment.text, time }]);
+        });
+
+        socket.on('you-are-blocked', () => {
+            setBlockedFromAuction(true);
+        });
+
+        socket.on('buyer-blocked', ({ userId }) => {
+            setBlockedUserIds(prev => new Set([...prev, String(userId)]));
+            setComments(prev => prev.filter(c => String(c.user_id) !== String(userId)));
+            setBids(prev => prev.filter(b => String(b.user_id) !== String(userId)));
         });
 
         // Live concurrent viewer count — goes up and down as people join/leave
@@ -594,6 +606,12 @@ function LivePageInner() {
         }
     };
 
+    const handleBlockBuyer = (userId, userName) => {
+        if (!socketRef.current || !auctionId) return;
+        if (!window.confirm(`Block ${userName} from this auction?`)) return;
+        socketRef.current.emit('block-buyer', { auctionId, userId });
+    };
+
     const handleBidButtonClick = () => {
         if (!user) { setShowLoginPrompt(true); return; }
         if (!user.is_verified) { setShowVerifyPrompt(true); return; }
@@ -628,6 +646,13 @@ function LivePageInner() {
         if (!user) { setShowLoginPrompt(true); return; }
         if (!user.is_verified) { setShowVerifyPrompt(true); return; }
         if (!bidAmount) return;
+
+        const reservePrice = parseFloat(auction?.reserve_price || 0);
+        const maxBid = reservePrice > 0 ? reservePrice * 10 : Infinity;
+        if (parseFloat(bidAmount) > maxBid) {
+            alert(`❌ Bid cannot exceed ₱${maxBid.toLocaleString('en-PH')} (10× the reserve price)`);
+            return;
+        }
 
         if (biddingEligibility && !biddingEligibility.canBid) {
             alert('Your bidding privileges are suspended. You cannot place bids at this time.');
@@ -916,6 +941,237 @@ function LivePageInner() {
 
     const { product, seller_info } = auction;
     const isScheduledBuyer = auction.status === 'scheduled' && !isHost;
+    const isAuctionEnded =
+        auction.status === 'ended' ||
+        auction.status === 'completed' ||
+        streamEnded ||
+        (auction.status === 'active' && auction?.end_time && new Date(auction.end_time) <= new Date());
+
+    // ── AUCTION ENDED: show compact recap page instead of live layout ────────
+    if (isAuctionEnded) {
+        const finalBid = bids[0];
+        const rawFinal = finalBid?.amount ?? auction.current_price ?? auction.reserve_price;
+        const finalNum = typeof rawFinal === 'string'
+            ? Number(rawFinal.replace(/,/g, ''))
+            : Number(rawFinal || 0);
+
+        return (
+            <main style={{ background: '#f5f5f5', minHeight: '100vh', display: 'flex', flexDirection: 'column' }}>
+                <Header />
+                <div style={{ flex: 1, maxWidth: 1060, width: '100%', margin: '0 auto', padding: '1.1rem 1.5rem', display: 'flex', flexDirection: 'column', gap: '0.9rem', height: 'calc(100vh - 62px)', overflow: 'hidden' }}>
+
+                    {/* top breadcrumb */}
+                    <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', flexShrink: 0 }}>
+                        <button
+                            onClick={() => window.history.back()}
+                            style={{ background: 'none', border: '1px solid #ddd', borderRadius: 7, padding: '5px 13px', cursor: 'pointer', fontSize: '0.78rem', color: '#555', fontWeight: 600 }}
+                        >
+                            ← Back
+                        </button>
+                        <span style={{ fontSize: '0.74rem', color: '#aaa' }}>Live Session Recap</span>
+                        <span style={{ fontSize: '0.68rem', background: '#f3f4f6', color: '#6b7280', border: '1px solid #e5e7eb', borderRadius: 20, padding: '2px 8px', fontWeight: 700 }}>
+                            🏁 Ended
+                        </span>
+                    </div>
+
+                    {/* two-column layout */}
+                    <div style={{ display: 'flex', gap: '1.1rem', flex: 1, minHeight: 0 }}>
+
+                        {/* LEFT: image + seller */}
+                        <div style={{ width: 270, flexShrink: 0, display: 'flex', flexDirection: 'column', gap: '0.65rem' }}>
+                            <div style={{ background: 'white', borderRadius: 12, border: '1px solid #e5e7eb', overflow: 'hidden', aspectRatio: '1', flexShrink: 0 }}>
+                                <img
+                                    src={activeModalImg || product?.images?.[0]?.image_url || 'https://placehold.co/270x270'}
+                                    alt={product?.name}
+                                    style={{ width: '100%', height: '100%', objectFit: 'cover', display: 'block' }}
+                                />
+                            </div>
+                            {product?.images?.length > 1 && (
+                                <div style={{ display: 'flex', gap: '0.4rem', flexWrap: 'wrap' }}>
+                                    {product.images.slice(0, 4).map((img, idx) => (
+                                        <img
+                                            key={idx}
+                                            src={img.image_url}
+                                            alt=""
+                                            onClick={() => setActiveModalImg(img.image_url)}
+                                            style={{
+                                                width: 54, height: 54, objectFit: 'cover', borderRadius: 7, cursor: 'pointer',
+                                                border: `2px solid ${(activeModalImg || product.images[0]?.image_url) === img.image_url ? '#D32F2F' : '#e5e7eb'}`
+                                            }}
+                                        />
+                                    ))}
+                                </div>
+                            )}
+                            {/* seller card */}
+                            <div style={{ background: 'white', borderRadius: 10, border: '1px solid #e5e7eb', padding: '0.8rem 0.9rem', marginTop: 'auto' }}>
+                                <div style={{ display: 'flex', alignItems: 'center', gap: '0.55rem' }}>
+                                    <div style={{
+                                        width: 34, height: 34, borderRadius: '50%', flexShrink: 0,
+                                        backgroundImage: seller_info?.avatar ? `url(${seller_info.avatar})` : 'none',
+                                        backgroundColor: '#ddd', backgroundSize: 'cover', backgroundPosition: 'center'
+                                    }} />
+                                    <div style={{ flex: 1, minWidth: 0 }}>
+                                        <div style={{ fontWeight: 700, fontSize: '0.82rem', color: '#111', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{seller_info?.store_name}</div>
+                                        <div style={{ fontSize: '0.7rem', color: '#999' }}>{seller_info?.full_name}</div>
+                                    </div>
+                                    <button
+                                        onClick={() => window.location.href = `/store/${seller_info?.seller_id}`}
+                                        style={{ fontSize: '0.7rem', fontWeight: 700, color: '#D32F2F', background: 'none', border: '1px solid #D32F2F', borderRadius: 6, padding: '3px 9px', cursor: 'pointer', flexShrink: 0 }}
+                                    >
+                                        Visit
+                                    </button>
+                                </div>
+                            </div>
+                        </div>
+
+                        {/* RIGHT: details */}
+                        <div style={{ flex: 1, display: 'flex', flexDirection: 'column', gap: '0.75rem', minHeight: 0, overflow: 'hidden' }}>
+
+                            {/* product title block */}
+                            <div style={{ background: 'white', borderRadius: 12, border: '1px solid #e5e7eb', padding: '0.9rem 1.1rem', flexShrink: 0 }}>
+                                <h1 style={{ fontSize: '1.2rem', fontWeight: 800, color: '#111', margin: '0 0 0.2rem' }}>{product?.name}</h1>
+                                {product?.description && (
+                                    <p style={{ fontSize: '0.76rem', color: '#888', margin: 0, lineHeight: 1.5, display: '-webkit-box', WebkitLineClamp: 2, WebkitBoxOrient: 'vertical', overflow: 'hidden' }}>
+                                        {product.description}
+                                    </p>
+                                )}
+                            </div>
+
+                            {/* stats row */}
+                            <div style={{ display: 'flex', gap: '0.6rem', flexShrink: 0 }}>
+                                {[
+                                    { label: 'Final Price', value: `₱${finalNum.toLocaleString('en-PH')}`, color: '#D32F2F' },
+                                    { label: 'Total Bids', value: bids.length, color: '#111' },
+                                    { label: 'Reserve Price', value: `₱${Number(auction.reserve_price || 0).toLocaleString('en-PH')}`, color: '#111' },
+                                ].map(({ label, value, color }) => (
+                                    <div key={label} style={{ flex: 1, background: 'white', border: '1px solid #e5e7eb', borderRadius: 10, padding: '0.65rem 0.85rem' }}>
+                                        <div style={{ fontSize: '0.6rem', color: '#aaa', textTransform: 'uppercase', letterSpacing: '0.06em', fontWeight: 700, marginBottom: 2 }}>{label}</div>
+                                        <div style={{ fontSize: '1.25rem', fontWeight: 800, color, lineHeight: 1.2 }}>{value}</div>
+                                    </div>
+                                ))}
+                            </div>
+
+                            {/* winner banner */}
+                            {finalBid ? (
+                                <div style={{ background: 'linear-gradient(135deg,#fff8f0,#fff3e0)', border: '1px solid #fed7aa', borderRadius: 10, padding: '0.7rem 1rem', display: 'flex', alignItems: 'center', gap: '0.7rem', flexShrink: 0 }}>
+                                    <span style={{ fontSize: '1.5rem', lineHeight: 1 }}>🏆</span>
+                                    <div>
+                                        <div style={{ fontSize: '0.62rem', fontWeight: 700, color: '#92400e', textTransform: 'uppercase', letterSpacing: '0.04em' }}>Winning Bidder</div>
+                                        <div style={{ fontSize: '0.95rem', fontWeight: 800, color: '#78350f' }}>
+                                            {user && String(finalBid.user_id) === String(user?.user_id || user?.id) ? '🎉 You won!' : finalBid.user}
+                                        </div>
+                                    </div>
+                                    <div style={{ marginLeft: 'auto', textAlign: 'right' }}>
+                                        <div style={{ fontSize: '0.62rem', fontWeight: 700, color: '#92400e', textTransform: 'uppercase', letterSpacing: '0.04em' }}>Winning Bid</div>
+                                        <div style={{ fontSize: '1rem', fontWeight: 800, color: '#D32F2F' }}>₱{finalNum.toLocaleString('en-PH')}</div>
+                                    </div>
+                                </div>
+                            ) : (
+                                <div style={{ background: '#f9fafb', border: '1px solid #e5e7eb', borderRadius: 10, padding: '0.7rem 1rem', fontSize: '0.82rem', color: '#888', flexShrink: 0 }}>
+                                    No bids were placed in this auction.
+                                </div>
+                            )}
+
+                            {/* bid history — scrollable */}
+                            <div style={{ flex: 1, background: 'white', borderRadius: 12, border: '1px solid #e5e7eb', display: 'flex', flexDirection: 'column', minHeight: 0 }}>
+                                <div style={{ padding: '0.6rem 1rem', borderBottom: '1px solid #f3f4f6', fontWeight: 700, fontSize: '0.78rem', color: '#374151', flexShrink: 0 }}>
+                                    Bid History
+                                </div>
+                                <div style={{ flex: 1, overflowY: 'auto', padding: '0.45rem 0.7rem', display: 'flex', flexDirection: 'column', gap: '0.28rem' }}>
+                                    {bids.length > 0 ? bids.map((bid, idx) => (
+                                        <div key={bid.id || idx} style={{
+                                            display: 'flex', alignItems: 'center', justifyContent: 'space-between',
+                                            padding: '0.42rem 0.6rem',
+                                            background: idx === 0 ? '#fff8f0' : idx % 2 === 0 ? '#fafafa' : 'white',
+                                            border: `1px solid ${idx === 0 ? '#fed7aa' : '#f0f0f0'}`,
+                                            borderRadius: 7, fontSize: '0.8rem'
+                                        }}>
+                                            <div style={{ display: 'flex', alignItems: 'center', gap: '0.4rem' }}>
+                                                <span style={{ fontSize: '0.8rem', width: 20, textAlign: 'center' }}>
+                                                    {idx === 0 ? '🥇' : idx === 1 ? '🥈' : idx === 2 ? '🥉' : `${idx + 1}.`}
+                                                </span>
+                                                <span style={{ fontWeight: idx === 0 ? 700 : 500, color: '#374151' }}>
+                                                    {user && String(bid.user_id) === String(user?.user_id || user?.id) ? 'You' : bid.user}
+                                                </span>
+                                            </div>
+                                            <div style={{ display: 'flex', gap: '0.75rem', alignItems: 'center' }}>
+                                                <span style={{ color: '#ccc', fontSize: '0.7rem' }}>{bid.time}</span>
+                                                <span style={{ fontWeight: 700, color: idx === 0 ? '#D32F2F' : '#555' }}>₱ {bid.amount}</span>
+                                            </div>
+                                        </div>
+                                    )) : (
+                                        <div style={{ textAlign: 'center', color: '#ccc', padding: '2rem 0', fontSize: '0.82rem' }}>No bids placed.</div>
+                                    )}
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                {/* Winner modal — reused from live session */}
+                {winnerModal.show && (
+                    <div className={styles.modalOverlay}>
+                        <div className={styles.winnerModalContent}>
+                            <div className={styles.modalCloseWrapper}>
+                                <button className={styles.closeBtn} onClick={() => setWinnerModal({ ...winnerModal, show: false })}><X size={16} /></button>
+                            </div>
+                            <h2 className={styles.winnerTitle}>{winnerModal.title}</h2>
+                            <div className={styles.winnerDivider} />
+                            <p className={styles.winnerSubTitle}>{winnerModal.subtitle}</p>
+                            <div className={styles.winnerAmount}>₱ {winnerModal.amount}</div>
+                            <div className={styles.winnerActionRow}>
+                                <button className={styles.payNowBtn} onClick={handleOpenPayment}>Pay Now</button>
+                                <button className={styles.cancelWinnerBtn} onClick={() => setWinnerModal({ ...winnerModal, show: false })}>Cancel</button>
+                            </div>
+                        </div>
+                    </div>
+                )}
+
+                {/* Payment modal */}
+                {showPaymentModal && (
+                    <div className={styles.modalOverlay} onClick={() => setShowPaymentModal(false)}>
+                        <div className={styles.paymentModalContent} onClick={e => e.stopPropagation()}>
+                            <div className={styles.modalCloseWrapper}>
+                                <button className={styles.closeBtn} onClick={() => setShowPaymentModal(false)}><X size={16} /></button>
+                            </div>
+                            <div className={styles.paymentLeft}>
+                                <img src={product?.images?.[0]?.image_url || 'https://placehold.co/400x400'} alt={product?.name} className={styles.mainProductImg} style={{ border: '2px solid #00A3FF' }} />
+                                <div>
+                                    <h3 style={{ fontSize: '1.4rem', fontWeight: 700 }}>{product?.name}</h3>
+                                    <div style={{ fontWeight: 700, marginTop: '0.4rem' }}>Winning Bid</div>
+                                    <div style={{ fontSize: '1.3rem', fontWeight: 800, color: '#D32F2F' }}>₱{finalNum.toLocaleString('en-PH')}</div>
+                                </div>
+                            </div>
+                            <div className={styles.paymentRight}>
+                                <h2>Payment</h2>
+                                <div className={styles.shippingOptions} style={{ marginTop: '1rem' }}>
+                                    <div className={`${styles.shipOption} ${shippingOption === 'standard' ? styles.selected : ''}`} onClick={() => setShippingOption('standard')}>
+                                        <CheckCircle size={20} color={shippingOption === 'standard' ? '#D32F2F' : '#ccc'} />
+                                        <span className={styles.optionLabel}>Standard</span>
+                                        <span className={styles.deliveryTime}>5-7 days</span>
+                                        <span className={styles.optionPrice}>FREE</span>
+                                    </div>
+                                    <div className={`${styles.shipOption} ${shippingOption === 'express' ? styles.selected : ''}`} onClick={() => setShippingOption('express')}>
+                                        {shippingOption === 'express' ? <CheckCircle size={20} color="#D32F2F" /> : <div style={{ width: 20, height: 20, borderRadius: '50%', border: '1px solid #ccc' }} />}
+                                        <span className={styles.optionLabel}>Express</span>
+                                        <span className={styles.deliveryTime}>1-2 days</span>
+                                        <span className={styles.optionPrice}>₱ 125</span>
+                                    </div>
+                                </div>
+                                <div className={styles.paymentFooter}>
+                                    <div>
+                                        <span className={styles.totalLabel}>Total</span>
+                                        <span className={styles.totalAmount}>₱{finalNum.toLocaleString('en-PH')}</span>
+                                    </div>
+                                    <button className={styles.finalPayBtn}>Pay Now</button>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                )}
+            </main>
+        );
+    }
 
     return (
         <main>
@@ -1580,6 +1836,17 @@ function LivePageInner() {
                                         <div style={{ display: 'flex', gap: '1rem', alignItems: 'center' }}>
                                             <span className={styles.bidTime}>{bid.time}</span>
                                             <span className={styles.bidAmount}>₱ {bid.amount}</span>
+                                            {isHost && bid.user_id && String(bid.user_id) !== String(user?.user_id || user?.id) && !blockedUserIds.has(String(bid.user_id)) && (
+                                                <button
+                                                    onClick={() => handleBlockBuyer(bid.user_id, bid.user)}
+                                                    title="Block this bidder"
+                                                    style={{ background: 'none', border: 'none', cursor: 'pointer', padding: '2px 4px', borderRadius: 4, fontSize: '0.8rem', lineHeight: 1, color: '#ef4444', opacity: 0.7 }}
+                                                    onMouseOver={e => e.currentTarget.style.opacity = 1}
+                                                    onMouseOut={e => e.currentTarget.style.opacity = 0.7}
+                                                >
+                                                    🚫
+                                                </button>
+                                            )}
                                         </div>
                                     </div>
                                 );
@@ -1600,7 +1867,7 @@ function LivePageInner() {
                                 </div>
                             )}
                             {comments.map(msg => (
-                                <div key={msg.id} className={styles.messageItem}>
+                                <div key={msg.id} className={styles.messageItem} style={{ alignItems: 'flex-start' }}>
                                     <div className={styles.chatAvatar} />
                                     <div style={{ flex: 1 }}>
                                         <div style={{ display: 'flex', alignItems: 'baseline', gap: 6 }}>
@@ -1611,6 +1878,17 @@ function LivePageInner() {
                                         </div>
                                         <div className={styles.messageText}>{msg.text}</div>
                                     </div>
+                                    {isHost && msg.user_id && String(msg.user_id) !== String(user?.user_id || user?.id) && !blockedUserIds.has(String(msg.user_id)) && (
+                                        <button
+                                            onClick={() => handleBlockBuyer(msg.user_id, msg.user)}
+                                            title="Block this user"
+                                            style={{ background: 'none', border: 'none', cursor: 'pointer', padding: '2px 4px', borderRadius: 4, fontSize: '0.8rem', lineHeight: 1, color: '#ef4444', opacity: 0.6, flexShrink: 0, marginTop: '2px' }}
+                                            onMouseOver={e => e.currentTarget.style.opacity = 1}
+                                            onMouseOut={e => e.currentTarget.style.opacity = 0.6}
+                                        >
+                                            🚫
+                                        </button>
+                                    )}
                                 </div>
                             ))}
                             {/* Anchor — auto-scrolled into view on each new message */}
@@ -1666,6 +1944,11 @@ function LivePageInner() {
                             <label className={styles.inputLabel}>
                                 Minimum bid: <strong>₱ {(minBid || ((auction.current_price || auction.reserve_price) + (auction.incremental_bid_step || 100))).toLocaleString('en-PH')}</strong>
                             </label>
+                            {parseFloat(auction?.reserve_price || 0) > 0 && (
+                                <div style={{ fontSize: '0.73rem', color: '#999', marginTop: '2px' }}>
+                                    Bid cap: <strong style={{ color: '#666' }}>₱{(parseFloat(auction.reserve_price) * 10).toLocaleString('en-PH')}</strong> <span style={{ color: '#bbb' }}>(10× reserve)</span>
+                                </div>
+                            )}
                             <div className={styles.currencyInputWrapper}>
                                 <span className={styles.currencySymbol}>₱</span>
                                 <input
@@ -2019,6 +2302,33 @@ function LivePageInner() {
                             onClick={() => setShowVerifyPrompt(false)}
                         >
                             Maybe Later
+                        </button>
+                    </div>
+                </div>
+            )}
+
+            {/* BLOCKED FROM AUCTION MODAL */}
+            {blockedFromAuction && (
+                <div className={styles.modalOverlay}>
+                    <div className={styles.loginPromptContent}>
+                        <div className={styles.loginPromptIcon} style={{ background: '#fef2f2', color: '#dc2626', fontSize: '1.8rem', lineHeight: 1 }}>
+                            🚫
+                        </div>
+                        <h2 className={styles.loginPromptTitle}>You've Been Removed</h2>
+                        <p className={styles.loginPromptDesc}>
+                            The seller has blocked you from this live auction. You can no longer comment or place bids in this session.
+                        </p>
+                        <button
+                            className={styles.loginPromptBtn}
+                            onClick={() => window.location.href = '/'}
+                        >
+                            Go Back Home
+                        </button>
+                        <button
+                            className={styles.loginPromptSecondary}
+                            onClick={() => setBlockedFromAuction(false)}
+                        >
+                            Dismiss
                         </button>
                     </div>
                 </div>

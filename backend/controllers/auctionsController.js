@@ -894,6 +894,15 @@ export const placeBid = async (req, res) => {
       });
     }
 
+    const reservePrice = parseFloat(auction.reserve_price || 0);
+    const maxBid = reservePrice * 10;
+    if (reservePrice > 0 && bidAmount > maxBid) {
+      return res.status(400).json({
+        error: `Bid cannot exceed ₱${maxBid.toLocaleString('en-PH')} (10× the reserve price)`,
+        maxBid
+      });
+    }
+
     // Insert bid into database (trigger will update Auctions.current_price)
     const { data: bid, error: bidError } = await supabase
       .from('Bids')

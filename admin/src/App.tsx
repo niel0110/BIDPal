@@ -17,15 +17,6 @@ const ProtectedRoute = ({ children }: { children: React.ReactNode }) => {
   return <>{children}</>;
 };
 
-// Placeholder components
-const Placeholder = ({ title }: { title: string }) => (
-  <div style={{ padding: '20px' }}>
-    <h1 style={{ marginBottom: '20px' }}>{title}</h1>
-    <div className="glass" style={{ padding: '100px', textAlign: 'center', color: 'var(--text-secondary)' }}>
-      Module for {title} is currently under development.
-    </div>
-  </div>
-);
 
 function App() {
   const [isAuthenticated, setIsAuthenticated] = React.useState(!!localStorage.getItem('admin_token'));
