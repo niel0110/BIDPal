@@ -25,7 +25,7 @@ const Disputes = () => {
     setLoading(true);
     let query = supabase
       .from('Disputes')
-      .select('dispute_id, order_id, reporter_id, reason, status, created_at, User:reporter_id(Fname, Lname), Orders(total_amount)')
+      .select('dispute_id, order_id, reporter_id, reason, status, created_at, User:reporter_id(Fname, Lname), Orders:order_id(total_amount)')
       .order('created_at', { ascending: false });
 
     if (filter !== 'all') query = query.eq('status', filter);

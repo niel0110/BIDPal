@@ -24,7 +24,7 @@ const Moderation = () => {
     setLoading(true);
     const { data, error } = await supabase
       .from('Products')
-      .select('products_id, title, description, price, status, image_url, Seller(store_name)')
+      .select('products_id, title, description, price, status, image_url, Seller:seller_id(store_name)')
       .eq('status', 'under_review')
       .order('products_id', { ascending: false });
 
