@@ -1,5 +1,5 @@
-import React, { useState, useEffect } from 'react';
-import { Users, AlertCircle, Scale, TrendingUp, CheckCircle, ShieldCheck } from 'lucide-react';
+import { useState, useEffect } from 'react';
+import { Users, AlertCircle, Scale, TrendingUp, ShieldCheck } from 'lucide-react';
 import { AreaChart, Area, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer } from 'recharts';
 import { motion } from 'framer-motion';
 import { supabase } from '../lib/supabase';

@@ -101,7 +101,7 @@ const CancellationReviews = () => {
       .order('cancelled_at', { ascending: false })
       .limit(200);
 
-    if (!error && data) setRecords(data as CancellationRecord[]);
+    if (!error && data) setRecords(data as unknown as CancellationRecord[]);
     setLoading(false);
   };
 
