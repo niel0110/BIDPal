@@ -9,14 +9,11 @@ import CategoryNav from '@/components/home/CategoryNav';
 import HeroBanner from '@/components/home/HeroBanner';
 import AuctionCard from '@/components/card/AuctionCard';
 import ProductCard from '@/components/card/ProductCard';
-import Button from '@/components/ui/Button';
-import AuthLogo from '@/components/AuthLogo';
-import { useSubmitLock } from '@/hooks/useSubmitLock';
 import { X } from 'lucide-react';
 import styles from './page.module.css';
 
 function HomeInner() {
-  const { user, loading, login, register } = useAuth();
+  const { user, loading } = useAuth();
   const searchParams = useSearchParams();
   const searchQuery = searchParams.get('q') || '';
   const sortParam   = searchParams.get('sort') || 'recent';
@@ -26,7 +23,7 @@ function HomeInner() {
 
   const [allAuctions, setAllAuctions] = useState([]);
   const [fixedProducts, setFixedProducts] = useState([]);
-  const [loadingContent, setLoadingContent] = useState(true);
+  const [, setLoadingContent] = useState(true);
   const [selectedCategory, setSelectedCategory] = useState('all');
 
   // Search results state
@@ -39,20 +36,22 @@ function HomeInner() {
 
   useEffect(() => {
     if (loading) return;
-    if (user?.role?.toLowerCase() === 'seller') {
-      // New seller (no Fname) always goes to setup; returning seller uses redirectAfterAuth or dashboard
+    if (!user) {
+      router.replace('/signin');
+      return;
+    }
+    if (user.role?.toLowerCase() === 'seller') {
       const target = !user.Fname
         ? '/seller/setup'
         : (redirectAfterAuth.current || '/seller');
       redirectAfterAuth.current = null;
       router.replace(target);
-    } else if (user && !user.Fname) {
-      // Buyer hasn't completed their profile yet
+    } else if (!user.Fname) {
       router.replace('/buyer/setup');
     }
   }, [user, loading, router]);
 
-  const [likedAuctionIds, setLikedAuctionIds] = useState(new Set());
+  const [, setLikedAuctionIds] = useState(new Set());
 
   useEffect(() => {
     const fetchData = async () => {
@@ -185,7 +184,7 @@ function HomeInner() {
   const filteredFixed = filterByCategory(fixedProducts);
 
 
-  if (loading) return null;
+  if (loading || !user) return null;
 
   return (
     <main className={styles.main}>

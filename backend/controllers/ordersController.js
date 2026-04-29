@@ -400,6 +400,9 @@ export const createOrder = async (req, res) => {
       return res.status(400).json({ error: 'Missing required fields' });
     }
 
+    const commission_rate = 0.05; // 5% base commission
+    const commission_amount = total_amount * commission_rate;
+
     // 1. Create Order record
     const orderRecord = {
       user_id,
@@ -410,7 +413,9 @@ export const createOrder = async (req, res) => {
       payment_reference: payment_reference || null,
       paid_at: paid_at || null,
       shipping_fee: shipping_fee || 0,
-      order_type: 'regular'
+      order_type: 'regular',
+      commission_rate,
+      commission_amount
     };
     if (seller_id) orderRecord.seller_id = seller_id;
 
@@ -500,6 +505,11 @@ export const processAuctionPayment = async (req, res) => {
     if (existingOrder) {
       // Update existing order
       orderId = existingOrder.order_id;
+      
+      const commission_rate = 0.05;
+      const totalAmt = total_amount || auction.final_price;
+      const commission_amount = totalAmt * commission_rate;
+
       await supabase
         .from('Orders')
         .update({
@@ -508,23 +518,31 @@ export const processAuctionPayment = async (req, res) => {
           payment_method: payment_method || 'cash_on_delivery',
           shipping_address_id: shipping_address_id || null,
           shipping_fee: shipping_fee || 0,
-          total_amount: total_amount || auction.final_price
+          total_amount: totalAmt,
+          commission_rate,
+          commission_amount
         })
         .eq('order_id', orderId);
     } else {
       // Create new order
+      const commission_rate = 0.05;
+      const totalAmt = total_amount || auction.final_price;
+      const commission_amount = totalAmt * commission_rate;
+
       const { data: newOrder, error: orderError } = await supabase
         .from('Orders')
         .insert([{
           user_id,
           seller_id: auction.seller_id,
-          total_amount: total_amount || auction.final_price,
+          total_amount: totalAmt,
           status: 'processing',
           order_type: 'auction',
           auction_id,
           payment_method: payment_method || 'cash_on_delivery',
           shipping_address_id: shipping_address_id || null,
-          shipping_fee: shipping_fee || 0
+          shipping_fee: shipping_fee || 0,
+          commission_rate,
+          commission_amount
         }])
         .select('order_id')
         .single();
@@ -623,6 +641,27 @@ export const processAuctionPayment = async (req, res) => {
         .eq('auction_id', auction_id)
         .catch(() => {});
     } catch (_) {}
+
+    // 6. Record Platform Earnings for this transaction
+    try {
+      const totalAmt = total_amount || auction.final_price;
+      const commission_rate = 0.05;
+      const commission_amount = totalAmt * commission_rate;
+
+      await supabase
+        .from('Platform_Earnings')
+        .insert([{
+          order_id: orderId,
+          seller_id: auction.seller_id,
+          total_amount: totalAmt,
+          commission_rate,
+          commission_amount,
+          earning_type: 'transaction_commission'
+        }]);
+      console.log(`💰 Commission recorded for order: ${orderId} (Amount: PHP ${commission_amount})`);
+    } catch (e) {
+      console.error('Error recording platform earnings:', e);
+    }
 
     res.json({
       success: true,

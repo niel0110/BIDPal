@@ -13,15 +13,14 @@ export const metadata = {
   title: "BIDPal",
   description: "Unlock the value of what you already have.",
   icons: {
-    icon: [
-      { url: "/icon.png", type: "image/png" },
-    ],
-    apple: [
-      { url: "/icon.png", type: "image/png" },
-    ],
+    icon: [{ url: "/icon.png", type: "image/png" }],
+    apple: [{ url: "/icon.png", type: "image/png" }],
     shortcut: "/icon.png",
   },
   manifest: "/manifest.json",
+};
+
+export const viewport = {
   themeColor: "#5b0fa8",
 };
 

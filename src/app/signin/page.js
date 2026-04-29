@@ -23,19 +23,15 @@ export default function SignIn() {
         e.preventDefault();
         await runWithLock(async () => {
             setError('');
-            console.log('SignIn attempt:', { email, password });
             if (!email || !password) {
                 setError('Email and password are required.');
                 return;
             }
-            console.log('Calling login with:', { email, password });
             const result = await login({ email, password });
-            console.log('Login result:', result);
             if (!result.success) {
                 setError(result.error);
                 return;
             }
-            console.log('Login successful, redirecting...');
             if (result.user?.role?.toLowerCase() === 'seller') {
                 router.push('/seller');
             } else {
@@ -88,6 +84,17 @@ export default function SignIn() {
             </div>
             <div className={styles.authRight}>
                 <div className={styles.authFormWrapper}>
+                    <div className={styles.mobileLogo}>
+                        <img src="/BIDPaL Logo.png" alt="BIDPal" className={styles.mobileLogoImg} />
+                        <span className={styles.mobileLogoText}>
+                            <span style={{ color: '#d02440' }}>B</span>
+                            <span style={{ color: '#542769' }}>I</span>
+                            <span style={{ color: '#fba91d' }}>D</span>
+                            <span style={{ color: '#ef4f25' }}>P</span>
+                            <span style={{ color: '#d02440' }}>a</span>
+                            <span style={{ color: '#542769' }}>l</span>
+                        </span>
+                    </div>
                     <h1 className={styles.authTitle}>
                         Sign <span className={styles.redText}>In</span>
                     </h1>

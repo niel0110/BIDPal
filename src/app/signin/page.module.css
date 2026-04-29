@@ -49,6 +49,7 @@
     font-weight: 800;
     margin-bottom: 1.25rem;
     color: var(--color-text);
+    text-align: left;
 }
 
 .redText {
@@ -137,6 +138,8 @@
     font-size: 0.9rem;
     cursor: pointer;
     display: block;
+    width: 100%;
+    text-align: center;
     margin: 0.75rem auto 0;
 }
 
@@ -193,11 +196,32 @@
 
     .authLeft { display: none; }
 
+    .mobileLogo {
+        display: flex;
+        flex-direction: column;
+        align-items: center;
+        justify-content: center;
+        margin-bottom: 1.25rem;
+        gap: 0.35rem;
+    }
+
+    .mobileLogoImg {
+        height: 60px;
+        width: auto;
+    }
+
+    .mobileLogoText {
+        font-size: 1.9rem;
+        font-weight: 800;
+        letter-spacing: -0.02em;
+        line-height: 1;
+    }
+
     .authRight {
         flex: 1;
-        padding: 2rem 1.25rem 1.5rem;
-        align-items: flex-start;
-        justify-content: flex-start;
+        padding: 1.5rem 1.5rem 2rem;
+        align-items: center;
+        justify-content: center;
     }
 
     .authFormWrapper { max-width: 100%; width: 100%; }

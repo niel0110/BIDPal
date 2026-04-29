@@ -131,6 +131,17 @@ export default function SignUp() {
 
                 <div className={styles.authRight}>
                     <div className={styles.authFormWrapper}>
+                        <div className={styles.mobileLogo}>
+                            <img src="/BIDPaL Logo.png" alt="BIDPal" className={styles.mobileLogoImg} />
+                            <span className={styles.mobileLogoText}>
+                                <span style={{ color: '#d02440' }}>B</span>
+                                <span style={{ color: '#542769' }}>I</span>
+                                <span style={{ color: '#fba91d' }}>D</span>
+                                <span style={{ color: '#ef4f25' }}>P</span>
+                                <span style={{ color: '#d02440' }}>a</span>
+                                <span style={{ color: '#542769' }}>l</span>
+                            </span>
+                        </div>
                         <h1 className={styles.authTitle}>
                             Create <span className={styles.redText}>account</span>
                         </h1>
@@ -199,24 +210,20 @@ export default function SignUp() {
                                 style={{
                                     display: 'flex',
                                     alignItems: 'center',
-                                    gap: '0.7rem',
-                                    marginTop: '0.9rem',
-                                    padding: '0.75rem 0.9rem',
-                                    border: agreed ? '1.5px solid #D32F2F' : '1.5px solid #ddd',
-                                    borderRadius: 10,
-                                    background: agreed ? '#fff9f9' : '#fafafa',
+                                    justifyContent: 'center',
+                                    gap: '0.5rem',
+                                    marginTop: '0.7rem',
                                     cursor: 'pointer',
                                     userSelect: 'none',
-                                    transition: 'border-color 0.2s, background 0.2s',
                                 }}
                                 onClick={() => setAgreed((v) => !v)}
                             >
                                 {/* Circle */}
                                 <div
                                     style={{
-                                        width: 22,
-                                        height: 22,
-                                        minWidth: 22,
+                                        width: 20,
+                                        height: 20,
+                                        minWidth: 20,
                                         borderRadius: '50%',
                                         border: agreed ? '2px solid #D32F2F' : '2px solid #bbb',
                                         background: agreed ? '#D32F2F' : '#fff',
@@ -229,14 +236,14 @@ export default function SignUp() {
                                     onClick={(e) => { e.stopPropagation(); setAgreed((v) => !v); }}
                                 >
                                     {agreed && (
-                                        <svg width="11" height="11" viewBox="0 0 12 12" fill="none">
+                                        <svg width="10" height="10" viewBox="0 0 12 12" fill="none">
                                             <path d="M2 6l3 3 5-5" stroke="#fff" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round" />
                                         </svg>
                                     )}
                                 </div>
 
                                 {/* Text */}
-                                <span style={{ fontSize: '0.83rem', color: '#333', fontWeight: 500, lineHeight: 1.4 }}>
+                                <span style={{ fontSize: '0.75rem', color: '#555', fontWeight: 500, lineHeight: 1.4 }}>
                                     I agree to the{' '}
                                     <span
                                         onClick={(e) => { e.stopPropagation(); setShowTerms(true); }}
