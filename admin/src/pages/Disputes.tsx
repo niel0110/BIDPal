@@ -7,11 +7,17 @@ interface Dispute {
   dispute_id: string;
   order_id: string;
   reporter_id: string;
-  reason: string;
+  moderator_notes: string | null;
   status: string;
   created_at: string;
   User: { Fname: string; Lname: string } | null;
   Orders: { total_amount: number } | null;
+}
+
+function parseReason(notes: string | null): string {
+  if (!notes) return '—';
+  const match = notes.match(/^Reason: (.+)$/m);
+  return match ? match[1] : notes.split('\n')[0] || '—';
 }
 
 const Disputes = () => {
@@ -25,7 +31,7 @@ const Disputes = () => {
     setLoading(true);
     let query = supabase
       .from('Disputes')
-      .select('dispute_id, order_id, reporter_id, reason, status, created_at, User:reporter_id(Fname, Lname), Orders:order_id(total_amount)')
+      .select('dispute_id, order_id, reporter_id, moderator_notes, status, created_at, User:reporter_id(Fname, Lname), Orders:order_id(total_amount)')
       .order('created_at', { ascending: false });
 
     if (filter !== 'all') query = query.eq('status', filter);
@@ -114,134 +120,160 @@ const Disputes = () => {
       {loading ? (
         <div className="glass" style={{ padding: '100px', textAlign: 'center' }}>Loading disputes...</div>
       ) : (
-        <div style={{ display: 'grid', gridTemplateColumns: selectedDispute ? '1fr 400px' : '1fr', gap: '24px', transition: 'all 0.3s ease' }}>
-          <div className="glass" style={{ padding: '24px' }}>
-            <div className="table-container">
-              <table>
-                <thead>
+        <div className="glass" style={{ padding: '24px' }}>
+          <div className="table-container">
+            <table>
+              <thead>
+                <tr>
+                  <th>Reporter</th>
+                  <th>Reason</th>
+                  <th>Order Amount</th>
+                  <th>Date Filed</th>
+                  <th>Status</th>
+                </tr>
+              </thead>
+              <tbody>
+                <AnimatePresence>
+                  {disputes.map(d => (
+                    <motion.tr
+                      key={d.dispute_id}
+                      initial={{ opacity: 0 }}
+                      animate={{ opacity: 1 }}
+                      exit={{ opacity: 0 }}
+                      onClick={() => setSelectedDispute(d)}
+                      style={{ cursor: 'pointer' }}
+                    >
+                      <td>
+                        <div style={{ fontWeight: 500 }}>{d.User ? `${d.User.Fname} ${d.User.Lname}` : '—'}</div>
+                      </td>
+                      <td style={{ maxWidth: '200px', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap', fontSize: '14px' }}>
+                        {parseReason(d.moderator_notes)}
+                      </td>
+                      <td style={{ fontWeight: 600 }}>
+                        {d.Orders ? `₱${d.Orders.total_amount.toLocaleString()}` : '—'}
+                      </td>
+                      <td>
+                        <div style={{ display: 'flex', alignItems: 'center', gap: '6px', fontSize: '13px', color: 'var(--text-secondary)' }}>
+                          <Clock size={13} />
+                          {new Date(d.created_at).toLocaleDateString()}
+                        </div>
+                      </td>
+                      <td>
+                        <span className={`badge ${d.status === 'open' ? 'badge-pending' : 'badge-success'}`}>
+                          {d.status}
+                        </span>
+                      </td>
+                    </motion.tr>
+                  ))}
+                </AnimatePresence>
+                {disputes.length === 0 && (
                   <tr>
-                    <th>Reporter</th>
-                    <th>Reason</th>
-                    <th>Order Amount</th>
-                    <th>Date Filed</th>
-                    <th>Status</th>
+                    <td colSpan={5} style={{ textAlign: 'center', padding: '40px', color: 'var(--text-secondary)' }}>No disputes found.</td>
                   </tr>
-                </thead>
-                <tbody>
-                  <AnimatePresence>
-                    {disputes.map(d => (
-                      <motion.tr
-                        key={d.dispute_id}
-                        initial={{ opacity: 0 }}
-                        animate={{ opacity: 1 }}
-                        exit={{ opacity: 0 }}
-                        onClick={() => setSelectedDispute(d)}
-                        style={{ cursor: 'pointer', background: selectedDispute?.dispute_id === d.dispute_id ? '#FEF2F2' : 'transparent' }}
-                      >
-                        <td>
-                          <div style={{ fontWeight: 500 }}>{d.User ? `${d.User.Fname} ${d.User.Lname}` : '—'}</div>
-                        </td>
-                        <td style={{ maxWidth: '200px', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap', fontSize: '14px' }}>
-                          {d.reason}
-                        </td>
-                        <td style={{ fontWeight: 600 }}>
-                          {d.Orders ? `₱${d.Orders.total_amount.toLocaleString()}` : '—'}
-                        </td>
-                        <td>
-                          <div style={{ display: 'flex', alignItems: 'center', gap: '6px', fontSize: '13px', color: 'var(--text-secondary)' }}>
-                            <Clock size={13} />
-                            {new Date(d.created_at).toLocaleDateString()}
-                          </div>
-                        </td>
-                        <td>
-                          <span className={`badge ${d.status === 'open' ? 'badge-pending' : 'badge-success'}`}>
-                            {d.status}
-                          </span>
-                        </td>
-                      </motion.tr>
-                    ))}
-                  </AnimatePresence>
-                  {disputes.length === 0 && (
-                    <tr>
-                      <td colSpan={5} style={{ textAlign: 'center', padding: '40px', color: 'var(--text-secondary)' }}>No disputes found.</td>
-                    </tr>
-                  )}
-                </tbody>
-              </table>
-            </div>
-          </div>
-
-          <AnimatePresence>
-            {selectedDispute && (
-              <motion.div
-                initial={{ opacity: 0, x: 20 }}
-                animate={{ opacity: 1, x: 0 }}
-                exit={{ opacity: 0, x: 20 }}
-                className="glass"
-                style={{ padding: '30px', display: 'flex', flexDirection: 'column', gap: '20px' }}
-              >
-                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-                  <h3 style={{ fontSize: '20px' }}>Dispute Mediation</h3>
-                  <button onClick={() => setSelectedDispute(null)} style={{ background: 'none', border: 'none', color: 'var(--text-secondary)', cursor: 'pointer' }}>
-                    <X size={20} />
-                  </button>
-                </div>
-
-                <div style={{ display: 'flex', flexDirection: 'column', gap: '12px' }}>
-                  <div style={{ padding: '16px', background: '#F8FAFC', borderRadius: '12px', border: '1px solid var(--border)' }}>
-                    <p style={{ fontSize: '12px', color: 'var(--text-secondary)', marginBottom: '6px' }}>
-                      Reporter: <strong>{selectedDispute.User ? `${selectedDispute.User.Fname} ${selectedDispute.User.Lname}` : '—'}</strong>
-                    </p>
-                    <div style={{ display: 'flex', gap: '8px', alignItems: 'flex-start' }}>
-                      <MessageSquare size={16} color="var(--text-secondary)" style={{ flexShrink: 0, marginTop: '2px' }} />
-                      <p style={{ fontSize: '14px', lineHeight: '1.5' }}>"{selectedDispute.reason}"</p>
-                    </div>
-                  </div>
-
-                  <div style={{ padding: '16px', background: '#F8FAFC', borderRadius: '12px', border: '1px solid var(--border)' }}>
-                    <p style={{ fontSize: '12px', color: 'var(--text-secondary)', marginBottom: '8px' }}>Order Details</p>
-                    <div style={{ display: 'flex', flexDirection: 'column', gap: '4px', fontSize: '14px' }}>
-                      <div style={{ display: 'flex', justifyContent: 'space-between' }}>
-                        <span style={{ color: 'var(--text-secondary)' }}>Order ID</span>
-                        <span style={{ fontWeight: 500 }}>{selectedDispute.order_id || '—'}</span>
-                      </div>
-                      <div style={{ display: 'flex', justifyContent: 'space-between' }}>
-                        <span style={{ color: 'var(--text-secondary)' }}>Amount</span>
-                        <span style={{ fontWeight: 600 }}>{selectedDispute.Orders ? `₱${selectedDispute.Orders.total_amount.toLocaleString()}` : '—'}</span>
-                      </div>
-                      <div style={{ display: 'flex', justifyContent: 'space-between' }}>
-                        <span style={{ color: 'var(--text-secondary)' }}>Filed</span>
-                        <span>{new Date(selectedDispute.created_at).toLocaleDateString()}</span>
-                      </div>
-                    </div>
-                  </div>
-                </div>
-
-                {selectedDispute.status === 'open' ? (
-                  <div style={{ marginTop: 'auto', display: 'flex', flexDirection: 'column', gap: '10px' }}>
-                    <p style={{ fontSize: '13px', color: 'var(--text-secondary)', fontWeight: 600 }}>Resolution Action</p>
-                    {(['refund', 'escrow_release', 'partial_settlement'] as const).map(res => (
-                      <button
-                        key={res}
-                        onClick={() => handleResolve(selectedDispute.dispute_id, res)}
-                        disabled={actionLoading}
-                        className={res === 'refund' ? 'btn btn-primary' : 'btn btn-outline'}
-                        style={{ justifyContent: 'center' }}
-                      >
-                        {resolutionLabel[res]}
-                      </button>
-                    ))}
-                  </div>
-                ) : (
-                  <div style={{ padding: '12px 16px', borderRadius: '10px', background: '#f0fdf4', border: '1px solid #bbf7d0', fontSize: '13px', color: '#065f46', display: 'flex', alignItems: 'center', gap: '8px' }}>
-                    <Scale size={15} /> This dispute has been resolved.
-                  </div>
                 )}
-              </motion.div>
-            )}
-          </AnimatePresence>
+              </tbody>
+            </table>
+          </div>
         </div>
       )}
+
+      {/* ── Dispute Detail Modal ── */}
+      <AnimatePresence>
+        {selectedDispute && (
+          <motion.div
+            initial={{ opacity: 0 }}
+            animate={{ opacity: 1 }}
+            exit={{ opacity: 0 }}
+            onClick={() => setSelectedDispute(null)}
+            style={{
+              position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.5)',
+              backdropFilter: 'blur(4px)', WebkitBackdropFilter: 'blur(4px)',
+              display: 'flex', alignItems: 'center', justifyContent: 'center',
+              zIndex: 1000, padding: '20px',
+            }}
+          >
+            <motion.div
+              initial={{ opacity: 0, scale: 0.95, y: 16 }}
+              animate={{ opacity: 1, scale: 1, y: 0 }}
+              exit={{ opacity: 0, scale: 0.95, y: 16 }}
+              transition={{ duration: 0.18 }}
+              onClick={e => e.stopPropagation()}
+              style={{
+                background: 'white', borderRadius: '16px', padding: '28px',
+                width: '100%', maxWidth: '480px',
+                boxShadow: '0 24px 64px rgba(0,0,0,0.18)',
+                display: 'flex', flexDirection: 'column', gap: '16px',
+                maxHeight: '90vh', overflowY: 'auto',
+              }}
+            >
+              {/* Modal header */}
+              <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
+                  <Scale size={20} color="var(--accent-primary)" />
+                  <h3 style={{ fontSize: '18px', margin: 0 }}>Dispute Mediation</h3>
+                </div>
+                <button onClick={() => setSelectedDispute(null)} style={{ background: 'none', border: 'none', color: 'var(--text-secondary)', cursor: 'pointer', padding: '4px' }}>
+                  <X size={20} />
+                </button>
+              </div>
+
+              {/* Report details */}
+              <div style={{ padding: '16px', background: '#F8FAFC', borderRadius: '12px', border: '1px solid var(--border)' }}>
+                <p style={{ fontSize: '12px', color: 'var(--text-secondary)', marginBottom: '10px' }}>
+                  Reporter: <strong>{selectedDispute.User ? `${selectedDispute.User.Fname} ${selectedDispute.User.Lname}` : '—'}</strong>
+                </p>
+                <div style={{ display: 'flex', gap: '8px', alignItems: 'flex-start' }}>
+                  <MessageSquare size={15} color="var(--text-secondary)" style={{ flexShrink: 0, marginTop: '2px' }} />
+                  <p style={{ fontSize: '13px', lineHeight: '1.6', whiteSpace: 'pre-wrap', margin: 0, color: '#374151' }}>
+                    {selectedDispute.moderator_notes || '—'}
+                  </p>
+                </div>
+              </div>
+
+              {/* Order details */}
+              <div style={{ padding: '16px', background: '#F8FAFC', borderRadius: '12px', border: '1px solid var(--border)' }}>
+                <p style={{ fontSize: '12px', color: 'var(--text-secondary)', marginBottom: '10px', fontWeight: 600 }}>Order Details</p>
+                <div style={{ display: 'flex', flexDirection: 'column', gap: '6px', fontSize: '14px' }}>
+                  <div style={{ display: 'flex', justifyContent: 'space-between' }}>
+                    <span style={{ color: 'var(--text-secondary)' }}>Order ID</span>
+                    <span style={{ fontWeight: 500 }}>{selectedDispute.order_id || '—'}</span>
+                  </div>
+                  <div style={{ display: 'flex', justifyContent: 'space-between' }}>
+                    <span style={{ color: 'var(--text-secondary)' }}>Amount</span>
+                    <span style={{ fontWeight: 600 }}>{selectedDispute.Orders ? `₱${selectedDispute.Orders.total_amount.toLocaleString()}` : '—'}</span>
+                  </div>
+                  <div style={{ display: 'flex', justifyContent: 'space-between' }}>
+                    <span style={{ color: 'var(--text-secondary)' }}>Filed</span>
+                    <span>{new Date(selectedDispute.created_at).toLocaleDateString()}</span>
+                  </div>
+                </div>
+              </div>
+
+              {/* Resolution */}
+              {selectedDispute.status === 'open' ? (
+                <div style={{ display: 'flex', flexDirection: 'column', gap: '8px' }}>
+                  <p style={{ fontSize: '13px', color: 'var(--text-secondary)', fontWeight: 600, margin: 0 }}>Resolution Action</p>
+                  {(['refund', 'escrow_release', 'partial_settlement'] as const).map(res => (
+                    <button
+                      key={res}
+                      onClick={() => handleResolve(selectedDispute.dispute_id, res)}
+                      disabled={actionLoading}
+                      className={res === 'refund' ? 'btn btn-primary' : 'btn btn-outline'}
+                      style={{ justifyContent: 'center' }}
+                    >
+                      {resolutionLabel[res]}
+                    </button>
+                  ))}
+                </div>
+              ) : (
+                <div style={{ padding: '12px 16px', borderRadius: '10px', background: '#f0fdf4', border: '1px solid #bbf7d0', fontSize: '13px', color: '#065f46', display: 'flex', alignItems: 'center', gap: '8px' }}>
+                  <Scale size={15} /> This dispute has been resolved.
+                </div>
+              )}
+            </motion.div>
+          </motion.div>
+        )}
+      </AnimatePresence>
 
       <style>{`
         @keyframes spin { from { transform: rotate(0deg); } to { transform: rotate(360deg); } }

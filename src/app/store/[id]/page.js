@@ -6,7 +6,7 @@ import { useParams, useRouter } from 'next/navigation';
 import Header from '@/components/layout/Header';
 import ProductCard from '@/components/card/ProductCard';
 import { useAuth } from '@/context/AuthContext';
-import { Calendar, Star, MessageCircle, CheckCircle, ShieldCheck, Users, Flag } from 'lucide-react';
+import { Calendar, Star, MessageCircle, CheckCircle, ShieldCheck, Users, Flag, X, RefreshCw } from 'lucide-react';
 import styles from './page.module.css';
 
 export default function StorePage() {
@@ -29,6 +29,7 @@ export default function StorePage() {
     const [reportDetails, setReportDetails] = useState('');
     const [reportSubmitting, setReportSubmitting] = useState(false);
     const [reportDone, setReportDone] = useState(false);
+    const [productScroll, setProductScroll] = useState({ progress: 0, ratio: 0.3 });
 
     const apiUrl = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:5000';
 
@@ -135,6 +136,15 @@ export default function StorePage() {
         }
     };
 
+    const handleProductScroll = (e) => {
+        const { scrollLeft, scrollWidth, clientWidth } = e.target;
+        const maxScroll = scrollWidth - clientWidth;
+        setProductScroll({
+            progress: maxScroll > 0 ? scrollLeft / maxScroll : 0,
+            ratio: Math.min(clientWidth / scrollWidth, 1),
+        });
+    };
+
     const handleMessage = () => {
         if (!user) { router.push('/login'); return; }
         router.push(`/messages?receiverId=${store.user_id}`);
@@ -147,20 +157,28 @@ export default function StorePage() {
         setReportSubmitting(true);
         try {
             const token = localStorage.getItem('bidpal_token');
-            await fetch(`${apiUrl}/api/disputes`, {
+            const res = await fetch(`${apiUrl}/api/disputes`, {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${token}` },
                 body: JSON.stringify({
                     reported_user_id: store.user_id,
-                    reported_user_name: `${store.store_name}`,
+                    reported_user_name: store.store_name,
                     context: 'Seller Store Report',
                     reason: reportReason,
                     details: reportDetails,
                 }),
             });
+            if (!res.ok) {
+                const err = await res.json();
+                throw new Error(err.error || 'Failed to submit report');
+            }
             setReportDone(true);
-        } catch {}
-        setReportSubmitting(false);
+        } catch (err) {
+            console.error('Report error:', err);
+            alert(err.message || 'Failed to submit report. Please try again.');
+        } finally {
+            setReportSubmitting(false);
+        }
     };
 
     if (loading) return <div className={styles.main}><Header /><BIDPalLoader /></div>;
@@ -423,50 +441,94 @@ export default function StorePage() {
                             )}
                         </div>
                     ) : (
-                        <div className={styles.productGrid}>
-                            {products.length > 0 ? (
-                                products.map(item => (
-                                    <ProductCard key={item.products_id} data={{
-                                        ...item,
-                                        title: item.name,
-                                        image: item.images?.[0]?.image_url,
-                                        wishlistCount: Math.floor(Math.random() * 200)
-                                    }} />
-                                ))
-                            ) : (
-                                <div className={styles.empty}>No products listed yet.</div>
+                        <>
+                            {/* Scroll indicator */}
+                            {products.length > 0 && (
+                                <div className={styles.scrollIndicatorBar}>
+                                    <div
+                                        className={styles.scrollThumb}
+                                        style={{
+                                            width: `${productScroll.ratio * 100}%`,
+                                            left: `${productScroll.progress * (100 - productScroll.ratio * 100)}%`,
+                                        }}
+                                    />
+                                </div>
                             )}
-                        </div>
+                            <div
+                                className={styles.productScroll}
+                                onScroll={handleProductScroll}
+                            >
+                                {products.length > 0 ? (
+                                    products.map(item => (
+                                        <ProductCard key={item.products_id} data={{
+                                            ...item,
+                                            title: item.name,
+                                            image: item.images?.[0]?.image_url,
+                                            wishlistCount: item.wishlist_count || 0,
+                                        }} />
+                                    ))
+                                ) : (
+                                    <div className={styles.empty}>No products listed yet.</div>
+                                )}
+                            </div>
+                        </>
                     )}
                 </div>
 
             </div>
 
-            {/* Report Modal */}
+            {/* ── Report Modal ── */}
             {reportOpen && (
-                <div style={{ position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.55)', backdropFilter: 'blur(3px)', display: 'flex', alignItems: 'center', justifyContent: 'center', zIndex: 1000, padding: '20px' }} onClick={() => setReportOpen(false)}>
-                    <div style={{ background: 'white', borderRadius: '16px', padding: '28px 24px', width: '100%', maxWidth: '440px', boxShadow: '0 20px 60px rgba(0,0,0,0.2)' }} onClick={e => e.stopPropagation()}>
+                <div className={styles.modalOverlay} onClick={() => setReportOpen(false)}>
+                    <div className={styles.modalBox} onClick={e => e.stopPropagation()}>
+
                         {reportDone ? (
-                            <div style={{ textAlign: 'center', padding: '12px 0' }}>
-                                <div style={{ fontSize: '2.5rem', marginBottom: '12px' }}>✅</div>
-                                <h3 style={{ fontSize: '1.1rem', fontWeight: 700, marginBottom: '8px' }}>Report Submitted</h3>
-                                <p style={{ fontSize: '0.85rem', color: '#6b7280', marginBottom: '20px' }}>Our team will review your report within 24–48 hours.</p>
-                                <button onClick={() => setReportOpen(false)} style={{ background: '#cc2b41', color: 'white', border: 'none', borderRadius: '10px', padding: '10px 24px', fontWeight: 700, cursor: 'pointer', fontSize: '0.875rem' }}>Close</button>
+                            <div className={styles.reportSuccess}>
+                                <div className={styles.reportSuccessIcon}>
+                                    <CheckCircle size={36} color="#16a34a" />
+                                </div>
+                                <h3 className={styles.reportSuccessTitle}>Report Submitted</h3>
+                                <p className={styles.reportSuccessMsg}>
+                                    Our team will review your report within 24–48 hours. Thank you for helping keep BIDPal safe.
+                                </p>
+                                <button
+                                    className={styles.reportCloseBtn}
+                                    onClick={() => setReportOpen(false)}
+                                >
+                                    Done
+                                </button>
                             </div>
                         ) : (
                             <form onSubmit={handleReport}>
-                                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '18px' }}>
-                                    <div>
-                                        <h3 style={{ fontSize: '1.05rem', fontWeight: 800, margin: 0 }}>Report Store</h3>
-                                        <p style={{ fontSize: '0.78rem', color: '#6b7280', margin: '3px 0 0' }}>{store.store_name}</p>
+                                {/* Header */}
+                                <div className={styles.modalHeader}>
+                                    <div className={styles.modalHeaderLeft}>
+                                        <Flag size={16} color="#D32F2F" />
+                                        <div>
+                                            <h3 className={styles.modalTitle}>Report Store</h3>
+                                            <p className={styles.modalSubtitle}>{store.store_name}</p>
+                                        </div>
                                     </div>
-                                    <button type="button" onClick={() => setReportOpen(false)} style={{ background: '#f3f4f6', border: 'none', borderRadius: '8px', padding: '6px 8px', cursor: 'pointer', display: 'flex', alignItems: 'center' }}>
-                                        <Flag size={16} color="#6b7280" />
+                                    <button
+                                        type="button"
+                                        className={styles.modalClose}
+                                        onClick={() => setReportOpen(false)}
+                                    >
+                                        <X size={16} />
                                     </button>
                                 </div>
-                                <div style={{ marginBottom: '14px' }}>
-                                    <label style={{ fontSize: '0.72rem', fontWeight: 700, color: '#374151', textTransform: 'uppercase', letterSpacing: '0.5px', display: 'block', marginBottom: '6px' }}>Reason <span style={{ color: '#cc2b41' }}>*</span></label>
-                                    <select value={reportReason} onChange={e => setReportReason(e.target.value)} required style={{ width: '100%', padding: '10px 12px', border: '1.5px solid #e5e7eb', borderRadius: '10px', fontSize: '0.875rem', background: '#fafafa', appearance: 'none' }}>
+
+                                {/* Reason */}
+                                <div className={styles.formGroup}>
+                                    <label className={styles.formLabel}>
+                                        Reason <span className={styles.required}>*</span>
+                                    </label>
+                                    <select
+                                        value={reportReason}
+                                        onChange={e => setReportReason(e.target.value)}
+                                        required
+                                        className={styles.formSelect}
+                                    >
                                         <option value="">Select a reason…</option>
                                         <option value="Fake or counterfeit products">Fake or counterfeit products</option>
                                         <option value="Misleading product descriptions">Misleading product descriptions</option>
@@ -476,13 +538,36 @@ export default function StorePage() {
                                         <option value="Other">Other</option>
                                     </select>
                                 </div>
-                                <div style={{ marginBottom: '18px' }}>
-                                    <label style={{ fontSize: '0.72rem', fontWeight: 700, color: '#374151', textTransform: 'uppercase', letterSpacing: '0.5px', display: 'block', marginBottom: '6px' }}>Additional details <span style={{ fontSize: '0.7rem', fontWeight: 400, textTransform: 'none', color: '#9ca3af' }}>(optional)</span></label>
-                                    <textarea value={reportDetails} onChange={e => setReportDetails(e.target.value)} rows={3} placeholder="Provide any additional context…" style={{ width: '100%', padding: '10px 12px', border: '1.5px solid #e5e7eb', borderRadius: '10px', fontSize: '0.875rem', background: '#fafafa', resize: 'vertical', boxSizing: 'border-box', fontFamily: 'inherit' }} />
+
+                                {/* Details */}
+                                <div className={styles.formGroup}>
+                                    <label className={styles.formLabel}>
+                                        Additional Details
+                                        <span className={styles.optional}> (optional)</span>
+                                    </label>
+                                    <textarea
+                                        value={reportDetails}
+                                        onChange={e => setReportDetails(e.target.value)}
+                                        rows={3}
+                                        placeholder="Provide any additional context that may help our team…"
+                                        className={styles.formTextarea}
+                                    />
                                 </div>
-                                <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '10px' }}>
-                                    <button type="button" onClick={() => setReportOpen(false)} style={{ padding: '10px', border: '1.5px solid #e5e7eb', borderRadius: '10px', background: 'white', fontWeight: 600, cursor: 'pointer', fontSize: '0.875rem' }}>Cancel</button>
-                                    <button type="submit" disabled={reportSubmitting || !reportReason} style={{ padding: '10px', background: '#cc2b41', color: 'white', border: 'none', borderRadius: '10px', fontWeight: 700, cursor: 'pointer', fontSize: '0.875rem', opacity: reportSubmitting || !reportReason ? 0.6 : 1 }}>
+
+                                {/* Actions */}
+                                <div className={styles.modalActions}>
+                                    <button
+                                        type="button"
+                                        className={styles.cancelBtn}
+                                        onClick={() => setReportOpen(false)}
+                                    >
+                                        Cancel
+                                    </button>
+                                    <button
+                                        type="submit"
+                                        className={styles.submitReportBtn}
+                                        disabled={reportSubmitting || !reportReason}
+                                    >
                                         {reportSubmitting ? 'Submitting…' : 'Submit Report'}
                                     </button>
                                 </div>

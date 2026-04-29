@@ -8,21 +8,22 @@ export const createDispute = async (req, res) => {
         const { reported_user_id, reported_user_name, context, reason, details } = req.body;
         if (!reason) return res.status(400).json({ error: 'Reason is required' });
 
-        const reasonText = [
-            `Context: ${context || 'User Report'}`,
-            reported_user_name ? `Reported User: ${reported_user_name}` : null,
+        // Store structured report info in moderator_notes (the available text column)
+        const noteLines = [
+            `[${context || 'Store Report'}]`,
+            `Store: ${reported_user_name || 'Unknown'}`,
             reported_user_id ? `Reported User ID: ${reported_user_id}` : null,
             `Reason: ${reason}`,
             details ? `Details: ${details}` : null,
-        ].filter(Boolean).join(' | ');
+        ].filter(Boolean).join('\n');
 
         const { data, error } = await supabase
             .from('Disputes')
             .insert([{
                 reporter_id,
                 order_id: null,
-                reason: reasonText,
                 status: 'open',
+                moderator_notes: noteLines,
             }])
             .select()
             .single();
@@ -30,6 +31,7 @@ export const createDispute = async (req, res) => {
         if (error) throw error;
         res.json({ success: true, dispute: data });
     } catch (err) {
+        console.error('createDispute error:', err.message);
         res.status(500).json({ error: err.message });
     }
 };

@@ -1,24 +1,35 @@
+.cardWrapper {
+    text-decoration: none;
+    color: inherit;
+    display: block;
+    cursor: pointer;
+    flex-shrink: 0;
+    width: fit-content;
+}
+
 .card {
-    width: 100%;
-    border: 1px solid #eee;
+    width: 280px;
+    height: 390px;
     border-radius: 12px;
     overflow: hidden;
-    background: white;
+    box-shadow: 0 4px 12px rgba(0, 0, 0, 0.1);
     display: flex;
     flex-direction: column;
-    transition: box-shadow 0.2s, transform 0.15s;
+    transition: transform 0.2s ease, box-shadow 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+    background: #fff;
+    border: 1px solid rgba(0, 0, 0, 0.05);
 }
 
 .card:hover {
-    box-shadow: 0 6px 20px rgba(0,0,0,0.1);
-    transform: translateY(-2px);
+    transform: translateY(-6px);
+    box-shadow: 0 12px 30px rgba(0, 0, 0, 0.15);
 }
 
 /* ── Image ── */
 .imageWrapper {
     position: relative;
-    aspect-ratio: 1 / 1;
-    background-color: #f5f5f5;
+    height: 280px;
+    background-color: #f8f9fa;
     overflow: hidden;
 }
 
@@ -26,170 +37,266 @@
     width: 100%;
     height: 100%;
     object-fit: cover;
-    object-position: center;
-    transition: transform 0.3s ease;
+    transition: transform 0.5s ease;
 }
-.card:hover .image {
-    transform: scale(1.04);
-}
+.card:hover .image { transform: scale(1.05); }
 
-.soldOutOverlay {
+/* ── Condition badge (top-left) ── */
+.condBadge {
     position: absolute;
-    inset: 0;
-    background: rgba(0,0,0,0.45);
-    display: flex;
-    align-items: center;
-    justify-content: center;
-    font-size: 0.85rem;
-    font-weight: 800;
+    top: 10px;
+    left: 10px;
+    background: rgba(0, 0, 0, 0.55);
     color: white;
-    letter-spacing: 1px;
-    text-transform: uppercase;
+    padding: 4px 12px;
+    border-radius: 6px;
+    font-size: 0.7rem;
+    font-weight: 800;
+    letter-spacing: 0.5px;
+    z-index: 5;
 }
 
+/* ── Sold Out badge (top-left) ── */
+.soldBadge {
+    position: absolute;
+    top: 10px;
+    left: 10px;
+    background: #374151;
+    color: white;
+    padding: 4px 12px;
+    border-radius: 6px;
+    font-size: 0.7rem;
+    font-weight: 800;
+    letter-spacing: 0.5px;
+    z-index: 5;
+}
+
+/* ── Heart (top-right) ── */
 .heartBtn {
     position: absolute;
-    top: 8px;
-    right: 8px;
-    background: white;
-    border: none;
+    top: 10px;
+    right: 10px;
+    width: 34px;
+    height: 34px;
     border-radius: 50%;
-    width: 30px;
-    height: 30px;
+    background: rgba(0, 0, 0, 0.25);
+    backdrop-filter: blur(8px);
+    -webkit-backdrop-filter: blur(8px);
+    border: 1px solid rgba(255, 255, 255, 0.25);
     display: flex;
     align-items: center;
     justify-content: center;
     cursor: pointer;
-    box-shadow: 0 1px 4px rgba(0,0,0,0.15);
-    transition: transform 0.15s;
-}
-.heartBtn:hover { transform: scale(1.15); }
-.heartActive { background: #fff5f5; }
-
-.conditionBadge {
-    position: absolute;
-    top: 8px;
-    left: 8px;
-    background: rgba(0,0,0,0.6);
+    transition: all 0.2s cubic-bezier(0.4, 0, 0.2, 1);
+    z-index: 10;
     color: white;
-    font-size: 0.65rem;
-    font-weight: 700;
-    padding: 2px 7px;
-    border-radius: 20px;
-    text-transform: uppercase;
-    letter-spacing: 0.4px;
+    padding: 0;
+}
+.heartBtn:hover {
+    background: rgba(255, 255, 255, 0.9);
+    color: #D32F2F;
+    transform: scale(1.1);
+    border-color: transparent;
+}
+.activeHeart {
+    background: rgba(255, 255, 255, 1);
+    border-color: transparent;
+    box-shadow: 0 4px 15px rgba(211, 47, 47, 0.35);
 }
 
-/* ── Content ── */
-.content {
-    padding: 0.875rem 1rem 1rem;
+/* ── Stock overlay (bottom-right) ── */
+.overlayBadge {
+    position: absolute;
+    bottom: 10px;
+    right: 10px;
+    background: rgba(0, 0, 0, 0.65);
+    backdrop-filter: blur(6px);
+    -webkit-backdrop-filter: blur(6px);
+    color: white;
+    padding: 5px 10px;
+    border-radius: 6px;
+    display: flex;
+    align-items: center;
+    gap: 6px;
+    font-size: 0.7rem;
+    font-weight: 500;
+    z-index: 5;
+    border: 1px solid rgba(255, 255, 255, 0.1);
+}
+
+
+/* ── Footer ── */
+.footer {
+    background: linear-gradient(135deg, #d65a68 0%, #8E2432 100%);
+    padding: 1rem;
+    color: white;
+    position: relative;
+    flex: 1;
     display: flex;
     flex-direction: column;
-    gap: 0.5rem;
-    flex: 1;
+    justify-content: space-between;
+    min-height: 100px;
 }
 
-.title {
-    font-size: 0.9rem;
-    font-weight: 600;
-    color: #1a1a1a;
-    display: -webkit-box;
-    -webkit-line-clamp: 2;
-    line-clamp: 2;
-    -webkit-box-orient: vertical;
-    overflow: hidden;
-    line-height: 1.4;
-    min-height: 2.52rem;
-    margin: 0;
-}
-
-.priceRow {
+/* ── Seller row ── */
+.sellerRow {
     display: flex;
     align-items: center;
     justify-content: space-between;
-    gap: 0.5rem;
-    flex-wrap: wrap;
-    margin-top: 0.1rem;
+    margin-bottom: 0.85rem;
 }
 
-.price {
-    font-size: 1.15rem;
-    font-weight: 800;
-    color: #cc2b41;
-    white-space: nowrap;
+.sellerInfo {
+    display: flex;
+    align-items: center;
+    gap: 0.6rem;
 }
 
-.noPrice {
-    font-size: 0.78rem;
+.sellerLink {
+    text-decoration: none;
+    color: inherit;
+    display: block;
+}
+
+.avatar {
+    width: 26px;
+    height: 26px;
+    border-radius: 50%;
+    background-color: rgba(255, 255, 255, 0.2);
+    border: 1px solid rgba(255, 255, 255, 0.3);
+}
+
+.sellerName {
+    font-size: 0.85rem;
     font-weight: 500;
-    color: #9ca3af;
+    color: rgba(255, 255, 255, 0.95);
 }
 
-.stockWarn {
+.followBtn {
+    background: rgba(255, 255, 255, 0.15);
+    border: 1px solid rgba(255, 255, 255, 0.3);
+    color: white;
+    font-size: 0.7rem;
+    font-weight: 600;
+    padding: 0.3rem 0.7rem;
+    border-radius: 6px;
+    cursor: pointer;
+    transition: all 0.2s ease;
+    font-family: inherit;
+}
+.followBtn:hover { background: rgba(255, 255, 255, 0.25); transform: scale(1.05); }
+.followingBtn {
+    background: rgba(255, 255, 255, 0.9);
+    color: #4f46e5;
+    border-color: transparent;
+    font-weight: 700;
+}
+.followingBtn:hover { background: #fee2e2; color: #dc2626; border-color: transparent; }
+
+/* ── Item info ── */
+.itemInfo {
+    display: flex;
+    flex-direction: column;
+    gap: 0.5rem;
+}
+
+.titleRow {
+    display: flex;
+    justify-content: space-between;
+    align-items: flex-start;
+    gap: 1rem;
+}
+
+.titleText {
+    font-size: 1rem;
+    font-weight: 700;
+    line-height: 1.25;
+    color: #fff;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    display: -webkit-box;
+    -webkit-line-clamp: 1;
+    -webkit-box-orient: vertical;
+    line-clamp: 1;
+}
+
+.priceText {
+    font-size: 1.1rem;
+    font-weight: 800;
+    color: #fff;
+    white-space: nowrap;
+    text-shadow: 0 1px 2px rgba(0, 0, 0, 0.1);
+}
+
+/* ── Action row (Fixed Price label + cart button) ── */
+.actionRow {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    gap: 0.5rem;
+}
+
+.fixedLabel {
+    font-size: 0.82rem;
+    color: rgba(255, 255, 255, 0.8);
+    font-weight: 500;
+}
+
+.cartBtn {
+    background: rgba(255, 255, 255, 0.18);
+    border: 1px solid rgba(255, 255, 255, 0.4);
+    color: white;
+    font-size: 0.72rem;
+    font-weight: 700;
+    padding: 0.3rem 0.75rem;
+    border-radius: 6px;
     display: flex;
     align-items: center;
-    gap: 3px;
-    font-size: 0.68rem;
-    font-weight: 600;
-    color: #d97706;
-    background: #fffbeb;
-    border: 1px solid #fde68a;
-    padding: 2px 6px;
-    border-radius: 20px;
+    gap: 5px;
+    cursor: pointer;
+    transition: background 0.2s ease, transform 0.15s;
+    font-family: inherit;
     white-space: nowrap;
 }
-
-/* ── Cart Button ── */
-.cartBtn {
-    margin-top: auto;
-    background: #cc2b41;
-    color: white;
-    border: none;
-    border-radius: 8px;
-    width: 100%;
-    padding: 0.6rem 0.5rem;
-    font-size: 0.82rem;
-    font-weight: 700;
-    display: flex;
-    align-items: center;
-    justify-content: center;
-    gap: 0.4rem;
-    cursor: pointer;
-    transition: background 0.2s, opacity 0.2s;
+.cartBtn:hover:not(:disabled) {
+    background: rgba(255, 255, 255, 0.3);
+    transform: scale(1.04);
 }
-.cartBtn:hover:not(:disabled) { background: #b02438; }
-
+.cartBtn:disabled { opacity: 0.55; cursor: not-allowed; transform: none; }
 .cartBtnAdded {
-    background: #16a34a;
+    background: rgba(255, 255, 255, 0.9);
+    color: #16a34a;
+    border-color: transparent;
 }
-.cartBtnAdded:hover:not(:disabled) { background: #15803d; }
+.cartBtnAdded:hover:not(:disabled) { background: #dcfce7; }
 
-.cartBtn:disabled {
-    opacity: 0.55;
-    cursor: not-allowed;
+/* ── Responsive: tablet ── */
+@media (max-width: 768px) {
+    .card { width: 230px; height: 315px; }
+    .imageWrapper { height: 185px; }
+    .footer { padding: 0.65rem 0.75rem; min-height: 85px; }
+    .titleText { font-size: 0.85rem; }
+    .priceText { font-size: 0.9rem; }
+    .sellerName { font-size: 0.75rem; }
+    .fixedLabel { font-size: 0.75rem; }
+    .condBadge, .soldBadge { font-size: 0.65rem; padding: 3px 8px; }
 }
 
-/* ── Responsive ── */
+/* ── Responsive: 360px and below ── */
 @media (max-width: 360px) {
-    .content {
-        padding: 0.65rem 0.75rem 0.75rem;
-        gap: 0.4rem;
-    }
-    .title {
-        font-size: 0.8rem;
-        min-height: 2.2rem;
-    }
-    .price {
-        font-size: 1rem;
-    }
-    .cartBtn {
-        padding: 0.5rem;
-        font-size: 0.75rem;
-    }
-    .heartBtn {
-        width: 26px;
-        height: 26px;
-        top: 6px;
-        right: 6px;
-    }
+    .card { width: 185px; height: 255px; }
+    .imageWrapper { height: 140px; }
+    .footer { padding: 0.5rem; gap: 0.3rem; min-height: 75px; }
+    .sellerRow { margin-bottom: 0.5rem; }
+    .avatar { width: 20px; height: 20px; }
+    .sellerName { font-size: 0.65rem; }
+    .followBtn { font-size: 0.6rem; padding: 0.2rem 0.6rem; border-radius: 4px; }
+    .itemInfo { gap: 0.25rem; }
+    .titleText { font-size: 0.75rem; }
+    .priceText { font-size: 0.85rem; }
+    .fixedLabel { font-size: 0.65rem; }
+    .cartBtn { font-size: 0.62rem; padding: 0.2rem 0.5rem; }
+    .condBadge, .soldBadge { font-size: 0.6rem; padding: 2px 6px; top: 6px; left: 6px; }
+    .heartBtn { top: 6px; right: 6px; width: 28px; height: 28px; }
+    .overlayBadge { bottom: 6px; right: 6px; padding: 3px 6px; font-size: 0.6rem; gap: 4px; }
 }

@@ -16,8 +16,31 @@ export function extractProductInfo(product) {
         specs: extractSpecs(combined, category),
         keywords: extractKeywords(combined),
         condition: condition || 'Used',
-        category: category || detectCategory(combined)
+        category: normalizeCategory(category || detectCategory(combined))
     };
+}
+
+/**
+ * Normalize category string to match Mercari dataset categories
+ */
+function normalizeCategory(category) {
+    if (!category) return 'Other';
+    
+    // Handle frontend format (e.g., "fashion:Luxury & Jewelry:Bags")
+    if (category.includes(':')) {
+        const main = category.split(':')[0].toLowerCase();
+        const mapping = {
+            'electronics': 'Electronics',
+            'fashion': 'Fashion',
+            'home': 'Home & Garden',
+            'culture': 'Collectibles',
+            'sports': 'Sports',
+            'automotive': 'Other'
+        };
+        return mapping[main] || 'Other';
+    }
+    
+    return category;
 }
 
 /**

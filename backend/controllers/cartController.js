@@ -50,6 +50,7 @@ export const getCartByUser = async (req, res) => {
             price,
             condition,
             description,
+            seller_id,
             Product_Images (
                 image_url
             ),
@@ -70,13 +71,14 @@ export const getCartByUser = async (req, res) => {
 
     // Format response for frontend
     const formattedData = data.map(item => ({
-        cart_id: item.cartItem_id, // Map database cartItem_id to frontend's expected cart_id for consistency
+        cart_id: item.cartItem_id,
         id: item.product_id,
         name: item.Products?.name || 'Unknown Product',
         price: item.Products?.price || 0,
         quantity: item.quantity,
         image: item.Products?.Product_Images?.[0]?.image_url || null,
         seller: item.Products?.Seller?.store_name || 'Unknown Store',
+        seller_id: item.Products?.seller_id || null,
         condition: item.Products?.condition || 'N/A',
         description: item.Products?.description || ''
     }));

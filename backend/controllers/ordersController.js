@@ -205,6 +205,7 @@ export const getOrdersByUser = async (req, res) => {
         order_type: 'regular',
         ...shippingFields,
         items: order.Order_items?.map(item => ({
+          products_id: item.products_id,
           name: item.Products?.name || 'Unknown Product',
           qty: item.quantity,
           price: item.unit_price,
@@ -382,21 +383,40 @@ export const getOrderById = async (req, res) => {
 // Create new order
 export const createOrder = async (req, res) => {
   try {
-    const { buyer_id: user_id, address_id, total_amount, items } = req.body;
+    const { 
+      buyer_id: user_id, 
+      seller_id, 
+      address_id, 
+      total_amount, 
+      items,
+      payment_method,
+      payment_reference,
+      paid_at,
+      status: requestedStatus,
+      shipping_fee
+    } = req.body;
 
     if (!user_id || !items || items.length === 0) {
       return res.status(400).json({ error: 'Missing required fields' });
     }
 
     // 1. Create Order record
+    const orderRecord = {
+      user_id,
+      total_amount,
+      status: requestedStatus || 'pending_payment',
+      shipping_address_id: address_id || null,
+      payment_method: payment_method || null,
+      payment_reference: payment_reference || null,
+      paid_at: paid_at || null,
+      shipping_fee: shipping_fee || 0,
+      order_type: 'regular'
+    };
+    if (seller_id) orderRecord.seller_id = seller_id;
+
     const { data: orderData, error: orderError } = await supabase
       .from('Orders')
-      .insert([{
-          user_id,
-          shipping_address_id: address_id,
-          total_amount,
-          status: 'pay'
-      }])
+      .insert([orderRecord])
       .select('*')
       .single();
 

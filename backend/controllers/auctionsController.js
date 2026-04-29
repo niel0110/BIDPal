@@ -678,7 +678,11 @@ export const endAuction = async (req, res) => {
         user_id: winningBid.user_id,
         bid_amount: winningBid.bid_amount,
         bid_id: winningBid.bid_id,
-        order_id: orderId
+        order_id: orderId,
+        bidder_name: winningBid.bidder ?
+          `${winningBid.bidder.Fname || ''} ${winningBid.bidder.Lname || ''}`.trim() ||
+          winningBid.bidder.email?.split('@')[0] || 'Winner' : 'Winner',
+        bidder_avatar: winningBid.bidder?.Avatar || null
       } : null,
       product_status: productStatus,
       reserve_met: reserveMet,

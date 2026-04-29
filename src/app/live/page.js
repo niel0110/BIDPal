@@ -54,6 +54,7 @@ function LivePageInner() {
     const [biddingEligibility, setBiddingEligibility] = useState(null); // { canBid, requiresPreAuthorization }
     const [myStanding, setMyStanding] = useState('clean');
     const [showPreAuthModal, setShowPreAuthModal] = useState(false);
+    const [paymentStatus, setPaymentStatus] = useState('idle'); // idle, processing, success
 
     // Permission and Stream State
     const [permissionStatus, setPermissionStatus] = useState('idle'); // idle, requesting, granted, denied
@@ -796,6 +797,24 @@ function LivePageInner() {
         setShowPaymentModal(true);
     };
 
+    const handlePayNow = () => {
+        setPaymentStatus('processing');
+        
+        // Step 1: Simulate bank/network delay
+        setTimeout(() => {
+            setPaymentStatus('success');
+            
+            // Step 2: Finalize simulation after showing success checkmark
+            setTimeout(() => {
+                setShowPaymentModal(false);
+                setPaymentStatus('idle');
+                // Redirect to orders or show a receipt summary
+                alert('🎉 Payment Successful! Your order is being processed.');
+                window.location.href = '/buyer/orders';
+            }, 2500);
+        }, 3000);
+    };
+
     const handleLike = async () => {
         if (!user) { setShowLoginPrompt(true); return; }
         // Optimistic toggle so UI feels instant
@@ -947,7 +966,7 @@ function LivePageInner() {
         streamEnded ||
         (auction.status === 'active' && auction?.end_time && new Date(auction.end_time) <= new Date());
 
-    // ── AUCTION ENDED: show compact recap page instead of live layout ────────
+    // ── AUCTION ENDED: show recap page instead of live layout ────────
     if (isAuctionEnded) {
         const finalBid = bids[0];
         const rawFinal = finalBid?.amount ?? auction.current_price ?? auction.reserve_price;
@@ -955,155 +974,105 @@ function LivePageInner() {
             ? Number(rawFinal.replace(/,/g, ''))
             : Number(rawFinal || 0);
 
-        return (
-            <main style={{ background: '#f5f5f5', minHeight: '100vh', display: 'flex', flexDirection: 'column' }}>
-                <Header />
-                <div style={{ flex: 1, maxWidth: 1060, width: '100%', margin: '0 auto', padding: '1.1rem 1.5rem', display: 'flex', flexDirection: 'column', gap: '0.9rem', height: 'calc(100vh - 62px)', overflow: 'hidden' }}>
+        const mainImg = activeModalImg || product?.images?.[0]?.image_url || 'https://placehold.co/600x600';
+        const thumbs = product?.images || [];
 
-                    {/* top breadcrumb */}
-                    <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', flexShrink: 0 }}>
-                        <button
-                            onClick={() => window.history.back()}
-                            style={{ background: 'none', border: '1px solid #ddd', borderRadius: 7, padding: '5px 13px', cursor: 'pointer', fontSize: '0.78rem', color: '#555', fontWeight: 600 }}
-                        >
-                            ← Back
-                        </button>
-                        <span style={{ fontSize: '0.74rem', color: '#aaa' }}>Live Session Recap</span>
-                        <span style={{ fontSize: '0.68rem', background: '#f3f4f6', color: '#6b7280', border: '1px solid #e5e7eb', borderRadius: 20, padding: '2px 8px', fontWeight: 700 }}>
-                            🏁 Ended
-                        </span>
+        return (
+            <main style={{ background: '#f8f9fb', minHeight: '100vh', display: 'flex', flexDirection: 'column' }}>
+                <Header />
+
+                {/* top bar */}
+                <div style={{ background: 'white', borderBottom: '1px solid #f1f5f9', padding: '0 1.5rem', height: 44, display: 'flex', alignItems: 'center', gap: '0.75rem' }}>
+                    <button
+                        onClick={() => window.history.back()}
+                        style={{ display: 'flex', alignItems: 'center', gap: 4, background: 'none', border: 'none', cursor: 'pointer', fontSize: '0.8rem', color: '#64748b', fontWeight: 600, padding: '4px 0' }}
+                    >
+                        ← Back
+                    </button>
+                    <span style={{ color: '#e2e8f0' }}>|</span>
+                    <span style={{ fontSize: '0.75rem', color: '#94a3b8' }}>Live Session Recap</span>
+                    <span style={{ fontSize: '0.68rem', background: '#0f172a', color: 'white', borderRadius: 20, padding: '2px 10px', fontWeight: 700, letterSpacing: '0.04em', marginLeft: 2 }}>
+                        Ended
+                    </span>
+                </div>
+
+                {/* main content */}
+                <div style={{ maxWidth: 1000, width: '100%', margin: '0 auto', padding: '2rem 1.5rem', display: 'flex', gap: '3rem', alignItems: 'flex-start' }}>
+
+                    {/* ── LEFT: image gallery ── */}
+                    <div style={{ width: 340, flexShrink: 0 }}>
+                        <img
+                            src={mainImg}
+                            alt={product?.name}
+                            style={{ width: '100%', borderRadius: 16, display: 'block', objectFit: 'contain', maxHeight: 380, background: '#f1f5f9' }}
+                        />
+                        {thumbs.length > 1 && (
+                            <div style={{ display: 'flex', gap: '0.5rem', marginTop: '0.75rem', flexWrap: 'wrap' }}>
+                                {thumbs.slice(0, 5).map((img, idx) => (
+                                    <img
+                                        key={idx}
+                                        src={img.image_url}
+                                        alt=""
+                                        onClick={() => setActiveModalImg(img.image_url)}
+                                        style={{
+                                            width: 58, height: 58, objectFit: 'cover', borderRadius: 10, cursor: 'pointer', flexShrink: 0,
+                                            border: `2px solid ${mainImg === img.image_url ? '#D32F2F' : '#e2e8f0'}`,
+                                            transition: 'border-color 0.15s'
+                                        }}
+                                    />
+                                ))}
+                            </div>
+                        )}
                     </div>
 
-                    {/* two-column layout */}
-                    <div style={{ display: 'flex', gap: '1.1rem', flex: 1, minHeight: 0 }}>
+                    {/* ── RIGHT: product info ── */}
+                    <div style={{ flex: 1, minWidth: 0 }}>
+                        <h1 style={{ fontSize: '1.5rem', fontWeight: 800, color: '#0f172a', margin: '0 0 0.4rem', lineHeight: 1.25 }}>{product?.name}</h1>
 
-                        {/* LEFT: image + seller */}
-                        <div style={{ width: 270, flexShrink: 0, display: 'flex', flexDirection: 'column', gap: '0.65rem' }}>
-                            <div style={{ background: 'white', borderRadius: 12, border: '1px solid #e5e7eb', overflow: 'hidden', aspectRatio: '1', flexShrink: 0 }}>
-                                <img
-                                    src={activeModalImg || product?.images?.[0]?.image_url || 'https://placehold.co/270x270'}
-                                    alt={product?.name}
-                                    style={{ width: '100%', height: '100%', objectFit: 'cover', display: 'block' }}
-                                />
+                        {product?.description && (
+                            <p style={{ fontSize: '0.85rem', color: '#64748b', margin: '0 0 1.5rem', lineHeight: 1.7 }}>
+                                {product.description}
+                            </p>
+                        )}
+
+                        {/* stats */}
+                        <div style={{ display: 'flex', gap: '1.25rem', marginBottom: '1.75rem', flexWrap: 'wrap' }}>
+                            <div>
+                                <div style={{ fontSize: '0.62rem', color: '#94a3b8', fontWeight: 700, textTransform: 'uppercase', letterSpacing: '0.07em', marginBottom: 3 }}>Final Price</div>
+                                <div style={{ fontSize: '1.6rem', fontWeight: 800, color: '#D32F2F', lineHeight: 1 }}>₱{finalNum.toLocaleString('en-PH')}</div>
                             </div>
-                            {product?.images?.length > 1 && (
-                                <div style={{ display: 'flex', gap: '0.4rem', flexWrap: 'wrap' }}>
-                                    {product.images.slice(0, 4).map((img, idx) => (
-                                        <img
-                                            key={idx}
-                                            src={img.image_url}
-                                            alt=""
-                                            onClick={() => setActiveModalImg(img.image_url)}
-                                            style={{
-                                                width: 54, height: 54, objectFit: 'cover', borderRadius: 7, cursor: 'pointer',
-                                                border: `2px solid ${(activeModalImg || product.images[0]?.image_url) === img.image_url ? '#D32F2F' : '#e5e7eb'}`
-                                            }}
-                                        />
-                                    ))}
-                                </div>
-                            )}
-                            {/* seller card */}
-                            <div style={{ background: 'white', borderRadius: 10, border: '1px solid #e5e7eb', padding: '0.8rem 0.9rem', marginTop: 'auto' }}>
-                                <div style={{ display: 'flex', alignItems: 'center', gap: '0.55rem' }}>
-                                    <div style={{
-                                        width: 34, height: 34, borderRadius: '50%', flexShrink: 0,
-                                        backgroundImage: seller_info?.avatar ? `url(${seller_info.avatar})` : 'none',
-                                        backgroundColor: '#ddd', backgroundSize: 'cover', backgroundPosition: 'center'
-                                    }} />
-                                    <div style={{ flex: 1, minWidth: 0 }}>
-                                        <div style={{ fontWeight: 700, fontSize: '0.82rem', color: '#111', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{seller_info?.store_name}</div>
-                                        <div style={{ fontSize: '0.7rem', color: '#999' }}>{seller_info?.full_name}</div>
-                                    </div>
-                                    <button
-                                        onClick={() => window.location.href = `/store/${seller_info?.seller_id}`}
-                                        style={{ fontSize: '0.7rem', fontWeight: 700, color: '#D32F2F', background: 'none', border: '1px solid #D32F2F', borderRadius: 6, padding: '3px 9px', cursor: 'pointer', flexShrink: 0 }}
-                                    >
-                                        Visit
-                                    </button>
-                                </div>
+                            <div style={{ width: 1, background: '#f1f5f9', alignSelf: 'stretch' }} />
+                            <div>
+                                <div style={{ fontSize: '0.62rem', color: '#94a3b8', fontWeight: 700, textTransform: 'uppercase', letterSpacing: '0.07em', marginBottom: 3 }}>Total Bids</div>
+                                <div style={{ fontSize: '1.6rem', fontWeight: 800, color: '#0f172a', lineHeight: 1 }}>{bids.length}</div>
+                            </div>
+                            <div style={{ width: 1, background: '#f1f5f9', alignSelf: 'stretch' }} />
+                            <div>
+                                <div style={{ fontSize: '0.62rem', color: '#94a3b8', fontWeight: 700, textTransform: 'uppercase', letterSpacing: '0.07em', marginBottom: 3 }}>Reserve Price</div>
+                                <div style={{ fontSize: '1.6rem', fontWeight: 800, color: '#0f172a', lineHeight: 1 }}>₱{Number(auction.reserve_price || 0).toLocaleString('en-PH')}</div>
                             </div>
                         </div>
 
-                        {/* RIGHT: details */}
-                        <div style={{ flex: 1, display: 'flex', flexDirection: 'column', gap: '0.75rem', minHeight: 0, overflow: 'hidden' }}>
+                        {/* divider */}
+                        <div style={{ height: 1, background: '#f1f5f9', marginBottom: '1.25rem' }} />
 
-                            {/* product title block */}
-                            <div style={{ background: 'white', borderRadius: 12, border: '1px solid #e5e7eb', padding: '0.9rem 1.1rem', flexShrink: 0 }}>
-                                <h1 style={{ fontSize: '1.2rem', fontWeight: 800, color: '#111', margin: '0 0 0.2rem' }}>{product?.name}</h1>
-                                {product?.description && (
-                                    <p style={{ fontSize: '0.76rem', color: '#888', margin: 0, lineHeight: 1.5, display: '-webkit-box', WebkitLineClamp: 2, WebkitBoxOrient: 'vertical', overflow: 'hidden' }}>
-                                        {product.description}
-                                    </p>
-                                )}
+                        {/* seller row */}
+                        <div style={{ display: 'flex', alignItems: 'center', gap: '0.8rem' }}>
+                            <div style={{
+                                width: 42, height: 42, borderRadius: '50%', flexShrink: 0,
+                                backgroundImage: seller_info?.avatar ? `url(${seller_info.avatar})` : 'none',
+                                backgroundColor: '#e2e8f0', backgroundSize: 'cover', backgroundPosition: 'center',
+                            }} />
+                            <div style={{ flex: 1, minWidth: 0 }}>
+                                <div style={{ fontWeight: 700, fontSize: '0.9rem', color: '#0f172a' }}>{seller_info?.store_name}</div>
+                                <div style={{ fontSize: '0.75rem', color: '#94a3b8' }}>{seller_info?.full_name}</div>
                             </div>
-
-                            {/* stats row */}
-                            <div style={{ display: 'flex', gap: '0.6rem', flexShrink: 0 }}>
-                                {[
-                                    { label: 'Final Price', value: `₱${finalNum.toLocaleString('en-PH')}`, color: '#D32F2F' },
-                                    { label: 'Total Bids', value: bids.length, color: '#111' },
-                                    { label: 'Reserve Price', value: `₱${Number(auction.reserve_price || 0).toLocaleString('en-PH')}`, color: '#111' },
-                                ].map(({ label, value, color }) => (
-                                    <div key={label} style={{ flex: 1, background: 'white', border: '1px solid #e5e7eb', borderRadius: 10, padding: '0.65rem 0.85rem' }}>
-                                        <div style={{ fontSize: '0.6rem', color: '#aaa', textTransform: 'uppercase', letterSpacing: '0.06em', fontWeight: 700, marginBottom: 2 }}>{label}</div>
-                                        <div style={{ fontSize: '1.25rem', fontWeight: 800, color, lineHeight: 1.2 }}>{value}</div>
-                                    </div>
-                                ))}
-                            </div>
-
-                            {/* winner banner */}
-                            {finalBid ? (
-                                <div style={{ background: 'linear-gradient(135deg,#fff8f0,#fff3e0)', border: '1px solid #fed7aa', borderRadius: 10, padding: '0.7rem 1rem', display: 'flex', alignItems: 'center', gap: '0.7rem', flexShrink: 0 }}>
-                                    <span style={{ fontSize: '1.5rem', lineHeight: 1 }}>🏆</span>
-                                    <div>
-                                        <div style={{ fontSize: '0.62rem', fontWeight: 700, color: '#92400e', textTransform: 'uppercase', letterSpacing: '0.04em' }}>Winning Bidder</div>
-                                        <div style={{ fontSize: '0.95rem', fontWeight: 800, color: '#78350f' }}>
-                                            {user && String(finalBid.user_id) === String(user?.user_id || user?.id) ? '🎉 You won!' : finalBid.user}
-                                        </div>
-                                    </div>
-                                    <div style={{ marginLeft: 'auto', textAlign: 'right' }}>
-                                        <div style={{ fontSize: '0.62rem', fontWeight: 700, color: '#92400e', textTransform: 'uppercase', letterSpacing: '0.04em' }}>Winning Bid</div>
-                                        <div style={{ fontSize: '1rem', fontWeight: 800, color: '#D32F2F' }}>₱{finalNum.toLocaleString('en-PH')}</div>
-                                    </div>
-                                </div>
-                            ) : (
-                                <div style={{ background: '#f9fafb', border: '1px solid #e5e7eb', borderRadius: 10, padding: '0.7rem 1rem', fontSize: '0.82rem', color: '#888', flexShrink: 0 }}>
-                                    No bids were placed in this auction.
-                                </div>
-                            )}
-
-                            {/* bid history — scrollable */}
-                            <div style={{ flex: 1, background: 'white', borderRadius: 12, border: '1px solid #e5e7eb', display: 'flex', flexDirection: 'column', minHeight: 0 }}>
-                                <div style={{ padding: '0.6rem 1rem', borderBottom: '1px solid #f3f4f6', fontWeight: 700, fontSize: '0.78rem', color: '#374151', flexShrink: 0 }}>
-                                    Bid History
-                                </div>
-                                <div style={{ flex: 1, overflowY: 'auto', padding: '0.45rem 0.7rem', display: 'flex', flexDirection: 'column', gap: '0.28rem' }}>
-                                    {bids.length > 0 ? bids.map((bid, idx) => (
-                                        <div key={bid.id || idx} style={{
-                                            display: 'flex', alignItems: 'center', justifyContent: 'space-between',
-                                            padding: '0.42rem 0.6rem',
-                                            background: idx === 0 ? '#fff8f0' : idx % 2 === 0 ? '#fafafa' : 'white',
-                                            border: `1px solid ${idx === 0 ? '#fed7aa' : '#f0f0f0'}`,
-                                            borderRadius: 7, fontSize: '0.8rem'
-                                        }}>
-                                            <div style={{ display: 'flex', alignItems: 'center', gap: '0.4rem' }}>
-                                                <span style={{ fontSize: '0.8rem', width: 20, textAlign: 'center' }}>
-                                                    {idx === 0 ? '🥇' : idx === 1 ? '🥈' : idx === 2 ? '🥉' : `${idx + 1}.`}
-                                                </span>
-                                                <span style={{ fontWeight: idx === 0 ? 700 : 500, color: '#374151' }}>
-                                                    {user && String(bid.user_id) === String(user?.user_id || user?.id) ? 'You' : bid.user}
-                                                </span>
-                                            </div>
-                                            <div style={{ display: 'flex', gap: '0.75rem', alignItems: 'center' }}>
-                                                <span style={{ color: '#ccc', fontSize: '0.7rem' }}>{bid.time}</span>
-                                                <span style={{ fontWeight: 700, color: idx === 0 ? '#D32F2F' : '#555' }}>₱ {bid.amount}</span>
-                                            </div>
-                                        </div>
-                                    )) : (
-                                        <div style={{ textAlign: 'center', color: '#ccc', padding: '2rem 0', fontSize: '0.82rem' }}>No bids placed.</div>
-                                    )}
-                                </div>
-                            </div>
+                            <button
+                                onClick={() => window.location.href = `/store/${seller_info?.seller_id}`}
+                                style={{ fontSize: '0.78rem', fontWeight: 700, color: '#D32F2F', background: '#fff1f2', border: 'none', borderRadius: 8, padding: '7px 16px', cursor: 'pointer', flexShrink: 0 }}
+                            >
+                                Visit Store
+                            </button>
                         </div>
                     </div>
                 </div>
@@ -2107,26 +2076,29 @@ function LivePageInner() {
             {/* WINNER MODAL */}
             {winnerModal.show && (
                 <div className={styles.modalOverlay}>
-                    <div className={styles.winnerModalContent}>
-                        <div className={styles.modalCloseWrapper}>
-                            <button className={styles.closeBtn} onClick={() => setWinnerModal({ ...winnerModal, show: false })}>
-                                <X size={16} />
-                            </button>
+                    <div className={styles.premiumWinnerModal}>
+                        <div className={styles.winnerConfetti}></div>
+                        <div className={styles.winnerIconWrapper}>
+                            <div className={styles.winnerEmoji}>🏆</div>
+                        </div>
+                        
+                        <h2 className={styles.premiumWinnerTitle}>{winnerModal.title}</h2>
+                        <p className={styles.premiumWinnerSub}>{winnerModal.subtitle}</p>
+                        
+                        <div className={styles.winnerPricingCard}>
+                            <span className={styles.winnerPricingLabel}>Winning Bid</span>
+                            <span className={styles.winnerPricingValue}>{winnerModal.amount}</span>
                         </div>
 
-                        <h2 className={styles.winnerTitle}>{winnerModal.title}</h2>
-                        <div className={styles.winnerDivider} />
-
-                        <p className={styles.winnerSubTitle}>{winnerModal.subtitle}</p>
-                        <div className={styles.winnerAmount}>₱ {winnerModal.amount}</div>
-
-                        <div className={styles.winnerActionRow}>
-                            <button className={styles.payNowBtn} onClick={handleOpenPayment}>Pay Now</button>
+                        <div className={styles.premiumWinnerActions}>
+                            <button className={styles.premiumPayBtn} onClick={handleOpenPayment}>
+                                Secure Checkout
+                            </button>
                             <button
-                                className={styles.cancelWinnerBtn}
+                                className={styles.premiumCancelBtn}
                                 onClick={() => setWinnerModal({ ...winnerModal, show: false })}
                             >
-                                Cancel
+                                Close
                             </button>
                         </div>
                     </div>
@@ -2135,104 +2107,145 @@ function LivePageInner() {
 
             {/* PAYMENT MODAL */}
             {showPaymentModal && (
-                <div className={styles.modalOverlay} onClick={() => setShowPaymentModal(false)}>
-                    <div className={styles.paymentModalContent} onClick={e => e.stopPropagation()}>
-                        <div className={styles.modalCloseWrapper}>
-                            <button className={styles.closeBtn} onClick={() => setShowPaymentModal(false)}>
-                                <X size={16} />
-                            </button>
-                        </div>
-
-                        {/* Left Side: Product Summary */}
-                        <div className={styles.paymentLeft}>
-                            <div style={{ position: 'relative' }}>
-                                <img
-                                    src={product?.images?.[0]?.image_url || "https://placehold.co/400x400"}
-                                    alt={product?.name}
-                                    className={styles.mainProductImg}
-                                    style={{ border: '2px solid #00A3FF' }}
-                                />
-                                <div className={styles.thumbnailRow} style={{ marginTop: '1rem' }}>
-                                    {product?.images?.slice(0, 3).map((img, idx) => (
-                                        <img key={idx} src={img.image_url} className={styles.thumbImg} alt="thumb" />
-                                    ))}
-                                </div>
-                            </div>
-
-                            <div>
-                                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start' }}>
-                                    <h3 style={{ fontSize: '1.5rem', fontWeight: 700 }}>{product?.name}</h3>
-                                    <div style={{ textAlign: 'right' }}>
-                                        <div style={{ fontWeight: 700 }}>₱ {bids[0]?.amount || auction.current_price || auction.reserve_price}</div>
+                <div className={styles.modalOverlay} onClick={paymentStatus === 'idle' ? () => setShowPaymentModal(false) : undefined}>
+                    <div className={styles.premiumPaymentModal} onClick={e => e.stopPropagation()}>
+                        {paymentStatus === 'idle' ? (
+                            <>
+                                <div className={styles.paymentModalHeader}>
+                                    <div className={styles.paymentHeaderInfo}>
+                                        <h2 className={styles.paymentMainTitle}>Checkout</h2>
+                                        <p className={styles.paymentSubTitle}>Complete your order for <strong>{product?.name}</strong></p>
                                     </div>
-                                </div>
-                                <div style={{ fontWeight: 600, marginTop: '0.5rem' }}>Winning Bid</div>
-                                <p style={{ fontSize: '0.85rem', color: '#666', marginTop: '1rem', lineHeight: 1.5 }}>
-                                    {product?.description}
-                                </p>
-                            </div>
-                        </div>
-
-                        {/* Right Side: Checkout Details */}
-                        <div className={styles.paymentRight}>
-                            <h2>Payment</h2>
-
-                            <div className={styles.infoBlock}>
-                                <div className={styles.infoContent}>
-                                    <h4>Shipping Address</h4>
-                                    <p>Select your preferred shipping address in checkout.</p>
-                                </div>
-                                <button className={styles.editBtn}><Pencil size={14} /></button>
-                            </div>
-
-                            <div className={styles.infoBlock}>
-                                <div className={styles.infoContent}>
-                                    <h4>Contact Information</h4>
-                                    <p>Your verified account contact info will be used.</p>
-                                </div>
-                                <button className={styles.editBtn}><Pencil size={14} /></button>
-                            </div>
-
-                            <div>
-                                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '1rem' }}>
-                                    <h3 style={{ fontWeight: 700 }}>Shipping Options</h3>
+                                    <button className={styles.paymentCloseBtn} onClick={() => setShowPaymentModal(false)}>
+                                        <X size={20} />
+                                    </button>
                                 </div>
 
-                                <div className={styles.shippingOptions}>
-                                    <div
-                                        className={`${styles.shipOption} ${shippingOption === 'standard' ? styles.selected : ''}`}
-                                        onClick={() => setShippingOption('standard')}
-                                    >
-                                        <CheckCircle size={20} color={shippingOption === 'standard' ? "#D32F2F" : "#ccc"} />
-                                        <span className={styles.optionLabel}>Standard</span>
-                                        <span className={styles.deliveryTime}>5-7 days</span>
-                                        <span className={styles.optionPrice}>FREE</span>
+                                <div className={styles.paymentMainBody}>
+                                    {/* Summary Section */}
+                                    <div className={styles.checkoutSummaryCard}>
+                                        <div className={styles.summaryProductInfo}>
+                                            <div className={styles.summaryImgWrapper}>
+                                                <img src={product?.images?.[0]?.image_url || "https://placehold.co/100x100"} alt="Product" />
+                                            </div>
+                                            <div className={styles.summaryText}>
+                                                <h4>{product?.name}</h4>
+                                                <span>Condition: Brand New</span>
+                                            </div>
+                                        </div>
+                                        <div className={styles.summaryPrice}>
+                                            <span className={styles.priceLabel}>Winning Amount</span>
+                                            <span className={styles.priceValue}>₱{bids[0]?.amount || auction.current_price || auction.reserve_price}</span>
+                                        </div>
                                     </div>
 
-                                    <div
-                                        className={`${styles.shipOption} ${shippingOption === 'express' ? styles.selected : ''}`}
-                                        onClick={() => setShippingOption('express')}
-                                    >
-                                        {shippingOption === 'express' ? (
-                                            <CheckCircle size={20} color="#D32F2F" />
-                                        ) : (
-                                            <div style={{ width: 20, height: 20, borderRadius: '50%', border: '1px solid #ccc' }} />
-                                        )}
-                                        <span className={styles.optionLabel}>Express</span>
-                                        <span className={styles.deliveryTime}>1-2 days</span>
-                                        <span className={styles.optionPrice}>₱ 125</span>
+                                    {/* Checkout Grid */}
+                                    <div className={styles.checkoutDetailsGrid}>
+                                        <div className={styles.checkoutSection}>
+                                            <div className={styles.sectionHeader}>
+                                                <Truck size={18} color="#D32F2F" />
+                                                <h3>Shipping Details</h3>
+                                            </div>
+                                            <div className={styles.addressBox}>
+                                                <div className={styles.addressInfo}>
+                                                    <p className={styles.addressName}>{user?.Fname} {user?.Lname}</p>
+                                                    <p className={styles.addressText}>Select your preferred delivery address</p>
+                                                </div>
+                                                <button className={styles.addressEditBtn}><Pencil size={14} /></button>
+                                            </div>
+                                        </div>
+
+                                        <div className={styles.checkoutSection}>
+                                            <div className={styles.sectionHeader}>
+                                                <div style={{ color: '#D32F2F' }}>₱</div>
+                                                <h3>Shipping Method</h3>
+                                            </div>
+                                            <div className={styles.shippingOptionsList}>
+                                                <div
+                                                    className={`${styles.shippingOptionCard} ${shippingOption === 'standard' ? styles.shippingOptionSelected : ''}`}
+                                                    onClick={() => setShippingOption('standard')}
+                                                >
+                                                    <div className={styles.optionRadio}>
+                                                        {shippingOption === 'standard' && <div className={styles.radioInner} />}
+                                                    </div>
+                                                    <div className={styles.optionText}>
+                                                        <span className={styles.optionName}>Standard Delivery</span>
+                                                        <span className={styles.optionMeta}>Estimated 5-7 business days</span>
+                                                    </div>
+                                                    <span className={styles.optionCost}>FREE</span>
+                                                </div>
+
+                                                <div
+                                                    className={`${styles.shippingOptionCard} ${shippingOption === 'express' ? styles.shippingOptionSelected : ''}`}
+                                                    onClick={() => setShippingOption('express')}
+                                                >
+                                                    <div className={styles.optionRadio}>
+                                                        {shippingOption === 'express' && <div className={styles.radioInner} />}
+                                                    </div>
+                                                    <div className={styles.optionText}>
+                                                        <span className={styles.optionName}>Express Shipping</span>
+                                                        <span className={styles.optionMeta}>Estimated 1-2 business days</span>
+                                                    </div>
+                                                    <span className={styles.optionCost}>₱125</span>
+                                                </div>
+                                            </div>
+                                        </div>
                                     </div>
                                 </div>
-                            </div>
 
-                            <div className={styles.paymentFooter}>
-                                <div>
-                                    <span className={styles.totalLabel}>Total</span>
-                                    <span className={styles.totalAmount}>₱ {bids[0]?.amount || auction.current_price || auction.reserve_price}</span>
+                                <div className={styles.paymentModalFooter}>
+                                    <div className={styles.totalBreakdown}>
+                                        <div className={styles.breakdownRow}>
+                                            <span>Subtotal</span>
+                                            <span>₱{bids[0]?.amount || auction.current_price || auction.reserve_price}</span>
+                                        </div>
+                                        <div className={styles.breakdownRow}>
+                                            <span>Shipping</span>
+                                            <span>{shippingOption === 'express' ? '₱125' : 'FREE'}</span>
+                                        </div>
+                                        <div className={`${styles.breakdownRow} ${styles.finalTotalRow}`}>
+                                            <span>Order Total</span>
+                                            <span>₱{(Number((bids[0]?.amount || auction.current_price || auction.reserve_price).toString().replace(/,/g, '')) + (shippingOption === 'express' ? 125 : 0)).toLocaleString()}</span>
+                                        </div>
+                                    </div>
+                                    <button className={styles.premiumFinalPayBtn} onClick={handlePayNow}>
+                                        Complete Payment
+                                    </button>
+                                    <p className={styles.paymentSecureNote}>
+                                        <Lock size={12} /> Secure encrypted checkout
+                                    </p>
                                 </div>
-                                <button className={styles.finalPayBtn}>Pay Now</button>
+                            </>
+                        ) : paymentStatus === 'processing' ? (
+                            <div className={styles.processingState}>
+                                <div className={styles.spinnerWrapper}>
+                                    <div className={styles.loadingSpinner}></div>
+                                    <Loader2 className={styles.spinnerIcon} size={40} />
+                                </div>
+                                <h2 className={styles.processingTitle}>Processing Payment</h2>
+                                <p className={styles.processingSub}>Verifying your transaction with the bank. Please do not close this window.</p>
                             </div>
-                        </div>
+                        ) : (
+                            <div className={styles.successState}>
+                                <div className={styles.successIconWrapper}>
+                                    <div className={styles.successRing}></div>
+                                    <CheckCircle size={80} color="#10b981" strokeWidth={1.5} />
+                                </div>
+                                <h2 className={styles.successTitle}>Payment Successful!</h2>
+                                <p className={styles.successSub}>Thank you for your purchase. We've notified the seller to prepare your order.</p>
+                                <div className={styles.successDetails}>
+                                    <div className={styles.successRow}>
+                                        <span>Order Number</span>
+                                        <strong>#BP-{Math.floor(Math.random() * 1000000)}</strong>
+                                    </div>
+                                    <div className={styles.successRow}>
+                                        <span>Amount Paid</span>
+                                        <strong>₱{(Number((bids[0]?.amount || auction.current_price || auction.reserve_price).toString().replace(/,/g, '')) + (shippingOption === 'express' ? 125 : 0)).toLocaleString()}</strong>
+                                    </div>
+                                </div>
+                                <div className={styles.successRedirect}>Redirecting to your orders...</div>
+                            </div>
+                        )}
                     </div>
                 </div>
             )}

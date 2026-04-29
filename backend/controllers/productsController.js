@@ -2,6 +2,23 @@ import { supabase } from '../config/supabase.js';
 import { generatePriceRecommendation } from '../services/priceRecommendationService.js';
 import { createModerationCase } from '../services/violationService.js';
 
+async function enrichWithSellerInfo(products) {
+  const sellerIds = [...new Set(products.map(p => p.seller_id).filter(Boolean))];
+  if (!sellerIds.length) return products;
+  const { data: sellers } = await supabase
+    .from('Seller')
+    .select('seller_id, store_name, logo_url')
+    .in('seller_id', sellerIds);
+  if (!sellers) return products;
+  const map = {};
+  sellers.forEach(s => { map[s.seller_id] = s; });
+  return products.map(p => ({
+    ...p,
+    seller_name: p.seller_name || map[p.seller_id]?.store_name || null,
+    seller_avatar: p.seller_avatar || map[p.seller_id]?.logo_url || null,
+  }));
+}
+
 // Fetch all products (with optional filters)
 export const getAllProducts = async (req, res) => {
   try {
@@ -53,7 +70,8 @@ export const getAllProducts = async (req, res) => {
     const { data, error, count } = await query;
     if (error) return res.status(500).json({ error: error.message });
 
-    res.json({ count, data });
+    const enriched = await enrichWithSellerInfo(data || []);
+    res.json({ count, data: enriched });
   } catch (err) {
     res.status(500).json({ error: err.message });
   }
@@ -106,8 +124,9 @@ export const getProductsBySeller = async (req, res) => {
 
     const { data, error, count } = await query;
     if (error) return res.status(500).json({ error: error.message });
-    
-    res.json({ count, data });
+
+    const enriched = await enrichWithSellerInfo(data || []);
+    res.json({ count, data: enriched });
   } catch (err) {
     res.status(500).json({ error: err.message });
   }
@@ -208,7 +227,7 @@ export const createProduct = async (req, res) => {
       p_height_mm: height_mm ? Math.max(0, parseInt(height_mm)) : 0,
       p_starting_price: starting_price ? parseFloat(starting_price) : null,
       p_reserve_price: reserve_price ? parseFloat(reserve_price) : null,
-      p_condition: condition || 'Good',
+      p_condition: condition || 'good',
       p_brand: brand || null,
       p_specifications: specifications || null,
       p_status: status || 'draft',
@@ -230,7 +249,7 @@ export const createProduct = async (req, res) => {
             name: productName,
             description: description || '',
             category: Array.isArray(categories) ? categories[0] : (categories || 'General'),
-            condition: condition || 'Good',
+            condition: condition || 'good',
             brand: brand || 'Generic'
         };
 

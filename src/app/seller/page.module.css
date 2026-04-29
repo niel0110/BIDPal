@@ -2,6 +2,14 @@
    SELLER HUB — polished, buyer-side quality
    ============================================= */
 
+/* ---------- Root container — full viewport, no page scroll ---------- */
+.container {
+    height: 100vh;
+    display: flex;
+    flex-direction: column;
+    overflow: hidden;
+}
+
 /* ---------- Header ---------- */
 .header {
     display: flex;
@@ -133,36 +141,121 @@
 
 /* ---------- Main Layout ---------- */
 .controlRoom {
-    display: grid;
-    grid-template-columns: 1fr 300px;
-    gap: 1.5rem;
-    padding: 1.5rem;
+    display: flex;
+    flex-direction: column;
+    gap: 0.75rem;
+    padding: 1rem;
     background: #f8f8f8;
-    min-height: calc(100vh - 76px);
+    flex: 1;
+    min-height: 0;
+    overflow: hidden;
 }
 
+/* Top row: square live board + bids/chat side by side */
+.topSection {
+    display: flex;
+    flex-direction: row;
+    flex: 1;
+    min-height: 0;
+    gap: 0.75rem;
+}
+
+/* Kept for reference — no longer used as main layout wrapper */
 .mainWorkArea {
     display: flex;
     flex-direction: column;
     gap: 1.25rem;
+    min-height: 0;
+    overflow: hidden;
 }
 
+/* ---------- Product Queue — horizontal bar at bottom ---------- */
 .interactionPanel {
+    flex-shrink: 0;
+    background: white;
+    border-radius: 14px;
+    border: 1px solid #f0f0f0;
+    overflow: hidden;
+    box-shadow: 0 1px 4px rgba(0, 0, 0, 0.03);
+}
+
+/* ---------- Tab visibility (mobile only — no desktop override) ---------- */
+.tabSectionHidden { }
+
+/* ---------- Live Auction Area / Square Live Wrapper ---------- */
+.liveAuctionArea {
+    flex-shrink: 0;
     display: flex;
     flex-direction: column;
-    gap: 1.25rem;
-}
-
-/* ---------- Tab visibility (mobile only) ---------- */
-.tabSectionHidden { display: block; }
-
-/* ---------- Live Auction Area ---------- */
-.liveAuctionArea {
     background: white;
     border-radius: 16px;
     overflow: hidden;
     border: 1px solid #f0f0f0;
     box-shadow: 0 2px 8px rgba(0, 0, 0, 0.04);
+}
+
+/* Live board — equal-width left column of topSection */
+.liveWrapper {
+    flex: 1;
+    min-height: 0;
+    display: flex;
+    flex-direction: column;
+    border-radius: 16px;
+    overflow: hidden;
+    border: 1px solid #1a1a1a;
+    box-shadow: 0 4px 16px rgba(0, 0, 0, 0.15);
+    position: relative;
+    background: #111;
+}
+
+/* Product info overlay — bottom of video */
+.videoInfoOverlay {
+    position: absolute;
+    bottom: 0;
+    left: 0;
+    right: 0;
+    padding: 2rem 1rem 1rem;
+    background: linear-gradient(to top, rgba(0,0,0,0.82) 0%, transparent 100%);
+    z-index: 15;
+    pointer-events: none;
+    display: flex;
+    flex-direction: column;
+    gap: 0.3rem;
+}
+
+.overlayProductName {
+    display: flex;
+    align-items: center;
+    gap: 0.45rem;
+    font-size: 1.05rem;
+    font-weight: 700;
+    color: white;
+    text-shadow: 0 1px 4px rgba(0,0,0,0.6);
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+}
+
+.overlayStatRow {
+    display: flex;
+    align-items: center;
+    gap: 1rem;
+}
+
+.overlayBid {
+    font-size: 1.4rem;
+    font-weight: 900;
+    color: white;
+    text-shadow: 0 1px 4px rgba(0,0,0,0.6);
+}
+
+.overlayDuration {
+    display: flex;
+    align-items: center;
+    gap: 0.3rem;
+    font-size: 0.9rem;
+    font-weight: 600;
+    color: rgba(255,255,255,0.82);
 }
 
 /* Live Badge */
@@ -191,10 +284,10 @@
     animation: pulse 2s infinite;
 }
 
-/* Video */
+/* Video — fills liveWrapper */
 .videoContainer {
+    flex: 1;
     width: 100%;
-    height: 420px;
     position: relative;
     background: #111;
     overflow: hidden;
@@ -382,12 +475,22 @@
 
 /* ---------- Empty State ---------- */
 .emptyState {
-    background: white;
-    border-radius: 16px;
-    padding: 3rem 2rem;
+    flex: 1;
+    min-height: 0;
+    background: #1a1a1a;
+    width: 100%;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    gap: 0.75rem;
     text-align: center;
-    border: 1.5px dashed #e5e5e5;
+    padding: 2rem;
+    box-sizing: border-box;
 }
+
+.emptyState h2 { color: #eee; }
+.emptyState p { color: #888; }
 
 .emptyState h2 {
     font-size: 1.35rem;
@@ -508,8 +611,12 @@
 
 .moreBtn:hover { color: #111; }
 
-/* ---------- Combined Bids & Chat card ---------- */
+/* ---------- Combined Bids & Chat card — right column ---------- */
 .bidsChatCard {
+    flex: 1;
+    min-height: 0;
+    display: flex;
+    flex-direction: column;
     background: white;
     border: 1px solid #f0f0f0;
     border-radius: 16px;
@@ -520,7 +627,8 @@
 .bidsChatBody {
     display: grid;
     grid-template-columns: 1fr 1fr;
-    height: 280px;
+    flex: 1;
+    min-height: 0;
     overflow: hidden;
 }
 
@@ -589,7 +697,7 @@
 }
 
 .bidderNameSm {
-    font-size: 0.7rem;
+    font-size: 0.82rem;
     font-weight: 700;
     color: #111;
     flex: 1;
@@ -600,7 +708,7 @@
 }
 
 .bidPriceSm {
-    font-size: 0.68rem;
+    font-size: 0.8rem;
     font-weight: 800;
     color: #10b981;
     flex-shrink: 0;
@@ -621,13 +729,13 @@
 .commentCompact { display: flex; flex-direction: column; gap: 1px; }
 
 .commentUserSm {
-    font-size: 0.67rem;
+    font-size: 0.8rem;
     font-weight: 700;
     color: #333;
 }
 
 .commentTextSm {
-    font-size: 0.68rem;
+    font-size: 0.8rem;
     color: #666;
     margin: 0;
     line-height: 1.35;
@@ -785,21 +893,29 @@
 
 /* ---------- Queue (vertical list in sidebar) ---------- */
 .queueGrid {
-    padding: 0.75rem;
+    padding: 0.5rem 0.75rem 0.75rem;
     display: flex;
-    flex-direction: column;
+    flex-direction: row;
     gap: 0.6rem;
+    overflow-x: auto;
+    overflow-y: hidden;
+    scrollbar-width: none;
 }
+
+.queueGrid::-webkit-scrollbar { display: none; }
 
 .queueGridItem {
     display: flex;
     align-items: center;
-    gap: 0.75rem;
-    padding: 0.75rem;
+    gap: 0.55rem;
+    padding: 0.5rem 0.65rem;
     background: #fafafa;
-    border-radius: 12px;
+    border-radius: 10px;
     border: 1px solid #f0f0f0;
     transition: all 0.2s;
+    flex-shrink: 0;
+    min-width: 150px;
+    max-width: 220px;
 }
 
 .queueGridItem:hover {
@@ -808,9 +924,9 @@
 }
 
 .queueGridItem img {
-    width: 52px;
-    height: 52px;
-    border-radius: 9px;
+    width: 40px;
+    height: 40px;
+    border-radius: 8px;
     object-fit: cover;
     flex-shrink: 0;
 }
@@ -1715,7 +1831,6 @@
         grid-template-columns: 1fr 260px;
     }
 
-    .videoContainer { height: 360px; }
     .statCardValue { font-size: 1.35rem; }
     .productTitle { font-size: 1.05rem; }
 }
@@ -1724,8 +1839,6 @@
     .controlRoom {
         grid-template-columns: 1fr;
     }
-
-    .videoContainer { height: 340px; }
 }
 
 @media (max-width: 768px) {
@@ -1783,28 +1896,44 @@
         border-bottom-color: #D32F2F;
     }
 
-    /* Layout — cards stack flush, no gap between them */
+    /* Layout — stack everything vertically on mobile */
     .controlRoom {
-        padding: 8px 8px;
-        gap: 0;
-        background: transparent;
-        min-height: unset;
+        padding: 8px;
+        gap: 8px;
+        background: #f8f8f8;
         width: 100%;
         box-sizing: border-box;
+        overflow-y: auto;
     }
 
-    .mainWorkArea,
+    /* topSection stacks vertically on mobile */
+    .topSection {
+        flex-direction: column;
+        flex: none;
+    }
+
+    /* Square live wrapper: full width, square */
+    .liveWrapper {
+        height: auto;
+        width: 100%;
+        aspect-ratio: 1 / 1;
+    }
+
+    /* Bids & chat: fixed height below video on mobile */
+    .bidsChatCard {
+        flex: none;
+        height: 280px;
+    }
+
     .interactionPanel {
-        width: 100%;
-        min-width: 0;
-        box-sizing: border-box;
+        flex-shrink: 0;
+        border-radius: 10px;
     }
 
-    /* Cards: gentle radius, stack flush */
-    .liveAuctionArea { border-radius: 10px; margin-bottom: 0; }
-    .card            { border-radius: 10px; border-top: 1px solid #ebebeb; margin-top: -1px; }
-    .bidsChatCard    { border-radius: 10px; border-top: 1px solid #ebebeb; margin-top: -1px; }
-    .emptyState      { border-radius: 10px; margin-bottom: 0; }
+    /* Cards: gentle radius */
+    .liveAuctionArea { border-radius: 10px; }
+    .card            { border-radius: 10px; }
+    .emptyState      { border-radius: 10px; }
 
     /* Tab panel: hide inactive sections on mobile */
     .tabSectionHidden { display: none; }
@@ -1814,7 +1943,6 @@
     .videoStat { font-size: 0.72rem; padding: 0.2rem 0.45rem; gap: 0.25rem; }
 
     /* Video */
-    .videoContainer { height: 240px; }
     .livePulseBadge { top: 0.65rem; right: 0.65rem; padding: 0.32rem 0.7rem; font-size: 0.68rem; }
     .cameraControls { bottom: 0.875rem; gap: 0.65rem; }
     .controlBtn { width: 42px; height: 42px; }
@@ -1836,7 +1964,6 @@
     .cardHeader { padding: 0.75rem 1rem; }
 
     /* Combined bids+chat */
-    .bidsChatBody { height: 250px; }
     .bidsChatLabel { padding: 0.4rem 0.65rem; font-size: 0.62rem; }
     .bidsScroll { padding: 0.4rem; gap: 0.3rem; }
     .chatScroll { padding: 0.4rem; gap: 0.4rem; }
@@ -1861,7 +1988,6 @@
     .mobileTabBar { top: 55px; }
 
     .controlRoom { padding: 7px 7px; gap: 0; }
-    .videoContainer { height: 210px; }
     .productDetailsSection { padding: 0.75rem 0.875rem; }
     .productTitle { font-size: 0.875rem; }
     .statCard { padding: 0.6rem 0.75rem; }
@@ -1870,7 +1996,6 @@
     .emptyState { padding: 2rem 1rem; }
     .emptyState h2 { font-size: 1.05rem; }
     .cardHeader { padding: 0.65rem 0.9rem; }
-    .bidsChatBody { height: 230px; }
     .bidsChatLabel { padding: 0.35rem 0.55rem; }
     .bidsScroll { padding: 0.35rem; }
     .chatScroll { padding: 0.35rem; }
@@ -1896,7 +2021,6 @@
     .mobileTab { padding: 0.58rem 0.35rem; font-size: 0.65rem; }
 
     .controlRoom { padding: 6px 6px; gap: 0; }
-    .videoContainer { height: 190px; }
     .productDetailsSection { padding: 0.65rem 0.75rem; }
     .productTitle { font-size: 0.82rem; }
     .productStatsGrid { gap: 0.5rem; }
@@ -1913,7 +2037,6 @@
     .queueItem img { width: 52px; height: 52px; }
     .chatBox { height: 245px; }
     .chatInputArea { padding: 0.55rem 0.75rem; }
-    .bidsChatBody { height: 215px; }
     .bidsChatLabel { font-size: 0.58rem; padding: 0.32rem 0.5rem; }
     .bidRowCompact { padding: 0.32rem 0.38rem; gap: 0.28rem; }
     .bidderAvatarSm { width: 20px; height: 20px; font-size: 0.55rem; }
@@ -1936,7 +2059,6 @@
     .mobileTab { padding: 0.55rem 0.3rem; font-size: 0.62rem; }
 
     .controlRoom { padding: 6px 5px; gap: 0; }
-    .videoContainer { height: 172px; }
     .statCardValue { font-size: 0.95rem; }
     .queueItem { min-width: 88px; }
     .queueItem img { width: 46px; height: 46px; }
@@ -1948,7 +2070,6 @@
     .chatBox { height: 225px; }
     .emptyState h2 { font-size: 0.9rem; }
     .emptyState p { font-size: 0.75rem; }
-    .bidsChatBody { height: 200px; }
     .bidsChatLabel { font-size: 0.56rem; padding: 0.28rem 0.45rem; }
     .bidsScroll { padding: 0.28rem; gap: 0.25rem; }
     .chatScroll { padding: 0.28rem; gap: 0.3rem; }
@@ -1964,4 +2085,148 @@
     .videoStatsOverlay { padding: 0.4rem 0.6rem 0.75rem; gap: 0.35rem; }
     .videoStat { font-size: 0.62rem; padding: 0.14rem 0.32rem; }
     .addQueueBtn { padding: 0.32rem 0.6rem; font-size: 0.7rem; }
+}
+
+/* Premium Modal Enhancements */
+.premiumModalContent {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    padding: 1.5rem 0.5rem 0.5rem;
+    text-align: center;
+}
+
+.congratsIconWrapper {
+    position: relative;
+    width: 80px;
+    height: 80px;
+    background: linear-gradient(135deg, #fff5f5 0%, #fff 100%);
+    border-radius: 50%;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    margin-bottom: 1.5rem;
+    box-shadow: 0 10px 25px rgba(211, 47, 47, 0.1);
+    border: 1px solid rgba(211, 47, 47, 0.05);
+}
+
+.congratsEmoji {
+    font-size: 2.5rem;
+    z-index: 2;
+}
+
+.premiumModalTitle {
+    font-size: 1.75rem;
+    font-weight: 800;
+    color: #111;
+    margin: 0 0 1.5rem;
+    letter-spacing: -0.03em;
+}
+
+.winnerCard {
+    width: 100%;
+    background: #fafafa;
+    border: 1px solid #f0f0f0;
+    border-radius: 16px;
+    padding: 1.25rem;
+    margin-bottom: 1.5rem;
+    display: flex;
+    flex-direction: column;
+    gap: 1.25rem;
+}
+
+.winnerHeader {
+    display: flex;
+    align-items: center;
+    gap: 1rem;
+    text-align: left;
+}
+
+.winnerAvatar {
+    width: 48px;
+    height: 48px;
+    background: white;
+    border: 1px solid #eee;
+    border-radius: 12px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    overflow: hidden;
+    flex-shrink: 0;
+}
+
+.winnerAvatar img {
+    width: 100%;
+    height: 100%;
+    object-fit: cover;
+}
+
+.winnerIdentity {
+    display: flex;
+    flex-direction: column;
+}
+
+.winnerLabelText {
+    font-size: 0.65rem;
+    font-weight: 700;
+    text-transform: uppercase;
+    color: #aaa;
+    letter-spacing: 0.05em;
+}
+
+.winnerNameText {
+    font-size: 1.1rem;
+    font-weight: 800;
+    color: #111;
+}
+
+.priceContainer {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    padding-top: 1rem;
+    border-top: 1px dashed #eee;
+}
+
+.priceLabelText {
+    font-size: 0.85rem;
+    font-weight: 600;
+    color: #666;
+}
+
+.priceValueText {
+    font-size: 1.25rem;
+    font-weight: 900;
+    color: #D32F2F;
+}
+
+.notificationText {
+    font-size: 0.9rem;
+    color: #666;
+    margin-bottom: 2rem;
+    line-height: 1.5;
+}
+
+.notificationText strong {
+    color: #111;
+}
+
+.premiumModalBtn {
+    width: 100%;
+    background: #111;
+    color: white;
+    border: none;
+    border-radius: 12px;
+    padding: 1rem;
+    font-size: 1rem;
+    font-weight: 700;
+    cursor: pointer;
+    transition: all 0.2s;
+    box-shadow: 0 4px 12px rgba(0, 0, 0, 0.1);
+}
+
+.premiumModalBtn:hover {
+    background: #2a2a2a;
+    transform: translateY(-2px);
+    box-shadow: 0 8px 20px rgba(0, 0, 0, 0.15);
 }

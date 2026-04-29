@@ -12,7 +12,7 @@ import ProductCard from '@/components/card/ProductCard';
 import Button from '@/components/ui/Button';
 import AuthLogo from '@/components/AuthLogo';
 import { useSubmitLock } from '@/hooks/useSubmitLock';
-import { ChevronRight, X } from 'lucide-react';
+import { X } from 'lucide-react';
 import styles from './page.module.css';
 
 function HomeInner() {
@@ -24,7 +24,8 @@ function HomeInner() {
   const [isLogin, setIsLogin] = useState(true);
   const [selectedRole, setSelectedRole] = useState('buyer');
   const [showPassword, setShowPassword] = useState(false);
-  const [scrollProgress, setScrollProgress] = useState(0);
+  const [scrollProgress, setScrollProgress] = useState({ progress: 0, ratio: 0.3 });
+  const [fixedScrollProgress, setFixedScrollProgress] = useState({ progress: 0, ratio: 0.3 });
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [confirmPassword, setConfirmPassword] = useState('');
@@ -145,21 +146,48 @@ function HomeInner() {
   }, [searchQuery, sortParam]);
 
   const handleScroll = (e) => {
-    const element = e.target;
-    const progress = element.scrollLeft / (element.scrollWidth - element.clientWidth);
-    setScrollProgress(progress);
+    const { scrollLeft, scrollWidth, clientWidth } = e.target;
+    const maxScroll = scrollWidth - clientWidth;
+    setScrollProgress({
+      progress: maxScroll > 0 ? scrollLeft / maxScroll : 0,
+      ratio: Math.min(clientWidth / scrollWidth, 1),
+    });
+  };
+
+  const handleFixedScroll = (e) => {
+    const { scrollLeft, scrollWidth, clientWidth } = e.target;
+    const maxScroll = scrollWidth - clientWidth;
+    setFixedScrollProgress({
+      progress: maxScroll > 0 ? scrollLeft / maxScroll : 0,
+      ratio: Math.min(clientWidth / scrollWidth, 1),
+    });
+  };
+
+  const CATEGORY_KEYWORDS = {
+    clothing: ['clothing', 'fashion', 'shirt', 'dress', 'pants', 'tops', 'jeans', 'suits', 'apparel', 'wear', 'baby clothes', 'kids clothes', 'women', 'men'],
+    shoes: ['shoes', 'shoe', 'footwear', 'sneakers', 'boots', 'sandals'],
+    bags: ['bags', 'bag', 'handbag', 'backpack', 'purse', 'luggage', 'tote'],
+    jewelry: ['jewelry', 'jewellery', 'necklace', 'ring', 'watches', 'bracelet', 'gems', 'luxury'],
+    gadgets: ['gadgets', 'electronics', 'smartphone', 'phones', 'tablet', 'laptop', 'computers', 'camera', 'gaming', 'headphone', 'tv', 'audio', 'photography'],
+    appliances: ['appliances', 'appliance', 'kitchen', 'laundry', 'refrigerator', 'vacuum'],
+    furniture: ['furniture', 'sofa', 'bed', 'dining', 'table', 'chair', 'storage', 'couch', 'decor', 'home'],
+    garden: ['garden', 'plants', 'outdoor', 'lawn', 'tools'],
+    instruments: ['instruments', 'instrument', 'music', 'guitar', 'piano', 'violin', 'drums', 'vinyl'],
   };
 
   const filterByCategory = (items, field = 'category') => {
     if (selectedCategory === 'all') return items;
-    return items.filter(item =>
-      item[field]?.toLowerCase() === selectedCategory.toLowerCase()
-    );
+    const keywords = CATEGORY_KEYWORDS[selectedCategory] || [selectedCategory];
+    return items.filter(item => {
+      const val = item[field]?.toLowerCase() || '';
+      return keywords.some(kw => val.includes(kw));
+    });
   };
 
   const auctions = filterByCategory(allAuctions);
   const liveAuctions = auctions.filter(a => a.status === 'active');
   const scheduledAuctions = auctions.filter(a => a.status === 'scheduled');
+  const filteredFixed = filterByCategory(fixedProducts);
 
 
   const handleSignIn = async (e) => {
@@ -408,7 +436,7 @@ function HomeInner() {
               <div className={`${styles.sectionHeader} ${styles.staticIndicator}`}>
                 <h2 className={styles.sectionTitle}>Products</h2>
               </div>
-              <div className={styles.productGrid}>
+              <div className={styles.horizontalScroll}>
                 {searchProducts.map(item => (
                   <ProductCard key={item.products_id} data={{
                     ...item,
@@ -438,9 +466,11 @@ function HomeInner() {
               <h2 className={styles.sectionTitle}>
                 {selectedCategory === 'all' ? <>Live <span className={styles.redText}>Auctions</span></> : <><span className={styles.redText} style={{ textTransform: 'capitalize' }}>{selectedCategory}</span> Live</>}
               </h2>
-              <Link href="/live" className={styles.viewAll}>View all <ChevronRight size={16} /></Link>
               <div className={styles.scrollIndicator}>
-                <div className={styles.scrollThumb} style={{ left: `${scrollProgress * 100}%`, transform: `translateX(-${scrollProgress * 100}%)` }} />
+                <div className={styles.scrollThumb} style={{
+                  width: `${scrollProgress.ratio * 100}%`,
+                  left: `${scrollProgress.progress * (100 - scrollProgress.ratio * 100)}%`,
+                }} />
               </div>
             </div>
             <div className={styles.horizontalScroll} onScroll={handleScroll}>
@@ -455,7 +485,6 @@ function HomeInner() {
               <h2 className={styles.sectionTitle}>
                 {selectedCategory === 'all' ? <>Scheduled <span className={styles.redText}>Auctions</span></> : <><span className={styles.redText} style={{ textTransform: 'capitalize' }}>{selectedCategory}</span> Scheduled</>}
               </h2>
-              <Link href="/auctions" className={styles.viewAll}>View all <ChevronRight size={16} /></Link>
             </div>
             <div className={styles.horizontalScroll}>
               {scheduledAuctions.length > 0
@@ -464,15 +493,23 @@ function HomeInner() {
             </div>
           </section>
 
-          {fixedProducts.length > 0 && (
+          {filteredFixed.length > 0 && (
             <section className={styles.section}>
-              <div className={`${styles.sectionHeader} ${styles.staticIndicator}`}>
+              <div className={styles.sectionHeader}>
                 <h2 className={styles.sectionTitle}>
-                  Fixed Price <span className={styles.redText}>Products</span>
+                  {selectedCategory === 'all'
+                    ? <>Fixed Price <span className={styles.redText}>Products</span></>
+                    : <><span className={styles.redText} style={{ textTransform: 'capitalize' }}>{selectedCategory}</span> Products</>}
                 </h2>
+                <div className={styles.scrollIndicator}>
+                  <div className={styles.scrollThumb} style={{
+                    width: `${fixedScrollProgress.ratio * 100}%`,
+                    left: `${fixedScrollProgress.progress * (100 - fixedScrollProgress.ratio * 100)}%`,
+                  }} />
+                </div>
               </div>
-              <div className={styles.productGrid}>
-                {fixedProducts.map(item => (
+              <div className={styles.horizontalScroll} onScroll={handleFixedScroll}>
+                {filteredFixed.map(item => (
                   <ProductCard key={item.products_id} data={{
                     ...item,
                     title: item.name,

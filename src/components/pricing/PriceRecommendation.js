@@ -98,7 +98,15 @@ export default function PriceRecommendation({ productData, onApplyRecommendation
                             <CheckCircle size={24} />
                         </div>
                         <div>
-                            <h3>Price Recommendation Ready</h3>
+                            <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+                                <h3>Price Recommendation Ready</h3>
+                                {recommendation.isML && (
+                                    <span className={styles.mlBadge}>
+                                        <TrendingUp size={12} />
+                                        Predictive ML
+                                    </span>
+                                )}
+                            </div>
                             <p className={styles.confidence}>
                                 Confidence: <span className={styles[`confidence${recommendation.confidence}`]}>
                                     {recommendation.confidence}

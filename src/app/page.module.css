@@ -34,13 +34,11 @@
   position: absolute;
   top: 0;
   left: 0;
-  width: 200px;
-  /* Further increased width for better presence */
   height: 100%;
   background-color: var(--color-primary);
   border-radius: 10px;
-  transition: left 0.1s ease-out;
-  /* Smooth movement */
+  transition: left 0.08s ease-out, width 0.08s ease-out;
+  min-width: 40px;
 }
 
 .staticIndicator::after {
@@ -175,6 +173,7 @@
   max-width: 1440px;
   margin: 0 auto;
 }
+
 
 /* Auth Container (Reusing logic/styles) */
 .authContainer {

@@ -1,6 +1,6 @@
 'use client';
 
-import { useState } from 'react';
+import { useState, useEffect, useRef } from 'react';
 import Link from 'next/link';
 import { Search, SlidersHorizontal, User, ShoppingCart, Home, Heart, MessageCircle, LogOut, LayoutDashboard, Package, Gavel, BarChart3, ClipboardList, AlignJustify, X } from 'lucide-react';
 import { useAuth } from '@/context/AuthContext';
@@ -21,6 +21,22 @@ export default function Header() {
   const [activeSort, setActiveSort] = useState('recent');
   const router = useRouter();
   const pathname = usePathname();
+  const debounceRef = useRef(null);
+
+  // Debounced progressive search — push URL after 350ms of no typing
+  useEffect(() => {
+    if (!pathname || pathname !== '/') return;
+    clearTimeout(debounceRef.current);
+    debounceRef.current = setTimeout(() => {
+      const q = searchQuery.trim();
+      if (q) {
+        router.push(`/?q=${encodeURIComponent(q)}&sort=${activeSort}`, { scroll: false });
+      } else {
+        router.push(`/?sort=${activeSort}`, { scroll: false });
+      }
+    }, 350);
+    return () => clearTimeout(debounceRef.current);
+  }, [searchQuery, activeSort, pathname]);
 
   const SORT_OPTIONS = [
     { id: 'recent',     label: 'Most Recent' },

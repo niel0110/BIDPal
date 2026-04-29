@@ -15,11 +15,9 @@ import {
     Play,
     Square,
     Clock,
-    TrendingUp,
-    Send,
+    AlertCircle,
     Eye,
-    Share2,
-    Heart,
+    Send,
     Video,
     Mic,
     MicOff,
@@ -27,6 +25,11 @@ import {
     ShieldX,
     AlertTriangle,
     Trash2,
+    Edit3,
+    CheckCircle,
+    Package,
+    Heart,
+    Share2,
 } from 'lucide-react';
 import Logo from '@/components/Logo';
 import styles from './page.module.css';
@@ -1319,19 +1322,12 @@ export default function SellerDashboard() {
 
             <div className={styles.controlRoom}>
 
-                {/* ── LEFT / MAIN: Video → Product Info → Bids → Chat ── */}
-                <div className={`${styles.mainWorkArea} ${mobileTab !== 'live' ? styles.tabSectionHidden : ''}`}>
+                {/* ── TOP: Square live board (left) + Bids & Chat (right) ── */}
+                <div className={`${styles.topSection} ${mobileTab !== 'live' ? styles.tabSectionHidden : ''}`}>
 
-                    {/* Video section (with stats + camera controls overlaid) */}
-                    {activeItem ? (
-                        <div className={styles.liveAuctionArea}>
-                            {isLive && (
-                                <div className={styles.livePulseBadge}>
-                                    <div className={styles.livePulseDot}></div>
-                                    LIVE
-                                </div>
-                            )}
-
+                    {/* LEFT: Square live board */}
+                    <div className={styles.liveWrapper}>
+                        {activeItem ? (
                             <div className={styles.videoContainer}>
                                 {streamReady ? (
                                     <div
@@ -1351,19 +1347,32 @@ export default function SellerDashboard() {
                                     </>
                                 )}
 
-                                {/* Stats overlay — always visible over video */}
+                                {/* LIVE badge */}
+                                {isLive && (
+                                    <div className={styles.livePulseBadge}>
+                                        <div className={styles.livePulseDot}></div>
+                                        LIVE
+                                    </div>
+                                )}
+
+                                {/* Stats overlay — top */}
                                 <div className={styles.videoStatsOverlay}>
-                                    <div className={styles.videoStat}>
-                                        <Eye size={13} />
-                                        <span>{dashboardData.stats.viewers}</span>
+                                    <div className={styles.videoStat}><Eye size={13} /><span>{dashboardData.stats.viewers}</span></div>
+                                    <div className={styles.videoStat}><Heart size={13} /><span>{dashboardData.stats.likes}</span></div>
+                                    <div className={styles.videoStat}><Share2 size={13} /><span>{dashboardData.stats.shares}</span></div>
+                                </div>
+
+                                {/* Product info overlay — bottom */}
+                                <div className={styles.videoInfoOverlay}>
+                                    <div className={styles.overlayProductName}>
+                                        <Radio size={11} color="white" /> {activeItem.title}
                                     </div>
-                                    <div className={styles.videoStat}>
-                                        <Heart size={13} />
-                                        <span>{dashboardData.stats.likes}</span>
-                                    </div>
-                                    <div className={styles.videoStat}>
-                                        <Share2 size={13} />
-                                        <span>{dashboardData.stats.shares}</span>
+                                    <div className={styles.overlayStatRow}>
+                                        <span className={styles.overlayBid}>₱{activeItem.currentBid.toLocaleString()}</span>
+                                        <span className={styles.overlayDuration}>
+                                            <Clock size={10} />
+                                            {String(liveDuration.hours).padStart(2, '0')}:{String(liveDuration.minutes).padStart(2, '0')}:{String(liveDuration.seconds).padStart(2, '0')}
+                                        </span>
                                     </div>
                                 </div>
 
@@ -1379,42 +1388,21 @@ export default function SellerDashboard() {
                                     </div>
                                 )}
                             </div>
-
-                            {/* Product info strip */}
-                            <div className={styles.productDetailsSection}>
-                                <div className={styles.productTitleArea}>
-                                    <Radio size={14} color="#D32F2F" className={styles.productIcon} />
-                                    <h1 className={styles.productTitle}>{activeItem.title}</h1>
-                                </div>
-                                <div className={styles.productStatsGrid}>
-                                    <div className={styles.statCard}>
-                                        <div className={styles.statCardLabel}>Current Bid</div>
-                                        <div className={styles.statCardValue}>₱{activeItem.currentBid.toLocaleString()}</div>
-                                    </div>
-                                    <div className={styles.statCard}>
-                                        <div className={styles.statCardLabel}>Duration</div>
-                                        <div className={styles.statCardValue}>
-                                            <Clock size={14} />
-                                            {String(liveDuration.hours).padStart(2, '0')}:{String(liveDuration.minutes).padStart(2, '0')}:{String(liveDuration.seconds).padStart(2, '0')}
-                                        </div>
-                                    </div>
-                                </div>
+                        ) : (
+                            <div className={styles.emptyState}>
+                                <Radio size={48} color="#555" strokeWidth={1.5} />
+                                <h2>No Active Auction</h2>
+                                <p>{isNewSeller ? 'Add products to your queue, then hit Go Live.' : 'No auction live. Add products to the Queue and hit Go Live.'}</p>
+                                {isNewSeller && (
+                                    <Link href="/seller/add-product" className={styles.emptyStateBtn}>
+                                        <Plus size={16} /> Add Your First Product
+                                    </Link>
+                                )}
                             </div>
-                        </div>
-                    ) : (
-                        <div className={styles.emptyState}>
-                            <Radio size={48} color="#ddd" strokeWidth={1.5} />
-                            <h2>No Active Auction</h2>
-                            <p>{isNewSeller ? 'Add products to your queue, then hit Go Live.' : 'No auction live. Add products to the Queue tab and hit Go Live.'}</p>
-                            {isNewSeller && (
-                                <Link href="/seller/add-product" className={styles.emptyStateBtn}>
-                                    <Plus size={16} /> Add Your First Product
-                                </Link>
-                            )}
-                        </div>
-                    )}
+                        )}
+                    </div>
 
-                    {/* Combined Bids & Chat — side by side */}
+                    {/* RIGHT: Bids & Chat */}
                     <section className={styles.bidsChatCard}>
                         <div className={styles.cardHeader}>
                             <div className={styles.cardTitleGroup}>
@@ -1496,19 +1484,20 @@ export default function SellerDashboard() {
 
                 </div>
 
-                {/* ── RIGHT / QUEUE TAB: Product Queue ── */}
+                {/* ── BOTTOM: Product Queue (horizontal bar) ── */}
                 <aside className={`${styles.interactionPanel} ${mobileTab !== 'queue' ? styles.tabSectionHidden : ''}`}>
-                    <section className={styles.card}>
-                        <div className={styles.cardHeader}>
+                    <div className={styles.cardHeader}>
+                        <div className={styles.cardTitleGroup}>
                             <div className={styles.cardHeaderText}>
                                 <h2>Product Queue</h2>
                                 <p>Up next in the auction</p>
                             </div>
-                            <Link href="/seller/add-product" className={styles.addQueueBtn}>
-                                <Plus size={13} /> Add
-                            </Link>
                         </div>
-                        <div className={styles.queueGrid}>
+                        <Link href="/seller/add-product" className={styles.addQueueBtn}>
+                            <Plus size={13} /> Add
+                        </Link>
+                    </div>
+                    <div className={styles.queueGrid}>
                             {dashboardData.queue.length > 0 ? dashboardData.queue.map((item, idx) => (
                                 <div key={item.auction_id} className={`${styles.queueGridItem} ${idx === 0 ? styles.queueGridItemFirst : ''}`}>
                                     <img src={(item.products?.images?.[0]?.image_url && item.products?.images?.[0]?.image_url !== 'noposter') ? item.products?.images?.[0]?.image_url : 'https://placehold.co/100x100?text=No+Image'} alt={item.products?.name} />
@@ -1537,7 +1526,6 @@ export default function SellerDashboard() {
                                 </div>
                             )}
                         </div>
-                    </section>
                 </aside>
 
             </div>
@@ -1621,35 +1609,49 @@ export default function SellerDashboard() {
                 <div className={styles.modalOverlay} onClick={() => setAuctionEndModal({ show: false, hasWinner: false, winner: null })}>
                     <div className={styles.modalContent} onClick={(e) => e.stopPropagation()}>
                         {auctionEndModal.hasWinner ? (
-                            <>
-                                <div className={styles.modalIcon}>
-                                    <div className={styles.iconCircle}>🎉</div>
+                            <div className={styles.premiumModalContent}>
+                                <div className={styles.congratsIconWrapper}>
+                                    <div className={styles.congratsEmoji}>🎉</div>
+                                    <div className={styles.confettiOverlay}></div>
                                 </div>
-                                <h2 className={styles.modalTitle}>Auction ended!</h2>
-                                <div className={styles.modalBody}>
-                                    <div className={styles.winnerInfo}>
-                                        <div className={styles.winnerLabel}>Winner</div>
-                                        <div className={styles.winnerValue}>
-                                            User {auctionEndModal.winner?.user_id}
+                                <h2 className={styles.premiumModalTitle}>Auction ended!</h2>
+                                
+                                <div className={styles.winnerCard}>
+                                    <div className={styles.winnerHeader}>
+                                        <div className={styles.winnerAvatar}>
+                                            {auctionEndModal.winner?.bidder_avatar ? (
+                                                <img src={auctionEndModal.winner.bidder_avatar} alt="Winner" />
+                                            ) : (
+                                                <User size={24} color="#D32F2F" />
+                                            )}
+                                        </div>
+                                        <div className={styles.winnerIdentity}>
+                                            <span className={styles.winnerLabelText}>Winner</span>
+                                            <span className={styles.winnerNameText}>
+                                                {auctionEndModal.winner?.bidder_name || 'Winning Bidder'}
+                                            </span>
                                         </div>
                                     </div>
-                                    <div className={styles.priceInfo}>
-                                        <div className={styles.priceLabel}>Final Price</div>
-                                        <div className={styles.priceValue}>
+                                    
+                                    <div className={styles.priceContainer}>
+                                        <div className={styles.priceLabelText}>Final Price</div>
+                                        <div className={styles.priceValueText}>
                                             ₱{auctionEndModal.winner?.bid_amount?.toLocaleString('en-PH')}
                                         </div>
                                     </div>
-                                    <div className={styles.notificationNote}>
-                                        Both you and the winner have been notified.
-                                    </div>
                                 </div>
+
+                                <p className={styles.notificationText}>
+                                    Both you and <strong>{auctionEndModal.winner?.bidder_name || 'the winner'}</strong> have been notified.
+                                </p>
+
                                 <button
-                                    className={styles.modalBtn}
+                                    className={styles.premiumModalBtn}
                                     onClick={() => setAuctionEndModal({ show: false, hasWinner: false, winner: null })}
                                 >
-                                    OK
+                                    Done
                                 </button>
-                            </>
+                            </div>
                         ) : (
                             <>
                                 <div className={styles.modalIcon}>

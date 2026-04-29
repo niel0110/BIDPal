@@ -38,6 +38,11 @@ export default function OrdersPage() {
     const [actionError, setActionError] = useState('');
     const [actionSuccess, setActionSuccess] = useState('');
 
+    // Receipt modal
+    const [receiptModal, setReceiptModal] = useState({ open: false, orderId: null, data: null, loading: false, error: null });
+    // Product quick-view modal
+    const [quickView, setQuickView] = useState(null);
+
     const tabs = [
         { id: 'all', label: 'All', icon: <Package size={18} /> },
         { id: 'pay', label: 'To Pay', icon: <CreditCard size={18} /> },
@@ -160,6 +165,19 @@ export default function OrdersPage() {
         fetchReviews();
     }, [orders]);
 
+    const openReceiptModal = async (orderId) => {
+        setReceiptModal({ open: true, orderId, data: null, loading: true, error: null });
+        try {
+            const apiUrl = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:5000';
+            const res = await fetch(`${apiUrl}/api/orders/${orderId}/receipt`);
+            const data = await res.json();
+            if (data.error) throw new Error(data.error);
+            setReceiptModal(prev => ({ ...prev, data, loading: false }));
+        } catch (err) {
+            setReceiptModal(prev => ({ ...prev, error: err.message, loading: false }));
+        }
+    };
+
     const openReviewModal = (order) => {
         setReviewTarget(order);
         setReviewRating(0);
@@ -175,17 +193,23 @@ export default function OrdersPage() {
         setReviewError('');
         try {
             const apiUrl = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:5000';
-            // Fetch seller_id from auction
-            const sellerRes = await fetch(`${apiUrl}/api/orders/auction/${reviewTarget.auction_id}/seller`);
-            if (!sellerRes.ok) throw new Error('Could not find seller info');
-            const sellerData = await sellerRes.json();
+            let sellerId;
+            if (reviewTarget.order_type === 'auction' && reviewTarget.auction_id) {
+                const sellerRes = await fetch(`${apiUrl}/api/orders/auction/${reviewTarget.auction_id}/seller`);
+                if (!sellerRes.ok) throw new Error('Could not find seller info');
+                const sellerData = await sellerRes.json();
+                sellerId = sellerData.seller_id;
+            } else {
+                sellerId = reviewTarget.seller_id;
+                if (!sellerId) throw new Error('Seller information not available for this order.');
+            }
 
             const res = await fetch(`${apiUrl}/api/reviews`, {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
                 body: JSON.stringify({
                     order_id: reviewTarget.id,
-                    seller_id: sellerData.seller_id,
+                    seller_id: sellerId,
                     user_id: user.user_id,
                     rating: reviewRating,
                     comment: reviewComment.trim() || null
@@ -281,9 +305,33 @@ export default function OrdersPage() {
     };
 
     const handlePayNow = (order) => {
-        if (!order.auction_id) return;
-        // Redirect to checkout page with auction_id
-        router.push(`/checkout?auction_id=${order.auction_id}`);
+        if (order.order_type === 'auction' && order.auction_id) {
+            router.push(`/checkout?auction_id=${order.auction_id}`);
+        } else {
+            router.push(`/cart`);
+        }
+    };
+
+    const handleCancelCartOrder = async (order) => {
+        if (!window.confirm('Are you sure you want to cancel this order?')) return;
+        try {
+            const apiUrl = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:5000';
+            const res = await fetch(`${apiUrl}/api/orders/${order.id}/cancel`, {
+                method: 'PUT',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ user_id: user.user_id })
+            });
+            if (res.ok) {
+                setOrders(prev => prev.map(o => o.id === order.id ? { ...o, status: 'cancelled' } : o));
+                setActionSuccess('Order cancelled successfully.');
+                setTimeout(() => setActionSuccess(''), 5000);
+            } else {
+                const data = await res.json();
+                setActionError(data.error || 'Failed to cancel order.');
+            }
+        } catch {
+            setActionError('Network error. Please try again.');
+        }
     };
 
     const handleConfirmDelivery = async (order) => {
@@ -418,11 +466,16 @@ export default function OrdersPage() {
                                 <div className={styles.orderItems}>
                                     {order.items.map((item, idx) => (
                                         <div key={idx} className={styles.orderItem}>
-                                            <div className={styles.itemImage}>
+                                            <button
+                                                className={styles.itemImageBtn}
+                                                onClick={() => setQuickView({ item, order })}
+                                            >
                                                 <img src={item.image || 'https://placehold.co/200x200?text=No+Image'} alt={item.name} />
-                                            </div>
+                                            </button>
                                             <div className={styles.itemMeta}>
-                                                <h3>{item.name}</h3>
+                                                <button className={styles.itemNameBtn} onClick={() => setQuickView({ item, order })}>
+                                                    <h3>{item.name}</h3>
+                                                </button>
                                                 <p>Qty: {item.qty}</p>
                                             </div>
                                             <div className={styles.itemPrice}>
@@ -491,41 +544,42 @@ export default function OrdersPage() {
                                 )}
 
                                 <div className={styles.orderActions}>
-                                    {order.status === 'pending_payment' && order.order_type === 'auction' ? (
+                                    {order.status === 'pending_payment' ? (
                                         <>
-                                            {!expiredWindows.has(order.id) && (
-                                                <button
-                                                    className={styles.payNowBtn}
-                                                    onClick={() => handlePayNow(order)}
-                                                >
-                                                    Pay Now
-                                                </button>
-                                            )}
-                                            {!expiredWindows.has(order.id) && (
-                                                <button
-                                                    className={styles.cancelBtn}
-                                                    onClick={() => handleCancelOrder(order)}
-                                                    disabled={cancellingOrder === order.id}
-                                                >
-                                                    {cancellingOrder === order.id ? (
-                                                        <>
-                                                            <Loader2 className={styles.spin} size={16} />
-                                                            <span>Cancelling...</span>
-                                                        </>
-                                                    ) : (
-                                                        <>
-                                                            <Ban size={16} />
-                                                            <span>Cancel Order</span>
-                                                        </>
+                                            {order.order_type === 'auction' ? (
+                                                <>
+                                                    {!expiredWindows.has(order.id) && (
+                                                        <button className={styles.payNowBtn} onClick={() => handlePayNow(order)}>
+                                                            Pay Now
+                                                        </button>
                                                     )}
-                                                </button>
+                                                    {!expiredWindows.has(order.id) && (
+                                                        <button
+                                                            className={styles.cancelBtn}
+                                                            onClick={() => handleCancelOrder(order)}
+                                                            disabled={cancellingOrder === order.id}
+                                                        >
+                                                            {cancellingOrder === order.id ? (
+                                                                <><Loader2 className={styles.spin} size={16} /><span>Cancelling...</span></>
+                                                            ) : (
+                                                                <><Ban size={16} /><span>Cancel Order</span></>
+                                                            )}
+                                                        </button>
+                                                    )}
+                                                </>
+                                            ) : (
+                                                <>
+                                                    <button className={styles.payNowBtn} onClick={() => handlePayNow(order)}>
+                                                        Pay Now
+                                                    </button>
+                                                    <button className={styles.cancelBtn} onClick={() => handleCancelCartOrder(order)}>
+                                                        <Ban size={16} /><span>Cancel Order</span>
+                                                    </button>
+                                                </>
                                             )}
                                         </>
                                     ) : order.status === 'shipped' ? (
-                                        <button
-                                            className={styles.receivedBtn}
-                                            onClick={() => handleConfirmDelivery(order)}
-                                        >
+                                        <button className={styles.receivedBtn} onClick={() => handleConfirmDelivery(order)}>
                                             <CheckCircle2 size={16} />
                                             Order Received
                                         </button>
@@ -545,24 +599,19 @@ export default function OrdersPage() {
                                                     Leave a Review
                                                 </button>
                                             )}
-                                            <button className={styles.receiptBtn} onClick={() => router.push(`/orders/receipt/${order.id}`)}>
+                                            <button className={styles.receiptBtn} onClick={() => openReceiptModal(order.id)}>
                                                 <Receipt size={14} />
                                                 View Receipt
                                             </button>
                                         </>
-                                    ) : order.status === 'cancelled' ? null : order.status === 'processing' || order.status === 'shipped' ? (
-                                        <button className={styles.receiptBtn} onClick={() => router.push(`/orders/receipt/${order.id}`)}>
+                                    ) : order.status === 'cancelled' ? null : order.status === 'processing' ? (
+                                        <button className={styles.receiptBtn} onClick={() => openReceiptModal(order.id)}>
                                             <Receipt size={14} />
                                             View Receipt
                                         </button>
-                                    ) : (
-                                        <button className={styles.secondaryBtn}>Order Details</button>
-                                    )}
-                                    {order.order_type === 'auction' && order.status !== 'cancelled' && (
-                                        <button
-                                            className={styles.primaryBtn}
-                                            onClick={() => handleContactSeller(order)}
-                                        >
+                                    ) : null}
+                                    {order.status !== 'cancelled' && (
+                                        <button className={styles.primaryBtn} onClick={() => handleContactSeller(order)}>
                                             <MessageCircle size={14} />
                                             Contact Seller
                                         </button>
@@ -598,7 +647,7 @@ export default function OrdersPage() {
                                 />
                                 <div>
                                     <p className={styles.reviewProductName}>{viewReviewTarget.order.items[0]?.name}</p>
-                                    <p className={styles.reviewProductSub}>Auction Win</p>
+                                    <p className={styles.reviewProductSub}>{viewReviewTarget?.order?.order_type === 'auction' ? 'Auction Win' : 'Purchase'}</p>
                                 </div>
                             </div>
                             <div className={styles.viewReviewRating}>
@@ -659,7 +708,7 @@ export default function OrdersPage() {
                                 />
                                 <div>
                                     <p className={styles.reviewProductName}>{reviewTarget.items[0]?.name}</p>
-                                    <p className={styles.reviewProductSub}>Auction Win</p>
+                                    <p className={styles.reviewProductSub}>{viewReviewTarget?.order?.order_type === 'auction' ? 'Auction Win' : 'Purchase'}</p>
                                 </div>
                             </div>
 
@@ -726,6 +775,156 @@ export default function OrdersPage() {
                                     <><Star size={15} /> Submit Review</>
                                 )}
                             </button>
+                        </div>
+                    </div>
+                </div>
+            )}
+
+            {/* Receipt Modal */}
+            {receiptModal.open && (
+                <div className={styles.modalOverlay} onClick={() => setReceiptModal(p => ({ ...p, open: false }))}>
+                    <div className={styles.receiptModal} onClick={e => e.stopPropagation()}>
+                        <div className={styles.receiptModalNav}>
+                            <button className={styles.reviewModalClose} onClick={() => setReceiptModal(p => ({ ...p, open: false }))}>
+                                <X size={18} />
+                            </button>
+                            <button className={styles.printBtn} onClick={() => window.print()}>
+                                <Receipt size={15} /> Print
+                            </button>
+                        </div>
+                        {receiptModal.loading ? (
+                            <div className={styles.receiptModalLoading}>
+                                <Loader2 className={styles.spin} size={28} color="#D32F2F" />
+                                <span>Loading receipt…</span>
+                            </div>
+                        ) : receiptModal.error ? (
+                            <div className={styles.receiptModalError}>
+                                <XCircle size={24} color="#D32F2F" />
+                                <p>{receiptModal.error}</p>
+                            </div>
+                        ) : receiptModal.data ? (() => {
+                            const r = receiptModal.data;
+                            const isPaid = ['processing', 'shipped', 'completed'].includes(r.status);
+                            const methodLabel = r.payment_method === 'gcash' ? 'GCash' : 'Cash on Delivery';
+                            const formatAddress = (addr) => {
+                                if (!addr) return '—';
+                                return [addr.Line1, addr.Line2, addr['Household/blk st.'], addr.Barangay, addr['Municipality/City'], addr.province, addr['zip code']].filter(Boolean).join(', ');
+                            };
+                            return (
+                                <div className={styles.receiptCard} id="receipt-print">
+                                    <div className={styles.receiptHeader}>
+                                        <div className={styles.brandRow}>
+                                            <span className={styles.brand}>BIDPal</span>
+                                            <span className={styles.brandSub}>Official Payment Receipt</span>
+                                        </div>
+                                        {isPaid ? (
+                                            <div className={styles.paidBadge}><CheckCircle2 size={14} /> Payment Confirmed</div>
+                                        ) : (
+                                            <div className={styles.pendingBadge}>Pending</div>
+                                        )}
+                                    </div>
+                                    <div className={styles.divider} />
+                                    <div className={styles.refSection}>
+                                        {r.payment_reference && (
+                                            <div className={styles.refBlock}>
+                                                <span className={styles.refLabel}>Payment Reference</span>
+                                                <span className={styles.refValue}>{r.payment_reference}</span>
+                                            </div>
+                                        )}
+                                        <div className={styles.refBlock}>
+                                            <span className={styles.refLabel}>Order ID</span>
+                                            <span className={styles.refValueSmall}>{r.order_id}</span>
+                                        </div>
+                                        {r.paid_at && (
+                                            <div className={styles.refBlock}>
+                                                <span className={styles.refLabel}>Date & Time</span>
+                                                <span className={styles.refValueSmall}>{new Date(r.paid_at).toLocaleString('en-PH', { month: 'long', day: 'numeric', year: 'numeric', hour: '2-digit', minute: '2-digit' })}</span>
+                                            </div>
+                                        )}
+                                    </div>
+                                    <div className={styles.divider} />
+                                    {r.product && (
+                                        <div className={styles.productRow}>
+                                            {r.product.image && <img src={r.product.image} alt={r.product.name} className={styles.productImg} />}
+                                            <div className={styles.productInfo}>
+                                                <span className={styles.auctionTag}>{r.order_type === 'cart' ? 'Purchase' : 'Auction Win'}</span>
+                                                <p className={styles.productName}>{r.product.name}</p>
+                                                <p className={styles.productPrice}>₱{(r.product.price || 0).toLocaleString()}</p>
+                                            </div>
+                                        </div>
+                                    )}
+                                    <div className={styles.divider} />
+                                    <div className={styles.breakdown}>
+                                        <div className={styles.breakdownRow}><span>Item Total</span><span>₱{(r.product?.price || 0).toLocaleString()}</span></div>
+                                        <div className={styles.breakdownRow}><span>Shipping Fee</span><span>₱{(r.shipping_fee || 0).toLocaleString()}</span></div>
+                                        <div className={`${styles.breakdownRow} ${styles.totalRow}`}><span>Total Paid</span><span>₱{(r.total_amount || 0).toLocaleString()}</span></div>
+                                    </div>
+                                    <div className={styles.divider} />
+                                    <div className={styles.infoGrid}>
+                                        <div className={styles.infoBlock}>
+                                            <div className={styles.infoIcon}><CreditCard size={14} /></div>
+                                            <div><p className={styles.infoLabel}>Payment Method</p><p className={styles.infoValue}>{methodLabel}</p></div>
+                                        </div>
+                                        {r.buyer && (
+                                            <div className={styles.infoBlock}>
+                                                <div className={styles.infoIcon}><Package size={14} /></div>
+                                                <div><p className={styles.infoLabel}>Buyer</p><p className={styles.infoValue}>{r.buyer.name}</p><p className={styles.infoSub}>{r.buyer.email}</p></div>
+                                            </div>
+                                        )}
+                                        {r.seller && (
+                                            <div className={styles.infoBlock}>
+                                                <div className={styles.infoIcon}><Package size={14} /></div>
+                                                <div><p className={styles.infoLabel}>Seller</p><p className={styles.infoValue}>{r.seller.name}</p></div>
+                                            </div>
+                                        )}
+                                        {r.shipping_address && (
+                                            <div className={styles.infoBlock}>
+                                                <div className={styles.infoIcon}><MapPin size={14} /></div>
+                                                <div><p className={styles.infoLabel}>Ship To</p><p className={styles.infoValue}>{formatAddress(r.shipping_address)}</p></div>
+                                            </div>
+                                        )}
+                                        {r.tracking_number && (
+                                            <div className={styles.infoBlock}>
+                                                <div className={styles.infoIcon}><Truck size={14} /></div>
+                                                <div><p className={styles.infoLabel}>Tracking</p><p className={styles.infoValue}>{r.courier} · {r.tracking_number}</p></div>
+                                            </div>
+                                        )}
+                                    </div>
+                                    <div className={styles.receiptFooter}>
+                                        <p>Thank you for using BIDPal!</p>
+                                    </div>
+                                </div>
+                            );
+                        })() : null}
+                    </div>
+                </div>
+            )}
+
+            {/* Product Quick-View Modal */}
+            {quickView && (
+                <div className={styles.modalOverlay} onClick={() => setQuickView(null)}>
+                    <div className={styles.quickViewModal} onClick={e => e.stopPropagation()}>
+                        <button className={styles.reviewModalClose} style={{ alignSelf: 'flex-end', marginBottom: '0.5rem' }} onClick={() => setQuickView(null)}>
+                            <X size={18} />
+                        </button>
+                        <div className={styles.quickViewBody}>
+                            <div className={styles.quickViewImgWrap}>
+                                <img src={quickView.item.image || 'https://placehold.co/300x300?text=No+Image'} alt={quickView.item.name} className={styles.quickViewImg} />
+                            </div>
+                            <div className={styles.quickViewInfo}>
+                                <p className={styles.quickViewBadge}>{quickView.order.order_type === 'auction' ? 'Auction Win' : 'Purchase'}</p>
+                                <h2 className={styles.quickViewName}>{quickView.item.name}</h2>
+                                <p className={styles.quickViewPrice}>₱{quickView.item.price.toLocaleString()}</p>
+                                <div className={styles.quickViewMeta}>
+                                    <span>Qty: {quickView.item.qty}</span>
+                                    <span className={`${styles.statusBadge} ${styles[quickView.order.status]}`}>{getStatusLabel(quickView.order.status)}</span>
+                                </div>
+                                {quickView.item.products_id && (
+                                    <a href={`/product/${quickView.item.products_id}`} className={styles.quickViewLink} target="_blank" rel="noopener noreferrer">
+                                        View Full Product Page →
+                                    </a>
+                                )}
+                            </div>
                         </div>
                     </div>
                 </div>

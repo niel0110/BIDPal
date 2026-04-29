@@ -254,16 +254,30 @@ function ScheduleAuctionPageInner() {
                         </label>
 
                         {saleType === 'bid' ? (
-                            <div className={styles.priceDisplay}>
-                                <div className={styles.priceDisplayIcon}>
-                                    <Gavel size={20} />
-                                </div>
-                                <div className={styles.priceDisplayContent}>
-                                    <div className={styles.priceDisplayLabel}>Starting Bid (Reserve Price)</div>
-                                    <div className={styles.priceDisplayValue}>
-                                        ₱{productDetails?.reserve_price?.toLocaleString('en-PH', { minimumFractionDigits: 2, maximumFractionDigits: 2 }) || '0.00'}
+                            <div style={{ display: 'flex', gap: '0.75rem' }}>
+                                <div className={styles.priceDisplay} style={{ flex: 1 }}>
+                                    <div className={styles.priceDisplayIcon}>
+                                        <Gavel size={18} />
                                     </div>
-                                    <div className={styles.priceDisplayNote}>Price set during product creation</div>
+                                    <div className={styles.priceDisplayContent}>
+                                        <div className={styles.priceDisplayLabel}>Reserve Price</div>
+                                        <div className={styles.priceDisplayValue}>
+                                            ₱{productDetails?.reserve_price?.toLocaleString('en-PH', { minimumFractionDigits: 2, maximumFractionDigits: 2 }) || '0.00'}
+                                        </div>
+                                        <div className={styles.priceDisplayNote}>Minimum acceptable price</div>
+                                    </div>
+                                </div>
+                                <div className={styles.priceDisplay} style={{ flex: 1 }}>
+                                    <div className={styles.priceDisplayIcon} style={{ background: '#f0fdf4', color: '#166534' }}>
+                                        <Gavel size={18} />
+                                    </div>
+                                    <div className={styles.priceDisplayContent}>
+                                        <div className={styles.priceDisplayLabel}>Starting Bid</div>
+                                        <div className={styles.priceDisplayValue}>
+                                            ₱{productDetails?.starting_price?.toLocaleString('en-PH', { minimumFractionDigits: 2, maximumFractionDigits: 2 }) || '0.00'}
+                                        </div>
+                                        <div className={styles.priceDisplayNote}>Initial bid amount</div>
+                                    </div>
                                 </div>
                             </div>
                         ) : (

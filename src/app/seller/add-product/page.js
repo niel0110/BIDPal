@@ -16,6 +16,14 @@ const steps = [
 ];
 
 const conditionOptions = ['Brand New', 'Like New', 'Lightly Used', 'Used', 'Heavily Used', 'For Parts'];
+const CONDITION_MAP = {
+    'Brand New': 'new',
+    'Like New': 'like_new',
+    'Lightly Used': 'good',
+    'Used': 'fair',
+    'Heavily Used': 'poor',
+    'For Parts': 'poor'
+};
 
 const categoriesData = [
     {
@@ -93,13 +101,12 @@ export default function AddProductPage() {
     const [images, setImages] = useState([]);
     const [previewUrls, setPreviewUrls] = useState([]);
     const [imageErrors, setImageErrors] = useState([]);
-    const [isScanning, setIsScanning] = useState(false);
-    const [scanSlots, setScanSlots] = useState([]);
     const [formData, setFormData] = useState({
         name: '',
         description: '',
         condition: '',
         brand: '',
+        size: '',
         specifications: '',
         availability: '1',
         length: '',
@@ -152,44 +159,6 @@ export default function AddProductPage() {
         img.src = url;
     });
 
-    const checkImageContent = async (file) => {
-        try {
-            const base64 = await new Promise((resolve, reject) => {
-                const img = new Image();
-                const url = URL.createObjectURL(file);
-                img.onload = () => {
-                    const MAX = 800;
-                    const scale = Math.min(1, MAX / Math.max(img.width, img.height));
-                    const canvas = document.createElement('canvas');
-                    canvas.width = Math.round(img.width * scale);
-                    canvas.height = Math.round(img.height * scale);
-                    canvas.getContext('2d').drawImage(img, 0, 0, canvas.width, canvas.height);
-                    URL.revokeObjectURL(url);
-                    resolve(canvas.toDataURL('image/jpeg', 0.85).split(',')[1]);
-                };
-                img.onerror = reject;
-                img.src = url;
-            });
-
-            const apiUrl = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:5000';
-            const res = await fetch(`${apiUrl}/api/image-moderation/check`, {
-                method: 'POST',
-                headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify({ imageBase64: base64, mimeType: 'image/jpeg' })
-            });
-
-            if (!res.ok) return { allowed: true };
-
-            const data = await res.json();
-            if (data.safe === false) {
-                return { allowed: false, error: `"${file.name}" was rejected: ${data.reason}` };
-            }
-            return { allowed: true };
-        } catch {
-            return { allowed: true };
-        }
-    };
-
     const handleFileSelect = async (e) => {
         const files = Array.from(e.target.files);
         e.target.value = null;
@@ -200,44 +169,19 @@ export default function AddProductPage() {
         }
 
         setImageErrors([]);
-        setIsScanning(true);
-
-        const slots = files.map(file => ({
-            file,
-            url: URL.createObjectURL(file),
-            status: 'scanning',
-            error: null
-        }));
-        setScanSlots(slots);
-
         const errors = [];
         const validFiles = [];
         const validPreviews = [];
 
-        for (let i = 0; i < slots.length; i++) {
-            const { file, url } = slots[i];
-
+        for (const file of files) {
             const result = await validateImage(file);
             if (!result.valid) {
-                setScanSlots(prev => prev.map((s, idx) => idx === i ? { ...s, status: 'rejected' } : s));
                 errors.push(result.error);
                 continue;
             }
-
-            const contentCheck = await checkImageContent(file);
-            if (!contentCheck.allowed) {
-                setScanSlots(prev => prev.map((s, idx) => idx === i ? { ...s, status: 'rejected' } : s));
-                errors.push(contentCheck.error);
-                continue;
-            }
-
-            setScanSlots(prev => prev.map((s, idx) => idx === i ? { ...s, status: 'ok' } : s));
             validFiles.push(file);
-            validPreviews.push(url);
+            validPreviews.push(result.url);
         }
-
-        setIsScanning(false);
-        setTimeout(() => setScanSlots([]), 2500);
 
         if (errors.length > 0) setImageErrors(errors);
         if (validFiles.length > 0) {
@@ -286,9 +230,7 @@ export default function AddProductPage() {
                 if (user.seller_id) submitData.append('seller_id', user.seller_id);
                 submitData.append('name', formData.name);
                 submitData.append('description', formData.description);
-                // Convert condition to lowercase with underscores for database
-                const dbCondition = formData.condition.toLowerCase().replace(/\s+/g, '_');
-                submitData.append('condition', dbCondition);
+                submitData.append('condition', CONDITION_MAP[formData.condition] || 'good');
                 submitData.append('brand', formData.brand);
                 submitData.append('specifications', formData.specifications);
                 submitData.append('availability', formData.availability);
@@ -297,6 +239,7 @@ export default function AddProductPage() {
                 if (formData.length) submitData.append('length_mm', formData.length);
                 if (formData.width) submitData.append('width_mm', formData.width);
                 if (formData.height) submitData.append('height_mm', formData.height);
+                if (formData.size) submitData.append('size', formData.size);
                 submitData.append('categories', JSON.stringify(formData.categories));
                 
                 images.forEach(img => {
@@ -411,10 +354,10 @@ export default function AddProductPage() {
                         <div className={styles.dimensionsRow} style={{ marginTop: '1.5rem' }}>
                             <label className={styles.fullWidth}>Dimensions (optional)</label>
                             {[
-                                { key: 'length', unitKey: 'lengthUnit', label: 'Length' },
-                                { key: 'width', unitKey: 'widthUnit', label: 'Width' },
-                                { key: 'height', unitKey: 'heightUnit', label: 'Height' },
-                            ].map(({ key, unitKey, label }) => (
+                                { key: 'length', label: 'Length' },
+                                { key: 'width', label: 'Width' },
+                                { key: 'height', label: 'Height' },
+                            ].map(({ key, label }) => (
                                 <div key={key} className={styles.dimField}>
                                     <span>{label}</span>
                                     <div className={styles.dimInputRow}>
@@ -424,17 +367,7 @@ export default function AddProductPage() {
                                             value={formData[key]}
                                             onChange={(e) => setFormData({ ...formData, [key]: e.target.value })}
                                         />
-                                        <select
-                                            className={styles.unitSelect}
-                                            value={formData[unitKey]}
-                                            onChange={(e) => setFormData({ ...formData, [unitKey]: e.target.value })}
-                                        >
-                                            <option value="mm">mm</option>
-                                            <option value="cm">cm</option>
-                                            <option value="m">m</option>
-                                            <option value="in">in</option>
-                                            <option value="ft">ft</option>
-                                        </select>
+                                        <span className={styles.unitLabel}>mm</span>
                                     </div>
                                 </div>
                             ))}
@@ -468,6 +401,11 @@ export default function AddProductPage() {
                         </div>
 
                         <div className={styles.inputGroup}>
+                            <label>Size <span style={{ fontWeight: 400, color: '#999' }}>(optional)</span></label>
+                            <input type="text" placeholder="e.g., S, M, L, XL, 42, 28×32, One Size" value={formData.size} onChange={(e) => setFormData({ ...formData, size: e.target.value })} />
+                        </div>
+
+                        <div className={styles.inputGroup}>
                             <label>Specifications</label>
                             <textarea rows={4} placeholder="List key specifications (e.g., RAM, Storage, Size, Material)" value={formData.specifications} onChange={(e) => setFormData({ ...formData, specifications: e.target.value })} />
                             <small>One spec per line for better readability</small>
@@ -479,6 +417,7 @@ export default function AddProductPage() {
                     <div className={styles.stepContent}>
                         <h2 className={styles.stepTitle}>Select the category your goods belong to (max. 3)</h2>
                         <div className={styles.categoryLayout}>
+                            {/* Left: category list */}
                             <div className={styles.categorySide}>
                                 {categoriesData.map(cat => (
                                     <div key={cat.id} className={styles.catAccordion}>
@@ -489,17 +428,15 @@ export default function AddProductPage() {
                                             {cat.name}
                                             <ChevronLeft size={14} style={{ transform: activeCategory === cat.id ? 'rotate(270deg)' : 'rotate(180deg)', transition: 'transform 0.2s', flexShrink: 0 }} />
                                         </button>
+                                        {/* Mobile-only: inline accordion */}
                                         {activeCategory === cat.id && (
-                                            <div className={styles.subcategoryPanel}>
+                                            <div className={styles.subcategoryMobilePanel}>
                                                 {cat.groups.map((group, idx) => {
                                                     const key = `${cat.id}-${idx}`;
                                                     const isOpen = expandedGroups[key];
                                                     return (
                                                         <div key={idx} className={styles.subGroupAccordion}>
-                                                            <button
-                                                                className={styles.subGroupHeader}
-                                                                onClick={() => toggleGroup(cat.id, idx)}
-                                                            >
+                                                            <button className={styles.subGroupHeader} onClick={() => toggleGroup(cat.id, idx)}>
                                                                 <span>{group.title}</span>
                                                                 <ChevronLeft size={13} style={{ transform: isOpen ? 'rotate(270deg)' : 'rotate(180deg)', transition: 'transform 0.2s', flexShrink: 0 }} />
                                                             </button>
@@ -507,11 +444,7 @@ export default function AddProductPage() {
                                                                 <div className={styles.subItemsList}>
                                                                     {group.items.map(item => (
                                                                         <label key={item} className={styles.subItem}>
-                                                                            <input
-                                                                                type="checkbox"
-                                                                                checked={formData.categories.includes(`${cat.id}:${group.title}:${item}`)}
-                                                                                onChange={() => toggleCategory(`${cat.id}:${group.title}:${item}`)}
-                                                                            />
+                                                                            <input type="checkbox" checked={formData.categories.includes(`${cat.id}:${group.title}:${item}`)} onChange={() => toggleCategory(`${cat.id}:${group.title}:${item}`)} />
                                                                             <div className={styles.customCheckSmall}>
                                                                                 {formData.categories.includes(`${cat.id}:${group.title}:${item}`) && <div className={styles.checkInnerSmall} />}
                                                                             </div>
@@ -528,6 +461,42 @@ export default function AddProductPage() {
                                     </div>
                                 ))}
                             </div>
+
+                            {/* Desktop-only: side panel */}
+                            {activeCategory && (() => {
+                                const activeCat = categoriesData.find(c => c.id === activeCategory);
+                                if (!activeCat) return null;
+                                return (
+                                    <div className={styles.subcategoryDesktopPanel}>
+                                        <div className={styles.desktopPanelTitle}>{activeCat.name}</div>
+                                        {activeCat.groups.map((group, idx) => {
+                                            const key = `${activeCategory}-${idx}`;
+                                            const isOpen = expandedGroups[key];
+                                            return (
+                                                <div key={idx} className={styles.subGroupAccordion}>
+                                                    <button className={styles.subGroupHeader} onClick={() => toggleGroup(activeCategory, idx)}>
+                                                        <span>{group.title}</span>
+                                                        <ChevronLeft size={13} style={{ transform: isOpen ? 'rotate(270deg)' : 'rotate(180deg)', transition: 'transform 0.2s', flexShrink: 0 }} />
+                                                    </button>
+                                                    {isOpen && (
+                                                        <div className={styles.subItemsList}>
+                                                            {group.items.map(item => (
+                                                                <label key={item} className={styles.subItem}>
+                                                                    <input type="checkbox" checked={formData.categories.includes(`${activeCategory}:${group.title}:${item}`)} onChange={() => toggleCategory(`${activeCategory}:${group.title}:${item}`)} />
+                                                                    <div className={styles.customCheckSmall}>
+                                                                        {formData.categories.includes(`${activeCategory}:${group.title}:${item}`) && <div className={styles.checkInnerSmall} />}
+                                                                    </div>
+                                                                    <span>{item}</span>
+                                                                </label>
+                                                            ))}
+                                                        </div>
+                                                    )}
+                                                </div>
+                                            );
+                                        })}
+                                    </div>
+                                );
+                            })()}
                         </div>
                         <div className={styles.selectedCats}>
                             <strong>Selected categories:</strong>
@@ -590,54 +559,25 @@ export default function AddProductPage() {
                         )}
 
                         <div className={styles.photoGridDetailed}>
-                            <label className={styles.uploadCard} style={{cursor: isScanning ? 'not-allowed' : 'pointer', opacity: isScanning ? 0.5 : 1, gridColumn: '1 / -1'}}>
+                            <label className={styles.uploadCard} style={{cursor: 'pointer'}}>
                                 <input
                                     type="file"
                                     hidden
                                     multiple
                                     accept="image/jpeg, image/png, image/gif, image/webp"
                                     onChange={handleFileSelect}
-                                    disabled={isScanning}
                                 />
                                 <div className={styles.uploadInner}>
-                                    <Upload size={24} color="#00A3FF" strokeWidth={1.5} />
+                                    <Upload size={24} color="#D32F2F" strokeWidth={1.5} />
                                     <span>Upload a photo</span>
                                 </div>
                                 <div className={styles.uploadMeta}>
                                     <span>Max size - 25Mb.</span>
                                     <span>Jpg, Png, Gif, Webp</span>
-                                    <span>Content is scanned automatically</span>
                                 </div>
                             </label>
 
-                            {scanSlots.map((slot, idx) => (
-                                <div key={`scan-${idx}`} className={styles.photoCard}>
-                                    <div className={styles.photoPreview} style={{position:'relative'}}>
-                                        <img src={slot.url} alt={slot.file.name} style={{filter: slot.status === 'rejected' ? 'brightness(0.4)' : 'none'}} />
-                                        {slot.status === 'scanning' && (
-                                            <div className={styles.scanOverlay}>
-                                                <div className={styles.scanningSpinner} />
-                                                <span>Scanning...</span>
-                                            </div>
-                                        )}
-                                        {slot.status === 'ok' && (
-                                            <div className={styles.scanOverlayOk}>✓</div>
-                                        )}
-                                        {slot.status === 'rejected' && (
-                                            <div className={styles.scanOverlayRejected}>
-                                                <span style={{fontSize:'1.8rem'}}>✕</span>
-                                                <span style={{fontSize:'0.7rem',textAlign:'center',padding:'0 8px'}}>Rejected</span>
-                                            </div>
-                                        )}
-                                    </div>
-                                    <div className={styles.photoInfoDetailed}>
-                                        <strong style={{overflow:'hidden',textOverflow:'ellipsis',whiteSpace:'nowrap',maxWidth:'100px',display:'inline-block'}}>{slot.file.name}</strong>
-                                        <span>{(slot.file.size / (1024 * 1024)).toFixed(2)} Mb</span>
-                                    </div>
-                                </div>
-                            ))}
-
-                            {scanSlots.length === 0 && previewUrls.map((url, idx) => (
+                            {previewUrls.map((url, idx) => (
                               <div key={idx} className={styles.photoCard}>
                                   <div className={styles.photoPreview}>
                                       <img src={url} alt={`preview ${idx}`} />
