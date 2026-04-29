@@ -38,7 +38,7 @@ import styles from './page.module.css';
 let AgoraRTC = null;
 
 export default function SellerDashboard() {
-    const { user, logout } = useAuth();
+    const { user, loading, logout } = useAuth();
     const router = useRouter();
     const [isLive, setIsLive] = useState(false);
     const [messageInput, setMessageInput] = useState('');
@@ -143,10 +143,7 @@ export default function SellerDashboard() {
     };
 
     const fetchDashboardData = useCallback(async () => {
-        if (!user) {
-            router.push('/');
-            return;
-        }
+        if (!user) return;
         if (kycStatusRef.current === 'rejected' || kycStatusRef.current === 'cancelled') return;
         try {
             const apiUrl = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:5000';
@@ -231,11 +228,12 @@ export default function SellerDashboard() {
     }, [user]);
 
     useEffect(() => {
+        if (loading) return;
         if (!user) {
             router.replace('/');
             return;
         }
-        
+
         fetchDashboardData();
         fetchLatestMessages();
         // Polling for updates every 10 seconds

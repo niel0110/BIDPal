@@ -21,15 +21,8 @@ function HomeInner() {
   const searchQuery = searchParams.get('q') || '';
   const sortParam   = searchParams.get('sort') || 'recent';
 
-  const [isLogin, setIsLogin] = useState(true);
-  const [selectedRole, setSelectedRole] = useState('buyer');
-  const [showPassword, setShowPassword] = useState(false);
   const [scrollProgress, setScrollProgress] = useState({ progress: 0, ratio: 0.3 });
   const [fixedScrollProgress, setFixedScrollProgress] = useState({ progress: 0, ratio: 0.3 });
-  const [email, setEmail] = useState('');
-  const [password, setPassword] = useState('');
-  const [confirmPassword, setConfirmPassword] = useState('');
-  const [error, setError] = useState('');
 
   const [allAuctions, setAllAuctions] = useState([]);
   const [fixedProducts, setFixedProducts] = useState([]);
@@ -41,14 +34,16 @@ function HomeInner() {
   const [searchProducts, setSearchProducts] = useState([]);
   const [searchLoading, setSearchLoading] = useState(false);
 
-  const { isSubmitting, runWithLock } = useSubmitLock();
   const router = useRouter();
   const redirectAfterAuth = useRef(null);
 
   useEffect(() => {
     if (loading) return;
     if (user?.role?.toLowerCase() === 'seller') {
-      const target = redirectAfterAuth.current || '/seller';
+      // New seller (no Fname) always goes to setup; returning seller uses redirectAfterAuth or dashboard
+      const target = !user.Fname
+        ? '/seller/setup'
+        : (redirectAfterAuth.current || '/seller');
       redirectAfterAuth.current = null;
       router.replace(target);
     } else if (user && !user.Fname) {
@@ -102,7 +97,7 @@ function HomeInner() {
         }
 
       } catch (err) {
-        console.error('Failed to fetch home content:', err);
+        // API server not reachable — show empty state silently in dev
       } finally {
         setLoadingContent(false);
       }
@@ -190,206 +185,7 @@ function HomeInner() {
   const filteredFixed = filterByCategory(fixedProducts);
 
 
-  const handleSignIn = async (e) => {
-    e.preventDefault();
-    await runWithLock(async () => {
-      setError('');
-      console.log('SignIn attempt:', { email, password });
-      if (!email || !password) {
-        setError('Email and password are required.');
-        return;
-      }
-      console.log('Calling login with:', { email, password });
-      const result = await login({ email, password });
-      console.log('Login result:', result);
-      if (!result.success) {
-        setError(result.error);
-        return;
-      }
-      console.log('Login successful, redirecting...');
-      if (result.user?.role?.toLowerCase() === 'seller') {
-        router.push('/seller');
-      } else {
-        router.push('/');
-      }
-    });
-  };
-
-  const handleSignUp = async (e) => {
-    e.preventDefault();
-    await runWithLock(async () => {
-      setError('');
-
-      console.log('SIGNUP FORM SUBMITTED');
-      console.log('Email value:', email, 'Type:', typeof email, 'Length:', email?.length);
-      console.log('Password value:', password, 'Type:', typeof password, 'Length:', password?.length);
-      console.log('ConfirmPassword value:', confirmPassword, 'Type:', typeof confirmPassword, 'Length:', confirmPassword?.length);
-      console.log('Which function am I calling?', typeof register);
-
-      if (!email || !password || !confirmPassword) {
-        console.log('VALIDATION FAILED: Missing fields');
-        console.log('email exists?', !!email);
-        console.log('password exists?', !!password);
-        console.log('confirmPassword exists?', !!confirmPassword);
-        setError('All fields are required.');
-        return;
-      }
-
-      if (password !== confirmPassword) {
-        console.log('VALIDATION FAILED: Passwords do not match');
-        setError('Passwords do not match.');
-        return;
-      }
-
-      console.log('Validation passed, calling register function now...');
-      console.log('About to call register with:', { email, password });
-
-      // Set redirect target before register so useEffect picks it up
-      if (selectedRole === 'seller') {
-        redirectAfterAuth.current = '/seller/setup';
-      }
-
-      try {
-        const result = await register({ email, password, role: selectedRole });
-        console.log('Register function returned:', result);
-
-        if (!result.success) {
-          console.log('Registration failed:', result.error);
-          redirectAfterAuth.current = null;
-          setError(result.error);
-          return;
-        }
-
-        console.log('Registration successful!');
-        // Sellers are redirected by the useEffect via redirectAfterAuth ref
-        if (selectedRole !== 'seller') {
-          router.push('/');
-        }
-      } catch (err) {
-        console.error('ERROR during register:', err);
-        setError(err.message);
-      }
-    });
-  };
-
-  const handleToggleAuth = () => {
-    setIsLogin(!isLogin);
-    setEmail('');
-    setPassword('');
-    setConfirmPassword('');
-    setError('');
-    setShowPassword(false);
-  };
-
   if (loading) return null;
-
-  if (!user) {
-    return (
-      <div className={styles.authContainer}>
-        <div className={styles.authLeft}>
-          <div className={styles.authLogo}>
-            <AuthLogo />
-          </div>
-        </div>
-        <div className={styles.authRight}>
-          <div className={styles.authFormWrapper}>
-            <h1 className={styles.authTitle}>
-              {isLogin ? 'Sign ' : 'Create '}
-              <span className={styles.redText}>{isLogin ? 'In' : 'account'}</span>
-            </h1>
-
-            {!isLogin && (
-              <div className={styles.roleGrid}>
-                <div
-                  className={`${styles.roleOption} ${selectedRole === 'buyer' ? styles.roleActive : ''}`}
-                  onClick={() => setSelectedRole('buyer')}
-                >
-                  <div className={styles.roleLabel}>Buyer</div>
-                  <div className={styles.roleSub}>I want to bid</div>
-                </div>
-                <div
-                  className={`${styles.roleOption} ${selectedRole === 'seller' ? styles.roleActive : ''}`}
-                  onClick={() => setSelectedRole('seller')}
-                >
-                  <div className={styles.roleLabel}>Seller</div>
-                  <div className={styles.roleSub}>I want to sell</div>
-                </div>
-              </div>
-            )}
-
-            <form onSubmit={isLogin ? handleSignIn : handleSignUp} className={styles.mainForm}>
-              <input
-                type="email"
-                placeholder="Email address"
-                value={email}
-                onChange={(e) => {
-                  console.log('Email changed:', e.target.value);
-                  setEmail(e.target.value);
-                }}
-                className={styles.authInput}
-              />
-              <div className={styles.inputGroup} style={{ marginTop: '1.25rem' }}>
-                <input
-                  type={showPassword ? 'text' : 'password'}
-                  placeholder="Password"
-                  value={password}
-                  onChange={(e) => {
-                    console.log('Password changed:', e.target.value);
-                    setPassword(e.target.value);
-                  }}
-                  className={styles.authInput}
-                />
-                {isLogin && (
-                  <Link href="/forgot-password" className={styles.forgotPassword}>
-                    Forgot password?
-                  </Link>
-                )}
-              </div>
-              {!isLogin && (
-                <div style={{ marginTop: '1.25rem' }}>
-                  <input
-                    type="password"
-                    placeholder="Confirm password"
-                    value={confirmPassword}
-                    onChange={(e) => {
-                      console.log('Confirm password changed:', e.target.value);
-                      setConfirmPassword(e.target.value);
-                    }}
-                    className={styles.authInput}
-                  />
-                </div>
-              )}
-              {error && <div style={{ color: 'red', marginTop: 8, marginBottom: '1rem' }}>{error}</div>}
-
-              <div className={styles.formFooter}>
-                <Button type="submit" variant="primary" fullWidth disabled={isSubmitting}>
-                  {isSubmitting
-                    ? (isLogin ? 'Signing In...' : 'Creating account...')
-                    : (isLogin ? 'Sign In' : 'Create account')}
-                </Button>
-              </div>
-
-              <button
-                type="button"
-                className={styles.toggleAuth}
-                onClick={handleToggleAuth}
-              >
-                {isLogin ? (
-                  <>
-                    Don't have an account? <span className={styles.toggleLink}>Sign Up</span>
-                  </>
-                ) : (
-                  <>
-                    Already have an account? <span className={styles.toggleLink}>Sign In</span>
-                  </>
-                )}
-              </button>
-            </form>
-          </div>
-        </div>
-      </div>
-    );
-  }
 
   return (
     <main className={styles.main}>

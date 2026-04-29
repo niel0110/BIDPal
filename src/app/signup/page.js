@@ -3,182 +3,268 @@
 import { useState } from 'react';
 import { useRouter } from 'next/navigation';
 import { useAuth } from '@/context/AuthContext';
-import Button from '@/components/ui/Button';
-import Input from '@/components/ui/Input';
-import AuthLogo from '@/components/AuthLogo';
 import { useSubmitLock } from '@/hooks/useSubmitLock';
+import { BUYER_TERMS, SELLER_TERMS } from '@/components/TermsModal/termsContent';
+import AuthLogo from '@/components/AuthLogo';
 import styles from './page.module.css';
 
-export default function SignUp() {
-    console.log('=== RENDERING SIGNUP PAGE ===');
-    const [showPassword, setShowPassword] = useState(false);
-    const [selectedRole, setSelectedRole] = useState('Buyer');
-    const router = useRouter();
-    const { register, loginWithGoogle } = useAuth();
+/* ─── Terms Modal (overlay) ─────────────────────────────────────────────── */
+function TermsModal({ role, onClose }) {
+    const sections = role === 'Seller' ? SELLER_TERMS : BUYER_TERMS;
+    return (
+        <div
+            onClick={onClose}
+            style={{
+                position: 'fixed', inset: 0, zIndex: 9999,
+                background: 'rgba(0,0,0,0.5)',
+                display: 'flex', alignItems: 'center', justifyContent: 'center',
+                padding: '1rem',
+            }}
+        >
+            <div
+                onClick={(e) => e.stopPropagation()}
+                style={{
+                    background: '#fff', borderRadius: 16, width: '100%', maxWidth: 580,
+                    maxHeight: '88vh', display: 'flex', flexDirection: 'column',
+                    boxShadow: '0 24px 64px rgba(0,0,0,0.22)', overflow: 'hidden',
+                }}
+            >
+                {/* Header */}
+                <div style={{ display: 'flex', alignItems: 'flex-start', justifyContent: 'space-between', padding: '1.25rem 1.5rem 1rem', borderBottom: '1px solid #f0f0f0' }}>
+                    <div>
+                        <p style={{ margin: '0 0 0.2rem', fontSize: '0.72rem', fontWeight: 700, color: '#D32F2F', textTransform: 'uppercase', letterSpacing: '0.05em' }}>
+                            {role} Account
+                        </p>
+                        <h2 style={{ margin: 0, fontSize: '1.2rem', fontWeight: 800, color: '#111' }}>Terms &amp; Conditions</h2>
+                    </div>
+                    <button
+                        onClick={onClose}
+                        style={{ background: '#f5f5f5', border: 'none', borderRadius: '50%', width: 34, height: 34, cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0, marginLeft: '1rem' }}
+                    >
+                        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="#555" strokeWidth="2.5" strokeLinecap="round">
+                            <line x1="18" y1="6" x2="6" y2="18" /><line x1="6" y1="6" x2="18" y2="18" />
+                        </svg>
+                    </button>
+                </div>
 
-    const [email, setEmail] = useState('');
-    const [password, setPassword] = useState('');
-    const [confirmPassword, setConfirmPassword] = useState('');
-    const [error, setError] = useState('');
+                {/* Body */}
+                <div style={{ flex: 1, overflowY: 'auto', padding: '1.25rem 1.5rem' }}>
+                    {sections.map((sec, si) => (
+                        <div key={sec.id} style={{ marginBottom: '1.75rem' }}>
+                            <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', marginBottom: '0.65rem', paddingBottom: '0.45rem', borderBottom: '1.5px solid #f2f2f2' }}>
+                                <span style={{ display: 'inline-flex', alignItems: 'center', justifyContent: 'center', width: 22, height: 22, minWidth: 22, background: '#D32F2F', color: '#fff', borderRadius: '50%', fontSize: '0.65rem', fontWeight: 800 }}>{si + 1}</span>
+                                <span style={{ fontSize: '0.9rem', fontWeight: 700, color: '#1a1a1a' }}>{sec.icon} {sec.title}</span>
+                            </div>
+                            {sec.content.map((item, i) => (
+                                <div key={i} style={{ marginBottom: '0.75rem', paddingLeft: '0.2rem' }}>
+                                    <p style={{ margin: '0 0 0.2rem', fontSize: '0.78rem', fontWeight: 700, color: '#333' }}>{item.heading}</p>
+                                    <p style={{ margin: 0, fontSize: '0.76rem', color: '#555', lineHeight: 1.7, whiteSpace: 'pre-line' }}>{item.body}</p>
+                                </div>
+                            ))}
+                        </div>
+                    ))}
+                </div>
+
+                {/* Footer */}
+                <div style={{ padding: '1rem 1.5rem', borderTop: '1px solid #f0f0f0' }}>
+                    <button
+                        onClick={onClose}
+                        style={{ width: '100%', padding: '0.75rem', background: '#D32F2F', color: '#fff', border: 'none', borderRadius: 9, fontSize: '0.9rem', fontWeight: 700, cursor: 'pointer' }}
+                    >
+                        Done Reading
+                    </button>
+                </div>
+            </div>
+        </div>
+    );
+}
+
+/* ─── Sign-Up Page ──────────────────────────────────────────────────────── */
+export default function SignUp() {
+    const router = useRouter();
+    const { register } = useAuth();
     const { isSubmitting, runWithLock } = useSubmitLock();
 
-    const handleSignUp = async (e) => {
+    const [selectedRole, setSelectedRole] = useState('Buyer');
+    const [email, setEmail]               = useState('');
+    const [password, setPassword]         = useState('');
+    const [confirm, setConfirm]           = useState('');
+    const [error, setError]               = useState('');
+    const [agreed, setAgreed]             = useState(false);
+    const [showTerms, setShowTerms]       = useState(false);
+
+    const handleSubmit = async (e) => {
         e.preventDefault();
         await runWithLock(async () => {
             setError('');
-
-            console.log('SIGNUP FORM SUBMITTED');
-            console.log('Email value:', email, 'Type:', typeof email, 'Length:', email?.length);
-            console.log('Password value:', password, 'Type:', typeof password, 'Length:', password?.length);
-            console.log('ConfirmPassword value:', confirmPassword, 'Type:', typeof confirmPassword, 'Length:', confirmPassword?.length);
-            console.log('Which function am I calling?', typeof register);
-
-            if (!email || !password || !confirmPassword) {
-                console.log('VALIDATION FAILED: Missing fields');
-                console.log('email exists?', !!email);
-                console.log('password exists?', !!password);
-                console.log('confirmPassword exists?', !!confirmPassword);
+            if (!email || !password || !confirm) {
                 setError('All fields are required.');
                 return;
             }
-
-            if (password !== confirmPassword) {
-                console.log('VALIDATION FAILED: Passwords do not match');
+            if (password !== confirm) {
                 setError('Passwords do not match.');
                 return;
             }
-
-            console.log('Validation passed, calling register function now...');
-            console.log('About to call register with:', { email, password, role: selectedRole });
-
-            try {
-                const result = await register({ email, password, role: selectedRole });
-                console.log('Register function returned:', result);
-
-                if (!result.success) {
-                    console.log('Registration failed:', result.error);
-                    setError(result.error);
-                    return;
-                }
-
-                console.log('Registration successful!');
-                if (selectedRole === 'Seller') {
-                    router.push('/seller/setup');
-                } else {
-                    router.push('/');
-                }
-            } catch (err) {
-                console.error('ERROR during register:', err);
-                setError(err.message);
-            }
-        });
-    };
-
-    const handleGoogleSignUp = async () => {
-        await runWithLock(async () => {
-            setError('');
-            const result = await loginWithGoogle(selectedRole);
-            if (!result.success) {
-                setError(result.error);
+            if (!agreed) {
+                setError('Please agree to the Terms & Conditions before continuing.');
                 return;
             }
-            if (selectedRole === 'Seller') {
-                router.push('/seller/setup');
-            } else {
-                router.push('/');
+            try {
+                const role   = selectedRole.toLowerCase();
+                const result = await register({ email, password, role });
+                if (!result.success) { setError(result.error); return; }
+                router.push(role === 'seller' ? '/seller/setup' : '/buyer/setup');
+            } catch (err) {
+                setError(err.message || 'Something went wrong. Please try again.');
             }
         });
     };
 
-
-    const EyeIcon = (
-        <div onClick={() => setShowPassword(!showPassword)} style={{ cursor: 'pointer' }}>
-            <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-                {showPassword ? (
-                    <>
-                        <path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z" />
-                        <circle cx="12" cy="12" r="3" />
-                    </>
-                ) : (
-                    <>
-                        <path d="M17.94 17.94A10.07 10.07 0 0 1 12 20c-7 0-11-8-11-8a18.45 18.45 0 0 1 5.06-5.94M9.9 4.24A9.12 9.12 0 0 1 12 4c7 0 11 8 11 8a18.5 18.5 0 0 1-2.16 3.19m-6.72-1.07a3 3 0 1 1-4.24-4.24" />
-                        <line x1="1" y1="1" x2="23" y2="23" />
-                    </>
-                )}
-            </svg>
-        </div>
-    );
-
     return (
-        <div className={styles.authContainer}>
-            <div className={styles.authLeft}>
-                <div className={styles.authLogo}>
-                    <AuthLogo />
-                </div>
-            </div>
-            <div className={styles.authRight}>
-                <div className={styles.authFormWrapper}>
-                    <h1 className={styles.authTitle}>
-                        Create <span className={styles.redText}>account</span>
-                    </h1>
+        <>
+            {showTerms && <TermsModal role={selectedRole} onClose={() => setShowTerms(false)} />}
 
-                    <div className={styles.roleGrid}>
-                        <div
-                            className={`${styles.roleOption} ${selectedRole === 'Buyer' ? styles.roleActive : ''}`}
-                            onClick={() => setSelectedRole('Buyer')}
-                        >
-                            <div className={styles.roleLabel}>Buyer</div>
-                            <div className={styles.roleSub}>I want to bid</div>
+            <div className={styles.authContainer}>
+                <div className={styles.authLeft}>
+                    <div className={styles.authLogo}><AuthLogo /></div>
+                </div>
+
+                <div className={styles.authRight}>
+                    <div className={styles.authFormWrapper}>
+                        <h1 className={styles.authTitle}>
+                            Create <span className={styles.redText}>account</span>
+                        </h1>
+
+                        {/* Role toggle */}
+                        <div className={styles.roleGrid}>
+                            {['Buyer', 'Seller'].map((r) => (
+                                <div
+                                    key={r}
+                                    className={`${styles.roleOption} ${selectedRole === r ? styles.roleActive : ''}`}
+                                    onClick={() => { setSelectedRole(r); setAgreed(false); }}
+                                >
+                                    <div className={styles.roleLabel}>{r}</div>
+                                    <div className={styles.roleSub}>{r === 'Buyer' ? 'I want to bid' : 'I want to sell'}</div>
+                                </div>
+                            ))}
                         </div>
-                        <div
-                            className={`${styles.roleOption} ${selectedRole === 'Seller' ? styles.roleActive : ''}`}
-                            onClick={() => setSelectedRole('Seller')}
-                        >
-                            <div className={styles.roleLabel}>Seller</div>
-                            <div className={styles.roleSub}>I want to sell</div>
-                        </div>
+
+                        <form onSubmit={handleSubmit} className={styles.mainForm} noValidate>
+                            <input
+                                type="email"
+                                placeholder="Email address"
+                                value={email}
+                                onChange={(e) => setEmail(e.target.value)}
+                                className={styles.input}
+                            />
+                            <input
+                                type="password"
+                                placeholder="Password"
+                                value={password}
+                                onChange={(e) => setPassword(e.target.value)}
+                                className={`${styles.input} ${styles.inputGroup}`}
+                            />
+                            <input
+                                type="password"
+                                placeholder="Confirm password"
+                                value={confirm}
+                                onChange={(e) => setConfirm(e.target.value)}
+                                className={`${styles.input} ${styles.inputGroup}`}
+                            />
+
+                            {/* Submit button */}
+                            <button
+                                type="submit"
+                                disabled={!agreed || isSubmitting}
+                                style={{
+                                    width: '100%',
+                                    marginTop: '1.1rem',
+                                    padding: '0.78rem',
+                                    border: 'none',
+                                    borderRadius: 8,
+                                    fontSize: '0.95rem',
+                                    fontWeight: 700,
+                                    cursor: agreed && !isSubmitting ? 'pointer' : 'not-allowed',
+                                    background: agreed && !isSubmitting ? '#D32F2F' : '#e0e0e0',
+                                    color: agreed && !isSubmitting ? '#fff' : '#aaa',
+                                    transition: 'background 0.2s, color 0.2s',
+                                    boxShadow: agreed && !isSubmitting ? '0 4px 14px rgba(211,47,47,0.28)' : 'none',
+                                }}
+                            >
+                                {isSubmitting ? 'Creating account…' : 'Create account'}
+                            </button>
+
+                            {/* ── T&C circle checkbox — below Create account ── */}
+                            <div
+                                style={{
+                                    display: 'flex',
+                                    alignItems: 'center',
+                                    gap: '0.7rem',
+                                    marginTop: '0.9rem',
+                                    padding: '0.75rem 0.9rem',
+                                    border: agreed ? '1.5px solid #D32F2F' : '1.5px solid #ddd',
+                                    borderRadius: 10,
+                                    background: agreed ? '#fff9f9' : '#fafafa',
+                                    cursor: 'pointer',
+                                    userSelect: 'none',
+                                    transition: 'border-color 0.2s, background 0.2s',
+                                }}
+                                onClick={() => setAgreed((v) => !v)}
+                            >
+                                {/* Circle */}
+                                <div
+                                    style={{
+                                        width: 22,
+                                        height: 22,
+                                        minWidth: 22,
+                                        borderRadius: '50%',
+                                        border: agreed ? '2px solid #D32F2F' : '2px solid #bbb',
+                                        background: agreed ? '#D32F2F' : '#fff',
+                                        display: 'flex',
+                                        alignItems: 'center',
+                                        justifyContent: 'center',
+                                        flexShrink: 0,
+                                        transition: 'background 0.18s, border-color 0.18s',
+                                    }}
+                                    onClick={(e) => { e.stopPropagation(); setAgreed((v) => !v); }}
+                                >
+                                    {agreed && (
+                                        <svg width="11" height="11" viewBox="0 0 12 12" fill="none">
+                                            <path d="M2 6l3 3 5-5" stroke="#fff" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round" />
+                                        </svg>
+                                    )}
+                                </div>
+
+                                {/* Text */}
+                                <span style={{ fontSize: '0.83rem', color: '#333', fontWeight: 500, lineHeight: 1.4 }}>
+                                    I agree to the{' '}
+                                    <span
+                                        onClick={(e) => { e.stopPropagation(); setShowTerms(true); }}
+                                        style={{ color: '#D32F2F', fontWeight: 700, textDecoration: 'underline', cursor: 'pointer' }}
+                                    >
+                                        Terms &amp; Conditions
+                                    </span>
+                                </span>
+                            </div>
+
+                            {error && (
+                                <p style={{ color: '#D32F2F', fontSize: '0.82rem', margin: '0.5rem 0 0', padding: 0 }}>
+                                    {error}
+                                </p>
+                            )}
+
+                            <button
+                                type="button"
+                                className={styles.toggleAuth}
+                                onClick={() => router.push('/signin')}
+                            >
+                                Already have an account?{' '}
+                                <span className={styles.toggleLink}>Sign In</span>
+                            </button>
+                        </form>
                     </div>
-
-                    <form onSubmit={handleSignUp} className={styles.mainForm}>
-                        <input
-                            type="email"
-                            placeholder="Email address"
-                            value={email}
-                            onChange={(e) => setEmail(e.target.value)}
-                            className={styles.input}
-                        />
-                        <input
-                            type={showPassword ? 'text' : 'password'}
-                            placeholder="Password"
-                            value={password}
-                            onChange={(e) => setPassword(e.target.value)}
-                            className={`${styles.input} ${styles.inputGroup}`}
-                        />
-                        <input
-                            type="password"
-                            placeholder="Confirm password"
-                            value={confirmPassword}
-                            onChange={(e) => setConfirmPassword(e.target.value)}
-                            className={`${styles.input} ${styles.inputGroup}`}
-                        />
-                        {error && <div style={{ color: 'red', marginTop: 8 }}>{error}</div>}
-
-                        <div className={styles.formFooter}>
-                            <Button type="submit" variant="primary" fullWidth disabled={isSubmitting}>
-                                {isSubmitting ? 'Creating account...' : 'Create account'}
-                            </Button>
-                        </div>
-
-                        <button
-                            type="button"
-                            className={styles.toggleAuth}
-                            onClick={() => router.push('/signin')}
-                        >
-                            Already have an account? <span className={styles.toggleLink}>Sign In</span>
-                        </button>
-                    </form>
                 </div>
             </div>
-        </div>
+        </>
     );
 }

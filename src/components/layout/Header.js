@@ -241,7 +241,7 @@ export default function Header() {
           {user && <NotificationBell />}
 
           {!user && (
-            <Link href="/" className={styles.navItem}>
+            <Link href="/signin" className={styles.navItem}>
               <User size={18} className={styles.navIcon} color="#FBC02D" />
               <span>Sign Up/Sign In</span>
             </Link>

@@ -51,8 +51,15 @@
     color: white;
 }
 
-.primary:hover {
+.primary:hover:not(:disabled) {
     background-color: var(--color-primary-hover);
+}
+
+.button:disabled {
+    background-color: #e0e0e0;
+    color: #aaa;
+    cursor: not-allowed;
+    box-shadow: none;
 }
 
 .outline {
