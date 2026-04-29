@@ -12,6 +12,17 @@ const poppins = Poppins({
 export const metadata = {
   title: "BIDPal",
   description: "Unlock the value of what you already have.",
+  icons: {
+    icon: [
+      { url: "/BIDPaL Logo.png", type: "image/png" },
+    ],
+    apple: [
+      { url: "/BIDPaL Logo.png", type: "image/png" },
+    ],
+    shortcut: "/BIDPaL Logo.png",
+  },
+  manifest: "/manifest.json",
+  themeColor: "#863bff",
 };
 
 export default function RootLayout({ children }) {
