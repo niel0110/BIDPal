@@ -14,15 +14,15 @@ export const metadata = {
   description: "Unlock the value of what you already have.",
   icons: {
     icon: [
-      { url: "/BIDPaL Logo.png", type: "image/png" },
+      { url: "/icon.svg", type: "image/svg+xml" },
     ],
     apple: [
-      { url: "/BIDPaL Logo.png", type: "image/png" },
+      { url: "/icon.svg", type: "image/svg+xml" },
     ],
-    shortcut: "/BIDPaL Logo.png",
+    shortcut: "/icon.svg",
   },
   manifest: "/manifest.json",
-  themeColor: "#863bff",
+  themeColor: "#7c3aed",
 };
 
 export default function RootLayout({ children }) {
