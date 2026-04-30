@@ -710,8 +710,7 @@ export default function MyAuctions() {
         });
     };
 
-    const fixedSaleAuctions = auctions.filter(a => a.buy_now_price > 0);
-    const bidAuctions = auctions.filter(a => !(a.buy_now_price > 0));
+    const bidAuctions = auctions.filter(a => a.sale_type === 'bid' || (!a.sale_type && !(a.buy_now_price > 0)));
 
     const renderDraftCard = (product) => {
         const isDeleting = deletingId === product.products_id;
@@ -814,22 +813,14 @@ export default function MyAuctions() {
                 <p className={styles.emptyDesc}>Create your first auction to start selling.</p>
             </div>
         );
-        return (
-            <>
-                {bidAuctions.length > 0 && (
-                    <>
-                        {sectionHeader('Live Auctions', <Gavel size={15} color="#D32F2F" />)}
-                        {bidAuctions.map(renderAuctionCard)}
-                    </>
-                )}
-                {fixedSaleAuctions.length > 0 && (
-                    <>
-                        {sectionHeader('Fixed Sales', <Tag size={15} color="#7c3aed" />)}
-                        {fixedSaleAuctions.map(renderAuctionCard)}
-                    </>
-                )}
-            </>
+        if (!bidAuctions.length) return (
+            <div className={styles.emptyState}>
+                <Calendar size={40} className={styles.emptyIcon} />
+                <p className={styles.emptyTitle}>No auctions yet</p>
+                <p className={styles.emptyDesc}>Create your first auction to start selling.</p>
+            </div>
         );
+        return bidAuctions.map(renderAuctionCard);
     };
 
     const sectionHeader = (label, icon) => (

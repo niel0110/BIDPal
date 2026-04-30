@@ -109,15 +109,10 @@ export default function AddProductPage() {
         size: '',
         specifications: '',
         availability: '1',
-        length: '',
-        lengthUnit: 'mm',
-        width: '',
-        widthUnit: 'mm',
-        height: '',
-        heightUnit: 'mm',
         price: '',
         reservePrice: '',
         startingPrice: '',
+        bidIncrement: '',
         categories: []
     });
 
@@ -236,9 +231,7 @@ export default function AddProductPage() {
                 submitData.append('availability', formData.availability);
                 submitData.append('reserve_price', formData.reservePrice);
                 submitData.append('starting_price', formData.startingPrice);
-                if (formData.length) submitData.append('length_mm', formData.length);
-                if (formData.width) submitData.append('width_mm', formData.width);
-                if (formData.height) submitData.append('height_mm', formData.height);
+                submitData.append('bid_increment', formData.bidIncrement || '50');
                 if (formData.size) submitData.append('size', formData.size);
                 submitData.append('categories', JSON.stringify(formData.categories));
                 
@@ -339,38 +332,6 @@ export default function AddProductPage() {
                                 maxLength={2000}
                             />
                             <div className={styles.charCount}>{formData.description.length}/2000</div>
-                        </div>
-
-                        <div className={styles.inputGroup} style={{ marginBottom: '0' }}>
-                            <label>Number of units available</label>
-                            <input
-                                type="text"
-                                placeholder="Availability"
-                                value={formData.availability}
-                                onChange={(e) => setFormData({ ...formData, availability: e.target.value })}
-                            />
-                        </div>
-
-                        <div className={styles.dimensionsRow} style={{ marginTop: '1.5rem' }}>
-                            <label className={styles.fullWidth}>Dimensions (optional)</label>
-                            {[
-                                { key: 'length', label: 'Length' },
-                                { key: 'width', label: 'Width' },
-                                { key: 'height', label: 'Height' },
-                            ].map(({ key, label }) => (
-                                <div key={key} className={styles.dimField}>
-                                    <span>{label}</span>
-                                    <div className={styles.dimInputRow}>
-                                        <input
-                                            type="number"
-                                            min="0"
-                                            value={formData[key]}
-                                            onChange={(e) => setFormData({ ...formData, [key]: e.target.value })}
-                                        />
-                                        <span className={styles.unitLabel}>mm</span>
-                                    </div>
-                                </div>
-                            ))}
                         </div>
 
                     </div>
@@ -525,24 +486,31 @@ export default function AddProductPage() {
                             onApplyRecommendation={handleApplyRecommendation}
                         />
 
-                        <div style={{marginTop: '12px'}}>
-                            <div className={styles.inputGroup}>
-                                <label>Reserve Price (Minimum Selling Price) *</label>
-                                <div style={{display: 'flex', alignItems: 'center', gap: '6px'}}>
-                                    <span className={styles.pesoSign}>₱</span>
-                                    <input type="number" step="0.01" min="0" placeholder="0.00" value={formData.reservePrice} onChange={(e) => setFormData({ ...formData, reservePrice: e.target.value })} required style={{flex: 1}} />
-                                </div>
-                                <small className={styles.fieldHint}>The minimum price you'll accept for this item</small>
+                        <div className={styles.inputGroup}>
+                            <label>Reserve Price *</label>
+                            <div style={{display: 'flex', alignItems: 'center', gap: '6px'}}>
+                                <span className={styles.pesoSign}>₱</span>
+                                <input type="number" step="0.01" min="0" placeholder="0.00" value={formData.reservePrice} onChange={(e) => setFormData({ ...formData, reservePrice: e.target.value })} required style={{flex: 1}} />
                             </div>
+                            <small className={styles.fieldHint}>The maximum price limit for this item — bidding cannot exceed this amount</small>
+                        </div>
 
-                            <div className={styles.inputGroup}>
-                                <label>Starting Bid Price *</label>
-                                <div style={{display: 'flex', alignItems: 'center', gap: '6px'}}>
-                                    <span className={styles.pesoSign}>₱</span>
-                                    <input type="number" step="0.01" min="0" placeholder="0.00" value={formData.startingPrice} onChange={(e) => setFormData({ ...formData, startingPrice: e.target.value })} required style={{flex: 1}} />
-                                </div>
-                                <small className={styles.fieldHint}>The initial bid amount to attract buyers</small>
+                        <div className={styles.inputGroup}>
+                            <label>Starting Bid Price *</label>
+                            <div style={{display: 'flex', alignItems: 'center', gap: '6px'}}>
+                                <span className={styles.pesoSign}>₱</span>
+                                <input type="number" step="0.01" min="0" placeholder="0.00" value={formData.startingPrice} onChange={(e) => setFormData({ ...formData, startingPrice: e.target.value })} required style={{flex: 1}} />
                             </div>
+                            <small className={styles.fieldHint}>The initial bid amount to attract buyers</small>
+                        </div>
+
+                        <div className={styles.inputGroup}>
+                            <label>Bid Increment *</label>
+                            <div style={{display: 'flex', alignItems: 'center', gap: '6px'}}>
+                                <span className={styles.pesoSign}>₱</span>
+                                <input type="number" step="1" min="1" placeholder="50" value={formData.bidIncrement} onChange={(e) => setFormData({ ...formData, bidIncrement: e.target.value })} style={{flex: 1}} />
+                            </div>
+                            <small className={styles.fieldHint}>Minimum amount each new bid must exceed the current one. Defaults to ₱50.</small>
                         </div>
                     </div>
                 )}

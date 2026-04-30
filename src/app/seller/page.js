@@ -1388,7 +1388,7 @@ export default function SellerDashboard() {
                             </div>
                         ) : (
                             <div className={styles.emptyState}>
-                                <Radio size={48} color="#555" strokeWidth={1.5} />
+                                <Radio size={48} color="#D32F2F" strokeWidth={1.5} />
                                 <h2>No Active Auction</h2>
                                 <p>{isNewSeller ? 'Add products to your queue, then hit Go Live.' : 'No auction live. Add products to the Queue and hit Go Live.'}</p>
                                 {isNewSeller && (

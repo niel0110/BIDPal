@@ -36,20 +36,23 @@ export const getNotifications = async (req, res) => {
       .limit(50);
 
     if (error) {
-      console.error('[Notifications] getNotifications Supabase error:', error);
-      // If created_at column doesn't exist, fall back without ordering
+      // Silently return empty on network/timeout errors — client will retry
+      if (error.message?.includes('fetch failed') || error.message?.includes('timeout') || error.message?.includes('TIMEOUT')) {
+        return res.json([]);
+      }
+      console.error('[Notifications] getNotifications Supabase error:', error.message);
       if (error.message?.includes('created_at') || error.code === '42703') {
-        const fallback = await supabase
-          .from('Notifications')
-          .select('*')
-          .eq('user_id', user_id)
-          .limit(50);
+        const fallback = await supabase.from('Notifications').select('*').eq('user_id', user_id).limit(50);
         return res.json(fallback.data || []);
       }
       throw error;
     }
     res.json(data || []);
   } catch (err) {
+    // Don't flood logs on network timeouts — return empty silently
+    if (err.message?.includes('fetch failed') || err.message?.includes('timeout')) {
+      return res.json([]);
+    }
     console.error('[Notifications] getNotifications error:', err.message);
     res.status(500).json({ error: err.message });
   }

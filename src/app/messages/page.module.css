@@ -2,7 +2,7 @@
     height: 100vh;
     display: flex;
     flex-direction: column;
-    background-color: #fff;
+    background-color: #f7f8fc;
     overflow: hidden;
 }
 
@@ -19,47 +19,32 @@
 }
 
 .messagesHeader {
-    margin-bottom: 1.5rem;
-}
-
-.backBtn {
-    background: none;
-    border: none;
-    display: flex;
-    align-items: center;
-    gap: 0.5rem;
-    color: #888;
-    font-weight: 500;
-    cursor: pointer;
-    padding: 0;
-    margin-bottom: 0.75rem;
-    transition: color 0.2s;
-}
-
-.backBtn:hover {
-    color: #111;
+    margin-bottom: 1.25rem;
 }
 
 .messagesHeader h1 {
-    font-size: 2rem;
+    font-size: 1.85rem;
     font-weight: 850;
     color: #111;
     margin: 0;
-    letter-spacing: -0.02em;
+    letter-spacing: -0.03em;
 }
 
+/* ── Chat Layout ── */
 .chatWrapper {
     flex: 1;
     min-height: 0;
     display: grid;
-    grid-template-columns: 360px 1fr;
+    grid-template-columns: 340px 1fr;
     background: white;
-    border: 1px solid #f0f0f0;
+    border: 1px solid #ebebeb;
     border-radius: 20px;
+    /* overflow:hidden clips rounded corners but does NOT clip position:fixed children */
     overflow: hidden;
+    box-shadow: 0 4px 24px rgba(0,0,0,0.06);
 }
 
-/* Sidebar */
+/* ── Sidebar ── */
 .inboxSidebar {
     min-width: 0;
     border-right: 1px solid #f0f0f0;
@@ -70,20 +55,22 @@
 }
 
 .searchBox {
-    padding: 1rem 1.25rem;
+    margin: 1rem;
+    padding: 0.7rem 1rem;
     display: flex;
     align-items: center;
-    gap: 0.75rem;
+    gap: 0.65rem;
     background: white;
-    margin: 1rem;
-    border: 1px solid #eee;
+    border: 1.5px solid #eee;
     border-radius: 12px;
-    color: #aaa;
-    transition: border-color 0.2s;
+    color: #bbb;
+    transition: border-color 0.2s, box-shadow 0.2s;
+    flex-shrink: 0;
 }
 
 .searchBox:focus-within {
-    border-color: #111;
+    border-color: #333;
+    box-shadow: 0 0 0 3px rgba(0,0,0,0.05);
 }
 
 .searchBox input {
@@ -92,23 +79,23 @@
     outline: none;
     flex: 1;
     font-family: inherit;
-    font-size: 0.9rem;
+    font-size: 0.875rem;
     color: #111;
 }
 
 .chatsList {
     flex: 1;
     overflow-y: auto;
+    padding: 0 0 0.5rem;
 }
 
 .chatItem {
     display: flex;
-    padding: 1.25rem;
-    gap: 1rem;
+    padding: 0.9rem 1.1rem;
+    gap: 0.85rem;
     cursor: pointer;
-    transition: all 0.2s;
-    border-bottom: 1px solid #f0f0f0;
-    background: #fafafa;
+    transition: background 0.15s;
+    border-bottom: 1px solid #f5f5f5;
 }
 
 .chatItem:hover {
@@ -120,20 +107,21 @@
     position: relative;
 }
 
-.activeChat::after {
+.activeChat::before {
     content: '';
     position: absolute;
     left: 0;
     top: 0;
     bottom: 0;
     width: 3px;
-    background: #111;
+    background: linear-gradient(to bottom, #2563eb, #1d4ed8);
+    border-radius: 0 2px 2px 0;
 }
 
 .avatarWrapper {
     position: relative;
-    width: 48px;
-    height: 48px;
+    width: 46px;
+    height: 46px;
     flex-shrink: 0;
 }
 
@@ -144,60 +132,61 @@
     object-fit: cover;
 }
 
-.onlineStatus {
-    position: absolute;
-    bottom: -2px;
-    right: -2px;
-    width: 12px;
-    height: 12px;
-    background: #10b981;
-    border: 2.5px solid #fafafa;
-    border-radius: 50%;
-}
-
 .chatMeta {
     flex: 1;
     min-width: 0;
+    display: flex;
+    flex-direction: column;
+    justify-content: center;
+    gap: 0.15rem;
 }
 
 .chatNameRow {
     display: flex;
     justify-content: space-between;
-    margin-bottom: 0.2rem;
+    align-items: baseline;
+    gap: 0.5rem;
 }
 
 .chatName {
-    font-weight: 750;
+    font-weight: 700;
     color: #111;
-    font-size: 0.9rem;
+    font-size: 0.875rem;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
 }
 
 .chatTime {
-    font-size: 0.75rem;
-    color: #aaa;
+    font-size: 0.7rem;
+    color: #bbb;
     font-weight: 500;
+    flex-shrink: 0;
 }
 
 .lastMsgRow {
     display: flex;
     justify-content: space-between;
     align-items: center;
+    gap: 0.5rem;
 }
 
 .lastMessage {
-    font-size: 0.85rem;
-    color: #888;
+    font-size: 0.8rem;
+    color: #999;
     margin: 0;
     white-space: nowrap;
     overflow: hidden;
     text-overflow: ellipsis;
     font-weight: 400;
+    flex: 1;
+    min-width: 0;
 }
 
 .unreadBadge {
-    background: #111;
+    background: #2563eb;
     color: white;
-    font-size: 0.7rem;
+    font-size: 0.65rem;
     font-weight: 700;
     padding: 2px 6px;
     min-width: 18px;
@@ -209,14 +198,16 @@
     flex-shrink: 0;
 }
 
-/* Chat Window */
+/* ── Chat Window ── */
 .chatWindow {
     min-width: 0;
     display: flex;
     flex-direction: column;
     background: white;
     min-height: 0;
-    overflow: hidden;
+    /* overflow:visible lets position:fixed dropdowns escape */
+    overflow: visible;
+    position: relative;
 }
 
 .chatHeader {
@@ -227,7 +218,9 @@
     align-items: center;
     flex-shrink: 0;
     gap: 0.5rem;
-    background: #fff;
+    background: white;
+    position: relative;
+    z-index: 10;
 }
 
 .chatInfo {
@@ -243,23 +236,16 @@
     gap: 0.75rem;
     cursor: pointer;
     border-radius: 10px;
-    padding: 4px 8px 4px 4px;
+    padding: 4px 10px 4px 4px;
     transition: background 0.15s;
     min-width: 0;
 }
+
 .chatInfoClickable:hover {
-    background: #f0f0f0;
-}
-.chatInfoClickable img {
-    width: 38px;
-    height: 38px;
-    border-radius: 50%;
-    object-fit: cover;
-    flex-shrink: 0;
-    border: 2px solid #f0f0f0;
+    background: #f5f5f5;
 }
 
-.chatInfo img {
+.chatInfoClickable img {
     width: 38px;
     height: 38px;
     border-radius: 50%;
@@ -275,7 +261,7 @@
     min-width: 0;
 }
 
-.chatInfo h3 {
+.chatInfoText h3 {
     font-size: 0.95rem;
     font-weight: 700;
     margin: 0;
@@ -286,20 +272,17 @@
 }
 
 .chatRole {
-    font-size: 0.7rem;
-    color: #aaa;
-    font-weight: 500;
-}
-
-.chatInfo span {
-    font-size: 0.72rem;
-    color: #10b981;
+    font-size: 0.68rem;
+    color: #bbb;
     font-weight: 600;
+    text-transform: uppercase;
+    letter-spacing: 0.04em;
 }
 
 .chatActions {
     display: flex;
     gap: 0.25rem;
+    flex-shrink: 0;
 }
 
 .chatActions button {
@@ -307,157 +290,436 @@
     border: none;
     width: 36px;
     height: 36px;
-    border-radius: 8px;
+    border-radius: 10px;
     display: flex;
     align-items: center;
     justify-content: center;
-    color: #888;
+    color: #aaa;
     cursor: pointer;
-    transition: all 0.2s;
+    transition: all 0.15s;
 }
 
 .chatActions button:hover {
     background: #f5f5f5;
-    color: #111;
+    color: #333;
 }
 
-/* Messages */
+/* ── Options menu (position:fixed — escapes overflow:hidden parents) ── */
+.optionsWrapper {
+    position: relative;
+}
+
+.optionsMenu {
+    position: fixed;
+    background: white;
+    border: 1px solid #ebebeb;
+    border-radius: 14px;
+    box-shadow: 0 8px 32px rgba(0,0,0,0.14), 0 2px 8px rgba(0,0,0,0.06);
+    min-width: 220px;
+    z-index: 9999;
+    overflow: hidden;
+    padding: 6px 0;
+}
+
+.optionsItem {
+    display: flex;
+    align-items: center;
+    gap: 0.65rem;
+    width: 100%;
+    padding: 0.7rem 1.1rem;
+    background: none;
+    border: none;
+    font-size: 0.875rem;
+    font-weight: 500;
+    color: #333;
+    cursor: pointer;
+    text-align: left;
+    white-space: nowrap;
+    transition: background 0.12s;
+}
+
+.optionsItem:hover {
+    background: #f8f8f8;
+}
+
+.optionsDanger {
+    color: #dc2626;
+}
+
+.optionsDanger:hover {
+    background: #fff5f5 !important;
+}
+
+/* ── Messages area ── */
 .messageArea {
     flex: 1;
-    padding: 1.5rem 2rem;
+    padding: 1.5rem 1.75rem;
     overflow-y: auto;
     overscroll-behavior: contain;
     display: flex;
     flex-direction: column;
-    gap: 1.25rem;
-    background-color: #fff;
+    gap: 3px;
+    background: #f7f8fc;
     scroll-behavior: auto;
 }
 
 .dateDivider {
     text-align: center;
-    font-size: 0.7rem;
-    color: #ccc;
+    font-size: 0.68rem;
+    color: #bbb;
     font-weight: 700;
     text-transform: uppercase;
-    letter-spacing: 0.05em;
-    margin: 1.5rem 0;
+    letter-spacing: 0.08em;
+    margin: 1.25rem 0 0.5rem;
 }
 
-.messageBubble {
-    max-width: 65%;
-    width: fit-content;
+/* ── Message row (wraps bubble + side delete action) ── */
+.messageRow {
+    display: flex;
+    align-items: flex-end;
+    gap: 6px;
+    margin-bottom: 2px;
 }
 
-.sent {
+.grouped {
+    margin-bottom: 1px;
+}
+
+.sentRow {
+    flex-direction: row-reverse; /* delete button left of bubble */
     align-self: flex-end;
     margin-left: auto;
+    max-width: 68%;
 }
 
-.received {
+.receivedRow {
     align-self: flex-start;
     margin-right: auto;
+    max-width: 68%;
 }
 
-.bubbleContent {
-    padding: 0.85rem 1.1rem;
-    border-radius: 16px;
+/* ── Side delete button (revealed on hover) ── */
+.msgDeleteAction {
+    background: none;
+    border: none;
+    color: #ddd;
+    cursor: pointer;
+    padding: 5px;
+    border-radius: 8px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    opacity: 0;
+    transition: opacity 0.15s, color 0.15s, background 0.15s;
+    flex-shrink: 0;
+}
+
+.messageRow:hover .msgDeleteAction {
+    opacity: 1;
+}
+
+.msgDeleteAction:hover {
+    color: #ef4444;
+    background: #fff0f0;
+}
+
+/* ── Bubble ── */
+.messageBubble {
+    width: fit-content;
+    max-width: 100%;
 }
 
 .sent .bubbleContent {
     background: #2563eb;
     color: #fff;
-    border-radius: 16px 16px 4px 16px;
+    border-radius: 18px 18px 4px 18px;
+    box-shadow: 0 2px 8px rgba(37, 99, 235, 0.25);
 }
 
 .received .bubbleContent {
-    background: #f0f0f0;
+    background: white;
     color: #111;
-    border-radius: 16px 16px 16px 4px;
+    border-radius: 18px 18px 18px 4px;
+    box-shadow: 0 1px 4px rgba(0,0,0,0.08);
+    border: 1px solid #f0f0f0;
+}
+
+/* Grouped message variants — tighter corner on continuation */
+.sentGrouped .bubbleContent {
+    border-radius: 18px 4px 4px 18px;
+}
+
+.sentGroupedTop .bubbleContent {
+    border-radius: 18px 18px 4px 18px;
+}
+
+.receivedGrouped .bubbleContent {
+    border-radius: 4px 18px 18px 4px;
+}
+
+.receivedGroupedTop .bubbleContent {
+    border-radius: 18px 18px 18px 4px;
+}
+
+.bubbleContent {
+    padding: 0.7rem 1rem;
 }
 
 .bubbleContent p {
     margin: 0;
     font-size: 0.9rem;
-    line-height: 1.45;
-    font-weight: 450;
+    line-height: 1.5;
+    font-weight: 440;
+    word-break: break-word;
 }
 
 .msgTime {
     display: block;
-    font-size: 0.65rem;
-    margin-top: 0.4rem;
-    color: #aaa;
+    font-size: 0.62rem;
+    margin-top: 0.35rem;
     font-weight: 500;
+    user-select: none;
 }
 
 .sent .msgTime {
     text-align: right;
-    color: rgba(255,255,255,0.7);
+    color: rgba(255,255,255,0.6);
 }
 
 .received .msgTime {
-    color: #aaa;
+    color: #bbb;
 }
 
-/* Input Bar */
-.inputBar {
-    padding: 1.25rem 1.5rem;
+/* ── Image attachment ── */
+.msgImage {
+    display: block;
+    max-width: 240px;
+    max-height: 220px;
+    border-radius: 12px;
+    object-fit: cover;
+    cursor: pointer;
+    margin-bottom: 6px;
+    transition: opacity 0.15s;
+}
+
+.msgImage:hover {
+    opacity: 0.92;
+}
+
+/* ── File attachment ── */
+.msgFile {
+    display: flex;
+    align-items: center;
+    gap: 0.5rem;
+    padding: 0.5rem 0.75rem;
+    background: rgba(0,0,0,0.07);
+    border-radius: 10px;
+    text-decoration: none;
+    font-size: 0.82rem;
+    font-weight: 600;
+    color: inherit;
+    margin-bottom: 6px;
+    transition: background 0.15s;
+    max-width: 220px;
+}
+
+.msgFile:hover {
+    background: rgba(0,0,0,0.13);
+}
+
+.msgFileName {
+    flex: 1;
+    min-width: 0;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+}
+
+.msgFileSize {
+    font-size: 0.7rem;
+    opacity: 0.6;
+    flex-shrink: 0;
+}
+
+/* ── Input footer (wraps preview bar + input bar) ── */
+.inputFooter {
+    flex-shrink: 0;
     border-top: 1px solid #f0f0f0;
+    background: white;
+}
+
+/* ── Pending attachment preview ── */
+.pendingAttachmentBar {
+    display: flex;
+    align-items: center;
+    gap: 0.75rem;
+    padding: 0.65rem 1.25rem;
+    background: #f0f4ff;
+    border-bottom: 1px solid #dde6ff;
+}
+
+.pendingAttachmentThumb {
+    width: 46px;
+    height: 46px;
+    border-radius: 8px;
+    object-fit: cover;
+    flex-shrink: 0;
+    border: 1px solid rgba(0,0,0,0.08);
+}
+
+.pendingAttachmentIcon {
+    width: 46px;
+    height: 46px;
+    border-radius: 8px;
+    background: #dde6ff;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    flex-shrink: 0;
+    color: #2563eb;
+}
+
+.pendingAttachmentInfo {
+    flex: 1;
+    min-width: 0;
+}
+
+.pendingAttachmentName {
+    font-size: 0.84rem;
+    font-weight: 600;
+    color: #111;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+}
+
+.pendingAttachmentSize {
+    font-size: 0.72rem;
+    color: #888;
+    margin-top: 2px;
+}
+
+.pendingAttachmentRemove {
+    background: rgba(0,0,0,0.06);
+    border: none;
+    border-radius: 50%;
+    width: 24px;
+    height: 24px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    cursor: pointer;
+    color: #666;
+    flex-shrink: 0;
+    transition: background 0.15s, color 0.15s;
+    padding: 0;
+}
+
+.pendingAttachmentRemove:hover {
+    background: #ef4444;
+    color: white;
+}
+
+/* ── Input Bar ── */
+.inputBar {
+    padding: 0.85rem 1.25rem;
     display: flex;
     align-items: flex-end;
-    gap: 1rem;
+    gap: 0.75rem;
     background: white;
-    flex-shrink: 0;
-    z-index: 10;
 }
 
 .inputActions {
     display: flex;
-    gap: 0.25rem;
-    padding-bottom: 0.25rem;
+    gap: 2px;
+    padding-bottom: 3px;
 }
 
 .inputActions button {
     background: none;
     border: none;
-    color: #aaa;
+    color: #bbb;
     cursor: pointer;
-    padding: 6px;
-    border-radius: 8px;
-    transition: all 0.2s;
+    padding: 7px;
+    border-radius: 9px;
+    transition: color 0.15s, background 0.15s;
+    display: flex;
+    align-items: center;
+    justify-content: center;
 }
 
 .inputActions button:hover {
-    color: #111;
-    background: #f5f5f5;
+    color: #333;
+    background: #f0f0f0;
+}
+
+/* ── Emoji picker ── */
+.emojiWrapper {
+    position: relative;
+}
+
+.emojiPicker {
+    position: absolute;
+    bottom: calc(100% + 10px);
+    left: 0;
+    background: white;
+    border: 1px solid #ebebeb;
+    border-radius: 16px;
+    box-shadow: 0 12px 32px rgba(0,0,0,0.12);
+    padding: 10px;
+    display: grid;
+    grid-template-columns: repeat(10, 1fr);
+    gap: 2px;
+    z-index: 100;
+    width: 268px;
+}
+
+.emojiBtn {
+    background: none;
+    border: none;
+    font-size: 1.15rem;
+    padding: 5px;
+    border-radius: 8px;
+    cursor: pointer;
+    transition: background 0.12s;
+    line-height: 1;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+}
+
+.emojiBtn:hover {
+    background: #f0f0f0;
 }
 
 .messageTextbox {
     flex: 1;
-    background: #fafafa;
-    border: 1.5px solid #eee;
-    /* Slightly more visible border */
-    padding: 0.85rem 1rem;
-    border-radius: 12px;
+    background: #f5f6f8;
+    border: 1.5px solid transparent;
+    padding: 0.75rem 1rem;
+    border-radius: 14px;
     font-family: inherit;
     font-size: 0.9rem;
     outline: none;
     resize: none;
-    min-height: 45px;
-    max-height: 150px;
+    min-height: 44px;
+    max-height: 140px;
     color: #111;
-    transition: all 0.2s;
+    transition: border-color 0.2s, background 0.2s;
+    line-height: 1.4;
 }
 
 .messageTextbox:focus {
-    border-color: #111;
-    /* Strong focus state */
+    border-color: #2563eb;
     background: white;
 }
 
+.messageTextbox::placeholder {
+    color: #bbb;
+}
+
 .sendBtn {
-    background: #111;
+    background: #2563eb;
     color: white;
     border: none;
     width: 42px;
@@ -467,23 +729,24 @@
     align-items: center;
     justify-content: center;
     cursor: pointer;
-    transition: all 0.2s;
+    transition: background 0.15s, transform 0.1s;
     flex-shrink: 0;
-    margin-bottom: 2px;
+    margin-bottom: 1px;
 }
 
 .sendBtn:disabled {
-    opacity: 0.2;
+    background: #e0e0e0;
+    color: #bbb;
     cursor: not-allowed;
-    background: #ccc;
+    transform: none;
 }
 
 .sendBtn:not(:disabled):hover {
-    background: #333;
+    background: #1d4ed8;
     transform: translateY(-1px);
 }
 
-/* Empty State */
+/* ── Empty/No chat selected ── */
 .noChatSelected {
     height: 100%;
     display: flex;
@@ -493,55 +756,47 @@
     color: #ddd;
     text-align: center;
     padding: 2rem;
+    background: #f7f8fc;
 }
 
 .emptyIcon {
     width: 80px;
     height: 80px;
-    background: #fafafa;
+    background: white;
     border-radius: 24px;
     display: flex;
     align-items: center;
     justify-content: center;
     margin-bottom: 1.5rem;
-    color: #eee;
+    color: #ddd;
+    box-shadow: 0 2px 12px rgba(0,0,0,0.06);
 }
 
 .noChatSelected h2 {
-    color: #111;
+    color: #222;
     font-weight: 800;
-    margin-bottom: 0.5rem;
-    font-size: 1.25rem;
+    margin-bottom: 0.4rem;
+    font-size: 1.2rem;
+    letter-spacing: -0.02em;
 }
 
 .noChatSelected p {
     font-weight: 500;
-    font-size: 0.9rem;
-    color: #999;
+    font-size: 0.875rem;
+    color: #aaa;
 }
 
 .mobileBackBtn {
     display: none;
 }
 
+/* ── Responsive ── */
 @media (max-width: 768px) {
-    .messagesContainer {
-        height: 100svh;
-    }
+    .messagesContainer { height: 100svh; }
+    .messagesContent { padding: 0.75rem 12px 0.5rem; }
+    .messagesHeader { margin-bottom: 0.75rem; }
+    .messagesHeader h1 { font-size: 1.25rem; }
 
-    .messagesContent {
-        padding: 0.75rem 12px 0.5rem;
-    }
-
-    .messagesHeader {
-        margin-bottom: 0.75rem;
-    }
-
-    .messagesHeader h1 {
-        font-size: 1.25rem;
-    }
-
-    /* Full-width single panel */
     .chatWrapper {
         grid-template-columns: 1fr;
         border-radius: 14px;
@@ -549,50 +804,17 @@
         overflow: hidden;
     }
 
-    /* Inbox takes full width by default */
-    .inboxSidebar {
-        width: 100%;
-        border-right: none;
-    }
+    .inboxSidebar { width: 100%; border-right: none; }
 
-    .searchBox {
-        margin: 0.5rem 0.75rem;
-        padding: 0.5rem 0.75rem;
-        border-radius: 10px;
-        gap: 0.5rem;
-    }
+    .searchBox { margin: 0.5rem 0.75rem; padding: 0.5rem 0.75rem; border-radius: 10px; gap: 0.5rem; }
+    .searchBox input { font-size: 0.78rem; }
+    .chatItem { padding: 0.7rem 0.85rem; gap: 0.65rem; }
+    .avatarWrapper { width: 40px; height: 40px; }
+    .avatarWrapper img { border-radius: 11px; }
+    .chatName { font-size: 0.82rem; }
+    .chatTime { font-size: 0.68rem; }
+    .lastMessage { font-size: 0.74rem; }
 
-    .searchBox input {
-        font-size: 0.78rem;
-    }
-
-    .chatItem {
-        padding: 0.7rem 0.85rem;
-        gap: 0.65rem;
-    }
-
-    .avatarWrapper {
-        width: 38px;
-        height: 38px;
-    }
-
-    .avatarWrapper img {
-        border-radius: 10px;
-    }
-
-    .chatName {
-        font-size: 0.8rem;
-    }
-
-    .chatTime {
-        font-size: 0.68rem;
-    }
-
-    .lastMessage {
-        font-size: 0.72rem;
-    }
-
-    /* Chat window hidden until chat is selected */
     .chatWindow {
         display: none;
         position: absolute;
@@ -602,16 +824,9 @@
         border-radius: 14px;
     }
 
-    /* When a chat is selected on mobile, show chat and hide sidebar */
-    .mobileShowChat .inboxSidebar {
-        display: none;
-    }
+    .mobileShowChat .inboxSidebar { display: none; }
+    .mobileShowChat .chatWindow { display: flex; }
 
-    .mobileShowChat .chatWindow {
-        display: flex;
-    }
-
-    /* Mobile back button */
     .mobileBackBtn {
         display: flex;
         align-items: center;
@@ -624,69 +839,23 @@
         border-radius: 8px;
         margin-right: 0.25rem;
         flex-shrink: 0;
-        transition: color 0.2s, background 0.2s;
+        transition: color 0.15s, background 0.15s;
     }
+    .mobileBackBtn:hover { background: #f5f5f5; color: #111; }
 
-    .mobileBackBtn:hover {
-        background: #f5f5f5;
-        color: #111;
-    }
+    .chatHeader { padding: 0.7rem 0.85rem; }
+    .messageArea { padding: 0.85rem 1rem; }
+    .sentRow, .receivedRow { max-width: 82%; }
 
-    .chatHeader {
-        padding: 0.7rem 0.85rem;
-        gap: 0.4rem;
-    }
+    .msgDeleteAction { opacity: 1; } /* always visible on touch */
 
-    .chatInfo img {
-        width: 34px;
-        height: 34px;
-    }
+    .inputBar { padding: 0.65rem 0.85rem; gap: 0.4rem; }
+    .inputActions button { padding: 6px; }
+    .messageTextbox { font-size: 0.85rem; padding: 0.65rem 0.85rem; min-height: 40px; }
+    .sendBtn { width: 38px; height: 38px; border-radius: 10px; }
 
-    .chatInfo h3 {
-        font-size: 0.85rem;
-    }
-
-    .messageArea {
-        padding: 1rem;
-        gap: 0.85rem;
-    }
-
-    .messageBubble {
-        max-width: 80%;
-    }
-
-    .bubbleContent {
-        padding: 0.65rem 0.9rem;
-    }
-
-    .bubbleContent p {
-        font-size: 0.85rem;
-    }
-
-    .inputBar {
-        padding: 0.75rem 0.85rem;
-        gap: 0.5rem;
-    }
-
-    .inputActions {
-        gap: 0;
-    }
-
-    .inputActions button {
-        padding: 5px;
-    }
-
-    .messageTextbox {
-        font-size: 0.75rem;
-        padding: 0.65rem 0.75rem;
-        min-height: 38px;
-    }
-
-    .sendBtn {
-        width: 38px;
-        height: 38px;
-        border-radius: 10px;
-    }
+    .emojiPicker { grid-template-columns: repeat(8, 1fr); width: 228px; left: -56px; }
+    .msgImage { max-width: 190px; }
 }
 
 @media (max-width: 360px) {
@@ -695,19 +864,17 @@
     .searchBox { margin: 0.4rem 0.6rem; padding: 0.45rem 0.65rem; }
     .searchBox input { font-size: 0.72rem; }
     .chatItem { padding: 0.6rem 0.75rem; gap: 0.55rem; }
-    .avatarWrapper { width: 34px; height: 34px; }
-    .chatName { font-size: 0.76rem; }
+    .avatarWrapper { width: 36px; height: 36px; }
+    .chatName { font-size: 0.78rem; }
     .chatTime { font-size: 0.63rem; }
-    .lastMessage { font-size: 0.68rem; }
-    .chatHeader { padding: 0.7rem 0.85rem; }
-    .chatInfo h3 { font-size: 0.85rem; }
+    .lastMessage { font-size: 0.7rem; }
     .messageArea { padding: 0.75rem; }
-    .messageBubble { max-width: 88%; }
-    .bubbleContent { padding: 0.55rem 0.75rem; }
-    .bubbleContent p { font-size: 0.82rem; }
-    .inputBar { padding: 0.6rem 0.75rem; }
-    .messageTextbox { font-size: 0.75rem; padding: 0.5rem 0.65rem; }
-    .sendBtn { width: 34px; height: 34px; }
+    .sentRow, .receivedRow { max-width: 88%; }
+    .bubbleContent { padding: 0.6rem 0.85rem; }
+    .bubbleContent p { font-size: 0.85rem; }
+    .inputBar { padding: 0.55rem 0.7rem; }
+    .messageTextbox { font-size: 0.8rem; padding: 0.55rem 0.75rem; }
+    .sendBtn { width: 36px; height: 36px; }
 }
 
 @media (max-width: 320px) {

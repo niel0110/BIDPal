@@ -18,9 +18,6 @@ function HomeInner() {
   const searchQuery = searchParams.get('q') || '';
   const sortParam   = searchParams.get('sort') || 'recent';
 
-  const [scrollProgress, setScrollProgress] = useState({ progress: 0, ratio: 0.3 });
-  const [fixedScrollProgress, setFixedScrollProgress] = useState({ progress: 0, ratio: 0.3 });
-
   const [allAuctions, setAllAuctions] = useState([]);
   const [fixedProducts, setFixedProducts] = useState([]);
   const [, setLoadingContent] = useState(true);
@@ -46,63 +43,88 @@ function HomeInner() {
         : (redirectAfterAuth.current || '/seller');
       redirectAfterAuth.current = null;
       router.replace(target);
-    } else if (!user.Fname) {
+    } else if (!user.Fname || user.kyc_status !== 'approved') {
       router.replace('/buyer/setup');
     }
   }, [user, loading, router]);
 
   const [, setLikedAuctionIds] = useState(new Set());
 
-  useEffect(() => {
-    const fetchData = async () => {
-      try {
-        const apiUrl = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:5000';
+  const CATEGORY_KEYWORDS = {
+    clothing:    ['cloth', 'shirt', 'dress', 'pants', 'top', 'wear', 'apparel', 'fashion', 'blouse', 'skirt', 'suit', 'jacket', 'coat', 'jeans'],
+    shoes:       ['shoe', 'footwear', 'sneaker', 'boot', 'sandal', 'slipper', 'heel'],
+    bags:        ['bag', 'purse', 'tote', 'pouch', 'backpack', 'luggage', 'satchel', 'handbag', 'clutch'],
+    jewelry:     ['jewel', 'necklace', 'ring', 'watch', 'bracelet', 'gem', 'earring', 'pendant', 'luxury'],
+    gadgets:     ['gadget', 'electron', 'phone', 'tablet', 'laptop', 'computer', 'camera', 'gaming', 'headphone', 'audio', 'tv', 'charger', 'cable', 'tech'],
+    appliances:  ['appliance', 'kitchen', 'laundry', 'refriger', 'vacuum', 'blender', 'oven', 'microwave'],
+    furniture:   ['furniture', 'sofa', 'bed', 'dining', 'table', 'chair', 'storage', 'couch', 'decor', 'shelf', 'cabinet'],
+    garden:      ['garden', 'plant', 'outdoor', 'lawn', 'tool', 'pot', 'soil'],
+    instruments: ['instrument', 'music', 'guitar', 'piano', 'violin', 'drum', 'vinyl', 'bass', 'keyboard'],
+  };
 
-        // Fetch auctions and fixed-price products in parallel
-        const [auctionRes, productsRes] = await Promise.all([
-          fetch(`${apiUrl}/api/auctions?limit=50`),
-          fetch(`${apiUrl}/api/products?has_price=true&sort=recent&limit=20`),
-        ]);
-        const auctionJson = await auctionRes.json();
-        const fetchedAuctions = auctionJson.data || [];
-        if (productsRes.ok) {
-          const productsJson = await productsRes.json();
-          setFixedProducts(productsJson.data || []);
-        }
+  const matchesCategory = (item, category) => {
+    if (category === 'all') return true;
+    const keywords = CATEGORY_KEYWORDS[category] || [category];
+    const haystack = [item.category, item.name, item.title].filter(Boolean).join(' ').toLowerCase();
+    return keywords.some(kw => haystack.includes(kw));
+  };
 
-        // Fetch wishlist if logged in
-        if (user?.user_id) {
-          try {
-            const wishRes = await fetch(`${apiUrl}/api/dashboard/wishlist/${user.user_id}`);
-            if (wishRes.ok) {
-              const wishData = await wishRes.json();
-              const likedIds = new Set(wishData.map(item => item.auction_id));
-              setLikedAuctionIds(likedIds);
-              
-              // Mark auctions as liked
-              setAllAuctions(fetchedAuctions.map(a => ({
-                ...a,
-                is_liked: likedIds.has(a.id)
-              })));
-            } else {
-              setAllAuctions(fetchedAuctions);
-            }
-          } catch (wishErr) {
-            console.error('Failed to fetch wishlist:', wishErr);
+  const fetchHomeData = async (category = 'all') => {
+    try {
+      const apiUrl = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:5000';
+      const catParam = category !== 'all' ? `&category=${encodeURIComponent(category)}` : '';
+
+      const [auctionRes, fixedRes] = await Promise.all([
+        fetch(`${apiUrl}/api/auctions?limit=50${catParam}`),
+        fetch(`${apiUrl}/api/auctions?sale_type=sale&limit=50${catParam}`),
+      ]);
+      const auctionJson = await auctionRes.json();
+      const fetchedAuctions = auctionJson.data || [];
+
+      // Fixed price = only explicit sale_type=sale auction listings
+      const fixedAuctionJson = fixedRes.ok ? await fixedRes.json() : { data: [] };
+      const fixedAuctionItems = (fixedAuctionJson.data || []).map(a => ({
+        products_id: a.products_id,
+        name: a.title,
+        price: a.price,
+        images: a.images?.length ? a.images.map(url => ({ image_url: url })) : [],
+        seller_name: a.seller,
+        seller_avatar: a.seller_avatar,
+        seller_id: a.seller_id,
+        category: a.category,
+      }));
+
+      const filteredFixed = category === 'all'
+        ? fixedAuctionItems
+        : fixedAuctionItems.filter(p => matchesCategory(p, category));
+      setFixedProducts(filteredFixed);
+
+      if (user?.user_id) {
+        try {
+          const wishRes = await fetch(`${apiUrl}/api/dashboard/wishlist/${user.user_id}`);
+          if (wishRes.ok) {
+            const wishData = await wishRes.json();
+            const likedIds = new Set(wishData.map(item => item.auction_id));
+            setLikedAuctionIds(likedIds);
+            setAllAuctions(fetchedAuctions.map(a => ({ ...a, is_liked: likedIds.has(a.id) })));
+          } else {
             setAllAuctions(fetchedAuctions);
           }
-        } else {
+        } catch {
           setAllAuctions(fetchedAuctions);
         }
-
-      } catch (err) {
-        // API server not reachable — show empty state silently in dev
-      } finally {
-        setLoadingContent(false);
+      } else {
+        setAllAuctions(fetchedAuctions);
       }
-    };
+    } catch {
+      // API server not reachable
+    } finally {
+      setLoadingContent(false);
+    }
+  };
 
-    fetchData();
+  useEffect(() => {
+    fetchHomeData('all');
   }, [user?.user_id]);
 
   // Fetch search results when query or sort changes
@@ -139,49 +161,15 @@ function HomeInner() {
     fetchSearch();
   }, [searchQuery, sortParam]);
 
-  const handleScroll = (e) => {
-    const { scrollLeft, scrollWidth, clientWidth } = e.target;
-    const maxScroll = scrollWidth - clientWidth;
-    setScrollProgress({
-      progress: maxScroll > 0 ? scrollLeft / maxScroll : 0,
-      ratio: Math.min(clientWidth / scrollWidth, 1),
-    });
+  const handleCategorySelect = (cat) => {
+    setSelectedCategory(cat);
+    fetchHomeData(cat);
   };
 
-  const handleFixedScroll = (e) => {
-    const { scrollLeft, scrollWidth, clientWidth } = e.target;
-    const maxScroll = scrollWidth - clientWidth;
-    setFixedScrollProgress({
-      progress: maxScroll > 0 ? scrollLeft / maxScroll : 0,
-      ratio: Math.min(clientWidth / scrollWidth, 1),
-    });
-  };
-
-  const CATEGORY_KEYWORDS = {
-    clothing: ['clothing', 'fashion', 'shirt', 'dress', 'pants', 'tops', 'jeans', 'suits', 'apparel', 'wear', 'baby clothes', 'kids clothes', 'women', 'men'],
-    shoes: ['shoes', 'shoe', 'footwear', 'sneakers', 'boots', 'sandals'],
-    bags: ['bags', 'bag', 'handbag', 'backpack', 'purse', 'luggage', 'tote'],
-    jewelry: ['jewelry', 'jewellery', 'necklace', 'ring', 'watches', 'bracelet', 'gems', 'luxury'],
-    gadgets: ['gadgets', 'electronics', 'smartphone', 'phones', 'tablet', 'laptop', 'computers', 'camera', 'gaming', 'headphone', 'tv', 'audio', 'photography'],
-    appliances: ['appliances', 'appliance', 'kitchen', 'laundry', 'refrigerator', 'vacuum'],
-    furniture: ['furniture', 'sofa', 'bed', 'dining', 'table', 'chair', 'storage', 'couch', 'decor', 'home'],
-    garden: ['garden', 'plants', 'outdoor', 'lawn', 'tools'],
-    instruments: ['instruments', 'instrument', 'music', 'guitar', 'piano', 'violin', 'drums', 'vinyl'],
-  };
-
-  const filterByCategory = (items, field = 'category') => {
-    if (selectedCategory === 'all') return items;
-    const keywords = CATEGORY_KEYWORDS[selectedCategory] || [selectedCategory];
-    return items.filter(item => {
-      const val = item[field]?.toLowerCase() || '';
-      return keywords.some(kw => val.includes(kw));
-    });
-  };
-
-  const auctions = filterByCategory(allAuctions);
-  const liveAuctions = auctions.filter(a => a.status === 'active');
-  const scheduledAuctions = auctions.filter(a => a.status === 'scheduled');
-  const filteredFixed = filterByCategory(fixedProducts);
+  // sale_type comes from backend (needs restart); fall back to detecting fixed-price by currentBid===0 with price set
+  const isBidAuction = (a) => a.sale_type !== 'sale';
+  const liveAuctions = allAuctions.filter(a => a.status === 'active' && isBidAuction(a));
+  const scheduledAuctions = allAuctions.filter(a => a.status === 'scheduled' && isBidAuction(a));
 
 
   if (loading || !user) return null;
@@ -189,7 +177,7 @@ function HomeInner() {
   return (
     <main className={styles.main}>
       <Header />
-      <CategoryNav activeId={selectedCategory} onSelect={setSelectedCategory} />
+      <CategoryNav activeId={selectedCategory} onSelect={handleCategorySelect} />
 
       {/* ── Search results view ── */}
       {searchQuery ? (
@@ -257,18 +245,12 @@ function HomeInner() {
           <HeroBanner />
 
           <section className={styles.section}>
-            <div className={styles.sectionHeader}>
+            <div className={`${styles.sectionHeader} ${styles.staticIndicator}`}>
               <h2 className={styles.sectionTitle}>
                 {selectedCategory === 'all' ? <>Live <span className={styles.redText}>Auctions</span></> : <><span className={styles.redText} style={{ textTransform: 'capitalize' }}>{selectedCategory}</span> Live</>}
               </h2>
-              <div className={styles.scrollIndicator}>
-                <div className={styles.scrollThumb} style={{
-                  width: `${scrollProgress.ratio * 100}%`,
-                  left: `${scrollProgress.progress * (100 - scrollProgress.ratio * 100)}%`,
-                }} />
-              </div>
             </div>
-            <div className={styles.horizontalScroll} onScroll={handleScroll}>
+            <div className={styles.horizontalScroll}>
               {liveAuctions.length > 0
                 ? liveAuctions.map(item => <AuctionCard key={item.id} data={item} />)
                 : <div className={styles.emptyState}>No live auctions at the moment.</div>}
@@ -288,33 +270,27 @@ function HomeInner() {
             </div>
           </section>
 
-          {filteredFixed.length > 0 && (
-            <section className={styles.section}>
-              <div className={styles.sectionHeader}>
+          <section className={styles.section}>
+              <div className={`${styles.sectionHeader} ${styles.staticIndicator}`}>
                 <h2 className={styles.sectionTitle}>
                   {selectedCategory === 'all'
-                    ? <>Fixed Price <span className={styles.redText}>Products</span></>
-                    : <><span className={styles.redText} style={{ textTransform: 'capitalize' }}>{selectedCategory}</span> Products</>}
+                    ? <>Fixed Price <span className={styles.redText}>Sale</span></>
+                    : <><span className={styles.redText} style={{ textTransform: 'capitalize' }}>{selectedCategory}</span> Fixed Price</>}
                 </h2>
-                <div className={styles.scrollIndicator}>
-                  <div className={styles.scrollThumb} style={{
-                    width: `${fixedScrollProgress.ratio * 100}%`,
-                    left: `${fixedScrollProgress.progress * (100 - fixedScrollProgress.ratio * 100)}%`,
-                  }} />
-                </div>
               </div>
-              <div className={styles.horizontalScroll} onScroll={handleFixedScroll}>
-                {filteredFixed.map(item => (
-                  <ProductCard key={item.products_id} data={{
-                    ...item,
-                    title: item.name,
-                    image: item.images?.[0]?.image_url,
-                    wishlistCount: item.wishlist_count || 0,
-                  }} />
-                ))}
+              <div className={styles.horizontalScroll}>
+                {fixedProducts.length > 0
+                  ? fixedProducts.map(item => (
+                      <ProductCard key={item.products_id} data={{
+                        ...item,
+                        title: item.name,
+                        image: item.images?.[0]?.image_url,
+                        wishlistCount: item.wishlist_count || 0,
+                      }} />
+                    ))
+                  : <div className={styles.emptyState}>No fixed price items at the moment.</div>}
               </div>
             </section>
-          )}
         </>
       )}
     </main>

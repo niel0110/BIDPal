@@ -2,23 +2,34 @@
 
 import BackButton from '@/components/BackButton';
 import { useState, useEffect, useRef, useCallback, Suspense } from 'react';
+import { createPortal } from 'react-dom';
 import {
     ChevronLeft,
     Search,
     Send,
     MoreVertical,
-    Info,
     Image as ImageIcon,
     Paperclip,
     Smile,
-    MessageCircle
+    MessageCircle,
+    Trash2,
+    Ban,
+    X,
+    Download,
+    File as FileIcon
 } from 'lucide-react';
 import { useAuth } from '@/context/AuthContext';
 import { useSearchParams, useRouter } from 'next/navigation';
 import styles from './page.module.css';
 
 const API_URL = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:5000';
-const POLL_INTERVAL = 5000; // 5 seconds
+const POLL_INTERVAL = 5000;
+
+const COMMON_EMOJIS = [
+    '😀','😂','😍','🥰','😊','😎','🤔','😢','😅','😭',
+    '👍','👎','👏','🙏','🤝','❤️','🔥','✅','⭐','💯',
+    '🎉','🎊','💬','📦','💰','🛒','📸','🤣','😤','😁'
+];
 
 function timeAgo(dateStr) {
     if (!dateStr) return '';
@@ -31,6 +42,13 @@ function timeAgo(dateStr) {
 
 function avatarFallback(e) {
     e.target.src = 'https://placehold.co/48x48?text=?';
+}
+
+function formatFileSize(bytes) {
+    if (!bytes) return '';
+    if (bytes < 1024) return `${bytes}B`;
+    if (bytes < 1024 * 1024) return `${(bytes / 1024).toFixed(1)}KB`;
+    return `${(bytes / (1024 * 1024)).toFixed(1)}MB`;
 }
 
 function MessagesPageInner() {
@@ -50,13 +68,42 @@ function MessagesPageInner() {
     const [loading, setLoading] = useState(true);
     const [messagesLoading, setMessagesLoading] = useState(false);
     const [sending, setSending] = useState(false);
+    const [uploading, setUploading] = useState(false);
     const [mobileShowChat, setMobileShowChat] = useState(false);
+    const [showEmojiPicker, setShowEmojiPicker] = useState(false);
+    const [showOptionsMenu, setShowOptionsMenu] = useState(false);
+    const [optionsMenuPos, setOptionsMenuPos] = useState({ top: 0, right: 0 });
+    const [pendingAttachment, setPendingAttachment] = useState(null); // { file, previewUrl, type, name, size }
+    const optionsTriggerRef = useRef(null);
+
     const messagesEndRef = useRef(null);
     const messageAreaRef = useRef(null);
     const pollRef = useRef(null);
     const prevMsgCount = useRef(0);
+    const fileInputRef = useRef(null);
+    const imageInputRef = useRef(null);
+    const emojiPickerRef = useRef(null);
+    const optionsMenuRef = useRef(null);
 
     const getToken = () => localStorage.getItem('bidpal_token');
+
+    // Close dropdowns on outside click
+    useEffect(() => {
+        const handler = (e) => {
+            if (emojiPickerRef.current && !emojiPickerRef.current.contains(e.target)) {
+                setShowEmojiPicker(false);
+            }
+            // options menu is fixed-position (not a DOM child of trigger), check both
+            if (
+                optionsMenuRef.current && !optionsMenuRef.current.contains(e.target) &&
+                optionsTriggerRef.current && !optionsTriggerRef.current.contains(e.target)
+            ) {
+                setShowOptionsMenu(false);
+            }
+        };
+        document.addEventListener('mousedown', handler);
+        return () => document.removeEventListener('mousedown', handler);
+    }, []);
 
     const isNearBottom = () => {
         const el = messageAreaRef.current;
@@ -73,9 +120,7 @@ function MessagesPageInner() {
         const curr = messages.length;
         prevMsgCount.current = curr;
         if (curr === 0) return;
-        // Initial load or chat switch → jump instantly
         if (prev === 0) { scrollToBottom('instant'); return; }
-        // New message arrived → smooth scroll only if already near bottom
         if (curr > prev && isNearBottom()) scrollToBottom('smooth');
     }, [messages]);
 
@@ -85,8 +130,20 @@ function MessagesPageInner() {
                 headers: { 'Authorization': `Bearer ${getToken()}` }
             });
             if (!res.ok) return;
-            const data = await res.json();
-            setChats(Array.isArray(data) ? data : []);
+            const raw = await res.json();
+            const data = Array.isArray(raw) ? raw : [];
+            setChats(prev => {
+                if (!isInitial && prev.length === data.length) {
+                    // Only re-render if unread counts or last messages differ
+                    const unchanged = prev.every((c, i) =>
+                        c.id === data[i]?.id &&
+                        c.unreadCount === data[i]?.unreadCount &&
+                        c.lastMessage === data[i]?.lastMessage
+                    );
+                    if (unchanged) return prev;
+                }
+                return data;
+            });
 
             if (isInitial) {
                 if (receiverIdParam) {
@@ -119,7 +176,6 @@ function MessagesPageInner() {
                 });
                 setSelectedChat(`pending-${receiverId}`);
             } else {
-                // Fallback: try user endpoint
                 const userRes = await fetch(`${API_URL}/api/users/${receiverId}`);
                 if (userRes.ok) {
                     const userData = await userRes.json();
@@ -136,23 +192,31 @@ function MessagesPageInner() {
         }
     };
 
-    const fetchMessages = useCallback(async (convId) => {
+    const fetchMessages = useCallback(async (convId, silent = false) => {
         if (!convId || convId.toString().startsWith('pending-')) {
             setMessages([]);
             return;
         }
-        setMessagesLoading(true);
+        if (!silent) setMessagesLoading(true);
         try {
             const res = await fetch(`${API_URL}/api/messages/${convId}`, {
                 headers: { 'Authorization': `Bearer ${getToken()}` }
             });
             if (!res.ok) return;
-            const data = await res.json();
-            setMessages(Array.isArray(data) ? data : []);
+            const incoming = await res.json();
+            const data = Array.isArray(incoming) ? incoming : [];
+            setMessages(prev => {
+                // Skip re-render if nothing changed (same count + same last message id)
+                if (
+                    prev.length === data.length &&
+                    (data.length === 0 || prev[prev.length - 1]?.message_id === data[data.length - 1]?.message_id)
+                ) return prev;
+                return data;
+            });
         } catch (err) {
             console.error('Fetch messages error:', err);
         } finally {
-            setMessagesLoading(false);
+            if (!silent) setMessagesLoading(false);
         }
     }, []);
 
@@ -163,41 +227,83 @@ function MessagesPageInner() {
                 method: 'PATCH',
                 headers: { 'Authorization': `Bearer ${getToken()}` }
             });
-            // Update local unread count
             setChats(prev => prev.map(c => c.id === convId ? { ...c, unreadCount: 0 } : c));
         } catch (err) {}
     }, []);
 
+    const sendMessageRequest = async ({ convId, receiverId, text, attachmentUrl, attachmentType, attachmentName, attachmentSize }) => {
+        const isPending = convId?.toString().startsWith('pending-');
+        const res = await fetch(`${API_URL}/api/messages/send`, {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json',
+                'Authorization': `Bearer ${getToken()}`
+            },
+            body: JSON.stringify({
+                conversationId: isPending ? null : convId,
+                receiverId: isPending ? receiverId : undefined,
+                message: text || '',
+                attachment_url: attachmentUrl,
+                attachment_type: attachmentType,
+                attachment_name: attachmentName,
+                attachment_size: attachmentSize
+            })
+        });
+        return res;
+    };
+
     const handleSendMessage = async () => {
-        if (!messageInput.trim() || !selectedChat || sending) return;
-        if (!isSeller && !user?.is_verified) return; // unverified buyers cannot send messages
+        const hasText = messageInput.trim();
+        const hasAttachment = !!pendingAttachment;
+        if (!hasText && !hasAttachment) return;
+        if (!selectedChat || sending) return;
+        if (!isSeller && !user?.is_verified) return;
+
         const msg = messageInput.trim();
         setMessageInput('');
         setSending(true);
+
+        let attachmentUrl = null, attachmentType = null, attachmentName = null, attachmentSize = null;
+
         try {
+            // Upload staged attachment first if present
+            if (hasAttachment) {
+                setUploading(true);
+                const formData = new FormData();
+                formData.append('file', pendingAttachment.file);
+                const uploadRes = await fetch(`${API_URL}/api/messages/upload`, {
+                    method: 'POST',
+                    headers: { 'Authorization': `Bearer ${getToken()}` },
+                    body: formData
+                });
+                if (!uploadRes.ok) {
+                    let errMsg = 'Upload failed';
+                    try { const e = await uploadRes.json(); errMsg = e.error || errMsg; } catch {}
+                    throw new Error(errMsg);
+                }
+                const uploaded = await uploadRes.json();
+                attachmentUrl = uploaded.url;
+                attachmentType = uploaded.type;
+                attachmentName = uploaded.name;
+                attachmentSize = uploaded.size;
+                setPendingAttachment(null);
+                setUploading(false);
+            }
+
             const isPending = selectedChat.toString().startsWith('pending-');
-            const res = await fetch(`${API_URL}/api/messages/send`, {
-                method: 'POST',
-                headers: {
-                    'Content-Type': 'application/json',
-                    'Authorization': `Bearer ${getToken()}`
-                },
-                body: JSON.stringify({
-                    conversationId: isPending ? null : selectedChat,
-                    receiverId: isPending ? pendingReceiver?.id : undefined,
-                    message: msg
-                })
+            const res = await sendMessageRequest({
+                convId: selectedChat,
+                receiverId: isPending ? pendingReceiver?.id : undefined,
+                text: msg,
+                attachmentUrl,
+                attachmentType,
+                attachmentName,
+                attachmentSize
             });
             if (res.ok) {
                 const newMsg = await res.json();
-                // If was pending, refresh conversations to get real convId
                 if (isPending) {
-                    await fetchConversations(false);
-                    const freshRes = await fetch(`${API_URL}/api/messages`, {
-                        headers: { 'Authorization': `Bearer ${getToken()}` }
-                    });
-                    const freshData = await freshRes.json();
-                    setChats(Array.isArray(freshData) ? freshData : []);
+                    const freshData = await refreshChats();
                     const found = freshData.find(c => c.otherUser?.id === pendingReceiver?.id);
                     if (found) {
                         setSelectedChat(found.id);
@@ -213,8 +319,84 @@ function MessagesPageInner() {
             }
         } catch (err) {
             console.error('Send message error:', err);
+            setUploading(false);
         } finally {
             setSending(false);
+        }
+    };
+
+    const refreshChats = async () => {
+        const freshRes = await fetch(`${API_URL}/api/messages`, {
+            headers: { 'Authorization': `Bearer ${getToken()}` }
+        });
+        const freshData = freshRes.ok ? await freshRes.json() : [];
+        setChats(Array.isArray(freshData) ? freshData : []);
+        return Array.isArray(freshData) ? freshData : [];
+    };
+
+    const handleFileSelect = (file) => {
+        if (!file) return;
+        const isImage = file.type.startsWith('image/');
+        const previewUrl = isImage ? URL.createObjectURL(file) : null;
+        setPendingAttachment({ file, previewUrl, type: isImage ? 'image' : 'file', name: file.name, size: file.size });
+        if (fileInputRef.current) fileInputRef.current.value = '';
+        if (imageInputRef.current) imageInputRef.current.value = '';
+    };
+
+    const handleClearPendingAttachment = () => {
+        if (pendingAttachment?.previewUrl) URL.revokeObjectURL(pendingAttachment.previewUrl);
+        setPendingAttachment(null);
+    };
+
+    const handleDeleteMessage = async (msg) => {
+        try {
+            const sentAt = encodeURIComponent(msg.sent_at);
+            const res = await fetch(`${API_URL}/api/messages/${selectedChat}/messages/${sentAt}`, {
+                method: 'DELETE',
+                headers: { 'Authorization': `Bearer ${getToken()}` }
+            });
+            if (res.ok) {
+                setMessages(prev => prev.filter(m => m.message_id !== msg.message_id));
+            }
+        } catch (err) {
+            console.error('Delete message error:', err);
+        }
+    };
+
+    const handleDeleteConversation = async () => {
+        setShowOptionsMenu(false);
+        if (!confirm('Delete this conversation? It will be removed from your inbox.')) return;
+        try {
+            await fetch(`${API_URL}/api/messages/${selectedChat}`, {
+                method: 'DELETE',
+                headers: { 'Authorization': `Bearer ${getToken()}` }
+            });
+            setChats(prev => prev.filter(c => c.id !== selectedChat));
+            setSelectedChat(chats.find(c => c.id !== selectedChat)?.id || null);
+            setMessages([]);
+            setMobileShowChat(false);
+        } catch (err) {
+            console.error('Delete conversation error:', err);
+        }
+    };
+
+    const handleBlockUser = async () => {
+        const targetId = currentChat?.otherUser?.id;
+        const targetName = getChatDisplayName(currentChat);
+        setShowOptionsMenu(false);
+        if (!targetId) return;
+        if (!confirm(`Block ${targetName}? They won't be able to send you new messages.`)) return;
+        try {
+            await fetch(`${API_URL}/api/messages/block`, {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json',
+                    'Authorization': `Bearer ${getToken()}`
+                },
+                body: JSON.stringify({ targetUserId: targetId })
+            });
+        } catch (err) {
+            console.error('Block error:', err);
         }
     };
 
@@ -225,24 +407,21 @@ function MessagesPageInner() {
         }
     };
 
-    // Initial load
     useEffect(() => {
         if (user) fetchConversations(true);
     }, [user]);
 
-    // Polling for new messages
     useEffect(() => {
         if (!user) return;
         pollRef.current = setInterval(() => {
             fetchConversations(false);
             if (selectedChat && !selectedChat.toString().startsWith('pending-')) {
-                fetchMessages(selectedChat);
+                fetchMessages(selectedChat, true); // silent: no loading spinner on polls
             }
         }, POLL_INTERVAL);
         return () => clearInterval(pollRef.current);
     }, [user, selectedChat, fetchConversations, fetchMessages]);
 
-    // Fetch messages when conversation selected
     useEffect(() => {
         if (selectedChat) {
             fetchMessages(selectedChat);
@@ -259,11 +438,8 @@ function MessagesPageInner() {
         } : null);
 
     const getChatDisplayName = (chat) => {
-        if (isSeller) {
-            // Sellers see buyer's real name, not store name
-            return chat.otherUser?.realName || chat.otherUser?.name || chat.name;
-        }
-        // Buyers see seller's store name
+        if (!chat) return '';
+        if (isSeller) return chat.otherUser?.realName || chat.otherUser?.name || chat.name;
         return chat.otherUser?.storeName || chat.otherUser?.name || chat.name;
     };
 
@@ -276,10 +452,30 @@ function MessagesPageInner() {
         setSelectedChat(chatId);
         markAsRead(chatId);
         setMobileShowChat(true);
+        setShowOptionsMenu(false);
+        setShowEmojiPicker(false);
     };
+
+    const isPendingChat = selectedChat?.toString().startsWith('pending-');
 
     return (
         <div className={styles.messagesContainer}>
+            {/* Hidden file inputs */}
+            <input
+                ref={fileInputRef}
+                type="file"
+                style={{ display: 'none' }}
+                accept="*/*"
+                onChange={(e) => handleFileSelect(e.target.files?.[0])}
+            />
+            <input
+                ref={imageInputRef}
+                type="file"
+                style={{ display: 'none' }}
+                accept="image/*"
+                onChange={(e) => handleFileSelect(e.target.files?.[0])}
+            />
+
             <div className={styles.messagesContent}>
                 <header className={styles.messagesHeader}>
                     <BackButton label="Back" />
@@ -287,7 +483,7 @@ function MessagesPageInner() {
                 </header>
 
                 <div className={`${styles.chatWrapper} ${mobileShowChat ? styles.mobileShowChat : ''}`}>
-                    {/* Sidebar / Inbox */}
+                    {/* Sidebar */}
                     <aside className={styles.inboxSidebar}>
                         <div className={styles.searchBox}>
                             <Search size={18} />
@@ -311,7 +507,7 @@ function MessagesPageInner() {
                                         >
                                             <div className={styles.avatarWrapper}>
                                                 <img
-                                                    src={chat.otherUser?.avatar || chat.otherUser?.Avatar || chat.avatar || 'https://placehold.co/48x48?text=?'}
+                                                    src={chat.otherUser?.avatar || chat.avatar || 'https://placehold.co/48x48?text=?'}
                                                     alt={getChatDisplayName(chat)}
                                                     onError={avatarFallback}
                                                 />
@@ -366,7 +562,7 @@ function MessagesPageInner() {
                         </div>
                     </aside>
 
-                    {/* Chat Area */}
+                    {/* Chat Window */}
                     <main className={styles.chatWindow}>
                         {currentChat ? (
                             <>
@@ -393,7 +589,7 @@ function MessagesPageInner() {
                                             title="View profile"
                                         >
                                             <img
-                                                src={currentChat.otherUser?.avatar || currentChat.otherUser?.Avatar || currentChat.avatar || 'https://placehold.co/36x36?text=?'}
+                                                src={currentChat.otherUser?.avatar || currentChat.avatar || 'https://placehold.co/36x36?text=?'}
                                                 alt={getChatDisplayName(currentChat)}
                                                 onError={avatarFallback}
                                             />
@@ -404,8 +600,22 @@ function MessagesPageInner() {
                                         </div>
                                     </div>
                                     <div className={styles.chatActions}>
-                                        <button title="Info"><Info size={20} /></button>
-                                        <button title="Options"><MoreVertical size={20} /></button>
+                                        <button
+                                            ref={optionsTriggerRef}
+                                            title="Options"
+                                            onClick={() => {
+                                                if (optionsTriggerRef.current) {
+                                                    const rect = optionsTriggerRef.current.getBoundingClientRect();
+                                                    setOptionsMenuPos({
+                                                        top: rect.bottom + 6,
+                                                        right: window.innerWidth - rect.right
+                                                    });
+                                                }
+                                                setShowOptionsMenu(v => !v);
+                                            }}
+                                        >
+                                            <MoreVertical size={20} />
+                                        </button>
                                     </div>
                                 </header>
 
@@ -424,8 +634,15 @@ function MessagesPageInner() {
                                             {messages.map((msg, i) => {
                                                 const isOwn = msg.sender_id === user?.user_id;
                                                 const prevMsg = messages[i - 1];
+                                                const nextMsg = messages[i + 1];
                                                 const showDate = !prevMsg ||
                                                     new Date(msg.sent_at).toDateString() !== new Date(prevMsg.sent_at).toDateString();
+                                                const sameAsPrev = prevMsg && prevMsg.sender_id === msg.sender_id &&
+                                                    !showDate && (new Date(msg.sent_at) - new Date(prevMsg.sent_at)) < 120000;
+                                                const sameAsNext = nextMsg && nextMsg.sender_id === msg.sender_id &&
+                                                    (new Date(nextMsg.sent_at) - new Date(msg.sent_at)) < 120000;
+                                                const hasAttachment = msg.attachment?.url;
+                                                const isImage = msg.attachment?.type === 'image';
                                                 return (
                                                     <div key={msg.message_id}>
                                                         {showDate && (
@@ -433,12 +650,46 @@ function MessagesPageInner() {
                                                                 {new Date(msg.sent_at).toLocaleDateString([], { weekday: 'long', month: 'long', day: 'numeric' })}
                                                             </div>
                                                         )}
-                                                        <div className={`${styles.messageBubble} ${isOwn ? styles.sent : styles.received}`}>
-                                                            <div className={styles.bubbleContent}>
-                                                                <p>{msg.body}</p>
-                                                                <span className={styles.msgTime}>
-                                                                    {new Date(msg.sent_at).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
-                                                                </span>
+                                                        <div className={`${styles.messageRow} ${isOwn ? styles.sentRow : styles.receivedRow} ${sameAsPrev ? styles.grouped : ''}`}>
+                                                            {/* Side delete — only for own messages, revealed on hover */}
+                                                            {isOwn && (
+                                                                <button
+                                                                    className={styles.msgDeleteAction}
+                                                                    title="Delete message"
+                                                                    onClick={() => handleDeleteMessage(msg)}
+                                                                >
+                                                                    <Trash2 size={14} />
+                                                                </button>
+                                                            )}
+                                                            <div className={`${styles.messageBubble} ${isOwn ? styles.sent : styles.received} ${sameAsPrev && isOwn ? styles.sentGrouped : ''} ${sameAsPrev && !isOwn ? styles.receivedGrouped : ''} ${sameAsNext && isOwn ? styles.sentGroupedTop : ''} ${sameAsNext && !isOwn ? styles.receivedGroupedTop : ''}`}>
+                                                                <div className={styles.bubbleContent}>
+                                                                    {hasAttachment && isImage && (
+                                                                        <img
+                                                                            src={msg.attachment.url}
+                                                                            alt={msg.attachment.name || 'Image'}
+                                                                            className={styles.msgImage}
+                                                                            onClick={() => window.open(msg.attachment.url, '_blank')}
+                                                                        />
+                                                                    )}
+                                                                    {hasAttachment && !isImage && (
+                                                                        <a
+                                                                            href={msg.attachment.url}
+                                                                            target="_blank"
+                                                                            rel="noopener noreferrer"
+                                                                            className={styles.msgFile}
+                                                                        >
+                                                                            <Download size={14} />
+                                                                            <span className={styles.msgFileName}>{msg.attachment.name || 'Attachment'}</span>
+                                                                            {msg.attachment.size > 0 && (
+                                                                                <span className={styles.msgFileSize}>{formatFileSize(msg.attachment.size)}</span>
+                                                                            )}
+                                                                        </a>
+                                                                    )}
+                                                                    {msg.body && <p>{msg.body}</p>}
+                                                                    <span className={styles.msgTime}>
+                                                                        {new Date(msg.sent_at).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
+                                                                    </span>
+                                                                </div>
                                                             </div>
                                                         </div>
                                                     </div>
@@ -458,27 +709,92 @@ function MessagesPageInner() {
                                         </div>
                                     </footer>
                                 ) : (
-                                    <footer className={styles.inputBar}>
-                                        <div className={styles.inputActions}>
-                                            <button title="Attach file"><Paperclip size={20} /></button>
-                                            <button title="Send image"><ImageIcon size={20} /></button>
-                                            <button title="Emoji"><Smile size={20} /></button>
+                                    <footer className={styles.inputFooter}>
+                                        {/* Staged attachment preview */}
+                                        {pendingAttachment && (
+                                            <div className={styles.pendingAttachmentBar}>
+                                                {pendingAttachment.type === 'image' ? (
+                                                    <img
+                                                        src={pendingAttachment.previewUrl}
+                                                        alt={pendingAttachment.name}
+                                                        className={styles.pendingAttachmentThumb}
+                                                    />
+                                                ) : (
+                                                    <div className={styles.pendingAttachmentIcon}>
+                                                        <FileIcon size={22} />
+                                                    </div>
+                                                )}
+                                                <div className={styles.pendingAttachmentInfo}>
+                                                    <div className={styles.pendingAttachmentName}>{pendingAttachment.name}</div>
+                                                    <div className={styles.pendingAttachmentSize}>{formatFileSize(pendingAttachment.size)}</div>
+                                                </div>
+                                                <button
+                                                    className={styles.pendingAttachmentRemove}
+                                                    onClick={handleClearPendingAttachment}
+                                                    title="Remove attachment"
+                                                >
+                                                    <X size={13} />
+                                                </button>
+                                            </div>
+                                        )}
+                                        <div className={styles.inputBar}>
+                                            <div className={styles.inputActions}>
+                                                <button
+                                                    title="Attach file"
+                                                    disabled={uploading}
+                                                    onClick={() => fileInputRef.current?.click()}
+                                                >
+                                                    <Paperclip size={20} />
+                                                </button>
+                                                <button
+                                                    title="Send image"
+                                                    disabled={uploading}
+                                                    onClick={() => imageInputRef.current?.click()}
+                                                >
+                                                    <ImageIcon size={20} />
+                                                </button>
+                                                <div className={styles.emojiWrapper} ref={emojiPickerRef}>
+                                                    <button
+                                                        title="Emoji"
+                                                        onClick={() => setShowEmojiPicker(v => !v)}
+                                                    >
+                                                        <Smile size={20} />
+                                                    </button>
+                                                    {showEmojiPicker && (
+                                                        <div className={styles.emojiPicker}>
+                                                            {COMMON_EMOJIS.map(emoji => (
+                                                                <button
+                                                                    key={emoji}
+                                                                    className={styles.emojiBtn}
+                                                                    onClick={() => {
+                                                                        setMessageInput(prev => prev + emoji);
+                                                                        setShowEmojiPicker(false);
+                                                                    }}
+                                                                >
+                                                                    {emoji}
+                                                                </button>
+                                                            ))}
+                                                        </div>
+                                                    )}
+                                                </div>
+                                            </div>
+                                            <textarea
+                                                className={styles.messageTextbox}
+                                                placeholder={uploading ? 'Uploading…' : 'Type a message…'}
+                                                value={messageInput}
+                                                onChange={(e) => setMessageInput(e.target.value)}
+                                                onKeyDown={handleKeyDown}
+                                                rows={1}
+                                                disabled={uploading}
+                                            />
+                                            <button
+                                                className={styles.sendBtn}
+                                                disabled={(!messageInput.trim() && !pendingAttachment) || sending || uploading}
+                                                onClick={handleSendMessage}
+                                            >
+                                                <Send size={18} />
+                                            </button>
                                         </div>
-                                        <textarea
-                                            className={styles.messageTextbox}
-                                            placeholder="Type a message..."
-                                            value={messageInput}
-                                            onChange={(e) => setMessageInput(e.target.value)}
-                                            onKeyDown={handleKeyDown}
-                                            rows={1}
-                                        />
-                                        <button
-                                            className={styles.sendBtn}
-                                            disabled={!messageInput.trim() || sending}
-                                            onClick={handleSendMessage}
-                                        >
-                                            <Send size={18} />
-                                        </button>
                                     </footer>
                                 )}
                             </>
@@ -496,6 +812,31 @@ function MessagesPageInner() {
                     </main>
                 </div>
             </div>
+
+            {/* Options menu rendered via portal — escapes ALL ancestor overflow/clip contexts */}
+            {showOptionsMenu && !isPendingChat && createPortal(
+                <div
+                    ref={optionsMenuRef}
+                    className={styles.optionsMenu}
+                    style={{ top: optionsMenuPos.top, right: optionsMenuPos.right }}
+                >
+                    <button
+                        className={`${styles.optionsItem} ${styles.optionsDanger}`}
+                        onClick={handleBlockUser}
+                    >
+                        <Ban size={15} />
+                        Block {isSeller ? 'Buyer' : 'Seller'}
+                    </button>
+                    <button
+                        className={`${styles.optionsItem} ${styles.optionsDanger}`}
+                        onClick={handleDeleteConversation}
+                    >
+                        <Trash2 size={15} />
+                        Delete Conversation
+                    </button>
+                </div>,
+                document.body
+            )}
         </div>
     );
 }

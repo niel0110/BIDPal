@@ -26,12 +26,13 @@ export const getDashboardSummary = async (req, res) => {
     // Get viewer count function from app.locals (set in server.js)
     const getViewerCount = req.app.locals.getViewerCount || (() => 0);
 
-    // 1. Get Active Auction (selling)
+    // 1. Get Active Auction (selling — bid auctions only, not fixed price)
     const { data: activeAuction, error: activeError } = await supabase
       .from('Auctions')
       .select('*')
       .eq('seller_id', final_seller_id)
       .eq('status', 'active')
+      .or('sale_type.eq.bid,sale_type.is.null')
       .maybeSingle();
 
     if (activeError) throw activeError;
@@ -88,12 +89,13 @@ export const getDashboardSummary = async (req, res) => {
         }
     }
 
-    // 2. Get Auction Queue (scheduled)
+    // 2. Get Auction Queue (scheduled bid auctions only — exclude fixed price sale_type='sale')
     const { data: queueAuctions, error: queueError } = await supabase
       .from('Auctions')
       .select('*')
       .eq('seller_id', final_seller_id)
       .eq('status', 'scheduled')
+      .or('sale_type.eq.bid,sale_type.is.null')
       .order('start_time', { ascending: true });
 
     if (queueError) throw queueError;

@@ -145,7 +145,7 @@ export const getSellerAuctions = async (req, res) => {
 // Get all active/scheduled auctions for discovery
 export const getAllAuctions = async (req, res) => {
   try {
-    const { status, limit = 50, offset = 0 } = req.query;
+    const { status, sale_type, seller_id, limit = 50, offset = 0, category, search } = req.query;
 
     let query = supabase
       .from('Auctions')
@@ -161,6 +161,17 @@ export const getAllAuctions = async (req, res) => {
         )
       `)
       .order('start_time', { ascending: true });
+
+    // sale_type is derived from buy_now_price (no DB column); filter here if requested
+    if (sale_type === 'sale') {
+      query = query.gt('buy_now_price', 0);
+    } else if (sale_type === 'bid') {
+      query = query.or('buy_now_price.eq.0,buy_now_price.is.null');
+    }
+
+    if (seller_id) {
+      query = query.eq('seller_id', seller_id);
+    }
 
     if (status) {
       query = query.eq('status', status);
@@ -207,10 +218,16 @@ export const getAllAuctions = async (req, res) => {
         const bids_count = bidCountMap[auction.auction_id] || 0;
         const reminder_count = reminderCountMap[auction.auction_id] || 0;
 
+        const categoryStr = (productData?.categories || [])
+          .map(c => c.category_name || '').join(' ');
+
         return {
           id: auction.auction_id,
+          products_id: auction.products_id,
           seller_id: auction.seller_id,
+          sale_type: auction.buy_now_price > 0 ? 'sale' : 'bid',
           title: productData?.name || 'Unknown Product',
+          category: categoryStr,
           price: auction.buy_now_price || auction.reserve_price || 0,
           currentBid: auction.current_price || auction.reserve_price || 0,
           seller: auction.Seller?.store_name || 'Unknown Seller',
@@ -226,7 +243,37 @@ export const getAllAuctions = async (req, res) => {
       })
     );
 
-    res.json({ count: transformedData.length, data: transformedData });
+    const CATEGORY_KEYWORDS = {
+      clothing:    ['cloth', 'shirt', 'dress', 'pants', 'top', 'wear', 'apparel', 'fashion', 'blouse', 'skirt', 'suit', 'jacket', 'coat', 'jeans'],
+      shoes:       ['shoe', 'footwear', 'sneaker', 'boot', 'sandal', 'slipper', 'heel'],
+      bags:        ['bag', 'purse', 'tote', 'pouch', 'backpack', 'luggage', 'satchel', 'handbag', 'clutch'],
+      jewelry:     ['jewel', 'necklace', 'ring', 'watch', 'bracelet', 'gem', 'earring', 'pendant', 'luxury'],
+      gadgets:     ['gadget', 'electron', 'phone', 'tablet', 'laptop', 'computer', 'camera', 'gaming', 'headphone', 'audio', 'tv', 'charger', 'cable', 'tech'],
+      appliances:  ['appliance', 'kitchen', 'laundry', 'refriger', 'vacuum', 'blender', 'oven', 'microwave'],
+      furniture:   ['furniture', 'sofa', 'bed', 'dining', 'table', 'chair', 'storage', 'couch', 'decor', 'shelf', 'cabinet'],
+      garden:      ['garden', 'plant', 'outdoor', 'lawn', 'tool', 'pot', 'soil'],
+      instruments: ['instrument', 'music', 'guitar', 'piano', 'violin', 'drum', 'vinyl', 'bass', 'keyboard'],
+    };
+
+    // Filter by category and/or search on the assembled data
+    let result = transformedData;
+    if (category && category !== 'all') {
+      const keywords = CATEGORY_KEYWORDS[category.toLowerCase()] || [category.toLowerCase()];
+      result = result.filter(a => {
+        const cat = (a.category || a.title || '').toLowerCase();
+        return keywords.some(kw => cat.includes(kw));
+      });
+    }
+    if (search) {
+      const q = search.toLowerCase();
+      result = result.filter(a =>
+        a.title?.toLowerCase().includes(q) ||
+        a.seller?.toLowerCase().includes(q) ||
+        a.category?.toLowerCase().includes(q)
+      );
+    }
+
+    res.json({ count: result.length, data: result });
   } catch (err) {
     res.status(500).json({ error: err.message });
   }
@@ -235,18 +282,19 @@ export const getAllAuctions = async (req, res) => {
 // Schedule a new live auction
 export const scheduleAuction = async (req, res) => {
   try {
-    const { 
-      product_id, 
+    const {
+      product_id,
       user_id, // Get seller_id from user_id
       seller_id,
-      sale_type, 
-      starting_bid, 
-      buy_now_price, 
-      start_date, 
+      sale_type,
+      starting_bid,
+      buy_now_price,
+      start_date,
       start_time,
       end_date,
       end_time,
-      timezone = 'UTC' 
+      timezone = 'UTC',
+      bid_increment,
     } = req.body;
 
     // Validation
@@ -338,8 +386,8 @@ export const scheduleAuction = async (req, res) => {
           end_time: end_timestamp,
           buy_now_price: !isBid ? (buy_now_price || 0) : 0,
           reserve_price: isBid ? (starting_bid || 0) : 0,
-          incremental_bid_step: isBid ? 5.00 : 0, // Default placeholder step
-          status: 'scheduled',
+          incremental_bid_step: isBid ? (parseFloat(bid_increment) || 50) : 0,
+          status: isBid ? 'scheduled' : 'active',
           timezone: timezone
         }
       ])

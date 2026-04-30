@@ -30,6 +30,8 @@ function BuyerSetupInner() {
     const router = useRouter();
     const [step, setStep] = useState(1);
     const [isResubmission, setIsResubmission] = useState(false);
+    const [isPending, setIsPending] = useState(false);
+    const [checking, setChecking] = useState(false);
     const [initLoading, setInitLoading] = useState(true);
 
     // ── Detect rejection / already-profiled buyer on mount ────────────────────
@@ -43,11 +45,12 @@ function BuyerSetupInner() {
             .then(r => r.json())
             .then(data => {
                 if (data.kyc_status === 'approved') {
+                    updateUser({ kyc_status: 'approved' });
                     router.replace('/');
                     return;
                 }
                 if (data.kyc_status === 'pending') {
-                    router.replace('/');
+                    setIsPending(true);
                     return;
                 }
                 if (data.kyc_status === 'rejected') {
@@ -163,11 +166,37 @@ function BuyerSetupInner() {
             if (!res.ok) throw new Error(data.error || 'Failed to submit ID.');
 
             updateUser({ kyc_status: 'pending' });
-            router.replace('/');
+            setIsPending(true);
         } catch (err) {
             setKycError(err.message);
         } finally {
             setKycSubmitting(false);
+        }
+    };
+
+    // ── Re-check verification status (for pending screen) ────────────────
+    const handleCheckStatus = async () => {
+        if (!user?.user_id) return;
+        setChecking(true);
+        const token = localStorage.getItem('bidpal_token');
+        try {
+            const r = await fetch(`${apiUrl}/api/users/${user.user_id}`, {
+                headers: { ...(token && { Authorization: `Bearer ${token}` }) },
+            });
+            const data = await r.json();
+            if (data.kyc_status === 'approved') {
+                updateUser({ kyc_status: 'approved' });
+                router.replace('/');
+            } else if (data.kyc_status === 'rejected') {
+                updateUser({ kyc_status: 'rejected' });
+                setIsPending(false);
+                setIsResubmission(true);
+                setStep(2);
+            }
+        } catch {
+            // non-critical — stay on pending screen
+        } finally {
+            setChecking(false);
         }
     };
 
@@ -221,6 +250,43 @@ function BuyerSetupInner() {
                 <div className={styles.mobileLogo}><Logo /></div>
 
                 <div className={styles.card}>
+                    {/* ── Pending verification screen ── */}
+                    {isPending ? (
+                        <div style={{ textAlign: 'center', padding: '1.5rem 0' }}>
+                            <div style={{ fontSize: '2.5rem', marginBottom: '0.75rem' }}>⏳</div>
+                            <h1 className={styles.title} style={{ textAlign: 'center', marginBottom: '0.5rem' }}>
+                                Verification <span>Under Review</span>
+                            </h1>
+                            <p className={styles.sub} style={{ textAlign: 'center', marginBottom: '1.5rem' }}>
+                                Your ID has been submitted and is being reviewed by our team.
+                                This typically takes <strong>24–48 hours</strong>. You'll receive a
+                                notification once your account is approved.
+                            </p>
+                            <div style={{ display: 'flex', flexDirection: 'column', gap: '0.5rem', marginBottom: '1.5rem', textAlign: 'left', background: '#fafafa', border: '1.5px solid #f0f0f0', borderRadius: 10, padding: '0.9rem 1rem' }}>
+                                {[
+                                    { icon: '✅', label: 'Documents received' },
+                                    { icon: '⏳', label: 'Under review by BIDPal team' },
+                                    { icon: '○', label: 'Approved — full access granted' },
+                                ].map(({ icon, label }) => (
+                                    <div key={label} style={{ display: 'flex', alignItems: 'center', gap: '0.6rem', fontSize: '0.82rem', color: '#444', fontWeight: 500 }}>
+                                        <span style={{ width: 20, textAlign: 'center' }}>{icon}</span>
+                                        {label}
+                                    </div>
+                                ))}
+                            </div>
+                            <button
+                                className={styles.btn}
+                                onClick={handleCheckStatus}
+                                disabled={checking}
+                            >
+                                {checking ? 'Checking…' : 'Check Verification Status'}
+                            </button>
+                            <p style={{ fontSize: '0.72rem', color: '#9ca3af', marginTop: '0.75rem' }}>
+                                Already notified of approval? Tap "Check Verification Status" above.
+                            </p>
+                        </div>
+                    ) : (
+                    <>
                     {/* Step progress bar */}
                     <div className={styles.stepBar}>
                         <div className={`${styles.stepNode} ${styles.stepDone}`}>
@@ -384,15 +450,9 @@ function BuyerSetupInner() {
                                 onVerify={handleKycVerify}
                                 submitting={kycSubmitting}
                             />
-
-                            <button
-                                type="button"
-                                className={styles.skipBtn}
-                                onClick={() => router.replace('/')}
-                            >
-                                Skip for now — I'll verify later
-                            </button>
                         </>
+                    )}
+                    </>
                     )}
                 </div>
             </div>

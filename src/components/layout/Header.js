@@ -32,7 +32,8 @@ export default function Header() {
       if (q) {
         router.push(`/?q=${encodeURIComponent(q)}&sort=${activeSort}`, { scroll: false });
       } else {
-        router.push(`/?sort=${activeSort}`, { scroll: false });
+        // No search query — keep URL clean
+        router.replace('/', { scroll: false });
       }
     }, 350);
     return () => clearTimeout(debounceRef.current);
@@ -50,8 +51,10 @@ export default function Header() {
     setActiveSort(sortId);
     setShowFilter(false);
     const q = searchQuery.trim();
-    const base = q ? `/?q=${encodeURIComponent(q)}&` : `/?`;
-    router.push(`${base}sort=${sortId}`);
+    if (q) {
+      router.push(`/?q=${encodeURIComponent(q)}&sort=${sortId}`);
+    }
+    // No search active — sort will apply when user next searches
   };
 
   const handleSearch = () => {
@@ -235,6 +238,14 @@ export default function Header() {
                 <span>Cart</span>
               </Link>
             </>
+          )}
+
+          {/* Orders link for sellers beside notifications */}
+          {user && user.role?.toLowerCase() === 'seller' && (
+            <Link href="/seller/orders" className={styles.navItem}>
+              <ClipboardList size={18} className={styles.navIcon} color="#673AB7" />
+              <span>Orders</span>
+            </Link>
           )}
 
           {/* Notification Bell - Shows for all logged-in users */}

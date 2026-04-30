@@ -140,20 +140,18 @@ export default function AuctionCard({ data }) {
                     </div>
                 </div>
 
-                {/* Thumbnail strip — always render if images exist for height consistency */}
-                {allImages.length >= 1 && (
-                    <div className={styles.thumbStrip} onClick={e => e.stopPropagation()}>
-                        {allImages.map((img, i) => (
-                            <button
-                                key={i}
-                                className={`${styles.thumb} ${activeImg === img ? styles.thumbActive : ''}`}
-                                onClick={e => { e.stopPropagation(); setActiveImg(img); }}
-                            >
-                                <img src={img} alt={`${data.title} ${i + 1}`} />
-                            </button>
-                        ))}
-                    </div>
-                )}
+                {/* Thumbnail strip — always rendered to keep card height uniform */}
+                <div className={styles.thumbStrip} onClick={e => e.stopPropagation()}>
+                    {allImages.map((img, i) => (
+                        <button
+                            key={i}
+                            className={`${styles.thumb} ${activeImg === img ? styles.thumbActive : ''}`}
+                            onClick={e => { e.stopPropagation(); setActiveImg(img); }}
+                        >
+                            <img src={img} alt={`${data.title} ${i + 1}`} />
+                        </button>
+                    ))}
+                </div>
 
                 {/* Footer */}
                 <div className={styles.footer}>
@@ -182,17 +180,14 @@ export default function AuctionCard({ data }) {
                     </div>
 
                     <div className={styles.itemInfo}>
-                        <div className={styles.titleRow}>
-                            <span className={styles.titleText}>{data.title}</span>
-                            <span className={styles.priceText}>₱{Number(data.price || 0).toLocaleString('en-PH')}</span>
+                        <span className={styles.titleText}>{data.title}</span>
+                        <div className={styles.bidRow}>
+                            <span className={styles.bidLabel}>Starting Bid</span>
+                            <span className={styles.bidValue}>₱{Number(data.price || 0).toLocaleString('en-PH')}</span>
                         </div>
                         <div className={styles.bidRow}>
-                            <span>
-                                {data.status === 'scheduled'
-                                    ? `Starting Bid`
-                                    : `Current Bid (${data.bids_count ?? 0} bids)`}
-                            </span>
-                            <span className={styles.bidValue}>₱{Number(data.currentBid || 0).toLocaleString('en-PH')}</span>
+                            <span className={styles.bidLabel}>{data.bids_count ?? 0} bid{(data.bids_count ?? 0) !== 1 ? 's' : ''}</span>
+                            <span className={styles.bidValue}>Current ₱{Number(data.currentBid || 0).toLocaleString('en-PH')}</span>
                         </div>
                     </div>
                 </div>

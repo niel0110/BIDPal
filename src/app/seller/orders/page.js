@@ -6,7 +6,7 @@ import { useState, useEffect, useCallback } from 'react';
 import { useRouter } from 'next/navigation';
 import {
     Package, Truck, CheckCircle2, Clock, XCircle,
-    Search, Send, AlertCircle, X, MessageSquare, Eye, Star, Receipt
+    Search, Send, AlertCircle, X, MessageSquare, Eye, Star, Receipt, Tag
 } from 'lucide-react';
 import { useAuth } from '@/context/AuthContext';
 import styles from './page.module.css';
@@ -36,10 +36,11 @@ export default function SellerOrdersPage() {
     const router  = useRouter();
     const { user } = useAuth();
 
-    const [orders, setOrders]       = useState([]);
-    const [loading, setLoading]     = useState(true);
-    const [activeTab, setActiveTab] = useState('all');
-    const [search, setSearch]       = useState('');
+    const [orders, setOrders]           = useState([]);
+    const [fixedListings, setFixedListings] = useState([]);
+    const [loading, setLoading]         = useState(true);
+    const [activeTab, setActiveTab]     = useState('all');
+    const [search, setSearch]           = useState('');
 
     // Confirm payment
     const handleConfirmPay = async (order) => {
@@ -78,10 +79,14 @@ export default function SellerOrdersPage() {
         if (!sellerId) { setLoading(false); return; }
 
         try {
-            const res = await fetch(`${API_URL}/api/orders/seller/${sellerId}`);
-            if (res.ok) {
-                const data = await res.json();
-                setOrders(data);
+            const [ordersRes, fixedRes] = await Promise.all([
+                fetch(`${API_URL}/api/orders/seller/${sellerId}`),
+                fetch(`${API_URL}/api/auctions?sale_type=sale&seller_id=${sellerId}&limit=50`),
+            ]);
+            if (ordersRes.ok) setOrders(await ordersRes.json());
+            if (fixedRes.ok) {
+                const fixedData = await fixedRes.json();
+                setFixedListings(fixedData.data || []);
             }
         } catch (err) {
             console.error('Error fetching seller orders:', err);
@@ -189,6 +194,33 @@ export default function SellerOrdersPage() {
                     </div>
                 </div>
             </div>
+
+            {/* ── Fixed Price Listings ── */}
+            {fixedListings.length > 0 && (
+                <div className={styles.fixedSection}>
+                    <div className={styles.fixedSectionHeader}>
+                        <Tag size={16} />
+                        <h2>Fixed Price Listings</h2>
+                        <span className={styles.fixedCount}>{fixedListings.length}</span>
+                    </div>
+                    <div className={styles.fixedGrid}>
+                        {fixedListings.map(item => (
+                            <div key={item.id} className={styles.fixedCard}>
+                                <img
+                                    src={item.images?.[0] || 'https://placehold.co/72x72?text=No+Image'}
+                                    alt={item.title}
+                                    className={styles.fixedCardImg}
+                                />
+                                <div className={styles.fixedCardInfo}>
+                                    <p className={styles.fixedCardName}>{item.title}</p>
+                                    <p className={styles.fixedCardPrice}>₱{Number(item.price || 0).toLocaleString('en-PH')}</p>
+                                    <span className={styles.fixedCardBadge}>For Sale</span>
+                                </div>
+                            </div>
+                        ))}
+                    </div>
+                </div>
+            )}
 
             {/* ── Tabs ── */}
             <div className={styles.tabs}>
@@ -431,17 +463,17 @@ function OrderCard({ order, review, onConfirmPay, onShip, onManage, onContact, o
     return (
         <div className={`${styles.card} ${styles[`card_${status}`]}`}>
 
-            {/* Header row */}
+            {/* ── Product strip ── */}
             <div className={styles.cardHead}>
                 <div className={styles.cardHeadLeft}>
                     <img
-                        src={order.product?.image || 'https://placehold.co/52x52?text=Item'}
+                        src={order.product?.image || 'https://placehold.co/72x72?text=Item'}
                         alt={order.product?.name}
                         className={styles.productThumb}
                     />
                     <div>
                         <p className={styles.productName}>{order.product?.name || 'Auction Item'}</p>
-                        <p className={styles.orderId}>Order #{order.order_id?.slice(0, 8).toUpperCase()}</p>
+                        <p className={styles.orderId}>#{order.order_id?.slice(0, 8).toUpperCase()}</p>
                     </div>
                 </div>
                 <span className={`${styles.statusBadge} ${styles[`badge_${status}`]}`}>
@@ -449,104 +481,109 @@ function OrderCard({ order, review, onConfirmPay, onShip, onManage, onContact, o
                 </span>
             </div>
 
-            {/* Step progress bar — not shown for pending/cancelled */}
-            {!isCancelled && !isPending && (
-                <div className={styles.stepBar}>
-                    {FLOW_STEPS.map((label, i) => (
-                        <div key={label} className={styles.stepBarItem}>
-                            <div className={`${styles.stepBarDot}
-                                ${i <= flowStep ? styles.stepBarDotDone : ''}
-                                ${i === flowStep ? styles.stepBarDotCurrent : ''}`}
-                            />
-                            <span className={`${styles.stepBarLabel} ${i <= flowStep ? styles.stepBarLabelDone : ''}`}>
-                                {label}
-                            </span>
-                            {i < FLOW_STEPS.length - 1 && (
-                                <div className={`${styles.stepBarLine} ${i < flowStep ? styles.stepBarLineDone : ''}`} />
-                            )}
-                        </div>
-                    ))}
-                </div>
-            )}
+            {/* ── Card body ── */}
+            <div className={styles.cardBody}>
 
-            {/* Action banner */}
-            {!isCancelled && (
-                <ActionBanner order={order} onConfirmPay={onConfirmPay} onShip={onShip} />
-            )}
-
-            {/* Meta row */}
-            <div className={styles.cardMeta}>
-                <div className={styles.metaItem}>
-                    <span className={styles.metaLabel}>Buyer</span>
-                    <span className={styles.metaValue}>{order.buyer?.name || '—'}</span>
-                </div>
-                <div className={styles.metaItem}>
-                    <span className={styles.metaLabel}>Payment</span>
-                    <span className={styles.metaValue}>
-                        {order.payment_method === 'cash_on_delivery' ? 'Cash on Delivery' : order.payment_method || '—'}
-                    </span>
-                </div>
-                <div className={styles.metaItem}>
-                    <span className={styles.metaLabel}>Total</span>
-                    <span className={`${styles.metaValue} ${styles.amount}`}>
-                        ₱{(order.total_amount || 0).toLocaleString('en-PH')}
-                    </span>
-                </div>
-                <div className={styles.metaItem}>
-                    <span className={styles.metaLabel}>Date</span>
-                    <span className={styles.metaValue}>
-                        {order.placed_at
-                            ? new Date(order.placed_at).toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' })
-                            : '—'}
-                    </span>
-                </div>
-            </div>
-
-            {/* Tracking row */}
-            {(status === 'shipped' || status === 'completed') && order.tracking_number && (
-                <div className={styles.trackingRow}>
-                    <Truck size={15} />
-                    <span><strong>{order.courier}</strong> · Tracking: <span className={styles.trackingNum}>{order.tracking_number}</span></span>
-                </div>
-            )}
-
-            {/* Review row (completed + reviewed) */}
-            {status === 'completed' && review && (
-                <div className={styles.reviewRow}>
-                    <div className={styles.reviewStarsMini}>
-                        {[1,2,3,4,5].map(s => (
-                            <Star key={s} size={14}
-                                fill={s <= review.rating ? '#f59e0b' : 'none'}
-                                stroke={s <= review.rating ? '#f59e0b' : '#d1d5db'}
-                            />
+                {/* Step progress bar */}
+                {!isCancelled && !isPending && (
+                    <div className={styles.stepBar}>
+                        {FLOW_STEPS.map((label, i) => (
+                            <div key={label} className={styles.stepBarItem}>
+                                <div className={`${styles.stepBarDot}
+                                    ${i <= flowStep ? styles.stepBarDotDone : ''}
+                                    ${i === flowStep ? styles.stepBarDotCurrent : ''}`}
+                                />
+                                <span className={`${styles.stepBarLabel} ${i <= flowStep ? styles.stepBarLabelDone : ''}`}>
+                                    {label}
+                                </span>
+                                {i < FLOW_STEPS.length - 1 && (
+                                    <div className={`${styles.stepBarLine} ${i < flowStep ? styles.stepBarLineDone : ''}`} />
+                                )}
+                            </div>
                         ))}
                     </div>
-                    <span className={styles.reviewSnippet}>
-                        {review.comment ? `"${review.comment.slice(0, 60)}${review.comment.length > 60 ? '…' : ''}"` : 'No comment'}
-                    </span>
-                    <button className={styles.viewReviewBtn} onClick={onViewReview}>Read</button>
-                </div>
-            )}
-            {status === 'completed' && !review && (
-                <div className={styles.noReviewChip}><Star size={13}/> No review yet</div>
-            )}
-
-            {/* Footer actions */}
-            <div className={styles.cardActions}>
-                <button className={styles.manageBtn} onClick={onManage}>
-                    <Eye size={15} /> Manage Order
-                </button>
-                <button className={styles.msgBtn} onClick={onContact}>
-                    <MessageSquare size={15} /> Message Buyer
-                </button>
-                <button className={styles.viewBtn} onClick={onViewAuction}>
-                    <Eye size={15} /> Auction
-                </button>
-                {(status === 'processing' || status === 'shipped' || status === 'completed') && (
-                    <button className={styles.receiptBtn} onClick={onViewReceipt}>
-                        <Receipt size={15} /> Receipt
-                    </button>
                 )}
+
+                {/* Action banner */}
+                {!isCancelled && (
+                    <ActionBanner order={order} onConfirmPay={onConfirmPay} onShip={onShip} />
+                )}
+
+                {/* Meta grid */}
+                <div className={styles.cardMeta}>
+                    <div className={styles.metaItem}>
+                        <span className={styles.metaLabel}>Buyer</span>
+                        <span className={styles.metaValue}>{order.buyer?.name || '—'}</span>
+                    </div>
+                    <div className={styles.metaItem}>
+                        <span className={styles.metaLabel}>Payment</span>
+                        <span className={styles.metaValue}>
+                            {order.payment_method === 'cash_on_delivery' ? 'Cash on Delivery' : order.payment_method || '—'}
+                        </span>
+                    </div>
+                    <div className={styles.metaItem}>
+                        <span className={styles.metaLabel}>Total</span>
+                        <span className={`${styles.metaValue} ${styles.amount}`}>
+                            ₱{(order.total_amount || 0).toLocaleString('en-PH')}
+                        </span>
+                    </div>
+                    <div className={styles.metaItem}>
+                        <span className={styles.metaLabel}>Date</span>
+                        <span className={styles.metaValue}>
+                            {order.placed_at
+                                ? new Date(order.placed_at).toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' })
+                                : '—'}
+                        </span>
+                    </div>
+                </div>
+
+                {/* Tracking */}
+                {(status === 'shipped' || status === 'completed') && order.tracking_number && (
+                    <div className={styles.trackingRow}>
+                        <Truck size={15} />
+                        <span><strong>{order.courier}</strong> · <span className={styles.trackingNum}>{order.tracking_number}</span></span>
+                    </div>
+                )}
+
+                {/* Review */}
+                {status === 'completed' && review && (
+                    <div className={styles.reviewRow}>
+                        <div className={styles.reviewStarsMini}>
+                            {[1,2,3,4,5].map(s => (
+                                <Star key={s} size={13}
+                                    fill={s <= review.rating ? '#f59e0b' : 'none'}
+                                    stroke={s <= review.rating ? '#f59e0b' : '#d1d5db'}
+                                />
+                            ))}
+                        </div>
+                        <span className={styles.reviewSnippet}>
+                            {review.comment ? `"${review.comment.slice(0, 60)}${review.comment.length > 60 ? '…' : ''}"` : 'No comment'}
+                        </span>
+                        <button className={styles.viewReviewBtn} onClick={onViewReview}>Read</button>
+                    </div>
+                )}
+                {status === 'completed' && !review && (
+                    <div className={styles.noReviewChip}><Star size={13}/> No review yet</div>
+                )}
+
+                {/* Actions */}
+                <div className={styles.cardActions}>
+                    <button className={styles.manageBtn} onClick={onManage}>
+                        <Eye size={15} /> Manage Order
+                    </button>
+                    <button className={styles.msgBtn} onClick={onContact}>
+                        <MessageSquare size={15} /> Message Buyer
+                    </button>
+                    <button className={styles.viewBtn} onClick={onViewAuction}>
+                        <Eye size={15} /> Auction
+                    </button>
+                    {(status === 'processing' || status === 'shipped' || status === 'completed') && (
+                        <button className={styles.receiptBtn} onClick={onViewReceipt}>
+                            <Receipt size={15} /> Receipt
+                        </button>
+                    )}
+                </div>
+
             </div>
         </div>
     );

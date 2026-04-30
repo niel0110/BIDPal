@@ -4,19 +4,34 @@ import {
   getMessages,
   sendMessage,
   markAsRead,
-  getUnreadCount
+  getUnreadCount,
+  uploadMessageMedia,
+  deleteMessage,
+  deleteConversation,
+  blockUser,
+  unblockUser,
+  getBlockedUsers,
+  upload
 } from '../controllers/messagesController.js';
 import { authenticateToken } from '../middleware/authMiddleware.js';
 
 const router = express.Router();
 
-// All messaging routes require authentication
 router.use(authenticateToken);
 
-router.get('/', getConversations);
+// Fixed-path routes first (before /:conversationId wildcard)
 router.get('/unread-count', getUnreadCount);
-router.get('/:conversationId', getMessages);
+router.get('/blocked', getBlockedUsers);
 router.post('/send', sendMessage);
+router.post('/upload', upload.single('file'), uploadMessageMedia);
+router.post('/block', blockUser);
+router.delete('/block/:userId', unblockUser);
+
+// Wildcard conversation routes
+router.get('/', getConversations);
+router.get('/:conversationId', getMessages);
 router.patch('/:conversationId/read', markAsRead);
+router.delete('/:conversationId/messages/:sentAt', deleteMessage);
+router.delete('/:conversationId', deleteConversation);
 
 export default router;

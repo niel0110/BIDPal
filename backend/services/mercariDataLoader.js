@@ -34,10 +34,16 @@ export async function loadMercariData() {
 
                 stream.pipe(parser);
 
+                let limitReached = false;
                 parser.on('data', (product) => {
-                    products.push(product);
-                    if (products.length % 100000 === 0) {
-                        console.log(`   Loaded ${products.length.toLocaleString()} products...`);
+                    if (products.length < 500000) {
+                        products.push(product);
+                        if (products.length % 100000 === 0) {
+                            console.log(`   Loaded ${products.length.toLocaleString()} products...`);
+                        }
+                    } else if (!limitReached) {
+                        console.log(`   Reached memory limit (500,000 products). Skipping remaining records for stability.`);
+                        limitReached = true;
                     }
                 });
 
@@ -104,7 +110,7 @@ function processRawData() {
                     };
 
                     // Only include products with valid prices
-                    if (product.price > 0 && product.price < 1000000) {
+                    if (product.price > 0 && product.price < 1000000 && products.length < 500000) {
                         products.push(product);
                     }
                 } catch (error) {

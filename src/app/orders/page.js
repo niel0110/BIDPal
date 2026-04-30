@@ -356,19 +356,24 @@ export default function OrdersPage() {
     };
 
     const handleContactSeller = async (order) => {
-        if (!order.auction_id) return;
-
         try {
             const apiUrl = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:5000';
-            const res = await fetch(`${apiUrl}/api/orders/auction/${order.auction_id}/seller`);
 
-            if (res.ok) {
-                const sellerData = await res.json();
-                // Redirect to existing messages page with seller's user_id
-                router.push(`/messages?receiverId=${sellerData.seller_user_id}`);
-            } else {
-                alert('Could not fetch seller information');
+            let sellerUserId;
+            if (order.auction_id) {
+                const res = await fetch(`${apiUrl}/api/orders/auction/${order.auction_id}/seller`);
+                if (!res.ok) throw new Error('Could not fetch seller');
+                const data = await res.json();
+                sellerUserId = data.seller_user_id;
+            } else if (order.seller_id) {
+                const res = await fetch(`${apiUrl}/api/sellers/${order.seller_id}`);
+                if (!res.ok) throw new Error('Could not fetch seller');
+                const data = await res.json();
+                sellerUserId = data.user_id;
             }
+
+            if (!sellerUserId) throw new Error('Seller not found');
+            router.push(`/messages?receiverId=${sellerUserId}`);
         } catch (err) {
             console.error('Error fetching seller:', err);
             alert('Error contacting seller. Please try again.');

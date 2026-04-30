@@ -21,7 +21,7 @@ export default function SelectProductPage() {
 
     const [scheduleProduct, setScheduleProduct] = useState(null);
     const [saleType, setSaleType] = useState('bid');
-    const [scheduleForm, setScheduleForm] = useState({ startDate: '', startTime: '', fixedPrice: '' });
+    const [scheduleForm, setScheduleForm] = useState({ startDate: '', startTime: '', fixedPrice: '', bidIncrement: '' });
     const [scheduleToast, setScheduleToast] = useState(null);
     const [isScheduling, setIsScheduling] = useState(false);
 
@@ -50,6 +50,7 @@ export default function SelectProductPage() {
                 buy_now_price: saleType === 'sale' ? (parseFloat(scheduleForm.fixedPrice) || scheduleProduct.buy_now_price) : null,
                 start_date: saleType === 'sale' ? now.toISOString().slice(0, 10) : scheduleForm.startDate,
                 start_time: saleType === 'sale' ? now.toTimeString().slice(0, 5) : scheduleForm.startTime,
+                bid_increment: saleType === 'bid' ? (parseFloat(scheduleForm.bidIncrement) || 50) : null,
             };
             const res = await fetch(`${apiUrl}/api/auctions/schedule`, {
                 method: 'POST',
@@ -268,7 +269,6 @@ export default function SelectProductPage() {
                                 <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '0.6rem' }}>
                                     {[
                                         { id: 'bid', icon: <Gavel size={18} />, label: 'Bid it', sub: 'Live auction' },
-                                        { id: 'sale', icon: <Tag size={18} />, label: 'Fixed sale', sub: 'Set price' },
                                     ].map(opt => (
                                         <button key={opt.id} type="button" onClick={() => setSaleType(opt.id)} style={{
                                             display: 'flex', alignItems: 'center', gap: '0.65rem',
@@ -321,6 +321,24 @@ export default function SelectProductPage() {
                                             />
                                         </div>
                                     </div>
+                                </div>
+                            )}
+
+                            {saleType !== 'sale' && (
+                                <div style={{ marginBottom: '1.25rem' }}>
+                                    <label style={{ fontSize: '0.78rem', fontWeight: 700, color: '#475569', textTransform: 'uppercase', letterSpacing: '0.05em', display: 'block', marginBottom: '0.5rem' }}>Bid Increment</label>
+                                    <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', border: '1.5px solid #e2e8f0', borderRadius: 10, padding: '0 0.85rem', background: '#fafafa' }}>
+                                        <span style={{ fontWeight: 700, color: '#475569', fontSize: '0.9rem' }}>₱</span>
+                                        <input
+                                            type="number" step="1" min="1" placeholder="50"
+                                            value={scheduleForm.bidIncrement}
+                                            onChange={e => setScheduleForm(p => ({ ...p, bidIncrement: e.target.value }))}
+                                            style={{ flex: 1, border: 'none', background: 'transparent', padding: '0.75rem 0', fontSize: '0.9rem', outline: 'none', color: '#0f172a' }}
+                                        />
+                                    </div>
+                                    <p style={{ fontSize: '0.72rem', color: '#94a3b8', marginTop: '0.35rem', marginBottom: 0 }}>
+                                        Minimum amount each new bid must exceed the current one. Defaults to ₱50.
+                                    </p>
                                 </div>
                             )}
 

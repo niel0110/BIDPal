@@ -1,0 +1,7 @@
+{
+  "permissions": {
+    "allow": [
+      "Bash(tasklist /fi \"imagename eq node.exe\" /fo csv)"
+    ]
+  }
+}

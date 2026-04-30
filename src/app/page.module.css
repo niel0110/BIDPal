@@ -25,30 +25,25 @@
   position: absolute;
   bottom: -2px;
   left: 0;
-  width: 100%;
+  width: 120px;
   height: 2px;
+  background-color: var(--color-primary);
+  border-radius: 10px;
   pointer-events: none;
 }
 
-.scrollThumb {
-  position: absolute;
-  top: 0;
-  left: 0;
-  height: 100%;
-  background-color: var(--color-primary);
-  border-radius: 10px;
-  transition: left 0.08s ease-out, width 0.08s ease-out;
-  min-width: 40px;
-}
+/* scrollThumb kept for backwards compat but hidden — all lines are now static */
+.scrollThumb { display: none; }
 
 .staticIndicator::after {
   content: '';
   position: absolute;
   bottom: -2px;
   left: 0;
-  width: 100px;
+  width: 120px;
   height: 2px;
   background-color: var(--color-primary);
+  border-radius: 10px;
 }
 
 .sectionTitle {

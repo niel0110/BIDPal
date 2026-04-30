@@ -155,9 +155,9 @@
 .topSection {
     display: flex;
     flex-direction: row;
-    flex: 1;
-    min-height: 0;
+    height: 500px;
     gap: 0.75rem;
+    align-items: stretch;
 }
 
 /* Kept for reference — no longer used as main layout wrapper */
@@ -194,18 +194,17 @@
     box-shadow: 0 2px 8px rgba(0, 0, 0, 0.04);
 }
 
-/* Live board — equal-width left column of topSection */
+/* Live board — slightly wider left column of topSection */
 .liveWrapper {
-    flex: 1;
-    min-height: 0;
+    flex: 1.35;
     display: flex;
     flex-direction: column;
     border-radius: 16px;
     overflow: hidden;
-    border: 1px solid #1a1a1a;
-    box-shadow: 0 4px 16px rgba(0, 0, 0, 0.15);
+    border: 1px solid #e0e0e0;
+    box-shadow: 0 4px 16px rgba(0, 0, 0, 0.08);
     position: relative;
-    background: #111;
+    background: #f2f2f2;
 }
 
 /* Product info overlay — bottom of video */
@@ -263,8 +262,8 @@
     position: absolute;
     top: 1rem;
     right: 1rem;
-    background: #D32F2F;
-    color: white;
+    background: rgba(240, 240, 240, 0.92);
+    color: #D32F2F;
     padding: 0.38rem 0.8rem;
     border-radius: 50px;
     font-weight: 800;
@@ -279,7 +278,7 @@
 .livePulseDot {
     width: 6px;
     height: 6px;
-    background: white;
+    background: #D32F2F;
     border-radius: 50%;
     animation: pulse 2s infinite;
 }
@@ -289,7 +288,7 @@
     flex: 1;
     width: 100%;
     position: relative;
-    background: #111;
+    background: #f2f2f2;
     overflow: hidden;
 }
 
@@ -477,7 +476,7 @@
 .emptyState {
     flex: 1;
     min-height: 0;
-    background: #1a1a1a;
+    background: #f2f2f2;
     width: 100%;
     display: flex;
     flex-direction: column;
@@ -489,18 +488,18 @@
     box-sizing: border-box;
 }
 
-.emptyState h2 { color: #eee; }
-.emptyState p { color: #888; }
+.emptyState h2 { color: #D32F2F; }
+.emptyState p { color: #D32F2F; }
 
 .emptyState h2 {
     font-size: 1.35rem;
     font-weight: 800;
-    color: #222;
+    color: #D32F2F;
     margin: 1rem 0 0.4rem;
 }
 
 .emptyState p {
-    color: #999;
+    color: #D32F2F;
     font-size: 0.875rem;
     margin-bottom: 1.5rem;
     line-height: 1.5;
@@ -613,8 +612,7 @@
 
 /* ---------- Combined Bids & Chat card — right column ---------- */
 .bidsChatCard {
-    flex: 1;
-    min-height: 0;
+    flex: 0.9;
     display: flex;
     flex-direction: column;
     background: white;
@@ -1922,6 +1920,7 @@
     /* Bids & chat: fixed height below video on mobile */
     .bidsChatCard {
         flex: none;
+        aspect-ratio: unset;
         height: 280px;
     }
 

@@ -1,6 +1,6 @@
 'use client';
 
-import { createContext, useContext, useState, useEffect } from 'react';
+import { createContext, useContext, useState, useEffect, useCallback } from 'react';
 
 const AuthContext = createContext();
 
@@ -8,27 +8,61 @@ export function AuthProvider({ children }) {
     const [user, setUser] = useState(null);
     const [loading, setLoading] = useState(true);
 
-    // Check storage on mount to persist login across refreshes
+    // Fetch fresh user data from Supabase (via backend) and sync to state + localStorage.
+    // Non-blocking — callers don't need to await; cached user stays valid until this resolves.
+    const refreshUser = useCallback(async (userId, token) => {
+        const uid = userId ?? JSON.parse(localStorage.getItem('bidpal_user') || 'null')?.user_id;
+        const tok = token ?? localStorage.getItem('bidpal_token');
+        if (!uid || !tok) return;
+        try {
+            const apiUrl = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:5000';
+            const res = await fetch(`${apiUrl}/api/users/${uid}`, {
+                headers: { Authorization: `Bearer ${tok}` },
+            });
+            if (!res.ok) return; // expired token or server error — keep cached data
+            const fresh = await res.json();
+            if (fresh?.error) return;
+            setUser(prev => {
+                const updated = {
+                    ...prev,
+                    ...fresh,
+                    role: (fresh.role || prev?.role)?.toLowerCase(),
+                };
+                localStorage.setItem('bidpal_user', JSON.stringify(updated));
+                return updated;
+            });
+        } catch {
+            // Network unavailable — silently keep cached user
+        }
+    }, []);
+
+    // On mount: restore from localStorage immediately (fast), then sync from Supabase in background.
+    // This ensures admin-side changes (KYC approval, role updates, etc.) are reflected on next load
+    // without forcing the user to re-login.
     useEffect(() => {
         const storedUser = localStorage.getItem('bidpal_user');
-        if (storedUser) {
+        const token = localStorage.getItem('bidpal_token');
+
+        if (storedUser && token) {
             try {
-                setUser(JSON.parse(storedUser));
-            } catch (e) {
-                console.error("Failed to parse user data", e);
+                const parsed = JSON.parse(storedUser);
+                setUser(parsed);
+                // Background sync — does not block the loading state
+                refreshUser(parsed.user_id, token);
+            } catch {
+                localStorage.removeItem('bidpal_user');
             }
         }
         setLoading(false);
-    }, []);
+    }, []); // eslint-disable-line react-hooks/exhaustive-deps
 
-    // Login with backend
     const login = async ({ email, password }) => {
         try {
             const apiUrl = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:5000';
             const res = await fetch(`${apiUrl}/api/auth/login`, {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify({ email, password })
+                body: JSON.stringify({ email, password }),
             });
             const data = await res.json();
             if (!res.ok) throw new Error(data.error || 'Login failed');
@@ -42,14 +76,13 @@ export function AuthProvider({ children }) {
         }
     };
 
-    // Register with backend
     const register = async ({ email, password, role }) => {
         try {
             const apiUrl = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:5000';
             const res = await fetch(`${apiUrl}/api/auth/register`, {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify({ email, password, role })
+                body: JSON.stringify({ email, password, role }),
             });
             const data = await res.json();
             if (!res.ok) throw new Error(data.error || 'Registration failed');
@@ -78,7 +111,7 @@ export function AuthProvider({ children }) {
     };
 
     return (
-        <AuthContext.Provider value={{ user, loading, login, register, logout, updateUser }}>
+        <AuthContext.Provider value={{ user, loading, login, register, logout, updateUser, refreshUser }}>
             {children}
         </AuthContext.Provider>
     );

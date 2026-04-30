@@ -1147,11 +1147,10 @@ function LivePageInner() {
             <Header />
 
             <div className={styles.container}>
+                <div className={isScheduledBuyer ? styles.scheduledLayout : styles.liveLayout}>
 
-                {/* VIDEO + SCHEDULED PANEL LAYOUT WRAPPER */}
-                <div className={isScheduledBuyer ? styles.scheduledLayout : undefined}>
-
-                {/* VIDEO SECTION */}
+                {/* LEFT: VIDEO */}
+                <div className={styles.liveLeft}>
                 <section className={`${styles.videoWrapper}${isScheduledBuyer ? ' ' + styles.videoWrapperSmall : ''}`}>
                     <div className={styles.videoPlaceholder} style={{ position: 'relative', background: 'white' }}>
                         {/* Agora video containers */}
@@ -1461,17 +1460,37 @@ function LivePageInner() {
                     <div className={styles.sellerOverlay}>
                         <div className={styles.sellerAvatar} style={{
                             backgroundImage: seller_info.avatar ? `url(${seller_info.avatar})` : 'none',
-                            backgroundColor: '#ccc',
-                            backgroundSize: 'cover'
-                        }} />
+                            backgroundColor: seller_info.avatar ? 'transparent' : '#D32F2F',
+                            backgroundSize: 'cover',
+                            display: 'flex',
+                            alignItems: 'center',
+                            justifyContent: 'center',
+                            color: 'white',
+                            fontWeight: 800,
+                            fontSize: '1rem',
+                        }}>
+                            {!seller_info.avatar && (seller_info.store_name?.[0] || '?').toUpperCase()}
+                        </div>
                         <div className={styles.sellerInfo}>
-                            <div className={styles.sellerName}>{seller_info.store_name}</div>
+                            <div className={styles.sellerName}>{seller_info.store_name || seller_info.full_name}</div>
                             <div className={styles.sellerStats}>
                                 <Heart size={10} fill="white" /> {followerCount.toLocaleString()}
                             </div>
                         </div>
                         <button className={`${styles.followBtn} ${isFollowing ? styles.followBtnActive : ''}`} onClick={handleFollow}>
                             {isFollowing ? '✓ Following' : '+ Follow'}
+                        </button>
+                    </div>
+
+                    {/* Stats overlay — bottom-right of video: heart + share only */}
+                    <div className={styles.videoStatsOverlay}>
+                        <button className={`${styles.videoStatBtn} ${isLiked ? styles.videoStatBtnLiked : ''}`} onClick={handleLike}>
+                            <Heart size={16} fill={isLiked ? 'currentColor' : 'none'} />
+                            <span>{stats.likes}</span>
+                        </button>
+                        <button className={styles.videoStatBtn} onClick={handleShare}>
+                            <Share2 size={16} />
+                            <span>{stats.shares}</span>
                         </button>
                     </div>
 
@@ -1584,6 +1603,7 @@ function LivePageInner() {
                         </div>
                     </div>
                 </section>
+                </div>{/* end liveLeft */}
 
                 {/* ── SCHEDULED BUYER: info + reminder panel (right column) ── */}
                 {isScheduledBuyer && (
@@ -1696,9 +1716,7 @@ function LivePageInner() {
                     </div>
                 )}
 
-                </div>{/* end scheduledLayout wrapper */}
-
-                {/* BOTTOM CONTENT */}
+                {/* RIGHT: bids + chat stacked */}
                 <div className={styles.bottomSection} style={{ display: isScheduledBuyer ? 'none' : undefined }}>
 
                     {/* LEFT: AUCTION & BIDS */}
@@ -1755,21 +1773,6 @@ function LivePageInner() {
                         </div>
 
                         {/* Stats Section */}
-                        <div className={styles.statsRow}>
-                            <button className={`${styles.statButton} ${isLiked ? styles.statButtonActive : ''}`} onClick={handleLike}>
-                                <Heart size={18} fill={isLiked ? 'currentColor' : 'none'} />
-                                <span>{stats.likes}</span>
-                            </button>
-                            <button className={styles.statButton} onClick={handleShare}>
-                                <Share2 size={18} />
-                                <span>{stats.shares}</span>
-                            </button>
-                            <div className={styles.statDisplay}>
-                                <Eye size={18} />
-                                <span>{stats.viewers}</span>
-                            </div>
-                        </div>
-
                         <div className={styles.bidTicker}>
                             {bids.length > 0 ? bids.map((bid, index) => {
                                 const standing = standingMap[bid.user_id];
@@ -1884,7 +1887,8 @@ function LivePageInner() {
                         </div>
                     </div>
 
-                </div>
+                </div>{/* end bottomSection / right panel */}
+                </div>{/* end liveLayout */}
             </div>
 
             {/* BID MODAL */}

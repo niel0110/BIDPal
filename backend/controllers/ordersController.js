@@ -203,6 +203,7 @@ export const getOrdersByUser = async (req, res) => {
         status: resolveStatus(order),
         total: order.total_amount,
         order_type: 'regular',
+        seller_id: order.seller_id || null,
         ...shippingFields,
         items: order.Order_items?.map(item => ({
           products_id: item.products_id,
