@@ -24,7 +24,6 @@ import {
     Plus,
     Pencil,
     Search,
-    MessageSquare,
     Facebook,
     Instagram,
     Globe,
@@ -285,7 +284,7 @@ function AccountContent() {
                         </div>
                         <h2 className={styles.userName}>{getUserDisplayName()}</h2>
                         <p className={styles.userRole}>{getUserRole()} Member</p>
-                        <StandingPill userId={user?.user_id} />
+                        {!isSeller && <StandingPill userId={user?.user_id} />}
 
                         {isSeller && kycStatus === 'rejected' && (
                             <div style={{ display: 'inline-flex', alignItems: 'center', gap: '6px', marginTop: '8px', background: '#fef2f2', border: '1px solid #fecaca', borderRadius: '20px', padding: '4px 12px', fontSize: '0.72rem', fontWeight: 700, color: '#b91c1c', cursor: 'pointer' }} onClick={() => router.push('/seller/setup')}>
@@ -647,6 +646,7 @@ function StoreProfileSection() {
     const [loading, setLoading] = useState(true);
     const [saving, setSaving] = useState(false);
     const [message, setMessage] = useState('');
+    const initialStoreRef = useRef(null);
 
     const apiUrl = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:5000';
     const token = typeof window !== 'undefined' ? localStorage.getItem('bidpal_token') : null;
@@ -661,18 +661,38 @@ function StoreProfileSection() {
             .then(data => {
                 if (data?.seller_id) {
                     setSeller(data);
-                    setStoreName(data.store_name || '');
-                    setStoreHandle(data.store_handle || '');
-                    setStoreDescription(data.store_description || '');
-                    setBusinessCategory(data.business_category || '');
+                    const initialStore = {
+                        storeName: data.store_name || '',
+                        storeHandle: data.store_handle || '',
+                        storeDescription: data.store_description || '',
+                        businessCategory: data.business_category || '',
+                    };
+                    setStoreName(initialStore.storeName);
+                    setStoreHandle(initialStore.storeHandle);
+                    setStoreDescription(initialStore.storeDescription);
+                    setBusinessCategory(initialStore.businessCategory);
+                    initialStoreRef.current = initialStore;
                 }
             })
             .catch(() => { })
             .finally(() => setLoading(false));
     }, [user?.user_id]);
 
+    const hasStoreChanges = (() => {
+        const initial = initialStoreRef.current;
+        if (!initial) return false;
+        return (
+            storeName !== initial.storeName ||
+            storeHandle !== initial.storeHandle ||
+            storeDescription !== initial.storeDescription ||
+            businessCategory !== initial.businessCategory
+        );
+    })();
+
+    const canSaveStore = Boolean(seller?.seller_id && hasStoreChanges && !saving);
+
     const handleSave = async () => {
-        if (!seller?.seller_id) return;
+        if (!canSaveStore) return;
         setSaving(true);
         setMessage('');
         try {
@@ -692,6 +712,12 @@ function StoreProfileSection() {
             const data = await res.json();
             if (!res.ok) throw new Error(data.error || 'Failed to update store.');
             setSeller(data.data);
+            initialStoreRef.current = {
+                storeName,
+                storeHandle,
+                storeDescription,
+                businessCategory,
+            };
             setMessage({ type: 'success', text: '✓ Store profile updated successfully!' });
             setTimeout(() => setMessage(''), 4000);
         } catch (err) {
@@ -785,7 +811,7 @@ function StoreProfileSection() {
                 <button
                     className={styles.primaryBtn}
                     onClick={handleSave}
-                    disabled={saving || !storeName}
+                    disabled={!canSaveStore}
                 >
                     {saving ? 'Saving...' : 'Save Store Profile'}
                 </button>
@@ -883,7 +909,7 @@ function ProfileSection() {
     })();
 
     const ageErr = birthday ? getAge(birthday) < 18 : false;
-    const canSave = hasChanges && !ageErr && firstName.trim() && lastName.trim() && !loading;
+    const canSave = hasChanges && !loading;
 
     const handleSaveProfile = async () => {
         if (!user || !canSave) return;
@@ -1036,9 +1062,6 @@ function ProfileSection() {
                     </button>
                     {!hasChanges && !loading && (
                         <span style={{ fontSize: '0.78rem', color: '#9ca3af', whiteSpace: 'nowrap' }}>No changes yet</span>
-                    )}
-                    {hasChanges && ageErr && (
-                        <span style={{ fontSize: '0.78rem', color: '#cc2b41', fontWeight: 600, whiteSpace: 'nowrap' }}>Fix errors above</span>
                     )}
                 </div>
             </div>
@@ -2540,13 +2563,13 @@ function PrivacySection() {
 
 function HelpCenterSection() {
     const [activePanel, setActivePanel] = useState(null); // 'privacy' | 'terms' | 'faq' | null
+    const router = useRouter();
 
     const helpItems = [
         { id: 'privacy', label: 'Privacy Policy', icon: <Lock size={20} /> },
         { id: 'terms', label: 'Terms & Agreements', icon: <FileText size={20} /> },
         { id: 'faq', label: 'FAQs', icon: <HelpCircle size={20} /> },
-        { id: 'email', label: 'Email Support', icon: <Mail size={20} /> },
-        { id: 'chat', label: 'Live Chat', icon: <MessageSquare size={20} /> },
+        { id: 'email', label: 'Email Support', detail: 'support@bidpal.ph', icon: <Mail size={20} /> },
     ];
 
     const faqItems = [
@@ -2584,7 +2607,7 @@ function HelpCenterSection() {
         },
         {
             q: 'How do I contact BIDPal support?',
-            a: 'You can send a message to the BIDPal Admin via in-app messaging, email us at support@bidpal.com, or use Live Chat from this Help Center.'
+            a: 'You can email BIDPal support at support@bidpal.ph. Include your account email, order or auction ID if applicable, and a short description of the issue.'
         },
         {
             q: 'How do I delete my account?',
@@ -2704,7 +2727,7 @@ function HelpCenterSection() {
                 <h3>9. Contact Us</h3>
                 <p>For privacy inquiries, send a message to the BIDPal Admin via in-app messaging, or reach us at:</p>
                 <ul>
-                    <li>Email: support@bidpal.com</li>
+                    <li>Email: support@bidpal.ph</li>
                     <li>National Privacy Commission: www.privacy.gov.ph | info@privacy.gov.ph | Hotline: 8234-2228</li>
                 </ul>
                 <p style={{ marginTop: '1rem' }}>We aim to respond to all inquiries within <strong>3–5 business days</strong>.</p>
@@ -2834,12 +2857,19 @@ function HelpCenterSection() {
                     <div
                         key={item.id}
                         className={styles.contactCard}
-                        style={{ cursor: ['privacy', 'terms', 'faq'].includes(item.id) ? 'pointer' : 'default' }}
-                        onClick={() => ['privacy', 'terms', 'faq'].includes(item.id) ? setActivePanel(item.id) : null}
+                        style={{ cursor: ['privacy', 'terms', 'faq', 'email'].includes(item.id) ? 'pointer' : 'default' }}
+                        onClick={() => item.id === 'email'
+                            ? router.push('/support/email')
+                            : ['privacy', 'terms', 'faq'].includes(item.id)
+                                ? setActivePanel(item.id)
+                                : null}
                     >
                         <div className={styles.contactIcon}>{item.icon}</div>
-                        <span style={{ flex: 1 }}>{item.label}</span>
-                        {['privacy', 'terms', 'faq'].includes(item.id) && <ChevronRight size={18} color="#aaa" />}
+                        <span className={styles.contactText}>
+                            <span>{item.label}</span>
+                            {item.detail && <span className={styles.contactDetail}>{item.detail}</span>}
+                        </span>
+                        {['privacy', 'terms', 'faq', 'email'].includes(item.id) && <ChevronRight size={18} color="#aaa" />}
                     </div>
                 ))}
             </div>

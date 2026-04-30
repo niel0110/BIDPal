@@ -1,4 +1,5 @@
 import { supabase } from '../config/supabase.js';
+import { VALUE_ADDED_SERVICE_FEES, recordValueAddedEarning } from '../services/revenueService.js';
 import { createNotification } from './notificationsController.js';
 import { createPaymentWindow } from '../services/violationService.js';
 
@@ -1560,7 +1561,18 @@ export const promoteAuction = async (req, res) => {
       read_at: UNREAD_SENTINEL
     }]);
 
-    return res.json({ success: true, already_promoted: false, notified: followerIds.length });
+    await recordValueAddedEarning(supabase, {
+      sellerId: auction.seller_id,
+      serviceType: 'highlighted_auction',
+      amount: VALUE_ADDED_SERVICE_FEES.highlighted_auction
+    });
+
+    return res.json({
+      success: true,
+      already_promoted: false,
+      notified: followerIds.length,
+      service_fee: VALUE_ADDED_SERVICE_FEES.highlighted_auction
+    });
   } catch (err) {
     console.error('promoteAuction error:', err);
     res.status(500).json({ error: err?.message || JSON.stringify(err) });

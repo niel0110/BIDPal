@@ -9,6 +9,7 @@ import UserManagement from './pages/UserManagement';
 import Disputes from './pages/Disputes';
 import CancellationReviews from './pages/CancellationReviews';
 import Login from './pages/Login';
+import RevenueManagement from './pages/RevenueManagement';
 
 // Protected Route Component
 const ProtectedRoute = ({ children }: { children: React.ReactNode }) => {
@@ -51,6 +52,7 @@ function App() {
             <Route path="/cancellations" element={<ProtectedRoute><CancellationReviews /></ProtectedRoute>} />
             <Route path="/users" element={<ProtectedRoute><UserManagement /></ProtectedRoute>} />
             <Route path="/buyer-verification" element={<ProtectedRoute><BuyerVerification /></ProtectedRoute>} />
+            <Route path="/revenue" element={<ProtectedRoute><RevenueManagement /></ProtectedRoute>} />
             
             {/* Fallback */}
             <Route path="*" element={<Navigate to="/" replace />} />

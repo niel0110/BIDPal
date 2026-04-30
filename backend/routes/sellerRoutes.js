@@ -7,7 +7,11 @@ import {
   updateSeller,
   deleteSeller,
   uploadStoreLogo,
-  uploadStoreBanner
+  uploadStoreBanner,
+  getSellerRevenueProducts,
+  activateSellerSubscription,
+  cancelSellerSubscription,
+  purchaseValueAddedService
 } from '../controllers/sellerController.js';
 import multer from 'multer';
 
@@ -36,6 +40,12 @@ router.get('/', getAllSellers);
 
 // Get seller by user_id — must be before /:seller_id to avoid being swallowed by the wildcard
 router.get('/user/:user_id', getSellerByUserId);
+
+// Seller revenue products
+router.get('/:seller_id/revenue-products', getSellerRevenueProducts);
+router.post('/:seller_id/subscription', activateSellerSubscription);
+router.delete('/:seller_id/subscription', cancelSellerSubscription);
+router.post('/:seller_id/value-added-services', purchaseValueAddedService);
 
 // Get seller by seller_id
 router.get('/:seller_id', getSellerById);

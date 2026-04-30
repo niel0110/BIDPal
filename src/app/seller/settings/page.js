@@ -8,13 +8,11 @@ import {
     CreditCard,
     Video,
     Plus,
-    Settings as SettingsIcon,
     Camera,
     ChevronRight,
     Save,
     CheckCircle,
     Clock,
-    Globe
 } from 'lucide-react';
 import styles from './page.module.css';
 
@@ -43,6 +41,7 @@ export default function SellerSettings() {
     const [loading, setLoading] = useState(true);
     const [saving, setSaving] = useState(false);
     const [saveStatus, setSaveStatus] = useState('');
+    const initialProfileRef = useRef(null);
 
     useEffect(() => {
         if (!user?.user_id) return;
@@ -59,7 +58,7 @@ export default function SellerSettings() {
                 
                 if (res.ok) {
                     const data = await res.json();
-                    setProfile({
+                    const nextProfile = {
                         seller_id: data.seller_id,
                         store_name: data.store_name || '',
                         store_description: data.store_description || '',
@@ -67,7 +66,14 @@ export default function SellerSettings() {
                         store_handle: data.store_handle || '',
                         logo_url: data.logo_url || '',
                         banner_url: data.banner_url || ''
-                    });
+                    };
+                    setProfile(nextProfile);
+                    initialProfileRef.current = {
+                        store_name: nextProfile.store_name,
+                        store_description: nextProfile.store_description,
+                        business_category: nextProfile.business_category,
+                        store_handle: nextProfile.store_handle
+                    };
                 }
             } catch (err) {
                 console.error('Settings fetch error:', err);
@@ -79,7 +85,21 @@ export default function SellerSettings() {
         fetchData();
     }, [user]);
 
+    const hasProfileChanges = (() => {
+        const initial = initialProfileRef.current;
+        if (!initial) return false;
+        return (
+            profile.store_name !== initial.store_name ||
+            profile.store_description !== initial.store_description ||
+            profile.business_category !== initial.business_category ||
+            profile.store_handle !== initial.store_handle
+        );
+    })();
+
+    const canSaveProfile = Boolean(profile.seller_id && hasProfileChanges && !saving);
+
     const handleSaveProfile = async () => {
+        if (!canSaveProfile) return;
         setSaving(true);
         setSaveStatus('');
         try {
@@ -100,6 +120,12 @@ export default function SellerSettings() {
             });
 
             if (res.ok) {
+                initialProfileRef.current = {
+                    store_name: profile.store_name,
+                    store_description: profile.store_description,
+                    business_category: profile.business_category,
+                    store_handle: profile.store_handle
+                };
                 setSaveStatus('Changes saved successfully!');
                 setTimeout(() => setSaveStatus(''), 3000);
             } else {
@@ -163,6 +189,7 @@ export default function SellerSettings() {
         { id: 'live', label: 'Live Preferences', icon: <Video size={20} /> },
     ];
 
+
     return (
         <div className={styles.container}>
             <header className={styles.header}>
@@ -170,7 +197,7 @@ export default function SellerSettings() {
                     <h1>Settings</h1>
                     <p>Manage your store preferences and business account.</p>
                 </div>
-                <button className={styles.saveBtn} onClick={handleSaveProfile} disabled={saving}>
+                <button className={styles.saveBtn} onClick={handleSaveProfile} disabled={!canSaveProfile}>
                     {saving ? 'Saving...' : (
                         <>
                             <Save size={18} />
@@ -390,6 +417,7 @@ export default function SellerSettings() {
                             </div>
                         </section>
                     )}
+
                 </main>
             </div>
         </div>

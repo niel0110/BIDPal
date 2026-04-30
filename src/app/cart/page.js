@@ -128,7 +128,7 @@ export default function CartPage() {
                 ? `BDP-CART-${Date.now().toString(36).toUpperCase()}` 
                 : null;
             const paid_at = paymentMethod === 'gcash' ? new Date().toISOString() : null;
-            const status = paymentMethod === 'gcash' ? 'processing' : 'pending_payment';
+            const status = 'processing';
 
             for (const [sellerId, items] of Object.entries(bySeller)) {
                 const groupSubtotal = items.reduce((s, i) => s + i.price, 0);
@@ -147,6 +147,7 @@ export default function CartPage() {
                         payment_reference,
                         paid_at,
                         status,
+                        payment_confirmed: paymentMethod === 'cash_on_delivery',
                         items: items.map(item => ({
                             products_id: item.id,
                             quantity: 1,
@@ -478,7 +479,7 @@ export default function CartPage() {
                     <div className={styles.emptyCart}>
                         <ShoppingBag size={64} color="#ddd" strokeWidth={1} />
                         <h2>Your cart is empty</h2>
-                        <p>Looks like you haven't added anything yet.</p>
+                        <p>Looks like you haven&apos;t added anything yet.</p>
                         <Link href="/" className={styles.exploreBtn}>Start Browsing</Link>
                     </div>
                 )}

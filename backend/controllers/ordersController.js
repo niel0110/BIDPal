@@ -1,4 +1,8 @@
 import { supabase } from '../config/supabase.js';
+import {
+  calculateSellerCommission,
+  recordPlatformEarning
+} from '../services/revenueService.js';
 
 const generatePaymentReference = () => {
   const d = new Date();
@@ -394,6 +398,7 @@ export const createOrder = async (req, res) => {
       payment_reference,
       paid_at,
       status: requestedStatus,
+      payment_confirmed,
       shipping_fee
     } = req.body;
 
@@ -401,8 +406,14 @@ export const createOrder = async (req, res) => {
       return res.status(400).json({ error: 'Missing required fields' });
     }
 
-    const commission_rate = 0.05; // 5% base commission
-    const commission_amount = total_amount * commission_rate;
+    const itemSubtotal = items.reduce((sum, item) => {
+      const quantity = Number(item.quantity || 1);
+      return sum + Number(item.price || 0) * quantity;
+    }, 0);
+    const commission = await calculateSellerCommission(supabase, {
+      sellerId: seller_id,
+      saleAmount: itemSubtotal || Number(total_amount || 0) - Number(shipping_fee || 0)
+    });
 
     // 1. Create Order record
     const orderRecord = {
@@ -415,8 +426,10 @@ export const createOrder = async (req, res) => {
       paid_at: paid_at || null,
       shipping_fee: shipping_fee || 0,
       order_type: 'regular',
-      commission_rate,
-      commission_amount
+      payment_confirmed: payment_confirmed ?? payment_method === 'cash_on_delivery',
+      payment_confirmed_at: (payment_confirmed ?? payment_method === 'cash_on_delivery') ? new Date().toISOString() : null,
+      commission_rate: commission.commissionRate,
+      commission_amount: commission.commissionAmount
     };
     if (seller_id) orderRecord.seller_id = seller_id;
 
@@ -445,9 +458,22 @@ export const createOrder = async (req, res) => {
         return res.status(400).json({ error: 'Order created but items failed: ' + itemsError.message });
     }
 
+    await recordPlatformEarning(supabase, {
+      orderId: orderData.order_id,
+      sellerId: seller_id,
+      totalAmount: commission.grossSaleAmount,
+      commissionRate: commission.commissionRate,
+      commissionAmount: commission.commissionAmount
+    });
+
     res.status(201).json({ 
         message: 'Order placed successfully', 
-        order_id: orderData.order_id 
+        order_id: orderData.order_id,
+        commission: {
+          rate: commission.commissionRate,
+          amount: commission.commissionAmount,
+          seller_net_amount: commission.sellerNetAmount
+        }
     });
   } catch (err) {
     res.status(500).json({ error: err.message });
@@ -502,14 +528,15 @@ export const processAuctionPayment = async (req, res) => {
       .maybeSingle();
 
     let orderId;
+    const totalAmt = total_amount || Number(auction.final_price || 0) + Number(shipping_fee || 0);
+    const commission = await calculateSellerCommission(supabase, {
+      sellerId: auction.seller_id,
+      saleAmount: auction.final_price
+    });
 
     if (existingOrder) {
       // Update existing order
       orderId = existingOrder.order_id;
-      
-      const commission_rate = 0.05;
-      const totalAmt = total_amount || auction.final_price;
-      const commission_amount = totalAmt * commission_rate;
 
       await supabase
         .from('Orders')
@@ -520,16 +547,12 @@ export const processAuctionPayment = async (req, res) => {
           shipping_address_id: shipping_address_id || null,
           shipping_fee: shipping_fee || 0,
           total_amount: totalAmt,
-          commission_rate,
-          commission_amount
+          commission_rate: commission.commissionRate,
+          commission_amount: commission.commissionAmount
         })
         .eq('order_id', orderId);
     } else {
       // Create new order
-      const commission_rate = 0.05;
-      const totalAmt = total_amount || auction.final_price;
-      const commission_amount = totalAmt * commission_rate;
-
       const { data: newOrder, error: orderError } = await supabase
         .from('Orders')
         .insert([{
@@ -542,8 +565,8 @@ export const processAuctionPayment = async (req, res) => {
           payment_method: payment_method || 'cash_on_delivery',
           shipping_address_id: shipping_address_id || null,
           shipping_fee: shipping_fee || 0,
-          commission_rate,
-          commission_amount
+          commission_rate: commission.commissionRate,
+          commission_amount: commission.commissionAmount
         }])
         .select('order_id')
         .single();
@@ -645,21 +668,14 @@ export const processAuctionPayment = async (req, res) => {
 
     // 6. Record Platform Earnings for this transaction
     try {
-      const totalAmt = total_amount || auction.final_price;
-      const commission_rate = 0.05;
-      const commission_amount = totalAmt * commission_rate;
-
-      await supabase
-        .from('Platform_Earnings')
-        .insert([{
-          order_id: orderId,
-          seller_id: auction.seller_id,
-          total_amount: totalAmt,
-          commission_rate,
-          commission_amount,
-          earning_type: 'transaction_commission'
-        }]);
-      console.log(`💰 Commission recorded for order: ${orderId} (Amount: PHP ${commission_amount})`);
+      await recordPlatformEarning(supabase, {
+        orderId,
+        sellerId: auction.seller_id,
+        totalAmount: commission.grossSaleAmount,
+        commissionRate: commission.commissionRate,
+        commissionAmount: commission.commissionAmount
+      });
+      console.log(`Commission recorded for order: ${orderId} (Amount: PHP ${commission.commissionAmount})`);
     } catch (e) {
       console.error('Error recording platform earnings:', e);
     }
@@ -670,7 +686,12 @@ export const processAuctionPayment = async (req, res) => {
       order_id: orderId,
       payment_reference,
       paid_at,
-      status: 'processing'
+      status: 'processing',
+      commission: {
+        rate: commission.commissionRate,
+        amount: commission.commissionAmount,
+        seller_net_amount: commission.sellerNetAmount
+      }
     });
 
   } catch (err) {
@@ -771,6 +792,15 @@ export const getSellerOrderDetail = async (req, res) => {
             description,
             Product_Images ( image_url )
           )
+        ),
+        Order_items (
+          products_id, quantity, unit_price, subtotal,
+          Products (
+            products_id,
+            name,
+            description,
+            Product_Images ( image_url )
+          )
         )
       `)
       .eq('order_id', order_id)
@@ -809,24 +839,37 @@ export const getSellerOrderDetail = async (req, res) => {
       shippingAddress = addr;
     }
 
-    const product   = order.Auctions?.Products;
+    const regularItem = order.Order_items?.[0];
+    const product   = order.Auctions?.Products || regularItem?.Products;
     const auctionAt = order.Auctions?.live_ended_at;
 
-    // If order is 'cancelled' but was actually shipped/delivered, show real status
-    const resolvedStatus = (order.status === 'cancelled' && order.tracking_number) ? 'completed' : order.status;
+    // If order is 'cancelled' but was actually shipped/delivered, show real status.
+    // Legacy fixed-price COD orders may still be pending_payment, but sellers can ship them.
+    const resolvedStatus = (() => {
+      if (order.status === 'cancelled' && order.tracking_number) return 'completed';
+      if (
+        order.status === 'pending_payment' &&
+        order.payment_method === 'cash_on_delivery' &&
+        (order.order_type === 'regular' || !order.auction_id)
+      ) {
+        return 'processing';
+      }
+      return order.status;
+    })();
 
     res.json({
       order_id:       order.order_id,
       status:         resolvedStatus,
       placed_at:      order.placed_at,
       auction_id:     order.auction_id,
+      order_type:     order.order_type || (order.auction_id ? 'auction' : 'regular'),
       auction_ended_at: auctionAt,
       payment_method: order.payment_method,
       shipping_fee:   order.shipping_fee,
       total_amount:   order.total_amount,
       tracking_number:      order.tracking_number,
       courier:              order.courier,
-      payment_confirmed:    order.payment_confirmed || false,
+      payment_confirmed:    order.payment_confirmed || (order.payment_method === 'cash_on_delivery' && (order.order_type === 'regular' || !order.auction_id)),
       payment_confirmed_at: order.payment_confirmed_at || null,
       buyer: order.User ? {
         user_id: order.User.user_id,
@@ -841,7 +884,7 @@ export const getSellerOrderDetail = async (req, res) => {
         image:       product.Product_Images?.[0]?.image_url || null
       } : null,
       winning_bid:     winningBid,
-      final_price:     order.Auctions?.final_price,
+      final_price:     order.Auctions?.final_price || regularItem?.unit_price || order.total_amount,
       shipping_address: shippingAddress,
       review:          review || null
     });
@@ -859,6 +902,13 @@ export const getSellerOrders = async (req, res) => {
     // If order is 'cancelled' but was actually shipped/delivered, restore real status
     const resolveStatus = (order) => {
       if (order.status === 'cancelled' && order.tracking_number) return 'completed';
+      if (
+        order.status === 'pending_payment' &&
+        order.payment_method === 'cash_on_delivery' &&
+        (order.order_type === 'regular' || !order.auction_id)
+      ) {
+        return 'processing';
+      }
       return order.status;
     };
 
@@ -869,31 +919,35 @@ export const getSellerOrders = async (req, res) => {
       .eq('seller_id', seller_id);
 
     if (auctionError) return res.status(500).json({ error: auctionError.message });
-    if (!sellerAuctions.length) return res.json([]);
 
-    const auctionIds = sellerAuctions.map(a => a.auction_id);
+    const auctionIds = (sellerAuctions || []).map(a => a.auction_id);
 
     // Fetch actual Orders for those auctions
-    const { data, error } = await supabase
-      .from('Orders')
-      .select(`
-        order_id, auction_id, user_id, status, total_amount,
-        payment_method, shipping_fee, tracking_number, courier,
-        placed_at, payment_confirmed, payment_confirmed_at,
-        User!user_id ( user_id, Fname, Lname, email, Avatar ),
-        Auctions!auction_id (
-          auction_id, final_price,
-          Products ( products_id, name, Product_Images ( image_url ) )
-        )
-      `)
-      .in('auction_id', auctionIds)
-      .order('placed_at', { ascending: false });
+    let data = [];
+    if (auctionIds.length > 0) {
+      const { data: auctionOrders, error } = await supabase
+        .from('Orders')
+        .select(`
+          order_id, auction_id, user_id, status, total_amount,
+          payment_method, shipping_fee, tracking_number, courier,
+          placed_at, payment_confirmed, payment_confirmed_at, order_type,
+          User!user_id ( user_id, Fname, Lname, email, Avatar ),
+          Auctions!auction_id (
+            auction_id, final_price,
+            Products ( products_id, name, Product_Images ( image_url ) )
+          )
+        `)
+        .in('auction_id', auctionIds)
+        .order('placed_at', { ascending: false });
 
-    if (error) return res.status(500).json({ error: error.message });
+      if (error) return res.status(500).json({ error: error.message });
+      data = auctionOrders || [];
+    }
 
-    const formatted = data.map(order => ({
+    const formattedAuctionOrders = data.map(order => ({
       order_id:            order.order_id,
       auction_id:          order.auction_id,
+      order_type:          order.order_type || 'auction',
       status:              resolveStatus(order),
       total_amount:        order.total_amount,
       payment_method:      order.payment_method,
@@ -917,9 +971,60 @@ export const getSellerOrders = async (req, res) => {
       }
     }));
 
+    // Fixed-price/cart orders are regular Orders rows with seller_id.
+    const { data: regularOrders, error: regularError } = await supabase
+      .from('Orders')
+      .select(`
+        order_id, user_id, seller_id, status, total_amount,
+        payment_method, shipping_fee, tracking_number, courier,
+        placed_at, payment_confirmed, payment_confirmed_at, order_type,
+        User!user_id ( user_id, Fname, Lname, email, Avatar ),
+        Order_items (
+          products_id, quantity, unit_price, subtotal,
+          Products ( products_id, name, Product_Images ( image_url ) )
+        )
+      `)
+      .eq('seller_id', seller_id)
+      .or('auction_id.is.null,order_type.eq.regular')
+      .order('placed_at', { ascending: false });
+
+    if (regularError) return res.status(500).json({ error: regularError.message });
+
+    const formattedRegularOrders = (regularOrders || []).map(order => {
+      const firstItem = order.Order_items?.[0];
+      const extraCount = Math.max((order.Order_items?.length || 0) - 1, 0);
+      const productName = firstItem?.Products?.name || 'Fixed Price Item';
+      return {
+        order_id:            order.order_id,
+        auction_id:          null,
+        order_type:          order.order_type || 'regular',
+        status:              resolveStatus(order),
+        total_amount:        order.total_amount,
+        payment_method:      order.payment_method,
+        shipping_fee:        order.shipping_fee,
+        tracking_number:     order.tracking_number,
+        courier:             order.courier,
+        payment_confirmed:   order.payment_confirmed || order.payment_method === 'cash_on_delivery',
+        payment_confirmed_at: order.payment_confirmed_at || null,
+        placed_at:           order.placed_at,
+        buyer: order.User ? {
+          user_id: order.User.user_id,
+          name: `${order.User.Fname || ''} ${order.User.Lname || ''}`.trim(),
+          email: order.User.email,
+          avatar: order.User.Avatar
+        } : null,
+        product: {
+          products_id: firstItem?.Products?.products_id || firstItem?.products_id,
+          name: extraCount > 0 ? `${productName} +${extraCount} more` : productName,
+          image: firstItem?.Products?.Product_Images?.[0]?.image_url || null,
+          final_price: order.total_amount
+        }
+      };
+    });
+
     // ── Also surface auctions that have a winner but no Order row yet (pending payment) ──
     const orderedAuctionIds = new Set(data.map(o => o.auction_id));
-    const pendingAuctions = sellerAuctions.filter(
+    const pendingAuctions = (sellerAuctions || []).filter(
       a => a.winner_user_id && !orderedAuctionIds.has(a.auction_id) && a.status === 'ended'
     );
 
@@ -973,8 +1078,11 @@ export const getSellerOrders = async (req, res) => {
       }
     }
 
+    const realOrders = [...formattedAuctionOrders, ...formattedRegularOrders]
+      .sort((a, b) => new Date(b.placed_at || 0) - new Date(a.placed_at || 0));
+
     // Pending payment orders first, then real orders newest-first
-    res.json([...pendingOrders, ...formatted]);
+    res.json([...pendingOrders, ...realOrders]);
   } catch (err) {
     console.error('Error fetching seller orders:', err);
     res.status(500).json({ error: err.message });
@@ -1021,6 +1129,14 @@ export const confirmPayment = async (req, res) => {
         .eq('auction_id', order.auction_id)
         .single();
       productName = auctionData?.Products?.name || productName;
+    } else {
+      const { data: itemData } = await supabase
+        .from('Order_items')
+        .select('Products(name)')
+        .eq('order_id', order_id)
+        .limit(1)
+        .maybeSingle();
+      productName = itemData?.Products?.name || productName;
     }
 
     await supabase
@@ -1057,22 +1173,33 @@ export const shipOrder = async (req, res) => {
     // Verify order is in 'processing' state (payment received)
     const { data: order, error: fetchError } = await supabase
       .from('Orders')
-      .select('order_id, status, user_id, auction_id, payment_confirmed')
+      .select('order_id, status, user_id, auction_id, order_type, payment_method, payment_confirmed, payment_confirmed_at')
       .eq('order_id', order_id)
       .single();
 
     if (fetchError || !order) return res.status(404).json({ error: 'Order not found' });
-    if (order.status !== 'processing') {
+    const isLegacyCodRegular =
+      order.status === 'pending_payment' &&
+      order.payment_method === 'cash_on_delivery' &&
+      (order.order_type === 'regular' || !order.auction_id);
+
+    if (order.status !== 'processing' && !isLegacyCodRegular) {
       return res.status(400).json({ error: `Cannot ship order with status: ${order.status}. Order must be in processing state.` });
     }
-    if (!order.payment_confirmed) {
+    if (!order.payment_confirmed && !isLegacyCodRegular) {
       return res.status(400).json({ error: 'You must confirm payment received before marking the order as shipped.' });
     }
 
     // Update order with tracking info and change status to shipped
     const { data: updated, error: updateError } = await supabase
       .from('Orders')
-      .update({ status: 'shipped', tracking_number, courier })
+      .update({
+        status: 'shipped',
+        tracking_number,
+        courier,
+        payment_confirmed: true,
+        payment_confirmed_at: order.payment_confirmed_at || new Date().toISOString()
+      })
       .eq('order_id', order_id)
       .select('*')
       .single();
@@ -1088,6 +1215,14 @@ export const shipOrder = async (req, res) => {
         .eq('auction_id', order.auction_id)
         .single();
       productName = auctionData?.Products?.name || productName;
+    } else {
+      const { data: itemData } = await supabase
+        .from('Order_items')
+        .select('Products(name)')
+        .eq('order_id', order_id)
+        .limit(1)
+        .maybeSingle();
+      productName = itemData?.Products?.name || productName;
     }
 
     // Notify buyer of shipment

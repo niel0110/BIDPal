@@ -369,7 +369,7 @@ export default function SellerOrdersPage() {
                             </div>
 
                             {reviewTarget.review.comment ? (
-                                <p className={styles.reviewComment}>"{reviewTarget.review.comment}"</p>
+                                <p className={styles.reviewComment}>&ldquo;{reviewTarget.review.comment}&rdquo;</p>
                             ) : (
                                 <p className={styles.reviewNoComment}>No written comment.</p>
                             )}
@@ -400,10 +400,11 @@ function getFlowStep(order) {
 /* ── Next-action banner ── */
 function ActionBanner({ order, onConfirmPay, onShip }) {
     const { status, payment_confirmed, payment_deadline } = order;
+    const [now] = useState(() => Date.now());
 
     if (status === 'pending_payment') {
         const deadline = payment_deadline ? new Date(payment_deadline) : null;
-        const hoursLeft = deadline ? Math.max(0, Math.floor((deadline - Date.now()) / 36e5)) : null;
+        const hoursLeft = deadline ? Math.max(0, Math.floor((deadline - now) / 36e5)) : null;
         return (
             <div className={`${styles.actionBanner} ${styles.bannerWaiting}`}>
                 <Clock size={15} />
@@ -574,9 +575,11 @@ function OrderCard({ order, review, onConfirmPay, onShip, onManage, onContact, o
                     <button className={styles.msgBtn} onClick={onContact}>
                         <MessageSquare size={15} /> Message Buyer
                     </button>
-                    <button className={styles.viewBtn} onClick={onViewAuction}>
-                        <Eye size={15} /> Auction
-                    </button>
+                    {order.auction_id && (
+                        <button className={styles.viewBtn} onClick={onViewAuction}>
+                            <Eye size={15} /> Auction
+                        </button>
+                    )}
                     {(status === 'processing' || status === 'shipped' || status === 'completed') && (
                         <button className={styles.receiptBtn} onClick={onViewReceipt}>
                             <Receipt size={15} /> Receipt

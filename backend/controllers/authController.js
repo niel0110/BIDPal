@@ -98,7 +98,7 @@ export const sendEmailVerificationCode = async (req, res) => {
 
     if (isProduction) {
       return res.status(503).json({
-        error: 'Email service is not configured. Please contact support.',
+        error: 'Email service is not configured on the deployed backend. Add GMAIL_USER and GMAIL_APP_PASSWORD to the backend hosting environment variables, then redeploy.',
       });
     }
 
@@ -111,6 +111,16 @@ export const sendEmailVerificationCode = async (req, res) => {
     console.error('Error sending verification code:', err);
     res.status(500).json({ error: err.message || 'Failed to send verification code.' });
   }
+};
+
+export const getEmailStatus = async (req, res) => {
+  res.json({
+    configured: isEmailConfigured(),
+    provider: process.env.SMTP_HOST ? 'custom-smtp' : 'gmail',
+    hasUser: Boolean(process.env.SMTP_USER || process.env.GMAIL_USER),
+    hasPassword: Boolean(process.env.SMTP_PASS || process.env.GMAIL_APP_PASSWORD),
+    environment: process.env.NODE_ENV || 'development',
+  });
 };
 
 export const verifyEmailCode = async (req, res) => {

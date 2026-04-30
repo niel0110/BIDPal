@@ -3,12 +3,15 @@
     background: #f8f9fb;
     padding-top: 1.5rem;
     padding-bottom: 6rem;
+    overflow-x: hidden;
 }
 
 .cartContent {
     max-width: 1100px;
     margin: 0 auto;
     padding: 0 1.5rem;
+    width: 100%;
+    box-sizing: border-box;
 }
 
 /* ── Header ── */
@@ -387,45 +390,328 @@
 /* ── Responsive: mobile ── */
 @media (max-width: 600px) {
     .cartContainer {
-        padding-top: 0.75rem;
-        padding-bottom: 7rem;
+        padding-top: 0;
+        padding-bottom: 3.5rem;
+        background: #f8f9fb;
     }
+
     .cartContent {
-        padding: 0 0.85rem;
+        padding: 1rem 0.75rem 0;
+        max-width: 100%;
     }
+
+    .cartHeader {
+        margin-bottom: 1.2rem;
+    }
+
+    .backBtn {
+        font-size: 0.78rem;
+        margin-bottom: 1.25rem;
+    }
+
+    .headerRow {
+        gap: 0.55rem;
+        flex-wrap: wrap;
+    }
+
     .cartTitle {
         font-size: 1.25rem;
+        line-height: 1.15;
+        letter-spacing: -0.03em;
     }
+
+    .itemCount {
+        font-size: 0.78rem;
+    }
+
     .cartMain {
         gap: 0.85rem;
+        width: 100%;
     }
+
+    .itemsPanel,
+    .summaryCard {
+        border-radius: 14px;
+        width: 100%;
+        box-sizing: border-box;
+    }
+
     .selectAllRow {
-        padding: 0.7rem 1rem;
+        padding: 0.75rem 0.9rem;
     }
+
+    .selectAllLabel {
+        font-size: 0.78rem;
+        gap: 0.5rem;
+    }
+
+    .selectedCount {
+        font-size: 0.72rem;
+    }
+
+    .itemsList {
+        gap: 0;
+    }
+
     .cartItem {
-        padding: 0.85rem 1rem;
-        gap: 0.7rem;
+        display: grid;
+        grid-template-columns: 18px 56px minmax(0, 1fr) auto;
+        align-items: center;
+        gap: 0.6rem;
+        padding: 0.85rem 0.85rem;
+        min-width: 0;
     }
+
+    .itemCheckbox {
+        display: flex;
+        align-items: center;
+        justify-content: center;
+    }
+
+    .checkbox {
+        width: 16px;
+        height: 16px;
+    }
+
     .itemImage {
-        width: 58px;
-        height: 58px;
+        width: 56px;
+        height: 56px;
         border-radius: 8px;
     }
+
+    .itemInfo {
+        min-width: 0;
+        align-self: center;
+    }
+
     .itemName {
-        font-size: 0.83rem;
+        display: -webkit-box;
+        font-size: 0.8rem;
+        line-height: 1.25;
+        max-width: 100%;
+        white-space: normal;
+        -webkit-line-clamp: 2;
+        -webkit-box-orient: vertical;
+        line-clamp: 2;
+        overflow: hidden;
     }
+
+    .itemSeller {
+        font-size: 0.68rem;
+        margin-bottom: 0.25rem;
+    }
+
+    .conditionBadge {
+        font-size: 0.62rem;
+        max-width: 100%;
+        overflow: hidden;
+        padding: 0.16rem 0.45rem;
+        text-overflow: ellipsis;
+    }
+
+    .itemRight {
+        align-self: stretch;
+        display: flex;
+        flex-direction: column;
+        justify-content: space-between;
+        gap: 0.35rem;
+        min-width: 42px;
+    }
+
     .itemPrice {
-        font-size: 0.9rem;
+        font-size: 0.78rem;
+        line-height: 1.1;
+        max-width: 48px;
+        overflow: hidden;
+        text-align: right;
+        text-overflow: ellipsis;
     }
+
+    .removeBtn {
+        align-self: flex-end;
+        padding: 2px;
+    }
+
     .summaryCard {
-        padding: 1.1rem;
+        padding: 1rem;
         border-radius: 14px;
     }
+
+    .summaryTitle {
+        font-size: 0.98rem;
+        margin-bottom: 1rem;
+    }
+
+    .summaryRow,
+    .totalRow {
+        font-size: 0.8rem;
+    }
+
+    .totalAmount {
+        font-size: 1.25rem;
+    }
+
+    .checkoutSteps .section {
+        box-shadow: none;
+        margin-top: 1rem !important;
+        padding: 0.85rem !important;
+    }
+
+    .sectionHeader {
+        gap: 0.7rem;
+        margin-bottom: 0.85rem;
+    }
+
+    .sectionTitle {
+        min-width: 0;
+    }
+
+    .changeBtn {
+        flex-shrink: 0;
+        min-height: 30px;
+    }
+
+    .addressCard,
+    .paymentCard {
+        gap: 0.6rem;
+        padding: 0.75rem !important;
+    }
+
+    .addressText {
+        font-size: 0.72rem !important;
+        line-height: 1.45;
+    }
+
+    .paymentInfo {
+        gap: 0.65rem;
+        min-width: 0;
+    }
+
+    .paymentInfo span {
+        overflow: hidden;
+        text-overflow: ellipsis;
+        white-space: nowrap;
+    }
+
     .checkoutBtn {
         padding: 0.8rem;
         font-size: 0.88rem;
         border-radius: 10px;
     }
+
+    .secureNote {
+        align-items: flex-start;
+        font-size: 0.7rem;
+        justify-content: flex-start;
+        line-height: 1.4;
+        text-align: left;
+    }
+
+    .promoStrip {
+        font-size: 0.7rem;
+        line-height: 1.35;
+    }
+
+    .modalOverlay {
+        align-items: center;
+        padding: 1rem;
+    }
+
+    .modal {
+        border-radius: 18px;
+        max-width: 290px;
+        overflow: hidden;
+    }
+
+    .modalHeader {
+        padding: 1rem 1.1rem;
+        gap: 0.65rem;
+    }
+
+    .modalHeader h3 {
+        font-size: 1rem;
+        line-height: 1.2;
+    }
+
+    .modalIcon {
+        width: 20px;
+        height: 20px;
+    }
+
+    .modalBody {
+        padding: 1rem 1.15rem;
+        gap: 0.85rem;
+    }
+
+    .confirmBreakdown {
+        border-radius: 12px;
+        gap: 0.65rem;
+        padding: 0.9rem;
+    }
+
+    .confirmRow {
+        align-items: flex-start;
+        gap: 0.75rem;
+        font-size: 0.82rem;
+    }
+
+    .confirmRow span:first-child {
+        color: #777;
+        min-width: 0;
+    }
+
+    .confirmRow span:last-child {
+        max-width: 118px;
+        text-align: right;
+        overflow-wrap: anywhere;
+    }
+
+    .confirmTotal span:first-child {
+        font-size: 0.92rem;
+    }
+
+    .confirmTotal span:last-child {
+        font-size: 1.25rem;
+        color: #D32F2F;
+    }
+
+    .modalFooter {
+        display: grid;
+        grid-template-columns: 1fr 1fr;
+        gap: 0.7rem;
+        padding: 1rem 1.15rem 1.15rem;
+    }
+
+    .modalCancelBtn,
+    .modalConfirmBtn {
+        min-height: 56px;
+        padding: 0.7rem 0.65rem;
+    }
+
+    .modalConfirmBtn {
+        line-height: 1.25;
+    }
+
+    .gcashNumberBox {
+        align-items: stretch;
+        flex-direction: column;
+        gap: 0.55rem;
+    }
+
+    .gcashNumber {
+        font-size: 1.05rem;
+        text-align: center;
+    }
+
+    .copyBtn {
+        justify-content: center;
+        min-height: 34px;
+    }
+
+    .gcashAmount {
+        font-size: 1.35rem;
+    }
+
     .emptyCart {
         padding: 4rem 1.25rem;
         border-radius: 14px;
@@ -436,15 +722,27 @@
 
 /* ── Responsive: very small ── */
 @media (max-width: 360px) {
-    .cartContent { padding: 0 0.6rem; }
+    .cartContent { padding: 0.85rem 0.55rem 0; }
     .cartTitle { font-size: 1.1rem; }
-    .cartItem { padding: 0.7rem 0.75rem; gap: 0.55rem; }
+    .cartItem {
+        grid-template-columns: 16px 50px minmax(0, 1fr) 38px;
+        padding: 0.7rem 0.65rem;
+        gap: 0.5rem;
+    }
     .itemImage { width: 50px; height: 50px; }
-    .itemName { font-size: 0.78rem; }
+    .itemName { font-size: 0.76rem; }
     .itemSeller { font-size: 0.68rem; }
-    .itemPrice { font-size: 0.85rem; }
+    .itemPrice { font-size: 0.72rem; max-width: 38px; }
     .summaryCard { padding: 0.9rem; }
     .checkoutBtn { font-size: 0.82rem; padding: 0.72rem; }
+    .modal { max-width: 280px; }
+    .modalFooter {
+        grid-template-columns: 1fr;
+    }
+    .modalCancelBtn,
+    .modalConfirmBtn {
+        min-height: 48px;
+    }
 }
 
 /* ── Added Checkout Styles ── */
@@ -854,3 +1152,118 @@
     transition: background 0.18s;
 }
 .modalDismissBtn:hover { background: #222; }
+
+@media (max-width: 600px) {
+    .modalOverlay {
+        align-items: center;
+        padding: 1rem;
+    }
+
+    .modal {
+        border-radius: 18px;
+        max-width: 290px;
+        overflow: hidden;
+    }
+
+    .modalHeader {
+        padding: 1rem 1.1rem;
+        gap: 0.65rem;
+    }
+
+    .modalHeader h3 {
+        font-size: 1rem;
+        line-height: 1.2;
+    }
+
+    .modalIcon {
+        width: 20px;
+        height: 20px;
+    }
+
+    .modalBody {
+        padding: 1rem 1.15rem;
+        gap: 0.85rem;
+    }
+
+    .confirmBreakdown {
+        border-radius: 12px;
+        gap: 0.65rem;
+        padding: 0.9rem;
+    }
+
+    .confirmRow {
+        align-items: flex-start;
+        gap: 0.75rem;
+        font-size: 0.82rem;
+    }
+
+    .confirmRow span:first-child {
+        color: #777;
+        min-width: 0;
+    }
+
+    .confirmRow span:last-child {
+        max-width: 118px;
+        text-align: right;
+        overflow-wrap: anywhere;
+    }
+
+    .confirmTotal span:first-child {
+        font-size: 0.92rem;
+    }
+
+    .confirmTotal span:last-child {
+        font-size: 1.25rem;
+        color: #D32F2F;
+    }
+
+    .modalFooter {
+        display: grid;
+        grid-template-columns: 1fr 1fr;
+        gap: 0.7rem;
+        padding: 1rem 1.15rem 1.15rem;
+    }
+
+    .modalCancelBtn,
+    .modalConfirmBtn {
+        min-height: 56px;
+        padding: 0.7rem 0.65rem;
+    }
+
+    .modalConfirmBtn {
+        line-height: 1.25;
+    }
+
+    .gcashNumberBox {
+        align-items: stretch;
+        flex-direction: column;
+        gap: 0.55rem;
+    }
+
+    .gcashNumber {
+        font-size: 1.05rem;
+        text-align: center;
+    }
+
+    .copyBtn {
+        justify-content: center;
+        min-height: 34px;
+    }
+
+    .gcashAmount {
+        font-size: 1.35rem;
+    }
+}
+
+@media (max-width: 360px) {
+    .modal { max-width: 280px; }
+
+    .modalFooter {
+        grid-template-columns: 1fr;
+    }
+
+    .modalCancelBtn,
+    .modalConfirmBtn {
+        min-height: 48px;
+    }
+}

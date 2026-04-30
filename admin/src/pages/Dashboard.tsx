@@ -128,7 +128,7 @@ const Dashboard = () => {
       value: stats.pendingVerifications,
       badge: 'Action Required',
       badgeColor: 'var(--warning)',
-      delay: 0.2,
+      delay: 0.25,
     },
     {
       icon: AlertCircle,
@@ -138,7 +138,7 @@ const Dashboard = () => {
       value: stats.flaggedListings,
       badge: 'Under Review',
       badgeColor: 'var(--danger)',
-      delay: 0.3,
+      delay: 0.35,
     },
     {
       icon: Scale,
@@ -148,7 +148,7 @@ const Dashboard = () => {
       value: stats.openDisputes,
       badge: 'Open',
       badgeColor: 'var(--accent-secondary)',
-      delay: 0.4,
+      delay: 0.45,
     },
   ];
 
@@ -162,7 +162,7 @@ const Dashboard = () => {
         </p>
       </header>
 
-      <div style={{ display: 'grid', gridTemplateColumns: 'repeat(4, 1fr)', gap: '24px', marginBottom: '40px' }}>
+      <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(190px, 1fr))', gap: '24px', marginBottom: '40px' }}>
         {statCards.map(card => (
           <motion.div
             key={card.label}

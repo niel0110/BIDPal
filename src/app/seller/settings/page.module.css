@@ -42,6 +42,18 @@
     box-shadow: 0 4px 15px rgba(211, 47, 47, 0.3);
 }
 
+.saveBtn:disabled {
+    opacity: 0.55;
+    cursor: not-allowed;
+    transform: none;
+    box-shadow: none;
+}
+
+.saveBtn:disabled:hover {
+    transform: none;
+    box-shadow: none;
+}
+
 .settingsWrapper {
     display: grid;
     grid-template-columns: 280px 1fr;

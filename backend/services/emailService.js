@@ -29,22 +29,33 @@ const writeCommand = async (socket, command) => {
 };
 
 const escapeHeader = (value) => String(value || '').replace(/[\r\n]+/g, ' ').trim();
+const escapeHtml = (value) => String(value || '')
+  .replace(/&/g, '&amp;')
+  .replace(/</g, '&lt;')
+  .replace(/>/g, '&gt;')
+  .replace(/"/g, '&quot;')
+  .replace(/'/g, '&#39;');
 
 export const isEmailConfigured = () => Boolean(SMTP_USER && SMTP_PASS && SMTP_FROM);
 
-export const sendEmail = async ({ to, subject, text, html }) => {
+export const sendEmail = async ({ to, subject, text, html, replyTo }) => {
   if (!isEmailConfigured()) {
     const err = new Error('Email service is not configured. Set SMTP_USER and SMTP_PASS, or GMAIL_USER and GMAIL_APP_PASSWORD.');
     err.code = 'EMAIL_NOT_CONFIGURED';
     throw err;
   }
 
-  const message = [
+  const headers = [
     `From: BIDPal <${escapeHeader(SMTP_FROM)}>`,
     `To: ${escapeHeader(to)}`,
+    ...(replyTo ? [`Reply-To: ${escapeHeader(replyTo)}`] : []),
     `Subject: ${escapeHeader(subject)}`,
     'MIME-Version: 1.0',
     'Content-Type: multipart/alternative; boundary="bidpal-boundary"',
+  ];
+
+  const message = [
+    ...headers,
     '',
     '--bidpal-boundary',
     'Content-Type: text/plain; charset="UTF-8"',
@@ -84,6 +95,58 @@ export const sendEmail = async ({ to, subject, text, html }) => {
   } finally {
     socket.end();
   }
+};
+
+export const sendSupportInquiryEmail = ({ supportEmail, userEmail, userName, category, subject, message, referenceId }) => {
+  const submittedAt = new Date().toLocaleString('en-PH', { timeZone: 'Asia/Manila' });
+  const lines = [
+    `A BIDPal support inquiry was submitted.`,
+    ``,
+    `From: ${userName || 'BIDPal User'} <${userEmail}>`,
+    `Category: ${category}`,
+    referenceId ? `Reference ID: ${referenceId}` : null,
+    `Submitted: ${submittedAt}`,
+    ``,
+    `Subject: ${subject}`,
+    ``,
+    message,
+  ].filter(Boolean);
+
+  return sendEmail({
+    to: supportEmail,
+    replyTo: userEmail,
+    subject: `[BIDPal Support] ${subject}`,
+    text: lines.join('\n'),
+    html: `
+      <div style="font-family: Arial, sans-serif; color: #1f2937; line-height: 1.6;">
+        <h2 style="color: #d02440; margin-bottom: 8px;">New BIDPal Support Inquiry</h2>
+        <p><strong>From:</strong> ${escapeHtml(userName || 'BIDPal User')} &lt;${escapeHtml(userEmail)}&gt;</p>
+        <p><strong>Category:</strong> ${escapeHtml(category)}</p>
+        ${referenceId ? `<p><strong>Reference ID:</strong> ${escapeHtml(referenceId)}</p>` : ''}
+        <p><strong>Submitted:</strong> ${escapeHtml(submittedAt)}</p>
+        <hr style="border: 0; border-top: 1px solid #e5e7eb; margin: 20px 0;" />
+        <p><strong>Subject:</strong> ${escapeHtml(subject)}</p>
+        <p style="white-space: pre-wrap;">${escapeHtml(message)}</p>
+      </div>
+    `,
+  });
+};
+
+export const sendSupportReceiptEmail = ({ userEmail, userName, subject }) => {
+  return sendEmail({
+    to: userEmail,
+    subject: 'We received your BIDPal support inquiry',
+    text: `Hi ${userName || 'there'},\n\nWe received your support inquiry: "${subject}". Our support team will review it and reply through email.\n\nThank you,\nBIDPal Support`,
+    html: `
+      <div style="font-family: Arial, sans-serif; color: #1f2937; line-height: 1.6;">
+        <h2 style="color: #d02440; margin-bottom: 8px;">We received your inquiry</h2>
+        <p>Hi ${escapeHtml(userName || 'there')},</p>
+        <p>We received your support inquiry: <strong>${escapeHtml(subject)}</strong>.</p>
+        <p>Our support team will review it and reply through email.</p>
+        <p>Thank you,<br />BIDPal Support</p>
+      </div>
+    `,
+  });
 };
 
 export const sendVerificationCodeEmail = ({ email, code, purpose }) => {

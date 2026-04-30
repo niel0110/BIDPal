@@ -1,4 +1,10 @@
 import { supabase } from '../config/supabase.js';
+import {
+  getSubscriptionPlanFee,
+  getValueAddedServiceFee,
+  PREMIUM_SELLER_MONTHLY_FEES,
+  VALUE_ADDED_SERVICE_FEES
+} from '../services/revenueService.js';
 
 // Fetch all sellers
 export const getAllSellers = async (req, res) => {
@@ -174,6 +180,160 @@ export const deleteSeller = async (req, res) => {
     }
     res.json({ message: 'Seller account deleted successfully', data: data[0] });
   } catch (err) {
+    res.status(500).json({ error: err.message });
+  }
+};
+
+export const getSellerRevenueProducts = async (req, res) => {
+  try {
+    const { seller_id } = req.params;
+
+    const [{ data: subscriptions, error: subError }, { data: services, error: serviceError }] = await Promise.all([
+      supabase
+        .from('Seller_Subscriptions')
+        .select('*')
+        .eq('seller_id', seller_id)
+        .order('started_at', { ascending: false }),
+      supabase
+        .from('Value_Added_Earnings')
+        .select('*')
+        .eq('seller_id', seller_id)
+        .order('created_at', { ascending: false })
+        .limit(25)
+    ]);
+
+    if (subError && subError.code === '42P01') {
+      return res.status(501).json({ error: 'Revenue tables are not installed. Run backend/migrations/add_platform_earnings.sql first.' });
+    }
+    if (subError) throw subError;
+    if (serviceError && serviceError.code !== '42P01') throw serviceError;
+
+    res.json({
+      plans: [
+        {
+          plan: 'growth',
+          name: 'Growth',
+          monthly_fee: PREMIUM_SELLER_MONTHLY_FEES.growth,
+          features: ['Advanced analytics', 'Reduced commission rates', 'Priority support']
+        },
+        {
+          plan: 'pro',
+          name: 'Pro',
+          monthly_fee: PREMIUM_SELLER_MONTHLY_FEES.pro,
+          features: ['Everything in Growth', 'Bulk listing tools', 'Highest seller support priority']
+        }
+      ],
+      services: [
+        { service_type: 'featured_listing', name: 'Featured Listing', amount: VALUE_ADDED_SERVICE_FEES.featured_listing, description: 'Boost one listing in marketplace discovery.' },
+        { service_type: 'highlighted_auction', name: 'Highlighted Auction', amount: VALUE_ADDED_SERVICE_FEES.highlighted_auction, description: 'Notify followers and mark an upcoming auction as promoted.' },
+        { service_type: 'shipping_label_generation', name: 'Shipping Label', amount: VALUE_ADDED_SERVICE_FEES.shipping_label_generation, description: 'Generate a printable fulfillment label.' },
+        { service_type: 'seller_training_workshop', name: 'Seller Training', amount: VALUE_ADDED_SERVICE_FEES.seller_training_workshop, description: 'Access a guided selling and live auction workshop.' }
+      ],
+      active_subscription: (subscriptions || []).find(row => row.status === 'active') || null,
+      subscription_history: subscriptions || [],
+      service_history: services || []
+    });
+  } catch (err) {
+    console.error('getSellerRevenueProducts error:', err);
+    res.status(500).json({ error: err.message });
+  }
+};
+
+export const activateSellerSubscription = async (req, res) => {
+  try {
+    const { seller_id } = req.params;
+    const { plan, payment_method = 'manual' } = req.body;
+    const monthlyFee = getSubscriptionPlanFee(plan);
+
+    if (!monthlyFee) return res.status(400).json({ error: 'Invalid subscription plan' });
+
+    const { error: cancelError } = await supabase
+      .from('Seller_Subscriptions')
+      .update({ status: 'cancelled', cancelled_at: new Date().toISOString() })
+      .eq('seller_id', seller_id)
+      .eq('status', 'active');
+
+    if (cancelError && cancelError.code === '42P01') {
+      return res.status(501).json({ error: 'Revenue tables are not installed. Run backend/migrations/add_platform_earnings.sql first.' });
+    }
+    if (cancelError) throw cancelError;
+
+    const { data, error } = await supabase
+      .from('Seller_Subscriptions')
+      .insert([{
+        seller_id,
+        plan: String(plan).toLowerCase(),
+        monthly_fee: monthlyFee,
+        status: 'active'
+      }])
+      .select('*')
+      .single();
+
+    if (error) throw error;
+
+    res.status(201).json({
+      success: true,
+      message: `${data.plan} plan activated`,
+      payment_method,
+      subscription: data
+    });
+  } catch (err) {
+    console.error('activateSellerSubscription error:', err);
+    res.status(500).json({ error: err.message });
+  }
+};
+
+export const cancelSellerSubscription = async (req, res) => {
+  try {
+    const { seller_id } = req.params;
+
+    const { data, error } = await supabase
+      .from('Seller_Subscriptions')
+      .update({ status: 'cancelled', cancelled_at: new Date().toISOString() })
+      .eq('seller_id', seller_id)
+      .eq('status', 'active')
+      .select('*');
+
+    if (error) throw error;
+    res.json({ success: true, cancelled: data?.length || 0 });
+  } catch (err) {
+    console.error('cancelSellerSubscription error:', err);
+    res.status(500).json({ error: err.message });
+  }
+};
+
+export const purchaseValueAddedService = async (req, res) => {
+  try {
+    const { seller_id } = req.params;
+    const { service_type, order_id = null, insured_amount = 0, payment_method = 'manual' } = req.body;
+    const amount = getValueAddedServiceFee({ serviceType: service_type, insuredAmount: insured_amount });
+
+    if (!amount) return res.status(400).json({ error: 'Invalid value-added service' });
+
+    const { data, error } = await supabase
+      .from('Value_Added_Earnings')
+      .insert([{
+        seller_id,
+        order_id,
+        service_type,
+        amount
+      }])
+      .select('*')
+      .single();
+
+    if (error && error.code === '42P01') {
+      return res.status(501).json({ error: 'Revenue tables are not installed. Run backend/migrations/add_platform_earnings.sql first.' });
+    }
+    if (error) throw error;
+
+    res.status(201).json({
+      success: true,
+      message: 'Service activated',
+      payment_method,
+      service: data
+    });
+  } catch (err) {
+    console.error('purchaseValueAddedService error:', err);
     res.status(500).json({ error: err.message });
   }
 };
