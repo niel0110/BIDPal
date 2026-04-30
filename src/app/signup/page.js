@@ -90,13 +90,59 @@ export default function SignUp() {
     const [password, setPassword]         = useState('');
     const [confirm, setConfirm]           = useState('');
     const [error, setError]               = useState('');
+    const [message, setMessage]           = useState('');
     const [agreed, setAgreed]             = useState(false);
     const [showTerms, setShowTerms]       = useState(false);
+    const [verificationStep, setVerificationStep] = useState('details');
+    const [verificationCode, setVerificationCode] = useState('');
+
+    const sendVerificationCode = async () => {
+        const apiUrl = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:5000';
+        const res = await fetch(`${apiUrl}/api/auth/send-verification-code`, {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ email, purpose: 'register' }),
+        });
+        const data = await res.json();
+        if (!res.ok) throw new Error(data.error || 'Unable to send verification code.');
+        return data;
+    };
+
+    const verifyCode = async () => {
+        const apiUrl = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:5000';
+        const res = await fetch(`${apiUrl}/api/auth/verify-email-code`, {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ email, code: verificationCode, purpose: 'register' }),
+        });
+        const data = await res.json();
+        if (!res.ok) {
+            const err = new Error(data.error || 'Unable to verify code.');
+            err.code = data.code;
+            throw err;
+        }
+        return data.token;
+    };
+
+    const handleResendCode = async () => {
+        setError('');
+        setMessage('');
+        setVerificationCode('');
+        try {
+            const data = await sendVerificationCode();
+            setMessage(data.devCode
+                ? `Development code: ${data.devCode}`
+                : 'A new verification code was sent to your email. Use the latest code only.');
+        } catch (err) {
+            setError(err.message || 'Unable to resend verification code.');
+        }
+    };
 
     const handleSubmit = async (e) => {
         e.preventDefault();
         await runWithLock(async () => {
             setError('');
+            setMessage('');
             if (!email || !password || !confirm) {
                 setError('All fields are required.');
                 return;
@@ -110,11 +156,31 @@ export default function SignUp() {
                 return;
             }
             try {
+                if (verificationStep === 'details') {
+                    const data = await sendVerificationCode();
+                    setVerificationStep('code');
+                    setMessage(data.devCode
+                        ? `Development code: ${data.devCode}`
+                        : 'We sent a 6-digit verification code to your email.');
+                    return;
+                }
+
+                if (!verificationCode) {
+                    setError('Please enter the verification code sent to your email.');
+                    return;
+                }
+
+                const emailVerificationToken = await verifyCode();
                 const role   = selectedRole.toLowerCase();
-                const result = await register({ email, password, role });
+                const result = await register({ email, password, role, emailVerificationToken });
                 if (!result.success) { setError(result.error); return; }
                 router.push(role === 'seller' ? '/seller/setup' : '/buyer/setup');
             } catch (err) {
+                if (['CODE_EXPIRED', 'TOO_MANY_ATTEMPTS', 'INVALID_CODE'].includes(err.code)) {
+                    setVerificationCode('');
+                    setError(`${err.message} You can send a new code below.`);
+                    return;
+                }
                 setError(err.message || 'Something went wrong. Please try again.');
             }
         });
@@ -165,7 +231,11 @@ export default function SignUp() {
                                 type="email"
                                 placeholder="Email address"
                                 value={email}
-                                onChange={(e) => setEmail(e.target.value)}
+                                onChange={(e) => {
+                                    setEmail(e.target.value);
+                                    setVerificationStep('details');
+                                    setVerificationCode('');
+                                }}
                                 className={styles.input}
                             />
                             <input
@@ -182,6 +252,27 @@ export default function SignUp() {
                                 onChange={(e) => setConfirm(e.target.value)}
                                 className={`${styles.input} ${styles.inputGroup}`}
                             />
+                            {verificationStep === 'code' && (
+                                <input
+                                    type="text"
+                                    inputMode="numeric"
+                                    maxLength={6}
+                                    placeholder="Verification code"
+                                    value={verificationCode}
+                                    onChange={(e) => setVerificationCode(e.target.value.replace(/\D/g, '').slice(0, 6))}
+                                    className={`${styles.input} ${styles.inputGroup}`}
+                                />
+                            )}
+                            {verificationStep === 'code' && (
+                                <button
+                                    type="button"
+                                    className={styles.resendCodeBtn}
+                                    disabled={isSubmitting}
+                                    onClick={() => runWithLock(handleResendCode)}
+                                >
+                                    Send new code
+                                </button>
+                            )}
 
                             {/* Submit button */}
                             <button
@@ -202,7 +293,9 @@ export default function SignUp() {
                                     boxShadow: agreed && !isSubmitting ? '0 4px 14px rgba(211,47,47,0.28)' : 'none',
                                 }}
                             >
-                                {isSubmitting ? 'Creating account…' : 'Create account'}
+                                {isSubmitting
+                                    ? (verificationStep === 'details' ? 'Sending code...' : 'Creating account...')
+                                    : (verificationStep === 'details' ? 'Send verification code' : 'Verify and create account')}
                             </button>
 
                             {/* ── T&C circle checkbox — below Create account ── */}
@@ -258,6 +351,22 @@ export default function SignUp() {
                                 <p style={{ color: '#D32F2F', fontSize: '0.82rem', margin: '0.5rem 0 0', padding: 0 }}>
                                     {error}
                                 </p>
+                            )}
+                            {message && (
+                                <p style={{ color: '#166534', fontSize: '0.82rem', margin: '0.5rem 0 0', padding: 0 }}>
+                                    {message}
+                                </p>
+                            )}
+
+                            {verificationStep === 'code' && (
+                                <button
+                                    type="button"
+                                    className={styles.toggleAuth}
+                                    disabled={isSubmitting}
+                                    onClick={() => runWithLock(handleResendCode)}
+                                >
+                                    Resend code
+                                </button>
                             )}
 
                             <button

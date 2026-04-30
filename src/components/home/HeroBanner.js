@@ -29,14 +29,18 @@ const slides = [
         title: 'Bid with Confidence',
         subtitle: 'Verified sellers, secure payments, and buyer protection — every auction',
         cta: 'Learn More',
-        href: '/about',
+        href: '/buyer-protection',
+        id: 'buyer-protection',
         objectPosition: 'center 20%',
     },
 ];
 
+const slideActionIds = ['browse-auctions', 'join-live-auction', 'buyer-protection'];
+
 export default function HeroBanner() {
     const [current, setCurrent] = useState(0);
     const [paused, setPaused] = useState(false);
+    const [bannerActions, setBannerActions] = useState({});
     const touchStartX = useRef(null);
     const touchEndX = useRef(null);
 
@@ -53,6 +57,31 @@ export default function HeroBanner() {
         const timer = setInterval(next, 5000);
         return () => clearInterval(timer);
     }, [paused, next]);
+
+    useEffect(() => {
+        const apiUrl = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:5000';
+        fetch(`${apiUrl}/api/banner/buttons`)
+            .then(res => (res.ok ? res.json() : null))
+            .then(json => {
+                const actions = {};
+                (json?.data || []).forEach(action => {
+                    actions[action.id] = action;
+                });
+                setBannerActions(actions);
+            })
+            .catch(() => {});
+    }, []);
+
+    const trackClick = (id) => {
+        if (!id) return;
+        const apiUrl = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:5000';
+        fetch(`${apiUrl}/api/banner/buttons/${id}/click`, {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ source: 'home-hero' }),
+            keepalive: true,
+        }).catch(() => {});
+    };
 
     const onTouchStart = (e) => {
         touchStartX.current = e.touches[0].clientX;
@@ -88,7 +117,13 @@ export default function HeroBanner() {
                     className={styles.track}
                     style={{ transform: `translateX(-${current * 100}%)` }}
                 >
-                    {slides.map((slide, i) => (
+                    {slides.map((slide, i) => {
+                        const actionId = slide.id || slideActionIds[i];
+                        const action = bannerActions[actionId] || {};
+                        const href = action.href || slide.href;
+                        const label = action.label || slide.cta;
+
+                        return (
                         <div key={i} className={styles.slide}>
                             <Image
                                 src={slide.image}
@@ -104,12 +139,12 @@ export default function HeroBanner() {
                             <div className={styles.content}>
                                 <h1 className={styles.title}>{slide.title}</h1>
                                 <p className={styles.subtitle}>{slide.subtitle}</p>
-                                <Link href={slide.href} className={styles.cta}>
-                                    {slide.cta}
+                                <Link href={href} className={styles.cta} onClick={() => trackClick(actionId)}>
+                                    {label}
                                 </Link>
                             </div>
                         </div>
-                    ))}
+                    )})}
                 </div>
 
                 {/* Arrows */}

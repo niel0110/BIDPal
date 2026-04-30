@@ -7,6 +7,14 @@
     width: fit-content;
 }
 
+.compactWrapper {
+    width: 100%;
+}
+
+.compactWrapper .card {
+    width: 100%;
+}
+
 .card {
     width: 280px;
     height: 390px;
@@ -305,6 +313,12 @@
 /* ── Responsive: 360px and below ── */
 @media (max-width: 480px) {
     .card { width: 185px; height: 255px; }
+    .compactWrapper .card { width: 100%; height: 260px; }
+    .compactWrapper .imageWrapper { height: 145px; }
+    .compactWrapper .sellerName { max-width: 52px; }
+    .compactWrapper .followBtn { max-width: 58px; }
+    .compactWrapper .priceText { font-size: 0.78rem; }
+    .compactWrapper .cartBtn { max-width: 78px; overflow: hidden; text-overflow: ellipsis; }
     .imageWrapper { height: 140px; }
     .footer { padding: 0.45rem 0.5rem; gap: 0.25rem; min-height: 115px; }
     .sellerRow { margin-bottom: 0.5rem; }

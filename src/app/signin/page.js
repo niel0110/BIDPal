@@ -132,7 +132,7 @@ export default function SignIn() {
                             className={styles.toggleAuth}
                             onClick={() => router.push('/signup')}
                         >
-                            Don't have an account? <span className={styles.toggleLink}>Sign Up</span>
+                            Don&apos;t have an account? <span className={styles.toggleLink}>Sign Up</span>
                         </button>
                     </form>
                 </div>

@@ -2,7 +2,7 @@
 .page {
     min-height: 100vh;
     display: flex;
-    background: #fff;
+    background: #f7f8fb;
 }
 
 /* Left accent panel — desktop only */
@@ -13,21 +13,32 @@
 @media (min-width: 768px) {
     .side {
         display: flex;
-        width: 240px;
+        width: 280px;
         flex-shrink: 0;
-        background: #cc2b41;
-        align-items: center;
+        background: linear-gradient(165deg, #cf2343 0%, #bb1f3d 48%, #8f1d45 100%);
+        align-items: stretch;
         justify-content: center;
-        padding: 2.5rem 1.75rem;
+        padding: 2rem 1.75rem;
         position: sticky;
         top: 0;
         height: 100vh;
+        overflow: hidden;
+    }
+
+    .side::before {
+        content: '';
+        position: absolute;
+        inset: 0;
+        background:
+            radial-gradient(circle at 18% 15%, rgba(255,255,255,0.18), transparent 28%),
+            linear-gradient(180deg, rgba(255,255,255,0.06), transparent 40%);
+        pointer-events: none;
     }
 }
 
 @media (min-width: 1024px) {
     .side {
-        width: 300px;
+        width: 320px;
         padding: 2.5rem 2rem;
     }
 }
@@ -35,24 +46,28 @@
 .sideContent {
     display: flex;
     flex-direction: column;
-    gap: 1rem;
+    justify-content: center;
+    gap: 1.25rem;
+    width: 100%;
+    position: relative;
+    z-index: 1;
 }
 
 .sideHeading {
-    font-size: 1.5rem;
+    font-size: 1.85rem;
     font-weight: 800;
     color: white;
-    line-height: 1.25;
+    line-height: 1.15;
     margin: 0;
 }
 
 @media (min-width: 1024px) {
-    .sideHeading { font-size: 1.75rem; }
+    .sideHeading { font-size: 2.15rem; }
 }
 
 .sideText {
-    font-size: 0.8rem;
-    color: rgba(255,255,255,0.72);
+    font-size: 0.92rem;
+    color: rgba(255,255,255,0.86);
     line-height: 1.6;
     margin: 0;
 }
@@ -81,8 +96,10 @@
     flex-direction: column;
     align-items: stretch;
     justify-content: center;
-    padding: 2rem 2.5rem;
-    background: #fff;
+    padding: 1.5rem 2rem;
+    background:
+        linear-gradient(180deg, rgba(255,255,255,0.78), rgba(255,255,255,0.96)),
+        #f7f8fb;
 }
 
 .mobileLogo {
@@ -94,23 +111,27 @@
 
 .card {
     background: white;
-    border-radius: 16px;
-    padding: 2rem 2.25rem;
+    border-radius: 14px;
+    padding: 1.55rem 2rem 1.25rem;
     width: 100%;
-    max-width: 680px;
-    border: 1.5px solid #f0f0f0;
-    box-shadow: 0 2px 16px rgba(0,0,0,0.06);
+    max-width: 980px;
+    min-height: calc(100vh - 3rem);
+    border: 1px solid #e5e7eb;
+    box-shadow: 0 16px 44px rgba(15,23,42,0.08);
+    display: flex;
+    flex-direction: column;
+    justify-content: flex-start;
 }
 
 /* ── Card header ──────────────────────────────────────────────────────── */
 .cardHeader {
-    margin-bottom: 1rem;
-    padding-bottom: 0.875rem;
+    margin-bottom: 0.85rem;
+    padding-bottom: 0.75rem;
     border-bottom: 1px solid #f3f4f6;
 }
 
 .title {
-    font-size: 1.35rem;
+    font-size: 1.55rem;
     font-weight: 800;
     color: #111;
     margin: 0 0 0.25rem;
@@ -119,7 +140,7 @@
 .title span { color: #cc2b41; }
 
 .sub {
-    font-size: 0.8rem;
+    font-size: 0.88rem;
     color: #6b7280;
     margin: 0;
     line-height: 1.55;
@@ -129,13 +150,13 @@
 .form {
     display: flex;
     flex-direction: column;
-    gap: 0.85rem;
+    gap: 0.72rem;
 }
 
 .row {
     display: grid;
     grid-template-columns: 1fr 1fr;
-    gap: 0.75rem;
+    gap: 0.9rem;
 }
 
 .field {
@@ -156,10 +177,10 @@
 .opt { font-weight: 400; text-transform: none; color: #9ca3af; letter-spacing: 0; font-size: 0.68rem; }
 
 .input {
-    padding: 9px 12px;
+    padding: 10px 12px;
     border: 1.5px solid #e5e7eb;
     border-radius: 9px;
-    font-size: 0.858rem;
+    font-size: 0.92rem;
     background: #fafafa;
     color: #111;
     width: 100%;
@@ -213,8 +234,8 @@
 }
 
 .phonePrefix {
-    padding: 9px 10px 9px 12px;
-    font-size: 0.858rem;
+    padding: 10px 10px 10px 12px;
+    font-size: 0.92rem;
     font-weight: 600;
     color: #6b7280;
     background: #f3f4f6;
@@ -310,8 +331,8 @@
     color: white;
     border: none;
     border-radius: 9px;
-    padding: 0.78rem;
-    font-size: 0.875rem;
+    padding: 0.85rem;
+    font-size: 0.95rem;
     font-weight: 700;
     cursor: pointer;
     transition: opacity 0.2s, transform 0.1s;
@@ -335,8 +356,8 @@
 .stepBar {
     display: flex;
     align-items: center;
-    margin-bottom: 1.5rem;
-    padding-bottom: 1rem;
+    margin-bottom: 1.25rem;
+    padding-bottom: 0.9rem;
     position: relative;
 }
 
@@ -391,6 +412,62 @@
     letter-spacing: 0.4px;
 }
 .stepLabelActive { color: #cc2b41 !important; }
+
+/* Pending review */
+.pendingPanel {
+    text-align: center;
+    padding: 1.5rem 0;
+}
+
+.pendingIcon {
+    font-size: 2.5rem;
+    margin-bottom: 0.75rem;
+    line-height: 1;
+}
+
+.pendingTitle {
+    text-align: center;
+    margin-bottom: 0.5rem;
+}
+
+.pendingSub {
+    text-align: center;
+    margin-bottom: 1.5rem;
+}
+
+.pendingList {
+    display: flex;
+    flex-direction: column;
+    gap: 0.5rem;
+    margin-bottom: 1.5rem;
+    text-align: left;
+    background: #fafafa;
+    border: 1.5px solid #f0f0f0;
+    border-radius: 10px;
+    padding: 0.9rem 1rem;
+}
+
+.pendingListItem {
+    display: flex;
+    align-items: center;
+    gap: 0.6rem;
+    font-size: 0.82rem;
+    color: #444;
+    font-weight: 500;
+}
+
+.pendingListIcon {
+    width: 20px;
+    text-align: center;
+    flex-shrink: 0;
+}
+
+.pendingFootnote {
+    font-size: 0.72rem;
+    color: #9ca3af;
+    margin: 0.75rem 0 0;
+    line-height: 1.35;
+}
 
 /* ── Side panel features ──────────────────────────────────────────────── */
 .sideFeatures {
@@ -475,13 +552,128 @@
 
 /* ── Responsive ───────────────────────────────────────────────────────── */
 @media (max-width: 767px) {
-    .formWrap { padding: 1.25rem 1rem; align-items: stretch; }
-    .card { padding: 1.4rem 1.1rem; border-radius: 14px; box-shadow: none; border: none; }
+    .page {
+        min-height: 100dvh;
+        background: #eef2f7;
+        padding: 0.75rem;
+    }
+
+    .formWrap {
+        padding: 0;
+        align-items: stretch;
+        background: #fff;
+        border: 1px solid #d8dee8;
+        border-radius: 8px;
+        min-height: calc(100dvh - 1.5rem);
+        overflow: hidden;
+    }
+
+    .mobileLogo {
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        padding: 1.15rem 1rem 0.45rem;
+        margin: 0;
+    }
+
+    .mobileLogo :global(div) {
+        gap: 0.45rem !important;
+    }
+
+    .mobileLogo :global(img) {
+        height: 38px !important;
+    }
+
+    .mobileLogo :global(span) {
+        font-size: 1.7rem !important;
+        letter-spacing: 0 !important;
+    }
+
+    .card {
+        flex: 1;
+        min-height: 0;
+        padding: 0.35rem 1rem 1rem;
+        border-radius: 0;
+        box-shadow: none;
+        border: none;
+        justify-content: stretch;
+    }
+
+    .pendingPanel {
+        min-height: 100%;
+        padding: 0;
+        display: flex;
+        flex-direction: column;
+        justify-content: space-between;
+        gap: 0.75rem;
+    }
+
+    .pendingIcon {
+        font-size: 2.15rem;
+        margin-bottom: 0;
+    }
+
+    .pendingTitle {
+        font-size: 1.12rem;
+        margin-bottom: 0.35rem;
+        line-height: 1.15;
+    }
+
+    .pendingSub {
+        font-size: 0.84rem;
+        line-height: 1.38;
+        margin-bottom: 0;
+    }
+
+    .pendingList {
+        gap: 0.55rem;
+        margin-bottom: 0;
+        border-radius: 8px;
+        padding: 0.9rem 1rem;
+    }
+
+    .pendingListItem {
+        font-size: 0.84rem;
+        gap: 0.5rem;
+    }
+
+    .pendingListIcon {
+        width: 18px;
+    }
+
+    .pendingPanel .btn {
+        padding: 0.85rem;
+        font-size: 0.9rem;
+        border-radius: 8px;
+    }
+
+    .pendingFootnote {
+        font-size: 0.72rem;
+        margin-top: 0.45rem;
+        line-height: 1.25;
+    }
+
+    .pendingPanel > :first-child {
+        margin-top: 0.15rem;
+    }
+
     .row { grid-template-columns: 1fr; }
     .title { font-size: 1.2rem; }
 }
 
 @media (max-width: 320px) {
-    .card { padding: 1.1rem 0.9rem; }
+    .page { padding: 0.5rem; }
+    .formWrap { min-height: calc(100dvh - 1rem); }
+    .mobileLogo { padding-top: 0.85rem; }
+    .mobileLogo :global(img) { height: 34px !important; }
+    .mobileLogo :global(span) { font-size: 1.5rem !important; }
+    .card { padding: 0.25rem 0.85rem 0.75rem; }
     .title { font-size: 1.1rem; }
+    .pendingPanel { gap: 0.55rem; }
+    .pendingIcon { font-size: 1.9rem; }
+    .pendingSub { font-size: 0.78rem; }
+    .pendingList { padding: 0.7rem 0.8rem; gap: 0.4rem; }
+    .pendingListItem { font-size: 0.76rem; }
+    .pendingPanel .btn { padding: 0.7rem; font-size: 0.82rem; }
+    .pendingFootnote { font-size: 0.66rem; }
 }

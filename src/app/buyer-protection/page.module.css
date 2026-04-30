@@ -1,0 +1,142 @@
+.main {
+  min-height: 100vh;
+  background: #f8f8f8;
+  padding-bottom: 4rem;
+}
+
+.hero {
+  background: #191919;
+  color: white;
+  border-bottom: 4px solid #D32F2F;
+}
+
+.heroInner {
+  max-width: 980px;
+  margin: 0 auto;
+  padding: 4rem 2rem;
+}
+
+.kicker {
+  color: #ffb4b4;
+  font-size: 0.78rem;
+  font-weight: 800;
+  letter-spacing: 0.08em;
+  margin: 0 0 0.75rem;
+  text-transform: uppercase;
+}
+
+.hero h1 {
+  font-size: 2.4rem;
+  line-height: 1.12;
+  margin: 0 0 1rem;
+  max-width: 620px;
+}
+
+.hero p {
+  color: #e8e8e8;
+  line-height: 1.65;
+  margin: 0;
+  max-width: 680px;
+}
+
+.actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.75rem;
+  margin-top: 1.5rem;
+}
+
+.primaryBtn,
+.secondaryBtn {
+  border-radius: 10px;
+  font-size: 0.9rem;
+  font-weight: 800;
+  padding: 0.72rem 1.25rem;
+  text-decoration: none;
+}
+
+.primaryBtn {
+  background: #D32F2F;
+  color: white;
+}
+
+.secondaryBtn {
+  background: white;
+  color: #D32F2F;
+}
+
+.content {
+  max-width: 980px;
+  margin: 0 auto;
+  padding: 2rem;
+}
+
+.grid {
+  display: grid;
+  grid-template-columns: repeat(4, minmax(0, 1fr));
+  gap: 1rem;
+}
+
+.card {
+  background: white;
+  border: 1px solid #eeeeee;
+  border-radius: 8px;
+  padding: 1.25rem;
+}
+
+.iconWrap {
+  width: 42px;
+  height: 42px;
+  border-radius: 8px;
+  background: #fff1f1;
+  color: #D32F2F;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  margin-bottom: 1rem;
+}
+
+.card h2,
+.note h2 {
+  color: #1a1a1a;
+  font-size: 1rem;
+  margin: 0 0 0.5rem;
+}
+
+.card p,
+.note p {
+  color: #666;
+  font-size: 0.88rem;
+  line-height: 1.6;
+  margin: 0;
+}
+
+.note {
+  background: white;
+  border-left: 4px solid #D32F2F;
+  border-radius: 8px;
+  margin-top: 1rem;
+  padding: 1.25rem;
+}
+
+@media (max-width: 860px) {
+  .grid {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+}
+
+@media (max-width: 560px) {
+  .heroInner,
+  .content {
+    padding-left: 1rem;
+    padding-right: 1rem;
+  }
+
+  .hero h1 {
+    font-size: 1.75rem;
+  }
+
+  .grid {
+    grid-template-columns: 1fr;
+  }
+}

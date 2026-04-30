@@ -6,6 +6,114 @@
     min-height: calc(100vh - 80px);
 }
 
+.liveLanding {
+    min-height: 100vh;
+    background: #f8f8f8;
+    padding-bottom: 4rem;
+}
+
+.liveHero {
+    max-width: 1440px;
+    margin: 0 auto;
+    padding: 2rem 2rem 1.5rem;
+    border-bottom: 2px solid #eee;
+}
+
+.liveEyebrow {
+    color: #D32F2F;
+    font-size: 0.78rem;
+    font-weight: 800;
+    letter-spacing: 0.08em;
+    text-transform: uppercase;
+}
+
+.liveHero h1 {
+    color: #1a1a1a;
+    font-size: 1.8rem;
+    font-weight: 900;
+    line-height: 1.15;
+    margin: 0.45rem 0 0.5rem;
+}
+
+.liveHero p {
+    color: #777;
+    font-size: 0.92rem;
+    line-height: 1.6;
+    margin: 0;
+    max-width: 680px;
+}
+
+.liveLandingSection {
+    max-width: 1440px;
+    margin: 1.75rem auto 0;
+    padding: 0 2rem;
+}
+
+.liveLandingHeader {
+    align-items: center;
+    display: flex;
+    justify-content: space-between;
+    gap: 1rem;
+    margin-bottom: 1rem;
+}
+
+.liveLandingHeader h2 {
+    color: #1a1a1a;
+    font-size: 1.15rem;
+    font-weight: 800;
+    margin: 0;
+}
+
+.liveLandingHeader span {
+    color: #888;
+    font-size: 0.8rem;
+    font-weight: 700;
+}
+
+.liveGrid {
+    display: grid;
+    grid-template-columns: repeat(auto-fill, minmax(240px, 1fr));
+    gap: 1.25rem;
+}
+
+.liveEmpty {
+    background: white;
+    border: 1px solid #eee;
+    border-radius: 8px;
+    padding: 2rem;
+    text-align: center;
+}
+
+.liveEmpty h3 {
+    color: #1a1a1a;
+    font-size: 1rem;
+    margin: 0 0 0.45rem;
+}
+
+.liveEmpty p {
+    color: #777;
+    font-size: 0.88rem;
+    margin: 0;
+}
+
+.liveEmpty button {
+    background: #D32F2F;
+    border: 0;
+    border-radius: 10px;
+    color: white;
+    cursor: pointer;
+    font-size: 0.85rem;
+    font-weight: 800;
+    margin-top: 1rem;
+    padding: 0.7rem 1.2rem;
+}
+
+.liveLandingLoader {
+    display: flex;
+    justify-content: center;
+    padding: 4rem 0;
+}
+
 /* Side-by-side layout: video left, bids+chat right */
 .liveLayout {
     display: flex;
@@ -1421,8 +1529,393 @@
 /* Mobile overlay — hidden on desktop, shown via media query */
 .mobileChatOverlay { display: none; }
 
+.mobileContainer {
+    padding: 0;
+    background: white;
+    min-height: unset;
+}
+
+.mobileLiveLayout {
+    flex-direction: column;
+    height: auto;
+}
+
+.mobileLiveLeft {
+    flex: none;
+    width: 100%;
+}
+
+.mobileLiveMode {
+    aspect-ratio: unset;
+    height: calc(100svh - 60px);
+    max-height: none;
+    border-radius: 16px;
+    margin-bottom: 0;
+}
+
+.mobileLiveLayout .bottomSection {
+    display: none !important;
+}
+
+.mobileLiveMode .mobileChatOverlay {
+    display: flex;
+    flex-direction: column;
+    justify-content: space-between;
+    position: absolute;
+    inset: 0;
+    z-index: 15;
+    pointer-events: none;
+}
+
+.mobileLiveMode .mobileOverlayTop {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    padding: 0.65rem 0.75rem 1.5rem;
+    background: linear-gradient(to bottom, rgba(0,0,0,0.45) 0%, transparent 100%);
+    pointer-events: all;
+}
+
+.mobileLiveMode .mobileOverlayMiddle {
+    display: flex;
+    flex-direction: column;
+    justify-content: flex-end;
+    flex: 1;
+    padding: 0 0.75rem;
+    pointer-events: none;
+    overflow: hidden;
+}
+
+.mobileLiveMode .mobileOverlayBottom {
+    display: flex;
+    flex-direction: column;
+    gap: 0.5rem;
+    padding: 1.5rem 0.75rem 0.7rem;
+    background: linear-gradient(to top, rgba(0,0,0,0.5) 0%, transparent 100%);
+    pointer-events: all;
+}
+
+.mobileLiveMode .sellerOverlay,
+.mobileLiveMode .overlayTop,
+.mobileLiveMode .statsRow,
+.mobileLiveMode .auctionControl {
+    display: none;
+}
+
+.mobileLiveMode .notLiveOverlay {
+    justify-content: flex-start !important;
+    padding-top: 56px !important;
+}
+
+.mobileLiveMode .mobileStoreInfo {
+    display: flex;
+    align-items: center;
+    gap: 0.45rem;
+}
+
+.mobileLiveMode .mobileStoreAvatar {
+    width: 34px;
+    height: 34px;
+    border-radius: 50%;
+    border: 2px solid white;
+    flex-shrink: 0;
+    background-color: #888;
+    background-size: cover;
+    background-position: center;
+}
+
+.mobileLiveMode .mobileStoreText {
+    display: flex;
+    flex-direction: column;
+    gap: 0.1rem;
+}
+
+.mobileLiveMode .mobileStoreName {
+    font-size: 0.8rem;
+    font-weight: 700;
+    color: white;
+    line-height: 1.2;
+    text-shadow: 0 1px 3px rgba(0,0,0,0.7);
+}
+
+.mobileLiveMode .mobileStoreFollowers,
+.mobileLiveMode .mobileViewerCount {
+    color: rgba(255,255,255,0.85);
+    display: flex;
+    align-items: center;
+    gap: 0.25rem;
+    font-size: 0.68rem;
+}
+
+.mobileLiveMode .mobileFollowBtn {
+    background: #D32F2F;
+    color: white;
+    border: none;
+    padding: 0.28rem 0.8rem;
+    border-radius: 20px;
+    font-size: 0.7rem;
+    font-weight: 700;
+    cursor: pointer;
+    white-space: nowrap;
+}
+
+.mobileLiveMode .mobileChatMessages {
+    display: flex;
+    flex-direction: column;
+    gap: 0.3rem;
+    width: 100%;
+    max-height: 105px;
+    overflow-y: auto;
+    overflow-x: hidden;
+    scrollbar-width: none;
+    pointer-events: all;
+}
+
+.mobileLiveMode .mobileChatMsg {
+    display: flex;
+    gap: 0.4rem;
+    align-items: baseline;
+}
+
+.mobileLiveMode .mobileChatUser {
+    font-size: 0.72rem;
+    font-weight: 700;
+    color: #ffd700;
+    white-space: nowrap;
+    flex-shrink: 0;
+}
+
+.mobileLiveMode .mobileChatText {
+    font-size: 0.78rem;
+    color: white;
+    line-height: 1.3;
+    overflow-wrap: anywhere;
+}
+
+.mobileLiveMode .mobileProductCard {
+    display: flex;
+    align-items: center;
+    gap: 0.65rem;
+    background: rgba(255,255,255,0.95);
+    border-radius: 12px;
+    padding: 0.6rem 0.75rem;
+}
+
+.mobileLiveMode .mobileProductThumb {
+    width: 52px;
+    height: 52px;
+    border-radius: 8px;
+    object-fit: cover;
+    flex-shrink: 0;
+    border: 1px solid #eee;
+}
+
+.mobileLiveMode .mobileProductInfo {
+    flex: 1;
+    min-width: 0;
+    display: flex;
+    flex-direction: column;
+    gap: 0.1rem;
+}
+
+.mobileLiveMode .mobileProductName {
+    font-size: 0.8rem;
+    font-weight: 700;
+    color: #111;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+}
+
+.mobileLiveMode .mobileProductBidLabel {
+    font-size: 0.65rem;
+    color: #888;
+    font-weight: 500;
+}
+
+.mobileLiveMode .mobileProductPrice {
+    font-size: 0.92rem;
+    font-weight: 800;
+    color: #D32F2F;
+}
+
+.mobileLiveMode .mobileBidBtn {
+    background: #D32F2F;
+    color: white;
+    border: none;
+    padding: 0.5rem 1rem;
+    border-radius: 8px;
+    font-size: 0.82rem;
+    font-weight: 700;
+    cursor: pointer;
+    flex-shrink: 0;
+}
+
+.mobileLiveMode .mobileChatRow {
+    display: flex;
+    align-items: center;
+    gap: 0.5rem;
+}
+
+.mobileLiveMode .mobileChatInput {
+    flex: 1;
+    display: flex;
+    align-items: center;
+    gap: 0.4rem;
+    background: rgba(255,255,255,0.92);
+    border-radius: 999px;
+    padding: 0.35rem 0.4rem 0.35rem 0.8rem;
+}
+
+.mobileLiveMode .mobileChatInput input {
+    flex: 1;
+    min-width: 0;
+    border: 0;
+    outline: 0;
+    background: transparent;
+    color: #111;
+    font-size: 0.78rem;
+}
+
+.mobileLiveMode .mobileChatInput button,
+.mobileLiveMode .mobileChatActionBtn {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    border: 0;
+    color: white;
+    background: #D32F2F;
+    cursor: pointer;
+}
+
+.mobileLiveMode .mobileChatInput button {
+    width: 30px;
+    height: 30px;
+    border-radius: 50%;
+}
+
+.mobileLiveMode .mobileChatActions {
+    display: flex;
+    gap: 0.4rem;
+}
+
+.mobileLiveMode .mobileChatActionBtn {
+    width: 38px;
+    height: 38px;
+    border-radius: 50%;
+    background: rgba(0,0,0,0.42);
+    backdrop-filter: blur(6px);
+}
+
+.mobileBuyerLivePage {
+    background: #050505;
+    height: calc(100svh - 60px);
+    min-height: 520px;
+    overflow: hidden;
+    position: relative;
+}
+
+.mobileBuyerVideoStage {
+    background: #111827;
+    height: 100%;
+    overflow: hidden;
+    position: relative;
+    width: 100%;
+}
+
+.mobileBuyerRemoteVideo {
+    height: 100%;
+    inset: 0;
+    position: absolute;
+    width: 100%;
+    z-index: 1;
+}
+
+.mobileBuyerPoster {
+    align-items: center;
+    background-position: center;
+    background-size: cover;
+    color: white;
+    display: flex;
+    flex-direction: column;
+    inset: 0;
+    justify-content: flex-start;
+    padding: 8rem 1.5rem 1.5rem;
+    position: absolute;
+    text-align: center;
+    z-index: 2;
+}
+
+.mobileBuyerPoster h2 {
+    font-size: 1.15rem;
+    font-weight: 800;
+    margin: 0.65rem 0 0.25rem;
+}
+
+.mobileBuyerPoster p {
+    color: rgba(255,255,255,0.82);
+    font-size: 0.82rem;
+    line-height: 1.45;
+    margin: 0;
+    max-width: 240px;
+}
+
+.mobileBuyerTopBar {
+    align-items: center;
+    background: linear-gradient(to bottom, rgba(0,0,0,0.55), transparent);
+    display: flex;
+    gap: 0.75rem;
+    justify-content: space-between;
+    left: 0;
+    padding: 0.75rem;
+    pointer-events: all;
+    position: absolute;
+    right: 0;
+    top: 0;
+    z-index: 5;
+}
+
+.mobileBuyerMessages {
+    bottom: 8.8rem;
+    left: 0;
+    padding: 0 0.75rem;
+    position: absolute;
+    right: 0;
+    z-index: 5;
+}
+
+.mobileBuyerBottom {
+    background: linear-gradient(to top, rgba(0,0,0,0.72), transparent);
+    bottom: 0;
+    display: flex;
+    flex-direction: column;
+    gap: 0.5rem;
+    left: 0;
+    padding: 1.5rem 0.75rem 0.75rem;
+    position: absolute;
+    right: 0;
+    z-index: 5;
+}
+
 /* ── Mobile Responsive ── */
 @media (max-width: 768px) {
+    .liveHero {
+        padding: 1.5rem 1rem 1.25rem;
+    }
+
+    .liveHero h1 {
+        font-size: 1.45rem;
+    }
+
+    .liveLandingSection {
+        padding: 0 1rem;
+    }
+
+    .liveGrid {
+        grid-template-columns: repeat(auto-fill, minmax(160px, 1fr));
+        gap: 0.75rem;
+    }
+
     .container {
         padding: 0;
         background: white;

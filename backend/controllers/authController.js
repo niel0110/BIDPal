@@ -2,25 +2,182 @@
 import { supabase } from '../config/supabase.js';
 import bcrypt from 'bcrypt';
 import jwt from 'jsonwebtoken';
+import crypto from 'crypto';
 import { OAuth2Client } from 'google-auth-library';
+import { isEmailConfigured, sendVerificationCodeEmail } from '../services/emailService.js';
+
+const CODE_TTL_MS = 10 * 60 * 1000;
+const TOKEN_TTL_MS = 15 * 60 * 1000;
+const verificationCodes = new Map();
+const verifiedTokens = new Map();
+const isProduction = process.env.NODE_ENV === 'production';
+
+const normalizeEmail = (email) => String(email || '').trim().toLowerCase();
+const codeKey = (purpose, email) => `${purpose}:${normalizeEmail(email)}`;
+const generateCode = () => String(crypto.randomInt(100000, 1000000));
+const hashValue = (value) => crypto.createHash('sha256').update(String(value)).digest('hex');
+const generateToken = () => crypto.randomBytes(32).toString('hex');
+
+const cleanupExpiredAuthCodes = () => {
+  const now = Date.now();
+  for (const [key, value] of verificationCodes.entries()) {
+    if (value.expiresAt <= now) verificationCodes.delete(key);
+  }
+  for (const [key, value] of verifiedTokens.entries()) {
+    if (value.expiresAt <= now) verifiedTokens.delete(key);
+  }
+};
+
+const findUserByEmail = async (email, columns = 'user_id, email') => {
+  return supabase
+    .from('User')
+    .select(columns)
+    .ilike('email', normalizeEmail(email))
+    .maybeSingle();
+};
+
+const consumeVerifiedToken = (purpose, email, token) => {
+  cleanupExpiredAuthCodes();
+  const key = codeKey(purpose, email);
+  const entry = verifiedTokens.get(key);
+  if (!entry || entry.token !== token || entry.expiresAt <= Date.now()) return false;
+  verifiedTokens.delete(key);
+  return true;
+};
+
+export const sendEmailVerificationCode = async (req, res) => {
+  cleanupExpiredAuthCodes();
+  const email = normalizeEmail(req.body.email);
+  const purpose = req.body.purpose === 'forgot-password' ? 'forgot-password' : 'register';
+
+  if (!email) {
+    return res.status(400).json({ error: 'Email is required.' });
+  }
+
+  try {
+    const { data: existingUser, error } = await findUserByEmail(email);
+    if (error) return res.status(500).json({ error: error.message });
+
+    if (purpose === 'register' && existingUser) {
+      return res.status(409).json({ error: 'User already exists.' });
+    }
+
+    if (purpose === 'forgot-password' && !existingUser) {
+      return res.status(404).json({ error: 'No BIDPal account exists for this email.' });
+    }
+
+    const code = generateCode();
+    verificationCodes.set(codeKey(purpose, email), {
+      codeHash: hashValue(code),
+      attempts: 0,
+      expiresAt: Date.now() + CODE_TTL_MS,
+    });
+
+    if (isEmailConfigured()) {
+      try {
+        await sendVerificationCodeEmail({ email, code, purpose });
+        return res.json({ message: 'Verification code sent.' });
+      } catch (mailError) {
+        console.error('Email delivery failed:', mailError);
+
+        if (!isProduction && mailError.code === 'EMAIL_AUTH_FAILED') {
+          console.log(`[DEV] ${purpose} verification code for ${email}: ${code}`);
+          return res.json({
+            message: 'Development mode: Gmail rejected the sender login. Use the code shown below, then replace GMAIL_APP_PASSWORD with a Gmail App Password.',
+            devCode: code,
+          });
+        }
+
+        return res.status(502).json({
+          error: mailError.code === 'EMAIL_AUTH_FAILED'
+            ? 'Gmail rejected the sender credentials. Use a Gmail App Password for the BIDPal sender account.'
+            : 'Unable to send verification email. Please try again later.',
+        });
+      }
+    }
+
+    if (isProduction) {
+      return res.status(503).json({
+        error: 'Email service is not configured. Please contact support.',
+      });
+    }
+
+    console.log(`[DEV] ${purpose} verification code for ${email}: ${code}`);
+    return res.json({
+      message: 'Development mode: email service is not configured. Use the code shown below.',
+      devCode: code,
+    });
+  } catch (err) {
+    console.error('Error sending verification code:', err);
+    res.status(500).json({ error: err.message || 'Failed to send verification code.' });
+  }
+};
+
+export const verifyEmailCode = async (req, res) => {
+  cleanupExpiredAuthCodes();
+  const email = normalizeEmail(req.body.email);
+  const code = String(req.body.code || '').trim();
+  const purpose = req.body.purpose === 'forgot-password' ? 'forgot-password' : 'register';
+  const key = codeKey(purpose, email);
+  const entry = verificationCodes.get(key);
+
+  if (!email || !code) {
+    return res.status(400).json({ error: 'Email and verification code are required.' });
+  }
+
+  if (!entry || entry.expiresAt <= Date.now()) {
+    verificationCodes.delete(key);
+    return res.status(400).json({
+      error: 'Verification code expired. Please request a new code.',
+      code: 'CODE_EXPIRED',
+    });
+  }
+
+  if (entry.attempts >= 5) {
+    verificationCodes.delete(key);
+    return res.status(429).json({
+      error: 'Too many incorrect attempts. Please request a new code.',
+      code: 'TOO_MANY_ATTEMPTS',
+    });
+  }
+
+  if (entry.codeHash !== hashValue(code)) {
+    entry.attempts += 1;
+    return res.status(400).json({
+      error: 'Verification code is incorrect. Please check the latest email code or request a new one.',
+      code: 'INVALID_CODE',
+    });
+  }
+
+  verificationCodes.delete(key);
+  const token = generateToken();
+  verifiedTokens.set(key, { token, expiresAt: Date.now() + TOKEN_TTL_MS });
+
+  res.json({
+    message: 'Email verified successfully.',
+    token,
+    tokenName: purpose === 'forgot-password' ? 'resetToken' : 'emailVerificationToken',
+  });
+};
 
 // Register user (sign up)
 export const register = async (req, res) => {
-  console.log('Register request received:', req.body);
-  const { email, password, Fname, Mname, Lname, role, contact_num, Avatar } = req.body;
+  const { password, Fname, Mname, Lname, role, contact_num, Avatar, emailVerificationToken } = req.body;
+  const email = normalizeEmail(req.body.email);
+  console.log('Register request received:', { email, role });
   if (!email || !password) {
     console.log('Missing email or password');
     return res.status(400).json({ error: 'Email and password are required.' });
   }
 
+  if (!consumeVerifiedToken('register', email, emailVerificationToken)) {
+    return res.status(400).json({ error: 'Please verify your email before creating an account.' });
+  }
+
   try {
     console.log('Checking for existing user...');
     // Check if user already exists
-    const { data: existingUser, error: findError } = await supabase
-      .from('User')
-      .select('user_id')
-      .eq('email', email)
-      .maybeSingle();
+    const { data: existingUser, error: findError } = await findUserByEmail(email, 'user_id');
 
     if (findError) {
       console.error('Supabase find error:', findError);
@@ -63,10 +220,46 @@ export const register = async (req, res) => {
   }
 };
 
+export const resetPassword = async (req, res) => {
+  const email = normalizeEmail(req.body.email);
+  const { resetToken, newPassword } = req.body;
+
+  if (!email || !resetToken || !newPassword) {
+    return res.status(400).json({ error: 'Email, reset token, and new password are required.' });
+  }
+
+  if (String(newPassword).length < 6) {
+    return res.status(400).json({ error: 'Password must be at least 6 characters.' });
+  }
+
+  if (!consumeVerifiedToken('forgot-password', email, resetToken)) {
+    return res.status(400).json({ error: 'Password reset session is invalid or expired.' });
+  }
+
+  try {
+    const { data: existingUser, error: findError } = await findUserByEmail(email, 'user_id');
+    if (findError) return res.status(500).json({ error: findError.message });
+    if (!existingUser) return res.status(404).json({ error: 'No BIDPal account exists for this email.' });
+
+    const hashedPassword = await bcrypt.hash(newPassword, 10);
+    const { error } = await supabase
+      .from('User')
+      .update({ password: hashedPassword })
+      .eq('user_id', existingUser.user_id);
+
+    if (error) return res.status(400).json({ error: error.message });
+    res.json({ message: 'Password reset successfully.' });
+  } catch (err) {
+    console.error('Unexpected error in resetPassword controller:', err);
+    res.status(500).json({ error: err.message });
+  }
+};
+
 // Login user
 export const login = async (req, res) => {
-  console.log('Login request received:', req.body);
-  const { email, password } = req.body;
+  const email = normalizeEmail(req.body.email);
+  const { password } = req.body;
+  console.log('Login request received:', { email });
   if (!email || !password) {
     console.log('Missing email or password');
     return res.status(400).json({ error: 'Email and password are required.' });
@@ -121,7 +314,8 @@ export const googleLogin = async (req, res) => {
     });
 
     const payload = ticket.getPayload();
-    const { email, given_name, family_name, picture } = payload;
+    const { given_name, family_name, picture } = payload;
+    const email = normalizeEmail(payload.email);
 
     if (!email) {
       return res.status(400).json({ error: 'Email not found in Google account.' });
@@ -201,7 +395,8 @@ export const googleLogin = async (req, res) => {
 // Legacy social login (kept for backward compatibility)
 export const socialLogin = async (req, res) => {
   console.log('Social login request received:', req.body);
-  const { email, Fname, Lname, Avatar, role } = req.body;
+  const { Fname, Lname, Avatar, role } = req.body;
+  const email = normalizeEmail(req.body.email);
 
   if (!email) {
     return res.status(400).json({ error: 'Email is required.' });

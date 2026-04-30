@@ -13,7 +13,7 @@ function formatCondition(raw) {
     return raw.replace(/_/g, ' ').replace(/\b\w/g, c => c.toUpperCase());
 }
 
-export default function ProductCard({ data }) {
+export default function ProductCard({ data, compact = false }) {
     const { user } = useAuth();
     const { addToCart, isInCart } = useCart();
     const router = useRouter();
@@ -86,7 +86,10 @@ export default function ProductCard({ data }) {
     const sellerAvatar = data.seller_avatar || data.seller_logo || null;
 
     return (
-        <div className={styles.cardWrapper} onClick={handleCardClick}>
+        <div
+            className={`${styles.cardWrapper} ${compact ? styles.compactWrapper : ''}`}
+            onClick={handleCardClick}
+        >
             <div className={styles.card}>
 
                 {/* Image */}

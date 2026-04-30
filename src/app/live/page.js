@@ -4,6 +4,7 @@ import BIDPalLoader from '@/components/BIDPalLoader';
 import { useState, useEffect, useRef, Suspense } from 'react';
 import { useSearchParams } from 'next/navigation';
 import Header from '@/components/layout/Header';
+import AuctionCard from '@/components/card/AuctionCard';
 import { Clock, Eye, Heart, Send, X, Truck, Pencil, CheckCircle, Loader2, Mic, MicOff, Video, VideoOff, Share2, Users, Lock } from 'lucide-react';
 import styles from './page.module.css';
 import { io } from 'socket.io-client';
@@ -55,6 +56,10 @@ function LivePageInner() {
     const [myStanding, setMyStanding] = useState('clean');
     const [showPreAuthModal, setShowPreAuthModal] = useState(false);
     const [paymentStatus, setPaymentStatus] = useState('idle'); // idle, processing, success
+    const [liveAuctions, setLiveAuctions] = useState([]);
+    const [scheduledAuctions, setScheduledAuctions] = useState([]);
+    const [liveLandingLoading, setLiveLandingLoading] = useState(false);
+    const [forceMobileLive, setForceMobileLive] = useState(false);
 
     // Permission and Stream State
     const [permissionStatus, setPermissionStatus] = useState('idle'); // idle, requesting, granted, denied
@@ -78,6 +83,48 @@ function LivePageInner() {
     const desktopChatScrollRef = useRef(null);
 
     const apiUrl = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:5000';
+
+    useEffect(() => {
+        const query = '(max-width: 768px), (pointer: coarse)';
+        const media = window.matchMedia(query);
+        const syncMobileMode = () => setForceMobileLive(media.matches || window.innerWidth <= 768);
+
+        syncMobileMode();
+        media.addEventListener?.('change', syncMobileMode);
+        window.addEventListener('resize', syncMobileMode);
+
+        return () => {
+            media.removeEventListener?.('change', syncMobileMode);
+            window.removeEventListener('resize', syncMobileMode);
+        };
+    }, []);
+
+    useEffect(() => {
+        if (auctionId) return;
+
+        const fetchLiveLanding = async () => {
+            setLiveLandingLoading(true);
+            try {
+                const [liveRes, scheduledRes] = await Promise.all([
+                    fetch(`${apiUrl}/api/auctions?status=active&limit=40`),
+                    fetch(`${apiUrl}/api/auctions?status=scheduled&limit=20`),
+                ]);
+                const [liveJson, scheduledJson] = await Promise.all([
+                    liveRes.ok ? liveRes.json() : { data: [] },
+                    scheduledRes.ok ? scheduledRes.json() : { data: [] },
+                ]);
+
+                setLiveAuctions((liveJson.data || []).filter(item => item.sale_type !== 'sale'));
+                setScheduledAuctions((scheduledJson.data || []).filter(item => item.sale_type !== 'sale'));
+            } catch (err) {
+                console.error('Failed to fetch live auctions:', err);
+            } finally {
+                setLiveLandingLoading(false);
+            }
+        };
+
+        fetchLiveLanding();
+    }, [auctionId, apiUrl]);
 
     // Determine if the current user is the seller (host)
     const isHost = auction && user && String(auction.seller_info?.seller_id) === String(user.seller_id || user.id);
@@ -935,6 +982,65 @@ function LivePageInner() {
         }
     };
 
+    if (!auctionId) {
+        return (
+            <main className={styles.liveLanding}>
+                <Header />
+
+                <section className={styles.liveHero}>
+                    <div>
+                        <span className={styles.liveEyebrow}>Live Auctions</span>
+                        <h1>Join a live auction in progress.</h1>
+                        <p>Watch verified sellers present items in real time, place bids, and follow upcoming sessions you do not want to miss.</p>
+                    </div>
+                </section>
+
+                {liveLandingLoading ? (
+                    <div className={styles.liveLandingLoader}><BIDPalLoader size="section" /></div>
+                ) : (
+                    <>
+                        <section className={styles.liveLandingSection}>
+                            <div className={styles.liveLandingHeader}>
+                                <h2>Live Now</h2>
+                                <span>{liveAuctions.length} active</span>
+                            </div>
+
+                            {liveAuctions.length > 0 ? (
+                                <div className={styles.liveGrid}>
+                                    {liveAuctions.map(item => <AuctionCard key={item.id} data={item} />)}
+                                </div>
+                            ) : (
+                                <div className={styles.liveEmpty}>
+                                    <h3>No live auctions right now</h3>
+                                    <p>Check the upcoming schedule below or browse all auctions.</p>
+                                    <button onClick={() => window.location.href = '/auctions'}>Browse Auctions</button>
+                                </div>
+                            )}
+                        </section>
+
+                        <section className={styles.liveLandingSection}>
+                            <div className={styles.liveLandingHeader}>
+                                <h2>Upcoming Sessions</h2>
+                                <span>{scheduledAuctions.length} scheduled</span>
+                            </div>
+
+                            {scheduledAuctions.length > 0 ? (
+                                <div className={styles.liveGrid}>
+                                    {scheduledAuctions.map(item => <AuctionCard key={item.id} data={item} />)}
+                                </div>
+                            ) : (
+                                <div className={styles.liveEmpty}>
+                                    <h3>No scheduled auctions yet</h3>
+                                    <p>New sessions appear here as sellers schedule their next live events.</p>
+                                </div>
+                            )}
+                        </section>
+                    </>
+                )}
+            </main>
+        );
+    }
+
     if (loading) {
         return (
             <main>
@@ -965,6 +1071,7 @@ function LivePageInner() {
         auction.status === 'completed' ||
         streamEnded ||
         (auction.status === 'active' && auction?.end_time && new Date(auction.end_time) <= new Date());
+    const useMobileBuyerLive = forceMobileLive && !isHost && !isScheduledBuyer;
 
     // ── AUCTION ENDED: show recap page instead of live layout ────────
     if (isAuctionEnded) {
@@ -1146,12 +1253,129 @@ function LivePageInner() {
         <main>
             <Header />
 
-            <div className={styles.container}>
-                <div className={isScheduledBuyer ? styles.scheduledLayout : styles.liveLayout}>
+            {useMobileBuyerLive ? (
+                <section className={styles.mobileBuyerLivePage}>
+                    <div className={styles.mobileBuyerVideoStage}>
+                        <div
+                            id="agora-remote-video"
+                            className={styles.mobileBuyerRemoteVideo}
+                            style={{ display: streamReady ? 'block' : 'none' }}
+                        />
+
+                        {!streamReady && (
+                            <div
+                                className={styles.mobileBuyerPoster}
+                                style={{ backgroundImage: `linear-gradient(rgba(0,0,0,0.35), rgba(0,0,0,0.62)), url(${product?.images?.[0]?.image_url || 'https://placehold.co/800x1200?text=Live+Auction'})` }}
+                            >
+                                <Loader2 size={34} className={styles.spinner} />
+                                <h2>Waiting for host</h2>
+                                <p>The seller has not published the live video yet.</p>
+                            </div>
+                        )}
+
+                        <div className={styles.mobileBuyerTopBar}>
+                            <div className={styles.mobileStoreInfo}>
+                                <div className={styles.mobileStoreAvatar} style={{
+                                    backgroundImage: seller_info.avatar ? `url(${seller_info.avatar})` : 'none',
+                                    backgroundColor: '#888',
+                                    backgroundSize: 'cover'
+                                }} />
+                                <div className={styles.mobileStoreText}>
+                                    <span className={styles.mobileStoreName}>{seller_info.store_name || seller_info.full_name || 'Seller'}</span>
+                                    <span className={styles.mobileStoreFollowers}>
+                                        <Heart size={9} fill="white" /> {stats.likes.toLocaleString()}
+                                    </span>
+                                </div>
+                                <button
+                                    className={`${styles.mobileFollowBtn} ${isFollowing ? styles.mobileFollowBtnActive : ''}`}
+                                    onClick={handleFollow}
+                                >
+                                    {isFollowing ? 'Following' : '+ Follow'}
+                                </button>
+                            </div>
+                            <div className={styles.mobileViewerCount}>
+                                <Eye size={13} />
+                                <span>{viewerCount}</span>
+                            </div>
+                        </div>
+
+                        <div className={styles.mobileBuyerMessages}>
+                            <div className={styles.mobileChatMessages} ref={mobileChatScrollRef}>
+                                {comments.map(msg => (
+                                    <div key={msg.id} className={styles.mobileChatMsg}>
+                                        <span className={styles.mobileChatUser}>{msg.user}</span>
+                                        <span className={styles.mobileChatText}>{msg.text}</span>
+                                    </div>
+                                ))}
+                                <div ref={commentsEndRef} />
+                            </div>
+                        </div>
+
+                        <div className={styles.mobileBuyerBottom}>
+                            <div className={styles.mobileProductCard}>
+                                <img
+                                    src={product?.images?.[0]?.image_url || 'https://placehold.co/56x56'}
+                                    alt={product?.name}
+                                    className={styles.mobileProductThumb}
+                                />
+                                <div className={styles.mobileProductInfo}>
+                                    <span className={styles.mobileProductName}>{product?.name}</span>
+                                    <span className={styles.mobileProductBidLabel}>Current Bid ({bids.length} Bid{bids.length !== 1 ? 's' : ''})</span>
+                                    <div className={styles.mobileProductPriceRow}>
+                                        <span className={styles.mobileProductPrice}>₱{currentBidAmount.toLocaleString('en-PH')}</span>
+                                    </div>
+                                </div>
+                                <button
+                                    className={styles.mobileBidBtn}
+                                    onClick={handleBidButtonClick}
+                                    disabled={biddingEligibility && !biddingEligibility.canBid}
+                                    style={biddingEligibility && !biddingEligibility.canBid ? { background: '#9ca3af', cursor: 'not-allowed' } : (user && !user.is_verified ? { background: '#ea580c' } : undefined)}
+                                >
+                                    {biddingEligibility && !biddingEligibility.canBid ? 'Blocked' : (user && !user.is_verified ? 'Verify' : 'Bid')}
+                                </button>
+                            </div>
+
+                            <div className={styles.mobileChatRow}>
+                                <div className={styles.mobileChatInput}>
+                                    <input
+                                        type="text"
+                                        placeholder={user ? 'Say something...' : 'Login to comment...'}
+                                        value={inputValue}
+                                        readOnly={!user}
+                                        onChange={(e) => setInputValue(e.target.value)}
+                                        onFocus={() => { if (!user) setShowLoginPrompt(true); }}
+                                        onKeyDown={(e) => e.key === 'Enter' && handleSendMessage()}
+                                    />
+                                    <button
+                                        onClick={handleSendMessage}
+                                        disabled={!inputValue.trim()}
+                                        style={{ opacity: inputValue.trim() ? 1 : 0.4 }}
+                                    >
+                                        <Send size={15} color="white" />
+                                    </button>
+                                </div>
+                                <div className={styles.mobileChatActions}>
+                                    <button
+                                        className={`${styles.mobileChatActionBtn} ${isLiked ? styles.mobileChatActionBtnLiked : ''}`}
+                                        onClick={handleLike}
+                                    >
+                                        <Heart size={19} fill={isLiked ? 'currentColor' : 'none'} />
+                                    </button>
+                                    <button className={styles.mobileChatActionBtn} onClick={handleShare}>
+                                        <Share2 size={19} />
+                                    </button>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </section>
+            ) : (
+            <div className={`${styles.container} ${forceMobileLive ? styles.mobileContainer : ''}`}>
+                <div className={`${isScheduledBuyer ? styles.scheduledLayout : styles.liveLayout} ${forceMobileLive ? styles.mobileLiveLayout : ''}`}>
 
                 {/* LEFT: VIDEO */}
-                <div className={styles.liveLeft}>
-                <section className={`${styles.videoWrapper}${isScheduledBuyer ? ' ' + styles.videoWrapperSmall : ''}`}>
+                <div className={`${styles.liveLeft} ${forceMobileLive ? styles.mobileLiveLeft : ''}`}>
+                <section className={`${styles.videoWrapper}${isScheduledBuyer ? ' ' + styles.videoWrapperSmall : ''} ${forceMobileLive ? styles.mobileLiveMode : ''}`}>
                     <div className={styles.videoPlaceholder} style={{ position: 'relative', background: 'white' }}>
                         {/* Agora video containers */}
                         <div
@@ -1890,6 +2114,7 @@ function LivePageInner() {
                 </div>{/* end bottomSection / right panel */}
                 </div>{/* end liveLayout */}
             </div>
+            )}
 
             {/* BID MODAL */}
             {showModal && (

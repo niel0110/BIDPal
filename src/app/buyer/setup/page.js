@@ -211,7 +211,7 @@ function BuyerSetupInner() {
     ) : (
         <>
             <h2 className={styles.sideHeading}>
-                {isResubmission ? <>Try again,<br />we're here.</> : <>Stay safe,<br />stay trusted.</>}
+                {isResubmission ? <>Try again,<br />we&apos;re here.</> : <>Stay safe,<br />stay trusted.</>}
             </h2>
             <p className={styles.sideText}>
                 {isResubmission
@@ -252,24 +252,24 @@ function BuyerSetupInner() {
                 <div className={styles.card}>
                     {/* ── Pending verification screen ── */}
                     {isPending ? (
-                        <div style={{ textAlign: 'center', padding: '1.5rem 0' }}>
-                            <div style={{ fontSize: '2.5rem', marginBottom: '0.75rem' }}>⏳</div>
-                            <h1 className={styles.title} style={{ textAlign: 'center', marginBottom: '0.5rem' }}>
+                        <div className={styles.pendingPanel}>
+                            <div className={styles.pendingIcon}>⏳</div>
+                            <h1 className={`${styles.title} ${styles.pendingTitle}`}>
                                 Verification <span>Under Review</span>
                             </h1>
-                            <p className={styles.sub} style={{ textAlign: 'center', marginBottom: '1.5rem' }}>
+                            <p className={`${styles.sub} ${styles.pendingSub}`}>
                                 Your ID has been submitted and is being reviewed by our team.
-                                This typically takes <strong>24–48 hours</strong>. You'll receive a
+                                This typically takes <strong>24–48 hours</strong>. You&apos;ll receive a
                                 notification once your account is approved.
                             </p>
-                            <div style={{ display: 'flex', flexDirection: 'column', gap: '0.5rem', marginBottom: '1.5rem', textAlign: 'left', background: '#fafafa', border: '1.5px solid #f0f0f0', borderRadius: 10, padding: '0.9rem 1rem' }}>
+                            <div className={styles.pendingList}>
                                 {[
                                     { icon: '✅', label: 'Documents received' },
                                     { icon: '⏳', label: 'Under review by BIDPal team' },
                                     { icon: '○', label: 'Approved — full access granted' },
                                 ].map(({ icon, label }) => (
-                                    <div key={label} style={{ display: 'flex', alignItems: 'center', gap: '0.6rem', fontSize: '0.82rem', color: '#444', fontWeight: 500 }}>
-                                        <span style={{ width: 20, textAlign: 'center' }}>{icon}</span>
+                                    <div key={label} className={styles.pendingListItem}>
+                                        <span className={styles.pendingListIcon}>{icon}</span>
                                         {label}
                                     </div>
                                 ))}
@@ -281,8 +281,8 @@ function BuyerSetupInner() {
                             >
                                 {checking ? 'Checking…' : 'Check Verification Status'}
                             </button>
-                            <p style={{ fontSize: '0.72rem', color: '#9ca3af', marginTop: '0.75rem' }}>
-                                Already notified of approval? Tap "Check Verification Status" above.
+                            <p className={styles.pendingFootnote}>
+                                Already notified of approval? Tap &quot;Check Verification Status&quot; above.
                             </p>
                         </div>
                     ) : (
@@ -414,7 +414,7 @@ function BuyerSetupInner() {
                                 </button>
 
                                 <p className={styles.disclaimer}>
-                                    By continuing, you agree to BIDPal's Terms of Service and Privacy Policy.
+                                    By continuing, you agree to BIDPal&apos;s Terms of Service and Privacy Policy.
                                 </p>
                             </form>
                         </>

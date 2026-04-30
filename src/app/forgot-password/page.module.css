@@ -71,6 +71,34 @@
     margin-bottom: 0.5rem;
 }
 
+.textButton {
+    align-self: center;
+    background: none;
+    border: none;
+    color: #d02440;
+    font-size: 0.85rem;
+    font-weight: 700;
+    cursor: pointer;
+    text-decoration: underline;
+}
+
+.textButton:disabled {
+    color: #aaa;
+    cursor: not-allowed;
+}
+
+.errorText {
+    margin: 1rem 0 0;
+    color: #d32f2f;
+    font-size: 0.85rem;
+}
+
+.successText {
+    margin: 1rem 0 0;
+    color: #166534;
+    font-size: 0.85rem;
+}
+
 .footerText {
     margin-top: 1.5rem;
     font-size: 0.9rem;
