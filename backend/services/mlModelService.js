@@ -96,7 +96,8 @@ function encodeFeatures(product) {
         'Electronics', 'Fashion', 'Home & Garden', 'Sports', 'Collectibles', 'Other'
     ];
 
-    const categoryIdx = CATEGORIES.indexOf(product.category) || 5;
+    const rawCategoryIdx = CATEGORIES.indexOf(product.category);
+    const categoryIdx = rawCategoryIdx === -1 ? 5 : rawCategoryIdx;
     const conditionScore = CONDITION_MAP[product.condition] || 3;
 
     // Return feature vector
@@ -142,6 +143,10 @@ export function getMercariData() {
 export async function loadMercariDataCache() {
     if (!mercariDataCache) {
         mercariDataCache = await loadMercariData();
+        if (!Array.isArray(mercariDataCache) || mercariDataCache.length === 0) {
+            mercariDataCache = null;
+            throw new Error('Mercari dataset not available');
+        }
     }
     return mercariDataCache;
 }

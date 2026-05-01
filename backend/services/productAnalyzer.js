@@ -25,21 +25,73 @@ export function extractProductInfo(product) {
  */
 function normalizeCategory(category) {
     if (!category) return 'Other';
-    
-    // Handle frontend format (e.g., "fashion:Luxury & Jewelry:Bags")
+
+    const normalized = category.toLowerCase();
+
     if (category.includes(':')) {
         const main = category.split(':')[0].toLowerCase();
         const mapping = {
-            'electronics': 'Electronics',
-            'fashion': 'Fashion',
-            'home': 'Home & Garden',
-            'culture': 'Collectibles',
-            'sports': 'Sports',
-            'automotive': 'Other'
+            electronics: 'Electronics',
+            fashion: 'Fashion',
+            home: 'Home & Garden',
+            culture: 'Collectibles',
+            sports: 'Sports',
+            automotive: 'Other'
         };
         return mapping[main] || 'Other';
     }
-    
+
+    if (
+        normalized.includes('phone') ||
+        normalized.includes('tablet') ||
+        normalized.includes('laptop') ||
+        normalized.includes('computer') ||
+        normalized.includes('camera') ||
+        normalized.includes('gaming') ||
+        normalized.includes('audio') ||
+        normalized.includes('tv') ||
+        normalized.includes('electronic')
+    ) {
+        return 'Electronics';
+    }
+
+    if (
+        normalized.includes('fashion') ||
+        normalized.includes('clothing') ||
+        normalized.includes('shoe') ||
+        normalized.includes('bag') ||
+        normalized.includes('watch') ||
+        normalized.includes('jewelry')
+    ) {
+        return 'Fashion';
+    }
+
+    if (
+        normalized.includes('home') ||
+        normalized.includes('kitchen') ||
+        normalized.includes('furniture') ||
+        normalized.includes('garden')
+    ) {
+        return 'Home & Garden';
+    }
+
+    if (
+        normalized.includes('sport') ||
+        normalized.includes('outdoor') ||
+        normalized.includes('bicycle')
+    ) {
+        return 'Sports';
+    }
+
+    if (
+        normalized.includes('collectible') ||
+        normalized.includes('vintage') ||
+        normalized.includes('culture') ||
+        normalized.includes('instrument')
+    ) {
+        return 'Collectibles';
+    }
+
     return category;
 }
 

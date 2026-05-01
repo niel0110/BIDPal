@@ -19,6 +19,19 @@ initModel();
 
 // Mercari dataset: load in background on startup so it's ready by the time users request prices
 let _mercariLoadPromise = null;
+let _geminiCooldownUntil = 0;
+
+function getRecommendationMode() {
+    return (process.env.PRICE_RECOMMENDATION_AI_MODE || 'hybrid').toLowerCase();
+}
+
+function isGeminiEnabled() {
+    return getRecommendationMode() !== 'deterministic';
+}
+
+function isGeminiCoolingDown() {
+    return Date.now() < _geminiCooldownUntil;
+}
 function ensureMercariLoaded() {
     if (getMercariData()?.length) return;  // already cached
     if (_mercariLoadPromise) return;        // already loading
@@ -43,6 +56,19 @@ export async function generatePriceRecommendation(productData) {
         console.log('📊 Extracted product info:', productInfo);
 
         const mercariData = getMercariData();
+        const mlPriceEstimate = predictPrice(productInfo);
+
+        if ((!mercariData || mercariData.length === 0) && mlPriceEstimate) {
+            ensureMercariLoaded();
+            console.log('Using local ML fallback because the Mercari dataset is unavailable');
+            return generateHeuristicRecommendation(
+                productInfo,
+                [],
+                mlPriceEstimate,
+                'Mercari dataset unavailable',
+                true
+            );
+        }
 
         if (!mercariData || mercariData.length === 0) {
             // Trigger background load if not already in progress, then continue with OpenAI
@@ -95,8 +121,29 @@ export async function generatePriceRecommendation(productData) {
         console.log('💰 Calculated base price:', basePrice);
 
         // Build comprehensive prompt with dataset
-        const mlPriceEstimate = predictPrice(productInfo);
         const prompt = buildPricePrompt(productData, historicalData, marketData, productInfo, comparableItems, basePrice, mlPriceEstimate);
+
+        if (!isGeminiEnabled()) {
+            console.log('Deterministic recommendation mode enabled; skipping Gemini refinement');
+            return generateHeuristicRecommendation(
+                productInfo,
+                comparableItems,
+                mlPriceEstimate || basePrice,
+                'Gemini disabled by configuration',
+                !!mlPriceEstimate
+            );
+        }
+
+        if (isGeminiCoolingDown()) {
+            console.log('Gemini quota cooldown active; using deterministic recommendation');
+            return generateHeuristicRecommendation(
+                productInfo,
+                comparableItems,
+                mlPriceEstimate || basePrice,
+                'Gemini cooldown active',
+                !!mlPriceEstimate
+            );
+        }
 
         // Call OpenAI API
         let response;
@@ -140,12 +187,15 @@ export async function generatePriceRecommendation(productData) {
             console.log('⚠️ AI Service failed, attempting heuristic fallback...');
             const productInfo = extractProductInfo(productData);
             const mercariData = getMercariData();
+            const mlPriceEstimate = predictPrice(productInfo);
+
+            if (mlPriceEstimate) {
+                return generateHeuristicRecommendation(productInfo, [], mlPriceEstimate, error.message, true);
+            }
             
             if (mercariData && mercariData.length > 0) {
                 const comparableItems = findMercariComparables(mercariData, productInfo, 10);
                 const marketData = getMercariMarketStats(mercariData, productInfo.category, productInfo.brand);
-                const mlPriceEstimate = predictPrice(productInfo);
-                
                 let basePrice = 5000;
                 if (mlPriceEstimate) {
                     basePrice = mlPriceEstimate;
@@ -368,6 +418,16 @@ async function fetchHistoricalData(category, brand) {
  * AI-only fallback when Mercari dataset is unavailable
  */
 async function generateAIOnlyRecommendation(productData, productInfo) {
+    const mlPriceEstimate = predictPrice(productInfo);
+    if (mlPriceEstimate) {
+        console.log('Using local ML recommendation while the Mercari dataset is unavailable');
+        return generateHeuristicRecommendation(productInfo, [], mlPriceEstimate, 'Mercari dataset unavailable', true);
+    }
+
+    if (!isGeminiEnabled() || isGeminiCoolingDown()) {
+        return generateCategoryBasedFallback(productData);
+    }
+
     const { name, description, category, condition, brand, specifications } = productData;
     const prompt = `You are an expert auction pricing analyst for a Philippine online auction platform (BIDPal).
 
@@ -466,6 +526,7 @@ async function callOpenAIWithRetry(prompt) {
             if (res.status === 429) {
                 const body = await res.json().catch(() => ({}));
                 console.warn(`⚠️  ${model} quota hit: ${body?.error?.message?.slice(0, 80) || '429'}`);
+                _geminiCooldownUntil = Date.now() + (60 * 60 * 1000);
                 lastError = new Error('Quota exceeded');
                 continue;
             }
