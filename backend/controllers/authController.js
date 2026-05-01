@@ -4,7 +4,7 @@ import bcrypt from 'bcrypt';
 import jwt from 'jsonwebtoken';
 import crypto from 'crypto';
 import { OAuth2Client } from 'google-auth-library';
-import { isEmailConfigured, sendVerificationCodeEmail } from '../services/emailService.js';
+import { getEmailServiceStatus, isEmailConfigured, sendVerificationCodeEmail } from '../services/emailService.js';
 
 const CODE_TTL_MS = 10 * 60 * 1000;
 const TOKEN_TTL_MS = 15 * 60 * 1000;
@@ -88,16 +88,18 @@ export const sendEmailVerificationCode = async (req, res) => {
         if (!isProduction && mailError.code === 'EMAIL_AUTH_FAILED') {
           console.log(`[DEV] ${purpose} verification code for ${email}: ${code}`);
           return res.json({
-            message: 'Development mode: Gmail rejected the sender login. Use the code shown below, then replace GMAIL_APP_PASSWORD with a Gmail App Password.',
+            message: 'Development mode: the email provider rejected the sender credentials. Use the code shown below, then check RESEND_API_KEY or the Gmail App Password.',
             devCode: code,
           });
         }
 
         return res.status(502).json({
           error: mailError.code === 'EMAIL_AUTH_FAILED'
-            ? 'Gmail rejected the sender credentials. Use a Gmail App Password for the BIDPal sender account.'
-            : mailError.code === 'EMAIL_DELIVERY_FAILED'
-              ? 'The deployed server cannot reach Gmail SMTP. Try SMTP_PORT=465 and SMTP_SECURE=true, or use an email API provider for production.'
+            ? 'The email provider rejected the sender credentials. Check the deployed email API key or Gmail App Password.'
+            : mailError.code === 'EMAIL_API_FAILED'
+              ? 'The email API provider could not send this email. Check the sender address/domain in your deployed email settings.'
+              : mailError.code === 'EMAIL_DELIVERY_FAILED'
+                ? 'The deployed server cannot reach Gmail SMTP. Add RESEND_API_KEY and RESEND_FROM to the deployed backend environment, then redeploy.'
               : 'Unable to send verification email. Please try again later.',
           code: mailError.code || 'EMAIL_SEND_FAILED',
           ...(!isProduction ? {
@@ -110,7 +112,7 @@ export const sendEmailVerificationCode = async (req, res) => {
 
     if (isProduction) {
       return res.status(503).json({
-        error: 'Email service is not configured on the deployed backend. Add GMAIL_USER and GMAIL_APP_PASSWORD to the backend hosting environment variables, then redeploy.',
+        error: 'Email service is not configured on the deployed backend. Add RESEND_API_KEY and RESEND_FROM, then redeploy.',
       });
     }
 
@@ -126,13 +128,9 @@ export const sendEmailVerificationCode = async (req, res) => {
 };
 
 export const getEmailStatus = async (req, res) => {
+  const status = getEmailServiceStatus();
   res.json({
-    configured: isEmailConfigured(),
-    provider: process.env.SMTP_HOST ? 'custom-smtp' : 'gmail',
-    smtpPort: Number(process.env.SMTP_PORT || 587),
-    smtpSecure: process.env.SMTP_SECURE || 'false',
-    hasUser: Boolean(process.env.SMTP_USER || process.env.GMAIL_USER),
-    hasPassword: Boolean(process.env.SMTP_PASS || process.env.GMAIL_APP_PASSWORD),
+    ...status,
     environment: process.env.NODE_ENV || 'development',
   });
 };
