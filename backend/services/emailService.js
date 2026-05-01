@@ -5,8 +5,26 @@ const getEmailConfig = () => {
   const user = process.env.SMTP_USER || process.env.GMAIL_USER;
   const pass = process.env.SMTP_PASS || process.env.GMAIL_APP_PASSWORD;
   const port = Number(process.env.SMTP_PORT || 587);
+  const gmailClientId = process.env.GMAIL_CLIENT_ID;
+  const gmailClientSecret = process.env.GMAIL_CLIENT_SECRET;
+  const gmailRefreshToken = process.env.GMAIL_REFRESH_TOKEN;
+  const gmailSender = process.env.GMAIL_SENDER || process.env.GMAIL_USER;
+  const brevoApiKey = process.env.BREVO_API_KEY;
+  const brevoSenderEmail = process.env.BREVO_SENDER_EMAIL || process.env.GMAIL_USER;
+  const brevoSenderName = process.env.BREVO_SENDER_NAME || 'BIDPal';
+  const resendApiKey = process.env.RESEND_API_KEY;
+  const resendFrom = process.env.RESEND_FROM || process.env.EMAIL_FROM || 'BIDPal <onboarding@resend.dev>';
 
   return {
+    gmailClientId,
+    gmailClientSecret,
+    gmailRefreshToken,
+    gmailSender,
+    brevoApiKey,
+    brevoSenderEmail,
+    brevoSenderName,
+    resendApiKey,
+    resendFrom,
     host: process.env.SMTP_HOST || 'smtp.gmail.com',
     port,
     secure: process.env.SMTP_SECURE
@@ -15,6 +33,41 @@ const getEmailConfig = () => {
     user,
     pass,
     from: process.env.SMTP_FROM || user,
+  };
+};
+
+export const getEmailServiceStatus = () => {
+  const config = getEmailConfig();
+  const hasGmailApi = Boolean(config.gmailClientId && config.gmailClientSecret && config.gmailRefreshToken && config.gmailSender);
+  const hasBrevoApi = Boolean(config.brevoApiKey && config.brevoSenderEmail);
+  const provider = hasBrevoApi
+    ? 'brevo'
+    : hasGmailApi
+      ? 'gmail-api'
+      : config.resendApiKey
+        ? 'resend'
+        : process.env.SMTP_HOST
+          ? 'custom-smtp'
+          : 'gmail';
+
+  return {
+    configured: Boolean(hasBrevoApi || hasGmailApi || config.resendApiKey || (config.user && config.pass && config.from)),
+    provider,
+    smtpPort: config.port,
+    smtpSecure: String(config.secure),
+    hasUser: Boolean(config.user),
+    hasPassword: Boolean(config.pass),
+    hasBrevoApiKey: Boolean(config.brevoApiKey),
+    hasGmailClient: Boolean(config.gmailClientId && config.gmailClientSecret),
+    hasGmailRefreshToken: Boolean(config.gmailRefreshToken),
+    hasResendApiKey: Boolean(config.resendApiKey),
+    from: provider === 'brevo'
+      ? config.brevoSenderEmail
+      : provider === 'gmail-api'
+        ? config.gmailSender
+        : provider === 'resend'
+          ? config.resendFrom
+          : config.from,
   };
 };
 
@@ -47,6 +100,108 @@ const escapeHtml = (value) => String(value || '')
   .replace(/>/g, '&gt;')
   .replace(/"/g, '&quot;')
   .replace(/'/g, '&#39;');
+
+const toBase64Url = (value) => Buffer.from(value)
+  .toString('base64')
+  .replace(/\+/g, '-')
+  .replace(/\//g, '_')
+  .replace(/=+$/g, '');
+
+const getGmailAccessToken = async (config) => {
+  const res = await fetch('https://oauth2.googleapis.com/token', {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
+    body: new URLSearchParams({
+      client_id: config.gmailClientId,
+      client_secret: config.gmailClientSecret,
+      refresh_token: config.gmailRefreshToken,
+      grant_type: 'refresh_token',
+    }),
+  });
+
+  const data = await res.json().catch(() => ({}));
+  if (res.ok && data.access_token) return data.access_token;
+
+  const err = new Error(data.error_description || data.error || 'Unable to get Gmail API access token.');
+  err.code = 'EMAIL_AUTH_FAILED';
+  throw err;
+};
+
+const sendWithGmailApi = async ({ config, to, subject, text, html, replyTo }) => {
+  const accessToken = await getGmailAccessToken(config);
+  const message = [
+    `From: BIDPal <${escapeHeader(config.gmailSender)}>`,
+    `To: ${escapeHeader(to)}`,
+    ...(replyTo ? [`Reply-To: ${escapeHeader(replyTo)}`] : []),
+    `Subject: ${escapeHeader(subject)}`,
+    'MIME-Version: 1.0',
+    'Content-Type: multipart/alternative; boundary="bidpal-boundary"',
+    '',
+    '--bidpal-boundary',
+    'Content-Type: text/plain; charset="UTF-8"',
+    '',
+    text,
+    '',
+    '--bidpal-boundary',
+    'Content-Type: text/html; charset="UTF-8"',
+    '',
+    html || text,
+    '',
+    '--bidpal-boundary--',
+    '',
+  ].join('\r\n');
+
+  const res = await fetch('https://gmail.googleapis.com/gmail/v1/users/me/messages/send', {
+    method: 'POST',
+    headers: {
+      Authorization: `Bearer ${accessToken}`,
+      'Content-Type': 'application/json',
+    },
+    body: JSON.stringify({ raw: toBase64Url(message) }),
+  });
+
+  if (res.ok) return;
+
+  const data = await res.json().catch(() => ({}));
+  const err = new Error(data.error?.message || 'Gmail API could not send this email.');
+  err.code = res.status === 401 || res.status === 403 ? 'EMAIL_AUTH_FAILED' : 'EMAIL_API_FAILED';
+  throw err;
+};
+
+const sendWithBrevoApi = async ({ config, to, subject, text, html, replyTo }) => {
+  const res = await fetch('https://api.brevo.com/v3/smtp/email', {
+    method: 'POST',
+    headers: {
+      'api-key': config.brevoApiKey,
+      'Content-Type': 'application/json',
+      Accept: 'application/json',
+    },
+    body: JSON.stringify({
+      sender: {
+        name: config.brevoSenderName,
+        email: config.brevoSenderEmail,
+      },
+      to: [{ email: to }],
+      subject,
+      textContent: text,
+      htmlContent: html || text,
+      ...(replyTo ? { replyTo: { email: replyTo } } : {}),
+    }),
+  });
+
+  if (res.ok) {
+    const data = await res.json().catch(() => ({}));
+    if (process.env.NODE_ENV !== 'production' && data.messageId) {
+      console.log(`Brevo email queued: ${data.messageId}`);
+    }
+    return;
+  }
+
+  const data = await res.json().catch(() => ({}));
+  const err = new Error(data.message || data.error || 'Brevo could not send this email.');
+  err.code = res.status === 401 || res.status === 403 ? 'EMAIL_AUTH_FAILED' : 'EMAIL_API_FAILED';
+  throw err;
+};
 
 const connectSecure = ({ host, port }) => new Promise((resolve, reject) => {
   const socket = tls.connect(port, host, { servername: host }, () => resolve(socket));
@@ -99,15 +254,56 @@ const getDeliveryConfigs = (config) => {
 };
 
 export const isEmailConfigured = () => {
-  const config = getEmailConfig();
-  return Boolean(config.user && config.pass && config.from);
+  return getEmailServiceStatus().configured;
 };
 
 export const sendEmail = async ({ to, subject, text, html, replyTo }) => {
   const config = getEmailConfig();
+  const hasBrevoApi = config.brevoApiKey && config.brevoSenderEmail;
+  const hasGmailApi = config.gmailClientId && config.gmailClientSecret && config.gmailRefreshToken && config.gmailSender;
+
+  if (hasBrevoApi) {
+    return sendWithBrevoApi({ config, to, subject, text, html, replyTo });
+  }
+
+  if (hasGmailApi) {
+    return sendWithGmailApi({ config, to, subject, text, html, replyTo });
+  }
+
+  if (config.resendApiKey) {
+    const res = await fetch('https://api.resend.com/emails', {
+      method: 'POST',
+      headers: {
+        Authorization: `Bearer ${config.resendApiKey}`,
+        'Content-Type': 'application/json',
+      },
+      body: JSON.stringify({
+        from: config.resendFrom,
+        to: [to],
+        subject,
+        text,
+        html: html || text,
+        ...(replyTo ? { reply_to: replyTo } : {}),
+      }),
+    });
+
+    if (res.ok) return;
+
+    let details = '';
+    try {
+      const data = await res.json();
+      details = data?.message || data?.error?.message || JSON.stringify(data);
+    } catch {
+      details = await res.text();
+    }
+
+    const err = new Error(details || `Resend email API failed with status ${res.status}.`);
+    err.code = res.status === 401 || res.status === 403 ? 'EMAIL_AUTH_FAILED' : 'EMAIL_API_FAILED';
+    throw err;
+  }
 
   if (!config.user || !config.pass || !config.from) {
-    const err = new Error('Email service is not configured. Set SMTP_USER and SMTP_PASS, or GMAIL_USER and GMAIL_APP_PASSWORD.');
+    const err = new Error('Email service is not configured. Set RESEND_API_KEY for deployed email, or set SMTP_USER and SMTP_PASS / GMAIL_USER and GMAIL_APP_PASSWORD.');
     err.code = 'EMAIL_NOT_CONFIGURED';
     throw err;
   }
