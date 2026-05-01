@@ -1,10 +1,22 @@
 import tls from 'tls';
+import net from 'net';
 
-const SMTP_HOST = process.env.SMTP_HOST || 'smtp.gmail.com';
-const SMTP_PORT = Number(process.env.SMTP_PORT || 465);
-const SMTP_USER = process.env.SMTP_USER || process.env.GMAIL_USER;
-const SMTP_PASS = process.env.SMTP_PASS || process.env.GMAIL_APP_PASSWORD;
-const SMTP_FROM = process.env.SMTP_FROM || SMTP_USER;
+const getEmailConfig = () => {
+  const user = process.env.SMTP_USER || process.env.GMAIL_USER;
+  const pass = process.env.SMTP_PASS || process.env.GMAIL_APP_PASSWORD;
+  const port = Number(process.env.SMTP_PORT || 587);
+
+  return {
+    host: process.env.SMTP_HOST || 'smtp.gmail.com',
+    port,
+    secure: process.env.SMTP_SECURE
+      ? process.env.SMTP_SECURE === 'true'
+      : port === 465,
+    user,
+    pass,
+    from: process.env.SMTP_FROM || user,
+  };
+};
 
 const readResponse = (socket) => new Promise((resolve, reject) => {
   let buffer = '';
@@ -36,17 +48,46 @@ const escapeHtml = (value) => String(value || '')
   .replace(/"/g, '&quot;')
   .replace(/'/g, '&#39;');
 
-export const isEmailConfigured = () => Boolean(SMTP_USER && SMTP_PASS && SMTP_FROM);
+const connectSecure = ({ host, port }) => new Promise((resolve, reject) => {
+  const socket = tls.connect(port, host, { servername: host }, () => resolve(socket));
+  socket.setTimeout(20000, () => socket.destroy(new Error('SMTP connection timed out.')));
+  socket.once('error', reject);
+});
+
+const connectStartTls = async ({ host, port }) => {
+  const rawSocket = await new Promise((resolve, reject) => {
+    const socket = net.connect(port, host, () => resolve(socket));
+    socket.setTimeout(20000, () => socket.destroy(new Error('SMTP connection timed out.')));
+    socket.once('error', reject);
+  });
+
+  await readResponse(rawSocket);
+  await writeCommand(rawSocket, `EHLO ${host}`);
+  await writeCommand(rawSocket, 'STARTTLS');
+
+  return new Promise((resolve, reject) => {
+    const secureSocket = tls.connect({ socket: rawSocket, servername: host }, () => resolve(secureSocket));
+    secureSocket.setTimeout(20000, () => secureSocket.destroy(new Error('SMTP connection timed out.')));
+    secureSocket.once('error', reject);
+  });
+};
+
+export const isEmailConfigured = () => {
+  const config = getEmailConfig();
+  return Boolean(config.user && config.pass && config.from);
+};
 
 export const sendEmail = async ({ to, subject, text, html, replyTo }) => {
-  if (!isEmailConfigured()) {
+  const config = getEmailConfig();
+
+  if (!config.user || !config.pass || !config.from) {
     const err = new Error('Email service is not configured. Set SMTP_USER and SMTP_PASS, or GMAIL_USER and GMAIL_APP_PASSWORD.');
     err.code = 'EMAIL_NOT_CONFIGURED';
     throw err;
   }
 
   const headers = [
-    `From: BIDPal <${escapeHeader(SMTP_FROM)}>`,
+    `From: BIDPal <${escapeHeader(config.from)}>`,
     `To: ${escapeHeader(to)}`,
     ...(replyTo ? [`Reply-To: ${escapeHeader(replyTo)}`] : []),
     `Subject: ${escapeHeader(subject)}`,
@@ -71,29 +112,33 @@ export const sendEmail = async ({ to, subject, text, html, replyTo }) => {
     '',
   ].join('\r\n');
 
-  const socket = tls.connect(SMTP_PORT, SMTP_HOST, { servername: SMTP_HOST });
+  let socket;
 
   try {
-    await readResponse(socket);
-    await writeCommand(socket, `EHLO ${SMTP_HOST}`);
+    socket = config.secure
+      ? await connectSecure(config)
+      : await connectStartTls(config);
+
+    if (config.secure) await readResponse(socket);
+    await writeCommand(socket, `EHLO ${config.host}`);
     await writeCommand(socket, 'AUTH LOGIN');
-    await writeCommand(socket, Buffer.from(SMTP_USER).toString('base64'));
+    await writeCommand(socket, Buffer.from(config.user).toString('base64'));
     try {
-      await writeCommand(socket, Buffer.from(SMTP_PASS).toString('base64'));
+      await writeCommand(socket, Buffer.from(config.pass).toString('base64'));
     } catch (err) {
       const authError = new Error('Gmail rejected the sender credentials. Use a Gmail App Password for the BIDPal sender account.');
       authError.code = 'EMAIL_AUTH_FAILED';
       authError.cause = err;
       throw authError;
     }
-    await writeCommand(socket, `MAIL FROM:<${SMTP_FROM}>`);
+    await writeCommand(socket, `MAIL FROM:<${config.from}>`);
     await writeCommand(socket, `RCPT TO:<${to}>`);
     await writeCommand(socket, 'DATA');
     socket.write(`${message}\r\n.\r\n`);
     await readResponse(socket);
     await writeCommand(socket, 'QUIT');
   } finally {
-    socket.end();
+    if (socket) socket.end();
   }
 };
 

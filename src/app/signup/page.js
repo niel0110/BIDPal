@@ -358,17 +358,6 @@ export default function SignUp() {
                                 </p>
                             )}
 
-                            {verificationStep === 'code' && (
-                                <button
-                                    type="button"
-                                    className={styles.toggleAuth}
-                                    disabled={isSubmitting}
-                                    onClick={() => runWithLock(handleResendCode)}
-                                >
-                                    Resend code
-                                </button>
-                            )}
-
                             <button
                                 type="button"
                                 className={styles.toggleAuth}

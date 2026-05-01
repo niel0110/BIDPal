@@ -117,6 +117,8 @@ export const getEmailStatus = async (req, res) => {
   res.json({
     configured: isEmailConfigured(),
     provider: process.env.SMTP_HOST ? 'custom-smtp' : 'gmail',
+    smtpPort: Number(process.env.SMTP_PORT || 587),
+    smtpSecure: process.env.SMTP_SECURE || 'false',
     hasUser: Boolean(process.env.SMTP_USER || process.env.GMAIL_USER),
     hasPassword: Boolean(process.env.SMTP_PASS || process.env.GMAIL_APP_PASSWORD),
     environment: process.env.NODE_ENV || 'development',
