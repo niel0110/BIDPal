@@ -1,7 +1,6 @@
 'use client';
 
 import { useState, useEffect, useRef, Suspense } from 'react';
-import Link from 'next/link';
 import { useAuth } from '@/context/AuthContext';
 import { useRouter, useSearchParams } from 'next/navigation';
 import Header from '@/components/layout/Header';
@@ -9,7 +8,6 @@ import CategoryNav from '@/components/home/CategoryNav';
 import HeroBanner from '@/components/home/HeroBanner';
 import AuctionCard from '@/components/card/AuctionCard';
 import ProductCard from '@/components/card/ProductCard';
-import { X } from 'lucide-react';
 import styles from './page.module.css';
 
 function HomeInner() {
@@ -75,7 +73,7 @@ function HomeInner() {
       const catParam = category !== 'all' ? `&category=${encodeURIComponent(category)}` : '';
 
       const [auctionRes, fixedRes] = await Promise.all([
-        fetch(`${apiUrl}/api/auctions?limit=50${catParam}`),
+        fetch(`${apiUrl}/api/auctions?sale_type=bid&limit=50${catParam}`),
         fetch(`${apiUrl}/api/auctions?sale_type=sale&limit=50${catParam}`),
       ]);
       const auctionJson = await auctionRes.json();
@@ -139,19 +137,28 @@ function HomeInner() {
       try {
         const apiUrl = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:5000';
         const q = encodeURIComponent(searchQuery);
-        const [auctionRes, productRes] = await Promise.all([
-          fetch(`${apiUrl}/api/auctions?search=${q}&limit=20`),
-          fetch(`${apiUrl}/api/products?search=${q}&sort=${sortParam}&limit=20`),
+        const [auctionRes, fixedRes] = await Promise.all([
+          fetch(`${apiUrl}/api/auctions?sale_type=bid&search=${q}&limit=20`),
+          fetch(`${apiUrl}/api/auctions?sale_type=sale&search=${q}&limit=20`),
         ]);
         const auctionJson = await auctionRes.json();
-        const productJson = await productRes.json();
+        const fixedJson = await fixedRes.json();
         const lq = searchQuery.toLowerCase();
         setSearchAuctions((auctionJson.data || []).filter(a =>
           a.title?.toLowerCase().includes(lq) ||
           a.seller?.toLowerCase().includes(lq) ||
           a.category?.toLowerCase().includes(lq)
         ));
-        setSearchProducts(productJson.data || []);
+        setSearchProducts((fixedJson.data || []).map(a => ({
+          products_id: a.products_id,
+          name: a.title,
+          price: a.price,
+          images: a.images?.length ? a.images.map(url => ({ image_url: url })) : [],
+          seller_name: a.seller,
+          seller_avatar: a.seller_avatar,
+          seller_id: a.seller_id,
+          category: a.category,
+        })));
       } catch (err) {
         console.error('Search failed:', err);
       } finally {
@@ -185,7 +192,7 @@ function HomeInner() {
           <div className={styles.searchResultsHeader}>
             <div>
               <h2 className={styles.searchResultsTitle}>
-                Results for <span className={styles.redText}>"{searchQuery}"</span>
+                Results for <span className={styles.redText}>&quot;{searchQuery}&quot;</span>
               </h2>
               <p className={styles.searchResultsCount}>
                 {searchLoading ? 'Searching…' : `${searchAuctions.length + searchProducts.length} result${searchAuctions.length + searchProducts.length !== 1 ? 's' : ''} found`}
@@ -196,9 +203,6 @@ function HomeInner() {
                 )}
               </p>
             </div>
-            <Link href="/" className={styles.clearSearch}>
-              <X size={14} /> Clear
-            </Link>
           </div>
 
           {searchLoading && <div className={styles.searchLoading}>Searching…</div>}
@@ -234,7 +238,7 @@ function HomeInner() {
 
           {!searchLoading && searchAuctions.length === 0 && searchProducts.length === 0 && (
             <div className={styles.noResults}>
-              <p>No results for <strong>"{searchQuery}"</strong></p>
+              <p>No results for <strong>&quot;{searchQuery}&quot;</strong></p>
               <p className={styles.noResultsSub}>Try different keywords or browse below.</p>
             </div>
           )}

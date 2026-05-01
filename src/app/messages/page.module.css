@@ -672,6 +672,8 @@
     gap: 2px;
     z-index: 100;
     width: 268px;
+    box-sizing: border-box;
+    overflow: hidden;
 }
 
 .emojiBtn {
@@ -686,6 +688,8 @@
     display: flex;
     align-items: center;
     justify-content: center;
+    min-width: 0;
+    aspect-ratio: 1;
 }
 
 .emojiBtn:hover {
@@ -854,7 +858,23 @@
     .messageTextbox { font-size: 0.85rem; padding: 0.65rem 0.85rem; min-height: 40px; }
     .sendBtn { width: 38px; height: 38px; border-radius: 10px; }
 
-    .emojiPicker { grid-template-columns: repeat(8, 1fr); width: 228px; left: -56px; }
+    .emojiPicker {
+        position: fixed;
+        left: 50%;
+        right: auto;
+        bottom: 76px;
+        transform: translateX(-50%);
+        width: min(304px, calc(100vw - 32px));
+        max-height: 232px;
+        grid-template-columns: repeat(6, minmax(0, 1fr));
+        gap: 4px;
+        padding: 12px;
+        border-radius: 18px;
+        overflow-y: auto;
+        overscroll-behavior: contain;
+        z-index: 1000;
+    }
+    .emojiBtn { font-size: 1.18rem; padding: 6px; }
     .msgImage { max-width: 190px; }
 }
 
@@ -875,6 +895,13 @@
     .inputBar { padding: 0.55rem 0.7rem; }
     .messageTextbox { font-size: 0.8rem; padding: 0.55rem 0.75rem; }
     .sendBtn { width: 36px; height: 36px; }
+    .emojiPicker {
+        bottom: 70px;
+        width: min(288px, calc(100vw - 24px));
+        grid-template-columns: repeat(6, minmax(0, 1fr));
+        padding: 10px;
+    }
+    .emojiBtn { font-size: 1.08rem; padding: 5px; }
 }
 
 @media (max-width: 320px) {

@@ -3,7 +3,7 @@
 import { useState, useEffect } from 'react';
 import { useRouter } from 'next/navigation';
 import Link from 'next/link';
-import { Heart, ShoppingCart, Package } from 'lucide-react';
+import { ShoppingCart, Package } from 'lucide-react';
 import { useAuth } from '@/context/AuthContext';
 import { useCart } from '@/context/CartContext';
 import styles from './ProductCard.module.css';
@@ -19,7 +19,6 @@ export default function ProductCard({ data, compact = false }) {
     const router = useRouter();
 
     const [isAdding, setIsAdding] = useState(false);
-    const [isLiked, setIsLiked] = useState(false);
     const [isFollowing, setIsFollowing] = useState(false);
     const [isFollowLoading, setIsFollowLoading] = useState(false);
 
@@ -104,13 +103,6 @@ export default function ProductCard({ data, compact = false }) {
                     {!isSoldOut && conditionLabel && (
                         <div className={styles.condBadge}>{conditionLabel}</div>
                     )}
-
-                    <button
-                        className={`${styles.heartBtn} ${isLiked ? styles.activeHeart : ''}`}
-                        onClick={e => { e.stopPropagation(); setIsLiked(l => !l); }}
-                    >
-                        <Heart size={18} fill={isLiked ? '#D32F2F' : 'none'} color={isLiked ? '#D32F2F' : 'white'} />
-                    </button>
 
                     <div className={styles.overlayBadge}>
                         <Package size={12} />

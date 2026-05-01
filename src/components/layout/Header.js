@@ -4,7 +4,7 @@ import { useState, useEffect, useRef } from 'react';
 import Link from 'next/link';
 import { Search, SlidersHorizontal, User, ShoppingCart, Home, Heart, MessageCircle, LogOut, LayoutDashboard, Package, Gavel, BarChart3, ClipboardList, AlignJustify, X } from 'lucide-react';
 import { useAuth } from '@/context/AuthContext';
-import { useRouter, usePathname } from 'next/navigation';
+import { useRouter, usePathname, useSearchParams } from 'next/navigation';
 
 import Logo from '@/components/Logo';
 import NotificationBell from '@/components/NotificationBell';
@@ -21,7 +21,17 @@ export default function Header() {
   const [activeSort, setActiveSort] = useState('recent');
   const router = useRouter();
   const pathname = usePathname();
+  const searchParams = useSearchParams();
   const debounceRef = useRef(null);
+
+  useEffect(() => {
+    if (pathname !== '/') return;
+    const syncTimer = setTimeout(() => {
+      setSearchQuery(searchParams.get('q') || '');
+      setActiveSort(searchParams.get('sort') || 'recent');
+    }, 0);
+    return () => clearTimeout(syncTimer);
+  }, [pathname, searchParams]);
 
   // Debounced progressive search — push URL after 350ms of no typing
   useEffect(() => {
@@ -37,7 +47,7 @@ export default function Header() {
       }
     }, 350);
     return () => clearTimeout(debounceRef.current);
-  }, [searchQuery, activeSort, pathname]);
+  }, [searchQuery, activeSort, pathname, router]);
 
   const SORT_OPTIONS = [
     { id: 'recent',     label: 'Most Recent' },
@@ -64,6 +74,12 @@ export default function Header() {
 
   const handleSearchKeyDown = (e) => {
     if (e.key === 'Enter') handleSearch();
+  };
+
+  const clearSearchField = () => {
+    setSearchQuery('');
+    setShowFilter(false);
+    router.replace('/', { scroll: false });
   };
 
   const handleLogout = () => {
@@ -191,6 +207,16 @@ export default function Header() {
                 onChange={(e) => setSearchQuery(e.target.value)}
                 onKeyDown={handleSearchKeyDown}
               />
+              {searchQuery && (
+                <button
+                  type="button"
+                  className={styles.searchClearBtn}
+                  onClick={clearSearchField}
+                  title="Clear search"
+                >
+                  <X size={16} />
+                </button>
+              )}
               <SlidersHorizontal
                 size={18}
                 className={styles.filterIcon}
@@ -274,6 +300,16 @@ export default function Header() {
               onKeyDown={handleSearchKeyDown}
               autoFocus
             />
+            {searchQuery && (
+              <button
+                type="button"
+                className={styles.searchClearBtn}
+                onClick={clearSearchField}
+                title="Clear search"
+              >
+                <X size={16} />
+              </button>
+            )}
             <SlidersHorizontal
               size={18}
               onClick={() => setShowFilter(!showFilter)}

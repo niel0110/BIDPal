@@ -79,39 +79,6 @@
     z-index: 5;
 }
 
-/* ── Heart (top-right) ── */
-.heartBtn {
-    position: absolute;
-    top: 10px;
-    right: 10px;
-    width: 34px;
-    height: 34px;
-    border-radius: 50%;
-    background: rgba(0, 0, 0, 0.25);
-    backdrop-filter: blur(8px);
-    -webkit-backdrop-filter: blur(8px);
-    border: 1px solid rgba(255, 255, 255, 0.25);
-    display: flex;
-    align-items: center;
-    justify-content: center;
-    cursor: pointer;
-    transition: all 0.2s cubic-bezier(0.4, 0, 0.2, 1);
-    z-index: 10;
-    color: white;
-    padding: 0;
-}
-.heartBtn:hover {
-    background: rgba(255, 255, 255, 0.9);
-    color: #D32F2F;
-    transform: scale(1.1);
-    border-color: transparent;
-}
-.activeHeart {
-    background: rgba(255, 255, 255, 1);
-    border-color: transparent;
-    box-shadow: 0 4px 15px rgba(211, 47, 47, 0.35);
-}
-
 /* ── Stock overlay (bottom-right) ── */
 .overlayBadge {
     position: absolute;
@@ -333,6 +300,5 @@
     .cartBtn { font-size: 0.6rem; padding: 0.2rem 0.4rem; gap: 3px; }
     .cartBtn svg { width: 12px; height: 12px; }
     .condBadge, .soldBadge { font-size: 0.6rem; padding: 2px 6px; top: 6px; left: 6px; }
-    .heartBtn { top: 6px; right: 6px; width: 28px; height: 28px; }
     .overlayBadge { bottom: 6px; right: 6px; padding: 3px 6px; font-size: 0.6rem; gap: 4px; }
 }
