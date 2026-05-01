@@ -110,6 +110,40 @@
 .input:focus { border-color: var(--color-primary); }
 .inputGroup  { margin-top: 0.65rem; }
 
+.passwordWrap {
+    position: relative;
+}
+
+.passwordInput {
+    padding-right: 2.75rem;
+}
+
+.passwordInput::-ms-reveal,
+.passwordInput::-ms-clear {
+    display: none;
+}
+
+.passwordToggle {
+    position: absolute;
+    right: 0.85rem;
+    top: 50%;
+    transform: translateY(-50%);
+    width: 30px;
+    height: 30px;
+    border: none;
+    background: transparent;
+    color: #6b7280;
+    cursor: pointer;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    padding: 0;
+}
+
+.passwordToggle:hover {
+    color: #d02440;
+}
+
 .resendCodeBtn {
     align-self: flex-end;
     margin-top: 0.5rem;
@@ -441,23 +475,39 @@
         align-items: center;
         justify-content: flex-start;
         background: #fff;
-        border: 1px solid #d8dee8;
-        border-radius: 8px;
-        box-shadow: 0 12px 34px rgba(15, 23, 42, 0.08);
+        border: none;
+        border-radius: 0;
+        box-shadow: none;
     }
 
     .authFormWrapper { max-width: 100%; width: 100%; }
     .authTitle { font-size: 1.55rem; margin-bottom: 1rem; line-height: 1.15; }
     .roleGrid { gap: 0.6rem; margin-bottom: 0.9rem; }
-    .roleOption { padding: 0.75rem 0.6rem; border-radius: 9px; }
+    .roleOption {
+        padding: 0.75rem 0.6rem;
+        border: none;
+        border-radius: 9px;
+        background: #f7f7f8;
+        box-shadow: inset 0 0 0 1px #e8e8ec;
+    }
+    .roleActive {
+        border: none;
+        box-shadow: inset 0 0 0 2px var(--color-primary), 0 8px 18px rgba(211, 47, 47, 0.08);
+    }
     .roleLabel { font-size: 0.95rem; }
     .roleSub { font-size: 0.76rem; }
     .input {
         min-height: 40px;
         padding: 10px 12px;
         font-size: 0.98rem;
-        border-color: #c8ced8;
+        border: none;
+        background: #f7f7f8;
+        box-shadow: inset 0 0 0 1px #e5e7eb;
     }
+    .input:focus {
+        box-shadow: inset 0 0 0 2px var(--color-primary);
+    }
+    .passwordInput { padding-right: 2.75rem; }
     .inputGroup { margin-top: 0.55rem; }
     .resendCodeBtn { font-size: 0.9rem; padding: 0.5rem 0.85rem; }
     .submitBtn { margin-top: 0.9rem; font-size: 0.98rem; padding: 0.75rem; min-height: 42px; }

@@ -50,14 +50,14 @@ const escapeHtml = (value) => String(value || '')
 
 const connectSecure = ({ host, port }) => new Promise((resolve, reject) => {
   const socket = tls.connect(port, host, { servername: host }, () => resolve(socket));
-  socket.setTimeout(20000, () => socket.destroy(new Error('SMTP connection timed out.')));
+  socket.setTimeout(12000, () => socket.destroy(new Error('SMTP connection timed out.')));
   socket.once('error', reject);
 });
 
 const connectStartTls = async ({ host, port }) => {
   const rawSocket = await new Promise((resolve, reject) => {
     const socket = net.connect(port, host, () => resolve(socket));
-    socket.setTimeout(20000, () => socket.destroy(new Error('SMTP connection timed out.')));
+    socket.setTimeout(12000, () => socket.destroy(new Error('SMTP connection timed out.')));
     socket.once('error', reject);
   });
 
@@ -67,9 +67,35 @@ const connectStartTls = async ({ host, port }) => {
 
   return new Promise((resolve, reject) => {
     const secureSocket = tls.connect({ socket: rawSocket, servername: host }, () => resolve(secureSocket));
-    secureSocket.setTimeout(20000, () => secureSocket.destroy(new Error('SMTP connection timed out.')));
+    secureSocket.setTimeout(12000, () => secureSocket.destroy(new Error('SMTP connection timed out.')));
     secureSocket.once('error', reject);
   });
+};
+
+const getDeliveryConfigs = (config) => {
+  const configs = [config];
+  const isGmail = config.host === 'smtp.gmail.com';
+  const alternatePort = config.secure ? 587 : 465;
+
+  if (isGmail && config.port !== alternatePort) {
+    configs.push({
+      ...config,
+      port: alternatePort,
+      secure: alternatePort === 465,
+    });
+  }
+
+  if (isGmail) {
+    const baseConfigs = [...configs];
+    for (const baseConfig of baseConfigs) {
+      configs.push({
+        ...baseConfig,
+        host: 'smtp.googlemail.com',
+      });
+    }
+  }
+
+  return configs;
 };
 
 export const isEmailConfigured = () => {
@@ -112,34 +138,46 @@ export const sendEmail = async ({ to, subject, text, html, replyTo }) => {
     '',
   ].join('\r\n');
 
-  let socket;
+  let lastError;
 
-  try {
-    socket = config.secure
-      ? await connectSecure(config)
-      : await connectStartTls(config);
-
-    if (config.secure) await readResponse(socket);
-    await writeCommand(socket, `EHLO ${config.host}`);
-    await writeCommand(socket, 'AUTH LOGIN');
-    await writeCommand(socket, Buffer.from(config.user).toString('base64'));
+  for (const deliveryConfig of getDeliveryConfigs(config)) {
+    let socket;
     try {
-      await writeCommand(socket, Buffer.from(config.pass).toString('base64'));
+      socket = deliveryConfig.secure
+        ? await connectSecure(deliveryConfig)
+        : await connectStartTls(deliveryConfig);
+
+      if (deliveryConfig.secure) await readResponse(socket);
+      await writeCommand(socket, `EHLO ${deliveryConfig.host}`);
+      await writeCommand(socket, 'AUTH LOGIN');
+      await writeCommand(socket, Buffer.from(deliveryConfig.user).toString('base64'));
+      try {
+        await writeCommand(socket, Buffer.from(deliveryConfig.pass).toString('base64'));
+      } catch (err) {
+        const authError = new Error('Gmail rejected the sender credentials. Use a Gmail App Password for the BIDPal sender account.');
+        authError.code = 'EMAIL_AUTH_FAILED';
+        authError.cause = err;
+        throw authError;
+      }
+      await writeCommand(socket, `MAIL FROM:<${deliveryConfig.from}>`);
+      await writeCommand(socket, `RCPT TO:<${to}>`);
+      await writeCommand(socket, 'DATA');
+      socket.write(`${message}\r\n.\r\n`);
+      await readResponse(socket);
+      await writeCommand(socket, 'QUIT');
+      return;
     } catch (err) {
-      const authError = new Error('Gmail rejected the sender credentials. Use a Gmail App Password for the BIDPal sender account.');
-      authError.code = 'EMAIL_AUTH_FAILED';
-      authError.cause = err;
-      throw authError;
+      lastError = err;
+      if (err.code === 'EMAIL_AUTH_FAILED') throw err;
+    } finally {
+      if (socket) socket.end();
     }
-    await writeCommand(socket, `MAIL FROM:<${config.from}>`);
-    await writeCommand(socket, `RCPT TO:<${to}>`);
-    await writeCommand(socket, 'DATA');
-    socket.write(`${message}\r\n.\r\n`);
-    await readResponse(socket);
-    await writeCommand(socket, 'QUIT');
-  } finally {
-    if (socket) socket.end();
   }
+
+  const deliveryError = new Error('Unable to connect to Gmail SMTP from the deployed server.');
+  deliveryError.code = 'EMAIL_DELIVERY_FAILED';
+  deliveryError.cause = lastError;
+  throw deliveryError;
 };
 
 export const sendSupportInquiryEmail = ({ supportEmail, userEmail, userName, category, subject, message, referenceId }) => {

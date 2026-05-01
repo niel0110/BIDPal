@@ -2,6 +2,7 @@
 
 import { useState } from 'react';
 import { useRouter } from 'next/navigation';
+import { Eye, EyeOff } from 'lucide-react';
 import { useAuth } from '@/context/AuthContext';
 import { useSubmitLock } from '@/hooks/useSubmitLock';
 import { BUYER_TERMS, SELLER_TERMS } from '@/components/TermsModal/termsContent';
@@ -95,17 +96,44 @@ export default function SignUp() {
     const [showTerms, setShowTerms]       = useState(false);
     const [verificationStep, setVerificationStep] = useState('details');
     const [verificationCode, setVerificationCode] = useState('');
+    const [showPassword, setShowPassword] = useState(false);
+    const [showConfirm, setShowConfirm] = useState(false);
+
+    const readApiResponse = async (res, fallbackMessage) => {
+        const contentType = res.headers.get('content-type') || '';
+        let data = {};
+
+        if (contentType.includes('application/json')) {
+            data = await res.json();
+        } else {
+            const text = await res.text();
+            data = { error: text || fallbackMessage };
+        }
+
+        if (!res.ok) {
+            const err = new Error(data.error || fallbackMessage);
+            err.code = data.code;
+            throw err;
+        }
+
+        return data;
+    };
 
     const sendVerificationCode = async () => {
         const apiUrl = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:5000';
-        const res = await fetch(`${apiUrl}/api/auth/send-verification-code`, {
-            method: 'POST',
-            headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({ email, purpose: 'register' }),
-        });
-        const data = await res.json();
-        if (!res.ok) throw new Error(data.error || 'Unable to send verification code.');
-        return data;
+        try {
+            const res = await fetch(`${apiUrl}/api/auth/send-verification-code`, {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ email, purpose: 'register' }),
+            });
+            return await readApiResponse(res, 'Unable to send verification code.');
+        } catch (err) {
+            if (err instanceof TypeError) {
+                throw new Error('Cannot reach the BIDPal backend. Make sure the backend server is running on port 5000, then try again.');
+            }
+            throw err;
+        }
     };
 
     const verifyCode = async () => {
@@ -115,12 +143,7 @@ export default function SignUp() {
             headers: { 'Content-Type': 'application/json' },
             body: JSON.stringify({ email, code: verificationCode, purpose: 'register' }),
         });
-        const data = await res.json();
-        if (!res.ok) {
-            const err = new Error(data.error || 'Unable to verify code.');
-            err.code = data.code;
-            throw err;
-        }
+        const data = await readApiResponse(res, 'Unable to verify code.');
         return data.token;
     };
 
@@ -238,20 +261,40 @@ export default function SignUp() {
                                 }}
                                 className={styles.input}
                             />
-                            <input
-                                type="password"
-                                placeholder="Password"
-                                value={password}
-                                onChange={(e) => setPassword(e.target.value)}
-                                className={`${styles.input} ${styles.inputGroup}`}
-                            />
-                            <input
-                                type="password"
-                                placeholder="Confirm password"
-                                value={confirm}
-                                onChange={(e) => setConfirm(e.target.value)}
-                                className={`${styles.input} ${styles.inputGroup}`}
-                            />
+                            <div className={`${styles.inputGroup} ${styles.passwordWrap}`}>
+                                <input
+                                    type={showPassword ? 'text' : 'password'}
+                                    placeholder="Password"
+                                    value={password}
+                                    onChange={(e) => setPassword(e.target.value)}
+                                    className={`${styles.input} ${styles.passwordInput}`}
+                                />
+                                <button
+                                    type="button"
+                                    className={styles.passwordToggle}
+                                    onClick={() => setShowPassword((value) => !value)}
+                                    aria-label={showPassword ? 'Hide password' : 'Show password'}
+                                >
+                                    {showPassword ? <EyeOff size={18} /> : <Eye size={18} />}
+                                </button>
+                            </div>
+                            <div className={`${styles.inputGroup} ${styles.passwordWrap}`}>
+                                <input
+                                    type={showConfirm ? 'text' : 'password'}
+                                    placeholder="Confirm password"
+                                    value={confirm}
+                                    onChange={(e) => setConfirm(e.target.value)}
+                                    className={`${styles.input} ${styles.passwordInput}`}
+                                />
+                                <button
+                                    type="button"
+                                    className={styles.passwordToggle}
+                                    onClick={() => setShowConfirm((value) => !value)}
+                                    aria-label={showConfirm ? 'Hide confirm password' : 'Show confirm password'}
+                                >
+                                    {showConfirm ? <EyeOff size={18} /> : <Eye size={18} />}
+                                </button>
+                            </div>
                             {verificationStep === 'code' && (
                                 <input
                                     type="text"

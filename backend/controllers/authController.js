@@ -55,15 +55,20 @@ export const sendEmailVerificationCode = async (req, res) => {
   }
 
   try {
-    const { data: existingUser, error } = await findUserByEmail(email);
-    if (error) return res.status(500).json({ error: error.message });
+    if (purpose === 'forgot-password') {
+      const { data: existingUser, error } = await findUserByEmail(email);
 
-    if (purpose === 'register' && existingUser) {
-      return res.status(409).json({ error: 'User already exists.' });
-    }
+      if (error) {
+        console.error('Email verification user lookup failed:', error);
+        return res.status(503).json({
+          error: 'Account lookup is temporarily unavailable. Please try again.',
+          code: 'ACCOUNT_LOOKUP_UNAVAILABLE',
+        });
+      }
 
-    if (purpose === 'forgot-password' && !existingUser) {
-      return res.status(404).json({ error: 'No BIDPal account exists for this email.' });
+      if (!existingUser) {
+        return res.status(404).json({ error: 'No BIDPal account exists for this email.' });
+      }
     }
 
     const code = generateCode();
@@ -91,7 +96,14 @@ export const sendEmailVerificationCode = async (req, res) => {
         return res.status(502).json({
           error: mailError.code === 'EMAIL_AUTH_FAILED'
             ? 'Gmail rejected the sender credentials. Use a Gmail App Password for the BIDPal sender account.'
-            : 'Unable to send verification email. Please try again later.',
+            : mailError.code === 'EMAIL_DELIVERY_FAILED'
+              ? 'The deployed server cannot reach Gmail SMTP. Try SMTP_PORT=465 and SMTP_SECURE=true, or use an email API provider for production.'
+              : 'Unable to send verification email. Please try again later.',
+          code: mailError.code || 'EMAIL_SEND_FAILED',
+          ...(!isProduction ? {
+            debug: mailError.cause?.message || mailError.message,
+            debugCode: mailError.cause?.code || null,
+          } : {}),
         });
       }
     }
