@@ -1,5 +1,11 @@
 import { supabase } from '../config/supabase.js';
 
+const getProductFixedPrice = (product) => {
+  const price = parseFloat(product?.price || 0);
+  const startingPrice = parseFloat(product?.starting_price || 0);
+  return price || startingPrice || 0;
+};
+
 // Helper to get or create a cart for a user
 const getOrCreateCartId = async (user_id) => {
   const { data: cart, error: fetchError } = await supabase
@@ -49,6 +55,7 @@ export const getCartByUser = async (req, res) => {
         Products (
             name,
             price,
+            starting_price,
             condition,
             description,
             seller_id,
@@ -70,27 +77,10 @@ export const getCartByUser = async (req, res) => {
     
     if (!data) return res.json([]);
 
-    const productIds = data.map(item => item.product_id).filter(Boolean);
-    let fixedPriceMap = {};
-
-    if (productIds.length > 0) {
-      const { data: saleListings, error: listingError } = await supabase
-        .from('Auctions')
-        .select('products_id, buy_now_price')
-        .in('products_id', productIds)
-        .gt('buy_now_price', 0)
-        .in('status', ['active', 'scheduled']);
-
-      if (!listingError) {
-        fixedPriceMap = Object.fromEntries(
-          (saleListings || []).map(listing => [listing.products_id, listing.buy_now_price || 0])
-        );
-      }
-    }
-
     // Format response for frontend
     const formattedData = data.map(item => {
-      const price = item.price_snapshot || item.Products?.price || fixedPriceMap[item.product_id] || 0;
+      const productPrice = getProductFixedPrice(item.Products);
+      const price = productPrice || item.price_snapshot || 0;
       return ({
         cart_id: item.cartItem_id,
         id: item.product_id,
@@ -137,22 +127,12 @@ export const addToCart = async (req, res) => {
     }
 
     if (existingItem) {
-      let priceSnapshot = existingItem.price_snapshot || 0;
-      if (!priceSnapshot) {
-        const [{ data: product }, { data: saleListing }] = await Promise.all([
-          supabase.from('Products').select('price').eq('products_id', products_id).single(),
-          supabase
-            .from('Auctions')
-            .select('buy_now_price')
-            .eq('products_id', products_id)
-            .gt('buy_now_price', 0)
-            .in('status', ['active', 'scheduled'])
-            .order('start_time', { ascending: false })
-            .limit(1)
-            .maybeSingle()
-        ]);
-        priceSnapshot = saleListing?.buy_now_price || product?.price || 0;
-      }
+      const { data: product } = await supabase
+        .from('Products')
+        .select('price, starting_price')
+        .eq('products_id', products_id)
+        .single();
+      const priceSnapshot = getProductFixedPrice(product) || (existingItem.price_snapshot || 0);
 
       // Update quantity
       const { data, error } = await supabase
@@ -167,22 +147,13 @@ export const addToCart = async (req, res) => {
       if (error) return res.status(400).json({ error: error.message });
       return res.json({ message: 'Cart updated', data: data[0] });
     } else {
-      // Fixed-price listings store their live price on Auctions.buy_now_price.
-      // Fall back to Products.price for older/manual product records.
-      const [{ data: product }, { data: saleListing }] = await Promise.all([
-        supabase.from('Products').select('price').eq('products_id', products_id).single(),
-        supabase
-          .from('Auctions')
-          .select('buy_now_price')
-          .eq('products_id', products_id)
-          .gt('buy_now_price', 0)
-          .in('status', ['active', 'scheduled'])
-          .order('start_time', { ascending: false })
-          .limit(1)
-          .maybeSingle()
-      ]);
+      const { data: product } = await supabase
+        .from('Products')
+        .select('price, starting_price')
+        .eq('products_id', products_id)
+        .single();
 
-      const priceSnapshot = saleListing?.buy_now_price || product?.price || 0;
+      const priceSnapshot = getProductFixedPrice(product);
 
       // Insert new item
       const { data, error } = await supabase

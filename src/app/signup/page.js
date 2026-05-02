@@ -1,6 +1,6 @@
 'use client';
 
-import { useState } from 'react';
+import { useEffect, useState } from 'react';
 import { useRouter } from 'next/navigation';
 import { Eye, EyeOff } from 'lucide-react';
 import { useAuth } from '@/context/AuthContext';
@@ -98,6 +98,19 @@ export default function SignUp() {
     const [verificationCode, setVerificationCode] = useState('');
     const [showPassword, setShowPassword] = useState(false);
     const [showConfirm, setShowConfirm] = useState(false);
+    const [referralCode, setReferralCode] = useState('');
+
+    useEffect(() => {
+        const params = new URLSearchParams(window.location.search);
+        const ref = params.get('ref');
+        if (ref) {
+            const normalizedRef = ref.trim().toUpperCase();
+            setReferralCode(normalizedRef);
+            localStorage.setItem('bidpal_referral_code', normalizedRef);
+            return;
+        }
+        setReferralCode(localStorage.getItem('bidpal_referral_code') || '');
+    }, []);
 
     const readApiResponse = async (res, fallbackMessage) => {
         const contentType = res.headers.get('content-type') || '';
@@ -191,8 +204,9 @@ export default function SignUp() {
 
                 const emailVerificationToken = await verifyCode();
                 const role   = selectedRole.toLowerCase();
-                const result = await register({ email, password, role, emailVerificationToken });
+                const result = await register({ email, password, role, emailVerificationToken, referralCode });
                 if (!result.success) { setError(result.error); return; }
+                localStorage.removeItem('bidpal_referral_code');
                 router.push(role === 'seller' ? '/seller/setup' : '/buyer/setup');
             } catch (err) {
                 if (['CODE_EXPIRED', 'TOO_MANY_ATTEMPTS', 'INVALID_CODE'].includes(err.code)) {

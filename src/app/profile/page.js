@@ -1,7 +1,6 @@
 'use client';
 
 import BIDPalLoader from '@/components/BIDPalLoader';
-import BackButton from '@/components/BackButton';
 import { useState, Suspense, useEffect, useRef } from 'react';
 import dynamic from 'next/dynamic';
 import {
@@ -50,7 +49,10 @@ import {
     ShieldX,
     Ban,
     Clock,
-    FileText
+    FileText,
+    Copy,
+    Share2,
+    QrCode
 } from 'lucide-react';
 import styles from './page.module.css';
 import { useAuth } from '@/context/AuthContext';
@@ -2908,13 +2910,119 @@ function HelpCenterSection() {
 }
 
 function InviteSection() {
+    const { user } = useAuth();
+    const apiUrl = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:5000';
+    const [invite, setInvite] = useState(null);
+    const [loading, setLoading] = useState(false);
+    const [error, setError] = useState('');
+    const [copied, setCopied] = useState(false);
+
+    const fetchInvite = async () => {
+        if (!user) return;
+        setLoading(true);
+        setError('');
+        try {
+            const token = localStorage.getItem('bidpal_token');
+            const appOrigin = process.env.NEXT_PUBLIC_APP_URL || 'https://bidpal.shop';
+            const browserOrigin = typeof window !== 'undefined' ? window.location.origin : appOrigin;
+            const origin = browserOrigin.includes('localhost') || browserOrigin.includes('127.0.0.1')
+                ? appOrigin
+                : browserOrigin;
+            const res = await fetch(`${apiUrl}/api/invites/me?origin=${encodeURIComponent(origin)}`, {
+                headers: { ...(token ? { Authorization: `Bearer ${token}` } : {}) },
+            });
+            const data = await res.json();
+            if (!res.ok) throw new Error(data.error || 'Failed to generate invite link');
+            setInvite(data);
+        } catch (err) {
+            setError(err.message);
+        } finally {
+            setLoading(false);
+        }
+    };
+
+    const copyInvite = async () => {
+        if (!invite?.inviteLink) return;
+        await navigator.clipboard.writeText(invite.inviteLink);
+        setCopied(true);
+        setTimeout(() => setCopied(false), 1800);
+    };
+
+    const shareInvite = async () => {
+        if (!invite?.inviteLink) return;
+        if (navigator.share) {
+            await navigator.share({
+                title: 'Join me on BIDPal',
+                text: 'Shop live auctions and fixed-price finds with my BIDPal invite.',
+                url: invite.inviteLink,
+            });
+            return;
+        }
+        copyInvite();
+    };
+
     return (
         <div className={styles.section}>
-            <header className={styles.sectionHeader}>
-                <h1>Invite Friends</h1>
-                <p>Spread the word and earn rewards.</p>
-            </header>
-            <button className={styles.primaryBtn}>Generate Invite Link</button>
+            <div className={styles.inviteHero}>
+                <header className={styles.sectionHeader}>
+                    <h1>Invite Friends</h1>
+                    <p>Spread the word and earn rewards.</p>
+                </header>
+                <button className={styles.primaryBtn} onClick={fetchInvite} disabled={loading}>
+                    {loading ? 'Generating...' : invite ? 'Refresh Invite Link' : 'Generate Invite Link'}
+                </button>
+            </div>
+
+            {error && <div className={styles.inviteError}>{error}</div>}
+
+            {invite && (
+                <div className={styles.invitePanel}>
+                    <div className={styles.inviteQrCard}>
+                        <div className={styles.inviteQrHeader}>
+                            <QrCode size={18} />
+                            <span>Your QR Code</span>
+                        </div>
+                        <div className={styles.inviteQrBox}>
+                            <img src={invite.qrCodeUrl} alt="Invite QR code" />
+                        </div>
+                        <p>Friends can scan this to sign up with your invite.</p>
+                    </div>
+
+                    <div className={styles.inviteDetails}>
+                        <div className={styles.inviteCodeBox}>
+                            <span>Invite Code</span>
+                            <strong>{invite.inviteCode}</strong>
+                        </div>
+
+                        <label className={styles.inviteLinkLabel}>Invite Link</label>
+                        <div className={styles.inviteLinkBox}>
+                            <input value={invite.inviteLink} readOnly />
+                            <button onClick={copyInvite} aria-label="Copy invite link">
+                                <Copy size={16} />
+                            </button>
+                        </div>
+
+                        <div className={styles.inviteActions}>
+                            <button className={styles.inviteActionBtn} onClick={copyInvite}>
+                                <Copy size={16} />
+                                {copied ? 'Copied' : 'Copy Link'}
+                            </button>
+                            <button className={styles.inviteActionBtnDark} onClick={shareInvite}>
+                                <Share2 size={16} />
+                                Share
+                            </button>
+                        </div>
+
+                        <div className={styles.inviteStats}>
+                            <div>
+                                <strong>{invite.acceptedInvites || 0}</strong>
+                                <span>Accepted invites</span>
+                            </div>
+                            <p>{invite.rewardLabel}</p>
+                        </div>
+                    </div>
+                </div>
+            )}
         </div>
     );
 }
@@ -3047,9 +3155,6 @@ function WishlistSection() {
     return (
         <div className={styles.section}>
             <header className={styles.sectionHeader}>
-                <div className={styles.wishlistBack}>
-                    <BackButton label="Back" />
-                </div>
                 <h1>My Wishlist</h1>
                 <p>You have {items.length} item{items.length !== 1 ? 's' : ''} in your wishlist.</p>
             </header>

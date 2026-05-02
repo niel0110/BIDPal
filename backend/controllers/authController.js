@@ -213,7 +213,7 @@ export const verifyEmailCode = async (req, res) => {
 
 // Register user (sign up)
 export const register = async (req, res) => {
-  const { password, Fname, Mname, Lname, role, contact_num, Avatar, emailVerificationToken } = req.body;
+  const { password, Fname, Mname, Lname, role, contact_num, Avatar, emailVerificationToken, referralCode } = req.body;
   const email = normalizeEmail(req.body.email);
   console.log('Register request received:', { email, role });
   if (!email || !password) {
@@ -262,6 +262,30 @@ export const register = async (req, res) => {
     }
 
     console.log('User created successfully, generating token...');
+    if (referralCode) {
+      try {
+        const normalizedInvite = String(referralCode).trim().toUpperCase();
+        const { data: invite } = await supabase
+          .from('Invite_Codes')
+          .select('user_id, invite_code')
+          .eq('invite_code', normalizedInvite)
+          .maybeSingle();
+
+        if (invite?.user_id && invite.user_id !== data[0].user_id) {
+          await supabase
+            .from('Referrals')
+            .insert([{
+              referrer_user_id: invite.user_id,
+              referred_user_id: data[0].user_id,
+              invite_code: invite.invite_code,
+              status: 'signed_up'
+            }]);
+        }
+      } catch {
+        // Referral recording is best-effort and should not block account creation.
+      }
+    }
+
     // Generate JWT
     const token = jwt.sign({ user_id: data[0].user_id, email: data[0].email, role: data[0].role }, process.env.JWT_SECRET, { expiresIn: '1d' });
     res.status(201).json({ message: 'User registered successfully', user: data[0], token });

@@ -1306,6 +1306,275 @@ input:checked+.slider:before {
     transform: scale(0.95);
 }
 
+.inviteHero {
+    display: flex;
+    align-items: flex-start;
+    justify-content: space-between;
+    gap: 1rem;
+    margin-bottom: 1.25rem;
+}
+
+.invitePanel {
+    display: grid;
+    grid-template-columns: minmax(220px, 280px) 1fr;
+    gap: 1.25rem;
+    align-items: stretch;
+}
+
+.inviteQrCard,
+.inviteDetails {
+    border: 1px solid #edf0f5;
+    border-radius: 14px;
+    background: #fff;
+    box-shadow: 0 10px 30px rgba(15, 23, 42, 0.05);
+}
+
+.inviteQrCard {
+    padding: 1rem;
+    text-align: center;
+}
+
+.inviteQrHeader {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 0.45rem;
+    color: #111827;
+    font-size: 0.85rem;
+    font-weight: 800;
+    margin-bottom: 0.85rem;
+}
+
+.inviteQrBox {
+    border: 1px dashed #d7dce5;
+    border-radius: 14px;
+    padding: 0.75rem;
+    background: #f8fafc;
+    aspect-ratio: 1;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+}
+
+.inviteQrBox img {
+    width: 100%;
+    height: 100%;
+    max-width: 220px;
+    max-height: 220px;
+    object-fit: contain;
+}
+
+.inviteQrCard p {
+    margin: 0.8rem 0 0;
+    font-size: 0.78rem;
+    color: #64748b;
+    line-height: 1.45;
+}
+
+.inviteDetails {
+    padding: 1rem;
+    display: flex;
+    flex-direction: column;
+    gap: 0.9rem;
+}
+
+.inviteCodeBox {
+    border-radius: 12px;
+    background: linear-gradient(135deg, #fff1f2 0%, #f8fafc 100%);
+    border: 1px solid #fecdd3;
+    padding: 0.85rem;
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 0.8rem;
+}
+
+.inviteCodeBox span,
+.inviteLinkLabel {
+    color: #64748b;
+    font-size: 0.72rem;
+    font-weight: 800;
+    text-transform: uppercase;
+    letter-spacing: 0.05em;
+}
+
+.inviteCodeBox strong {
+    color: #D32F2F;
+    font-size: 1rem;
+    letter-spacing: 0.06em;
+}
+
+.inviteLinkBox {
+    display: flex;
+    align-items: center;
+    border: 1.5px solid #e2e8f0;
+    border-radius: 12px;
+    overflow: hidden;
+    background: #f8fafc;
+}
+
+.inviteLinkBox input {
+    flex: 1;
+    min-width: 0;
+    border: none;
+    background: transparent;
+    padding: 0.8rem 0.85rem;
+    color: #334155;
+    font-size: 0.82rem;
+    outline: none;
+}
+
+.inviteLinkBox button,
+.inviteActionBtn,
+.inviteActionBtnDark {
+    border: none;
+    font-family: inherit;
+    cursor: pointer;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+}
+
+.inviteLinkBox button {
+    width: 42px;
+    align-self: stretch;
+    background: white;
+    color: #D32F2F;
+    border-left: 1px solid #e2e8f0;
+}
+
+.inviteActions {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 0.7rem;
+}
+
+.inviteActionBtn,
+.inviteActionBtnDark {
+    gap: 0.45rem;
+    border-radius: 10px;
+    padding: 0.75rem 0.8rem;
+    font-size: 0.84rem;
+    font-weight: 800;
+}
+
+.inviteActionBtn {
+    background: #fff;
+    color: #D32F2F;
+    border: 1.5px solid #fecdd3;
+}
+
+.inviteActionBtnDark {
+    background: #D32F2F;
+    color: white;
+}
+
+.inviteStats {
+    border-top: 1px solid #edf0f5;
+    padding-top: 0.9rem;
+    display: grid;
+    grid-template-columns: auto 1fr;
+    gap: 0.85rem;
+    align-items: center;
+}
+
+.inviteStats strong {
+    display: block;
+    font-size: 1.35rem;
+    color: #111827;
+    line-height: 1;
+}
+
+.inviteStats span {
+    display: block;
+    font-size: 0.72rem;
+    color: #64748b;
+    margin-top: 0.2rem;
+}
+
+.inviteStats p {
+    margin: 0;
+    color: #64748b;
+    font-size: 0.78rem;
+    line-height: 1.45;
+}
+
+.inviteError {
+    background: #fff1f2;
+    border: 1px solid #fecdd3;
+    color: #991b1b;
+    border-radius: 10px;
+    padding: 0.75rem 0.9rem;
+    font-size: 0.82rem;
+    font-weight: 700;
+    margin-bottom: 1rem;
+}
+
+@media (max-width: 768px) {
+    .inviteHero {
+        flex-direction: column;
+        align-items: stretch;
+        gap: 0.75rem;
+    }
+
+    .inviteHero .primaryBtn {
+        width: 100%;
+        justify-content: center;
+    }
+
+    .invitePanel {
+        grid-template-columns: 1fr;
+        gap: 0.9rem;
+    }
+
+    .inviteQrCard,
+    .inviteDetails {
+        border-radius: 12px;
+    }
+
+    .inviteQrCard {
+        padding: 0.85rem;
+    }
+
+    .inviteQrBox {
+        max-width: 230px;
+        margin: 0 auto;
+        padding: 0.65rem;
+    }
+
+    .inviteDetails {
+        padding: 0.85rem;
+    }
+
+    .inviteCodeBox {
+        flex-direction: column;
+        align-items: flex-start;
+        gap: 0.35rem;
+    }
+
+    .inviteActions {
+        grid-template-columns: 1fr;
+    }
+
+    .inviteStats {
+        grid-template-columns: 1fr;
+        gap: 0.55rem;
+    }
+}
+
+@media (max-width: 360px) {
+    .inviteLinkBox input {
+        font-size: 0.74rem;
+        padding: 0.7rem;
+    }
+
+    .inviteActionBtn,
+    .inviteActionBtnDark {
+        padding: 0.68rem 0.75rem;
+        font-size: 0.78rem;
+    }
+}
+
 .noResults {
     text-align: center;
     padding: 3rem;

@@ -63,7 +63,7 @@ function HomeInner() {
   const matchesCategory = (item, category) => {
     if (category === 'all') return true;
     const keywords = CATEGORY_KEYWORDS[category] || [category];
-    const haystack = [item.category, item.name, item.title].filter(Boolean).join(' ').toLowerCase();
+    const haystack = (item.category || '').toLowerCase();
     return keywords.some(kw => haystack.includes(kw));
   };
 
