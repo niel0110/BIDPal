@@ -261,7 +261,7 @@ export const getAllAuctions = async (req, res) => {
     if (category && category !== 'all') {
       const keywords = CATEGORY_KEYWORDS[category.toLowerCase()] || [category.toLowerCase()];
       result = result.filter(a => {
-        const cat = (a.category || a.title || '').toLowerCase();
+        const cat = (a.category || '').toLowerCase();
         return keywords.some(kw => cat.includes(kw));
       });
     }

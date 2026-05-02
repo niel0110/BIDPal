@@ -54,7 +54,11 @@ function CheckoutPageInner() {
                     const listingsRes = await fetch(`${API_URL}/api/auctions?sale_type=sale${sellerParam}&limit=100`);
                     const listingsData = listingsRes.ok ? await listingsRes.json() : { data: [] };
                     const listing = (listingsData.data || []).find(item => item.products_id === productId);
-                    const fixedPrice = listing?.price ?? product.price ?? product.buy_now_price ?? product.starting_price ?? 0;
+                    const fixedPrice =
+                        Number(product.price || 0) ||
+                        Number(product.starting_price || 0) ||
+                        Number(product.buy_now_price || 0) ||
+                        Number(listing?.price || 0);
                     const image = listing?.image || listing?.images?.[0] || product.images?.[0]?.image_url || null;
 
                     if (!fixedPrice) {

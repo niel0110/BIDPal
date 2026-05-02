@@ -77,13 +77,13 @@ export function AuthProvider({ children }) {
         }
     };
 
-    const register = async ({ email, password, role, emailVerificationToken }) => {
+    const register = async ({ email, password, role, emailVerificationToken, referralCode }) => {
         try {
             const apiUrl = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:5000';
             const res = await fetch(`${apiUrl}/api/auth/register`, {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify({ email, password, role, emailVerificationToken }),
+                body: JSON.stringify({ email, password, role, emailVerificationToken, referralCode }),
             });
             const data = await res.json();
             if (!res.ok) throw new Error(data.error || 'Registration failed');
