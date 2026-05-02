@@ -25,6 +25,7 @@ export default function OrdersPage() {
     const [cancellingOrder, setCancellingOrder] = useState(null);
     const [showCancellationModal, setShowCancellationModal] = useState(false);
     const [orderToCancel, setOrderToCancel] = useState(null);
+    const [selectedFixedOrderId, setSelectedFixedOrderId] = useState(null);
 
     // Review state
     const [reviewTarget, setReviewTarget] = useState(null);   // order being reviewed
@@ -75,7 +76,20 @@ export default function OrdersPage() {
         }
     }, [user, fetchOrders]);
 
+    const isFixedPriceOrder = (order) => order.order_type !== 'auction';
+    const matchesSearch = (order) => {
+        if (!searchQuery) return true;
+        const query = searchQuery.toLowerCase();
+        const idMatch = order.id.toLowerCase().includes(query);
+        const itemMatch = order.items?.some(item => item.name.toLowerCase().includes(query));
+        return idMatch || itemMatch;
+    };
+
+    const fixedPriceOrders = orders.filter(order => isFixedPriceOrder(order) && matchesSearch(order));
+    const selectedFixedOrder = fixedPriceOrders.find(order => order.id === selectedFixedOrderId) || null;
+
     const filteredOrders = orders.filter(order => {
+        if (isFixedPriceOrder(order)) return false;
         // Map new status format to tab filter
         let tabStatus = order.status;
         if (order.status === 'pending_payment') tabStatus = 'pay';
@@ -83,13 +97,7 @@ export default function OrdersPage() {
         if (order.status === 'shipped') tabStatus = 'receive';
 
         if (activeTab !== 'all' && tabStatus !== activeTab) return false;
-        if (searchQuery) {
-            const query = searchQuery.toLowerCase();
-            const idMatch = order.id.toLowerCase().includes(query);
-            const itemMatch = order.items?.some(item => item.name.toLowerCase().includes(query));
-            if (!idMatch && !itemMatch) return false;
-        }
-        return true;
+        return matchesSearch(order);
     });
 
     const getStatusLabel = (status) => {
@@ -105,6 +113,57 @@ export default function OrdersPage() {
             default: return 'Processing';
         }
     };
+
+    const getFixedStatusCopy = (order) => {
+        switch (order.status) {
+            case 'pending_payment':
+                return {
+                    title: 'Awaiting checkout',
+                    text: 'Complete checkout or cancel this fixed-price order.',
+                    step: 0,
+                };
+            case 'processing':
+            case 'ship':
+                return {
+                    title: order.payment_method === 'cash_on_delivery' ? 'Preparing shipment' : 'Ready to ship',
+                    text: order.payment_method === 'cash_on_delivery'
+                        ? 'Your order is confirmed. Cash will be collected when the item is delivered.'
+                        : 'Payment is confirmed. The seller is preparing your item for shipping.',
+                    step: 1,
+                };
+            case 'shipped':
+            case 'receive':
+                return {
+                    title: 'Out for delivery',
+                    text: order.tracking_number
+                        ? `${order.courier || 'Courier'} tracking: ${order.tracking_number}`
+                        : 'The seller has shipped your item. Confirm once you receive it.',
+                    step: 2,
+                };
+            case 'completed':
+                return {
+                    title: 'Order completed',
+                    text: order.payment_method === 'cash_on_delivery'
+                        ? 'Item received and cash collection is complete.'
+                        : 'Item received and payment is complete.',
+                    step: 3,
+                };
+            case 'cancelled':
+                return {
+                    title: 'Order cancelled',
+                    text: 'This fixed-price order was cancelled.',
+                    step: 0,
+                };
+            default:
+                return {
+                    title: 'Order in progress',
+                    text: 'Your fixed-price listing order is being processed.',
+                    step: 1,
+                };
+        }
+    };
+
+    const fixedOrderItem = (order) => order?.items?.[0] || {};
 
     // Fetch cancellation limit + violation record together
     useEffect(() => {
@@ -413,19 +472,6 @@ export default function OrdersPage() {
                     </div>
                 </header>
 
-                <nav className={styles.tabsNav}>
-                    {tabs.map(tab => (
-                        <button
-                            key={tab.id}
-                            className={`${styles.tabItem} ${activeTab === tab.id ? styles.activeTab : ''}`}
-                            onClick={() => setActiveTab(tab.id)}
-                        >
-                            <span className={styles.tabIcon}>{tab.icon}</span>
-                            <span className={styles.tabLabel}>{tab.label}</span>
-                        </button>
-                    ))}
-                </nav>
-
                 {actionSuccess && (
                     <div className={styles.actionSuccessBanner} onClick={() => setActionSuccess('')}>
                         <CheckCircle2 size={16} /> {actionSuccess}
@@ -437,9 +483,162 @@ export default function OrdersPage() {
                     </div>
                 )}
 
-                <div className={styles.ordersList}>
-                    {filteredOrders.length > 0 ? (
-                        filteredOrders.map(order => (
+                {fixedPriceOrders.length > 0 ? (
+                    <section className={styles.fixedListingsPanel}>
+                        {!selectedFixedOrder ? (
+                            <>
+                                <div className={styles.fixedListingsHeader}>
+                                    <div className={styles.fixedListingsTitle}>
+                                        <Package size={18} />
+                                        <h2>Fixed Price Listings</h2>
+                                    </div>
+                                    <span className={styles.fixedListingsCount}>{fixedPriceOrders.length}</span>
+                                </div>
+
+                                <div className={styles.fixedListingsList}>
+                                    {fixedPriceOrders.map(order => {
+                                        const item = fixedOrderItem(order);
+                                        return (
+                                            <button
+                                                key={order.id}
+                                                className={styles.fixedListingItem}
+                                                onClick={() => setSelectedFixedOrderId(order.id)}
+                                            >
+                                                <img src={item.image || 'https://placehold.co/72x72?text=Item'} alt={item.name || 'Product'} />
+                                                <div className={styles.fixedListingInfo}>
+                                                    <span className={styles.fixedListingName}>{item.name}</span>
+                                                    <strong>₱{Number(item.price || order.total || 0).toLocaleString('en-PH')}</strong>
+                                                    <span className={`${styles.fixedListingStatus} ${styles[order.status]}`}>
+                                                        {getStatusLabel(order.status)}
+                                                    </span>
+                                                </div>
+                                            </button>
+                                        );
+                                    })}
+                                </div>
+                            </>
+                        ) : (() => {
+                            const item = fixedOrderItem(selectedFixedOrder);
+                            const process = getFixedStatusCopy(selectedFixedOrder);
+                            const steps = ['Ordered', 'To Ship', 'To Receive', 'Completed'];
+                            return (
+                                <div className={styles.fixedProcessView}>
+                                    <button className={styles.fixedProcessBack} onClick={() => setSelectedFixedOrderId(null)}>
+                                        <X size={15} /> Back to fixed-price listings
+                                    </button>
+
+                                    <div className={styles.fixedProcessProduct}>
+                                        <img src={item.image || 'https://placehold.co/96x96?text=Item'} alt={item.name || 'Product'} />
+                                        <div>
+                                            <span className={styles.fixedProcessBadge}>Fixed Price</span>
+                                            <h2>{item.name}</h2>
+                                            <p>Order #{selectedFixedOrder.id.slice(0, 8).toUpperCase()}</p>
+                                            <strong>₱{Number(selectedFixedOrder.total || item.price || 0).toLocaleString('en-PH')}</strong>
+                                        </div>
+                                    </div>
+
+                                    <div className={styles.fixedProcessTrack}>
+                                        {steps.map((step, index) => (
+                                            <div
+                                                key={step}
+                                                className={`${styles.fixedProcessStep} ${index <= process.step ? styles.fixedProcessStepActive : ''}`}
+                                            >
+                                                <span />
+                                                <small>{step}</small>
+                                            </div>
+                                        ))}
+                                    </div>
+
+                                    <div className={styles.fixedProcessNotice}>
+                                        <Package size={18} />
+                                        <div>
+                                            <h3>{process.title}</h3>
+                                            <p>{process.text}</p>
+                                        </div>
+                                    </div>
+
+                                    {selectedFixedOrder.status === 'pending_payment' && (
+                                        <div className={styles.orderActions}>
+                                            <button className={styles.payNowBtn} onClick={() => handlePayNow(selectedFixedOrder)}>
+                                                Pay Now
+                                            </button>
+                                            <button className={styles.cancelBtn} onClick={() => handleCancelCartOrder(selectedFixedOrder)}>
+                                                <Ban size={16} /><span>Cancel Order</span>
+                                            </button>
+                                        </div>
+                                    )}
+
+                                    {selectedFixedOrder.status === 'processing' && (
+                                        <button className={styles.receiptBtn} onClick={() => openReceiptModal(selectedFixedOrder.id)}>
+                                            <Receipt size={14} />
+                                            View Summary
+                                        </button>
+                                    )}
+
+                                    {selectedFixedOrder.status === 'shipped' && (
+                                        <div className={styles.orderActions}>
+                                            <button className={styles.receivedBtn} onClick={() => handleConfirmDelivery(selectedFixedOrder)}>
+                                                <CheckCircle2 size={16} />
+                                                Order Received
+                                            </button>
+                                            <button className={styles.receiptBtn} onClick={() => openReceiptModal(selectedFixedOrder.id)}>
+                                                <Receipt size={14} />
+                                                View Summary
+                                            </button>
+                                        </div>
+                                    )}
+
+                                    {selectedFixedOrder.status === 'completed' && (
+                                        <div className={styles.orderActions}>
+                                            {existingReviews[selectedFixedOrder.id] ? (
+                                                <button
+                                                    className={styles.viewReviewBtn}
+                                                    onClick={() => setViewReviewTarget({ order: selectedFixedOrder, review: existingReviews[selectedFixedOrder.id] })}
+                                                >
+                                                    <Star size={13} fill="#FBC02D" stroke="#FBC02D" />
+                                                    Reviewed
+                                                </button>
+                                            ) : (
+                                                <button className={styles.reviewBtn} onClick={() => openReviewModal(selectedFixedOrder)}>
+                                                    <Star size={15} />
+                                                    Leave a Review
+                                                </button>
+                                            )}
+                                            <button className={styles.receiptBtn} onClick={() => openReceiptModal(selectedFixedOrder.id)}>
+                                                <Receipt size={14} />
+                                                View Summary
+                                            </button>
+                                        </div>
+                                    )}
+
+                                    {selectedFixedOrder.status !== 'cancelled' && (
+                                        <button className={styles.primaryBtn} onClick={() => handleContactSeller(selectedFixedOrder)}>
+                                            <MessageCircle size={14} />
+                                            Contact Seller
+                                        </button>
+                                    )}
+                                </div>
+                            );
+                        })()}
+                    </section>
+                ) : (
+                    <>
+                        <nav className={styles.tabsNav}>
+                            {tabs.map(tab => (
+                                <button
+                                    key={tab.id}
+                                    className={`${styles.tabItem} ${activeTab === tab.id ? styles.activeTab : ''}`}
+                                    onClick={() => setActiveTab(tab.id)}
+                                >
+                                    <span className={styles.tabIcon}>{tab.icon}</span>
+                                    <span className={styles.tabLabel}>{tab.label}</span>
+                                </button>
+                            ))}
+                        </nav>
+
+                        <div className={styles.ordersList}>
+                            {filteredOrders.length > 0 ? (
+                                filteredOrders.map(order => (
                             <div key={order.id} className={styles.orderCard}>
                                 <div className={styles.orderCardHeader}>
                                     <div className={styles.sellerInfo}>
@@ -623,15 +822,17 @@ export default function OrdersPage() {
                                     )}
                                 </div>
                             </div>
-                        ))
-                    ) : (
-                        <div className={styles.emptyState}>
-                            <Package size={64} color="#ddd" strokeWidth={1} />
-                            <h2>No orders found</h2>
-                            <p>Try switching tabs or searching for something else.</p>
+                                ))
+                            ) : (
+                                <div className={styles.emptyState}>
+                                    <Package size={64} color="#ddd" strokeWidth={1} />
+                                    <h2>No orders found</h2>
+                                    <p>Try switching tabs or searching for something else.</p>
+                                </div>
+                            )}
                         </div>
-                    )}
-                </div>
+                    </>
+                )}
             </div>
 
             {/* View Review Popup */}
@@ -809,8 +1010,10 @@ export default function OrdersPage() {
                             </div>
                         ) : receiptModal.data ? (() => {
                             const r = receiptModal.data;
-                            const isPaid = ['processing', 'shipped', 'completed'].includes(r.status);
                             const methodLabel = r.payment_method === 'gcash' ? 'GCash' : 'Cash on Delivery';
+                            const isCod = ['cash_on_delivery', 'cod', 'cash'].includes(String(r.payment_method || '').toLowerCase());
+                            const isPaid = !isCod && ['processing', 'shipped', 'completed'].includes(r.status);
+                            const totalLabel = isCod ? 'Amount to Collect' : 'Total Paid';
                             const formatAddress = (addr) => {
                                 if (!addr) return '—';
                                 return [addr.Line1, addr.Line2, addr['Household/blk st.'], addr.Barangay, addr['Municipality/City'], addr.province, addr['zip code']].filter(Boolean).join(', ');
@@ -820,9 +1023,11 @@ export default function OrdersPage() {
                                     <div className={styles.receiptHeader}>
                                         <div className={styles.brandRow}>
                                             <span className={styles.brand}>BIDPal</span>
-                                            <span className={styles.brandSub}>Official Payment Receipt</span>
+                                            <span className={styles.brandSub}>{isCod ? 'Order Payment Summary' : 'Official Payment Receipt'}</span>
                                         </div>
-                                        {isPaid ? (
+                                        {isCod ? (
+                                            <div className={styles.pendingBadge}>Collect on Delivery</div>
+                                        ) : isPaid ? (
                                             <div className={styles.paidBadge}><CheckCircle2 size={14} /> Payment Confirmed</div>
                                         ) : (
                                             <div className={styles.pendingBadge}>Pending</div>
@@ -862,7 +1067,7 @@ export default function OrdersPage() {
                                     <div className={styles.breakdown}>
                                         <div className={styles.breakdownRow}><span>Item Total</span><span>₱{(r.product?.price || 0).toLocaleString()}</span></div>
                                         <div className={styles.breakdownRow}><span>Shipping Fee</span><span>₱{(r.shipping_fee || 0).toLocaleString()}</span></div>
-                                        <div className={`${styles.breakdownRow} ${styles.totalRow}`}><span>Total Paid</span><span>₱{(r.total_amount || 0).toLocaleString()}</span></div>
+                                        <div className={`${styles.breakdownRow} ${styles.totalRow}`}><span>{totalLabel}</span><span>₱{(r.total_amount || 0).toLocaleString()}</span></div>
                                     </div>
                                     <div className={styles.divider} />
                                     <div className={styles.infoGrid}>
@@ -870,6 +1075,12 @@ export default function OrdersPage() {
                                             <div className={styles.infoIcon}><CreditCard size={14} /></div>
                                             <div><p className={styles.infoLabel}>Payment Method</p><p className={styles.infoValue}>{methodLabel}</p></div>
                                         </div>
+                                        {isCod && (
+                                            <div className={styles.infoBlock}>
+                                                <div className={styles.infoIcon}><Truck size={14} /></div>
+                                                <div><p className={styles.infoLabel}>Payment Status</p><p className={styles.infoValue}>Cash will be received once delivered.</p></div>
+                                            </div>
+                                        )}
                                         {r.buyer && (
                                             <div className={styles.infoBlock}>
                                                 <div className={styles.infoIcon}><Package size={14} /></div>

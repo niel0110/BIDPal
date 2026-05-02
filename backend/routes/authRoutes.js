@@ -7,7 +7,8 @@ import {
   sendEmailVerificationCode,
   verifyEmailCode,
   resetPassword,
-  getEmailStatus
+  getEmailStatus,
+  sendTestEmail
 } from '../controllers/authController.js';
 
 const router = express.Router();
@@ -18,6 +19,7 @@ router.post('/send-verification-code', sendEmailVerificationCode);
 router.post('/verify-email-code', verifyEmailCode);
 router.post('/reset-password', resetPassword);
 router.get('/email-status', getEmailStatus);
+router.post('/send-email', sendTestEmail);
 router.post('/google-login', googleLogin);
 router.post('/social-login', socialLogin); // Legacy route for backward compatibility
 

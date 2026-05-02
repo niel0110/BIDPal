@@ -21,11 +21,11 @@ function ReceiptPageInner() {
     const methodFromUrl = searchParams.get('method');
 
     const [receipt, setReceipt] = useState(null);
-    const [loading, setLoading] = useState(true);
+    const [loading, setLoading] = useState(Boolean(orderId));
     const [error, setError] = useState(null);
 
     useEffect(() => {
-        if (!orderId) { setLoading(false); return; }
+        if (!orderId) return;
         fetch(`${API_URL}/api/orders/${orderId}/receipt`)
             .then(r => r.json())
             .then(data => {
@@ -66,7 +66,9 @@ function ReceiptPageInner() {
         ].filter(Boolean).join(', ');
     };
 
-    const isPaid = ['processing', 'shipped', 'completed'].includes(receipt.status);
+    const isCod = ['cash_on_delivery', 'cod', 'cash'].includes(String(method || '').toLowerCase());
+    const isPaid = !isCod && ['processing', 'shipped', 'completed'].includes(receipt.status);
+    const totalLabel = isCod ? 'Amount to Collect' : 'Total Paid';
 
     return (
         <div className={styles.page}>
@@ -89,9 +91,11 @@ function ReceiptPageInner() {
                     <div className={styles.receiptHeader}>
                         <div className={styles.brandRow}>
                             <span className={styles.brand}>BIDPal</span>
-                            <span className={styles.brandSub}>Official Payment Receipt</span>
+                            <span className={styles.brandSub}>{isCod ? 'Order Payment Summary' : 'Official Payment Receipt'}</span>
                         </div>
-                        {isPaid ? (
+                        {isCod ? (
+                            <div className={styles.pendingBadge}>Collect on Delivery</div>
+                        ) : isPaid ? (
                             <div className={styles.paidBadge}>
                                 <CheckCircle2 size={16} />
                                 Payment Confirmed
@@ -155,7 +159,7 @@ function ReceiptPageInner() {
                             <span>₱{(receipt.shipping_fee || 0).toLocaleString()}</span>
                         </div>
                         <div className={`${styles.breakdownRow} ${styles.totalRow}`}>
-                            <span>Total Paid</span>
+                            <span>{totalLabel}</span>
                             <span>₱{(receipt.total_amount || 0).toLocaleString()}</span>
                         </div>
                     </div>
@@ -174,6 +178,15 @@ function ReceiptPageInner() {
                                 <p className={styles.infoValue}>{methodLabel}</p>
                             </div>
                         </div>
+                        {isCod && (
+                            <div className={styles.infoBlock}>
+                                <div className={styles.infoIcon}><Truck size={15} /></div>
+                                <div>
+                                    <p className={styles.infoLabel}>Payment Status</p>
+                                    <p className={styles.infoValue}>Cash will be received once delivered.</p>
+                                </div>
+                            </div>
+                        )}
 
                         {receipt.buyer && (
                             <div className={styles.infoBlock}>
@@ -220,7 +233,10 @@ function ReceiptPageInner() {
                     {/* Footer */}
                     <div className={styles.receiptFooter}>
                         <p>Thank you for using BIDPal!</p>
-                        <p className={styles.footerSub}>Keep this receipt as proof of payment. Reference: <strong>{paymentRef}</strong></p>
+                        <p className={styles.footerSub}>
+                            {isCod ? 'This is an order summary for cash collection on delivery.' : 'Keep this receipt as proof of payment.'}
+                            {' '}Reference: <strong>{paymentRef}</strong>
+                        </p>
                     </div>
                 </div>
 

@@ -152,10 +152,8 @@ export default function SignUp() {
         setMessage('');
         setVerificationCode('');
         try {
-            const data = await sendVerificationCode();
-            setMessage(data.devCode
-                ? `Development code: ${data.devCode}`
-                : 'A new verification code was sent to your email. Use the latest code only.');
+            await sendVerificationCode();
+            setMessage('A new verification code was sent to your email. Use the latest code only.');
         } catch (err) {
             setError(err.message || 'Unable to resend verification code.');
         }
@@ -180,11 +178,9 @@ export default function SignUp() {
             }
             try {
                 if (verificationStep === 'details') {
-                    const data = await sendVerificationCode();
+                    await sendVerificationCode();
                     setVerificationStep('code');
-                    setMessage(data.devCode
-                        ? `Development code: ${data.devCode}`
-                        : 'We sent a 6-digit verification code to your email.');
+                    setMessage('We sent a 6-digit verification code to your email.');
                     return;
                 }
 

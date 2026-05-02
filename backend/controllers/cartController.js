@@ -45,6 +45,7 @@ export const getCartByUser = async (req, res) => {
         cartItem_id,
         product_id,
         quantity,
+        price_snapshot,
         Products (
             name,
             price,
@@ -69,19 +70,40 @@ export const getCartByUser = async (req, res) => {
     
     if (!data) return res.json([]);
 
+    const productIds = data.map(item => item.product_id).filter(Boolean);
+    let fixedPriceMap = {};
+
+    if (productIds.length > 0) {
+      const { data: saleListings, error: listingError } = await supabase
+        .from('Auctions')
+        .select('products_id, buy_now_price')
+        .in('products_id', productIds)
+        .gt('buy_now_price', 0)
+        .in('status', ['active', 'scheduled']);
+
+      if (!listingError) {
+        fixedPriceMap = Object.fromEntries(
+          (saleListings || []).map(listing => [listing.products_id, listing.buy_now_price || 0])
+        );
+      }
+    }
+
     // Format response for frontend
-    const formattedData = data.map(item => ({
+    const formattedData = data.map(item => {
+      const price = item.price_snapshot || item.Products?.price || fixedPriceMap[item.product_id] || 0;
+      return ({
         cart_id: item.cartItem_id,
         id: item.product_id,
         name: item.Products?.name || 'Unknown Product',
-        price: item.Products?.price || 0,
+        price,
         quantity: item.quantity,
         image: item.Products?.Product_Images?.[0]?.image_url || null,
         seller: item.Products?.Seller?.store_name || 'Unknown Store',
         seller_id: item.Products?.seller_id || null,
         condition: item.Products?.condition || 'N/A',
         description: item.Products?.description || ''
-    }));
+      });
+    });
 
     res.json(formattedData);
   } catch (err) {
@@ -115,18 +137,52 @@ export const addToCart = async (req, res) => {
     }
 
     if (existingItem) {
+      let priceSnapshot = existingItem.price_snapshot || 0;
+      if (!priceSnapshot) {
+        const [{ data: product }, { data: saleListing }] = await Promise.all([
+          supabase.from('Products').select('price').eq('products_id', products_id).single(),
+          supabase
+            .from('Auctions')
+            .select('buy_now_price')
+            .eq('products_id', products_id)
+            .gt('buy_now_price', 0)
+            .in('status', ['active', 'scheduled'])
+            .order('start_time', { ascending: false })
+            .limit(1)
+            .maybeSingle()
+        ]);
+        priceSnapshot = saleListing?.buy_now_price || product?.price || 0;
+      }
+
       // Update quantity
       const { data, error } = await supabase
         .from('Cart_items')
-        .update({ quantity: parseInt(existingItem.quantity) + parseInt(quantity) })
+        .update({
+          quantity: parseInt(existingItem.quantity) + parseInt(quantity),
+          price_snapshot: priceSnapshot
+        })
         .eq('cartItem_id', existingItem.cartItem_id)
         .select('*');
 
       if (error) return res.status(400).json({ error: error.message });
       return res.json({ message: 'Cart updated', data: data[0] });
     } else {
-      // Fetch current product price for snapshot
-      const { data: product } = await supabase.from('Products').select('price').eq('products_id', products_id).single();
+      // Fixed-price listings store their live price on Auctions.buy_now_price.
+      // Fall back to Products.price for older/manual product records.
+      const [{ data: product }, { data: saleListing }] = await Promise.all([
+        supabase.from('Products').select('price').eq('products_id', products_id).single(),
+        supabase
+          .from('Auctions')
+          .select('buy_now_price')
+          .eq('products_id', products_id)
+          .gt('buy_now_price', 0)
+          .in('status', ['active', 'scheduled'])
+          .order('start_time', { ascending: false })
+          .limit(1)
+          .maybeSingle()
+      ]);
+
+      const priceSnapshot = saleListing?.buy_now_price || product?.price || 0;
 
       // Insert new item
       const { data, error } = await supabase
@@ -135,7 +191,7 @@ export const addToCart = async (req, res) => {
             cart_id, 
             product_id: products_id, 
             quantity,
-            price_snapshot: product?.price || 0
+            price_snapshot: priceSnapshot
         }])
         .select('*');
 

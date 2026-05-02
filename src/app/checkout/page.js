@@ -4,7 +4,7 @@ import BIDPalLoader from '@/components/BIDPalLoader';
 import BackButton from '@/components/BackButton';
 import { useState, useEffect, useCallback, Suspense } from 'react';
 import { useRouter, useSearchParams } from 'next/navigation';
-import { MapPin, Plus, CreditCard, Truck, CheckCircle2, Loader2, AlertCircle, X, ShoppingBag, Gavel, Smartphone, Copy } from 'lucide-react';
+import { MapPin, Plus, CreditCard, Truck, CheckCircle2, Loader2, AlertCircle, X, ShoppingBag, Gavel, Smartphone, Copy, Tag } from 'lucide-react';
 import { useAuth } from '@/context/AuthContext';
 import styles from './page.module.css';
 
@@ -16,6 +16,8 @@ function CheckoutPageInner() {
     const { user } = useAuth();
 
     const auctionId = searchParams.get('auction_id');
+    const productId = searchParams.get('product_id');
+    const checkoutReturnUrl = productId ? `/checkout?product_id=${productId}` : `/checkout?auction_id=${auctionId}`;
 
     const [loading, setLoading] = useState(true);
     const [processing, setProcessing] = useState(false);
@@ -37,12 +39,47 @@ function CheckoutPageInner() {
     // Fetch order/auction data — check real order status first
     useEffect(() => {
         const fetchOrderData = async () => {
-            if (!user || !auctionId) {
+            if (!user || (!auctionId && !productId)) {
                 setLoading(false);
                 return;
             }
 
             try {
+                if (productId) {
+                    const productRes = await fetch(`${API_URL}/api/products/${productId}`);
+                    if (!productRes.ok) throw new Error('Product not found.');
+                    const product = await productRes.json();
+
+                    const sellerParam = product.seller_id ? `&seller_id=${product.seller_id}` : '';
+                    const listingsRes = await fetch(`${API_URL}/api/auctions?sale_type=sale${sellerParam}&limit=100`);
+                    const listingsData = listingsRes.ok ? await listingsRes.json() : { data: [] };
+                    const listing = (listingsData.data || []).find(item => item.products_id === productId);
+                    const fixedPrice = listing?.price ?? product.price ?? product.buy_now_price ?? product.starting_price ?? 0;
+                    const image = listing?.image || listing?.images?.[0] || product.images?.[0]?.image_url || null;
+
+                    if (!fixedPrice) {
+                        setError('This fixed-price item is unavailable.');
+                        setLoading(false);
+                        return;
+                    }
+
+                    setOrderData({
+                        mode: 'fixed',
+                        seller_id: listing?.seller_id || product.seller_id,
+                        total: fixedPrice,
+                        items: [{
+                            id: product.products_id,
+                            products_id: product.products_id,
+                            name: product.name || listing?.title || 'Fixed Price Item',
+                            image,
+                            price: fixedPrice,
+                            quantity: 1,
+                        }],
+                    });
+                    setLoading(false);
+                    return;
+                }
+
                 // Primary: fetch from Orders table to get the real status
                 const ordersRes = await fetch(`${API_URL}/api/orders/user/${user.user_id}`);
                 if (ordersRes.ok) {
@@ -82,7 +119,7 @@ function CheckoutPageInner() {
         };
 
         fetchOrderData();
-    }, [user, auctionId]);
+    }, [user, auctionId, productId]);
 
     // Fetch user addresses
     const fetchAddresses = useCallback(async () => {
@@ -160,6 +197,43 @@ function CheckoutPageInner() {
         setError(null);
 
         try {
+            if (productId) {
+                const payment_reference = paymentMethod === 'gcash'
+                    ? `BDP-BUY-${Date.now().toString(36).toUpperCase()}`
+                    : null;
+                const paid_at = paymentMethod === 'gcash' ? new Date().toISOString() : null;
+
+                const orderRes = await fetch(`${API_URL}/api/orders`, {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({
+                        buyer_id: user.user_id,
+                        seller_id: orderData.seller_id,
+                        address_id: selectedAddressId,
+                        total_amount: (orderData?.total || 0) + shippingFee,
+                        shipping_fee: shippingFee,
+                        payment_method: paymentMethod,
+                        payment_reference,
+                        paid_at,
+                        status: 'processing',
+                        payment_confirmed: paymentMethod === 'cash_on_delivery',
+                        items: orderData.items.map(item => ({
+                            products_id: item.products_id || item.id,
+                            quantity: item.quantity || 1,
+                            price: item.price
+                        }))
+                    })
+                });
+
+                const order = await orderRes.json();
+                if (!orderRes.ok) throw new Error(order.error || 'Failed to place order');
+
+                router.push(
+                    `/orders/receipt/${order.order_id}?ref=${encodeURIComponent(payment_reference || '')}&paid_at=${encodeURIComponent(paid_at || '')}&method=${encodeURIComponent(paymentMethod)}`
+                );
+                return;
+            }
+
             const res = await fetch(`${API_URL}/api/orders/auction/${auctionId}/pay`, {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
@@ -282,7 +356,7 @@ function CheckoutPageInner() {
                                 {addresses.length > 0 && (
                                     <button
                                         className={styles.changeBtn}
-                                        onClick={() => router.push(`/profile?tab=address&returnTo=/checkout?auction_id=${auctionId}`)}
+                                        onClick={() => router.push(`/profile?tab=address&returnTo=${encodeURIComponent(checkoutReturnUrl)}`)}
                                     >
                                         <Plus size={14} />
                                         Add New
@@ -296,7 +370,7 @@ function CheckoutPageInner() {
                                     <p>No saved addresses</p>
                                     <button
                                         className={styles.addAddressBtn}
-                                        onClick={() => router.push(`/profile?tab=address&returnTo=/checkout?auction_id=${auctionId}`)}
+                                        onClick={() => router.push(`/profile?tab=address&returnTo=${encodeURIComponent(checkoutReturnUrl)}`)}
                                     >
                                         <Plus size={16} />
                                         Add Shipping Address
@@ -426,7 +500,10 @@ function CheckoutPageInner() {
                                     />
                                 </div>
                                 <div className={styles.productDetails}>
-                                    <span className={styles.auctionTag}><Gavel size={10} /> Auction Win</span>
+                                    <span className={styles.auctionTag}>
+                                        {productId ? <Tag size={10} /> : <Gavel size={10} />}
+                                        {productId ? 'Buy Now' : 'Auction Win'}
+                                    </span>
                                     <h3>{orderData.items[0]?.name}</h3>
                                     <span className={styles.price}>₱{subtotal.toLocaleString()}</span>
                                 </div>
@@ -516,7 +593,7 @@ function CheckoutPageInner() {
                             />
                             <div>
                                 <p className={styles.confirmProductName}>{orderData.items[0]?.name}</p>
-                                <p className={styles.confirmProductSub}>Auction Win</p>
+                                <p className={styles.confirmProductSub}>{productId ? 'Buy Now' : 'Auction Win'}</p>
                             </div>
                         </div>
 

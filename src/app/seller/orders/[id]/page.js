@@ -24,6 +24,13 @@ const STEPS = [
     { key: 'delivered', label: 'Delivered',        icon: CheckCircle2 },
 ];
 
+const COD_STEPS = [
+    { key: 'placed',    label: 'COD Order Placed', icon: DollarSign },
+    { key: 'prepare',   label: 'Preparing Item',   icon: Package },
+    { key: 'shipped',   label: 'Shipped',          icon: Truck },
+    { key: 'delivered', label: 'Delivered',        icon: CheckCircle2 },
+];
+
 function getStepIndex(status) {
     if (status === 'processing') return 1;
     if (status === 'shipped')    return 2;
@@ -131,6 +138,11 @@ export default function SellerOrderDetailPage() {
     const stepIndex = getStepIndex(order.status);
     const isCancelled = order.status === 'cancelled';
     const isPending   = order.status === 'pending_payment';
+    const isCod = order.payment_method === 'cash_on_delivery';
+    const progressSteps = isCod ? COD_STEPS : STEPS;
+    const statusText = isCod && order.status === 'processing'
+        ? 'COD Order - Ready to Ship'
+        : STATUS_LABEL[order.status] || order.status;
     const addressStr = formatAddress(order.shipping_address);
 
     return (
@@ -141,7 +153,7 @@ export default function SellerOrderDetailPage() {
                 <BackButton label="All Orders" />
                 <div className={styles.topBarRight}>
                     <span className={`${styles.statusPill} ${styles[`pill_${order.status}`]}`}>
-                        {STATUS_LABEL[order.status] || order.status}
+                        {statusText}
                     </span>
                     <button
                         className={styles.iconBtn}
@@ -150,13 +162,15 @@ export default function SellerOrderDetailPage() {
                     >
                         <MessageSquare size={18} />
                     </button>
-                    <button
-                        className={styles.iconBtn}
-                        onClick={() => router.push(`/seller/auctions/${order.auction_id}/results`)}
-                        title="View auction"
-                    >
-                        <ExternalLink size={18} />
-                    </button>
+                    {order.auction_id && (
+                        <button
+                            className={styles.iconBtn}
+                            onClick={() => router.push(`/seller/auctions/${order.auction_id}/results`)}
+                            title="View auction"
+                        >
+                            <ExternalLink size={18} />
+                        </button>
+                    )}
                 </div>
             </div>
 
@@ -189,7 +203,7 @@ export default function SellerOrderDetailPage() {
                         <section className={styles.card}>
                             <h2 className={styles.cardTitle}>Order Progress</h2>
                             <div className={styles.timeline}>
-                                {STEPS.map((step, i) => {
+                                {progressSteps.map((step, i) => {
                                     const Icon = step.icon;
                                     const done    = stepIndex >= i;
                                     const current = stepIndex === i;
@@ -202,7 +216,7 @@ export default function SellerOrderDetailPage() {
                                                         : <Icon size={16} />
                                                     }
                                                 </div>
-                                                {i < STEPS.length - 1 && (
+                                                {i < progressSteps.length - 1 && (
                                                     <div className={`${styles.stepLine} ${stepIndex > i ? styles.stepLineDone : ''}`} />
                                                 )}
                                             </div>
@@ -221,7 +235,7 @@ export default function SellerOrderDetailPage() {
                                                     <p className={styles.stepTime}>Buyer confirmed receipt</p>
                                                 )}
                                                 {/* CTA for current step */}
-                                                {current && i === 1 && !order.payment_confirmed && (
+                                                {current && i === 1 && !order.payment_confirmed && !isCod && (
                                                     <div>
                                                         <button className={styles.ctaBtn} onClick={handleConfirmPayment} disabled={confirming}>
                                                             <CheckCircle2 size={15} /> {confirming ? 'Confirming…' : 'Confirm Payment Received'}
@@ -230,6 +244,18 @@ export default function SellerOrderDetailPage() {
                                                     </div>
                                                 )}
                                                 {current && i === 1 && order.payment_confirmed && !showShipForm && (
+                                                    <>
+                                                        {isCod && (
+                                                            <p className={styles.codNote}>
+                                                                Cash will be received once delivered.
+                                                            </p>
+                                                        )}
+                                                        <button className={styles.ctaBtn} onClick={() => setShowShipForm(true)}>
+                                                            <Truck size={15} /> Mark as Shipped
+                                                        </button>
+                                                    </>
+                                                )}
+                                                {current && i === 1 && !order.payment_confirmed && isCod && !showShipForm && (
                                                     <button className={styles.ctaBtn} onClick={() => setShowShipForm(true)}>
                                                         <Truck size={15} /> Mark as Shipped
                                                     </button>
@@ -313,10 +339,12 @@ export default function SellerOrderDetailPage() {
                                 {order.product?.description && (
                                     <p className={styles.productDesc}>{order.product.description}</p>
                                 )}
-                                <button className={styles.viewAuctionLink}
-                                    onClick={() => router.push(`/seller/auctions/${order.auction_id}/results`)}>
-                                    View auction results <ExternalLink size={13} />
-                                </button>
+                                {order.auction_id && (
+                                    <button className={styles.viewAuctionLink}
+                                        onClick={() => router.push(`/seller/auctions/${order.auction_id}/results`)}>
+                                        View auction results <ExternalLink size={13} />
+                                    </button>
+                                )}
                             </div>
                         </div>
                     </section>
@@ -337,7 +365,7 @@ export default function SellerOrderDetailPage() {
                                     </span>
                                 </div>
                                 {order.review.comment && (
-                                    <p className={styles.reviewComment}>"{order.review.comment}"</p>
+                                    <p className={styles.reviewComment}>&ldquo;{order.review.comment}&rdquo;</p>
                                 )}
                                 <p className={styles.reviewDate}>{fmt(order.review.created_at)}</p>
                             </div>
@@ -346,7 +374,7 @@ export default function SellerOrderDetailPage() {
                     {order.status === 'completed' && !order.review && (
                         <section className={styles.card}>
                             <h2 className={styles.cardTitle}>Buyer Review</h2>
-                            <p className={styles.noReview}>The buyer hasn't left a review yet.</p>
+                            <p className={styles.noReview}>The buyer hasn&apos;t left a review yet.</p>
                         </section>
                     )}
                 </div>
@@ -359,7 +387,7 @@ export default function SellerOrderDetailPage() {
                         <h2 className={styles.cardTitle}>Transaction Summary</h2>
                         <div className={styles.summaryRows}>
                             <div className={styles.summaryRow}>
-                                <span>Winning Bid</span>
+                                <span>{order.order_type === 'regular' || !order.auction_id ? 'Item Total' : 'Winning Bid'}</span>
                                 <span>₱{(order.winning_bid?.bid_amount ?? order.final_price ?? 0).toLocaleString('en-PH')}</span>
                             </div>
                             <div className={styles.summaryRow}>
@@ -368,7 +396,7 @@ export default function SellerOrderDetailPage() {
                             </div>
                             <div className={styles.divider} />
                             <div className={`${styles.summaryRow} ${styles.totalRow}`}>
-                                <span>Total Collected</span>
+                                <span>{isCod ? 'Amount to Collect' : 'Total Collected'}</span>
                                 <span>₱{(order.total_amount || 0).toLocaleString('en-PH')}</span>
                             </div>
                         </div>
@@ -389,19 +417,34 @@ export default function SellerOrderDetailPage() {
                                         <span>Method</span>
                                         <span>{order.payment_method === 'cash_on_delivery' ? 'Cash on Delivery' : order.payment_method || '—'}</span>
                                     </div>
-                                    <div className={styles.infoRow}>
-                                        <span>Buyer paid</span>
-                                        <span className={styles.paidChip}>
-                                            <CheckCircle2 size={13} /> Paid
-                                        </span>
-                                    </div>
-                                    <div className={styles.infoRow}>
-                                        <span>Seller confirmed</span>
-                                        {order.payment_confirmed
-                                            ? <span className={styles.paidChip}><CheckCircle2 size={13}/> Confirmed {order.payment_confirmed_at ? fmt(order.payment_confirmed_at) : ''}</span>
-                                            : <span className={styles.pendingChip}><Clock size={13}/> Pending confirmation</span>
-                                        }
-                                    </div>
+                                    {isCod ? (
+                                        <>
+                                            <div className={styles.infoRow}>
+                                                <span>Collection</span>
+                                                <span className={styles.pendingChip}><Clock size={13}/> Collect on delivery</span>
+                                            </div>
+                                            <div className={styles.infoRow}>
+                                                <span>Seller payment</span>
+                                                <span>Cash will be received once delivered</span>
+                                            </div>
+                                        </>
+                                    ) : (
+                                        <>
+                                            <div className={styles.infoRow}>
+                                                <span>Buyer paid</span>
+                                                <span className={styles.paidChip}>
+                                                    <CheckCircle2 size={13} /> Paid
+                                                </span>
+                                            </div>
+                                            <div className={styles.infoRow}>
+                                                <span>Seller confirmed</span>
+                                                {order.payment_confirmed
+                                                    ? <span className={styles.paidChip}><CheckCircle2 size={13}/> Confirmed {order.payment_confirmed_at ? fmt(order.payment_confirmed_at) : ''}</span>
+                                                    : <span className={styles.pendingChip}><Clock size={13}/> Pending confirmation</span>
+                                                }
+                                            </div>
+                                        </>
+                                    )}
                                     <div className={styles.infoRow}>
                                         <span>Date placed</span>
                                         <span>{order.placed_at ? fmt(order.placed_at) : '—'}</span>

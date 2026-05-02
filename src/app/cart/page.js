@@ -82,7 +82,7 @@ export default function CartPage() {
     };
 
     const selectedItems = cartItems.filter(i => selectedIds.has(i.cart_id));
-    const subtotal = selectedItems.reduce((acc, i) => acc + i.price, 0);
+    const subtotal = selectedItems.reduce((acc, i) => acc + (i.price * (i.quantity || 1)), 0);
     
     // Calculate total shipping (150 per unique seller)
     const uniqueSellers = new Set(selectedItems.map(i => i.seller_id || 'unknown')).size;
@@ -131,7 +131,7 @@ export default function CartPage() {
             const status = 'processing';
 
             for (const [sellerId, items] of Object.entries(bySeller)) {
-                const groupSubtotal = items.reduce((s, i) => s + i.price, 0);
+                const groupSubtotal = items.reduce((s, i) => s + (i.price * (i.quantity || 1)), 0);
                 const groupTotal = groupSubtotal + shipping;
                 
                 const orderRes = await fetch(`${API_URL}/api/orders`, {
@@ -150,7 +150,7 @@ export default function CartPage() {
                         payment_confirmed: paymentMethod === 'cash_on_delivery',
                         items: items.map(item => ({
                             products_id: item.id,
-                            quantity: 1,
+                            quantity: item.quantity || 1,
                             price: item.price
                         }))
                     })

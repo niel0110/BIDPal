@@ -784,10 +784,21 @@
     display: flex;
     align-items: center;
     gap: 0.85rem;
+    width: 100%;
     padding: 0.75rem 1rem;
     background: #fafafa;
     border-radius: 10px;
     border: 1px solid #f0f0f0;
+    text-align: left;
+    font: inherit;
+    cursor: pointer;
+    transition: border-color 0.18s, box-shadow 0.18s, transform 0.18s;
+}
+
+.fixedCard:hover {
+    border-color: rgba(211, 47, 47, 0.35);
+    box-shadow: 0 8px 20px rgba(0,0,0,0.06);
+    transform: translateY(-1px);
 }
 
 .fixedCardImg {
@@ -829,4 +840,34 @@
     border-radius: 20px;
     background: #dcfce7;
     color: #15803d;
+}
+
+.fixedBadge_processing {
+    background: #dbeafe;
+    color: #1e40af;
+}
+
+.fixedBadge_shipped {
+    background: #ede9fe;
+    color: #5b21b6;
+}
+
+.fixedBadge_completed {
+    background: #d1fae5;
+    color: #065f46;
+}
+
+.fixedBadge_cancelled {
+    background: #fee2e2;
+    color: #991b1b;
+}
+
+.fixedBadge_pending_payment {
+    background: #fef3c7;
+    color: #92400e;
+}
+
+.fixedCardArrow {
+    color: #9ca3af;
+    flex-shrink: 0;
 }

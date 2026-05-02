@@ -3,7 +3,7 @@
 import { useState, useEffect } from 'react';
 import { useRouter } from 'next/navigation';
 import Link from 'next/link';
-import { ShoppingCart, Package } from 'lucide-react';
+import { ShoppingCart, Package, Zap } from 'lucide-react';
 import { useAuth } from '@/context/AuthContext';
 import { useCart } from '@/context/CartContext';
 import styles from './ProductCard.module.css';
@@ -74,6 +74,15 @@ export default function ProductCard({ data, compact = false }) {
         setIsAdding(true);
         await addToCart(data.products_id);
         setIsAdding(false);
+    };
+
+    const handleBuyNow = async (e) => {
+        e.preventDefault();
+        e.stopPropagation();
+        if (!user) { router.push('/'); return; }
+        if (isSoldOut) return;
+
+        router.push(`/checkout?product_id=${data.products_id}`);
     };
 
     const conditionLabel = formatCondition(data.condition);
@@ -154,6 +163,7 @@ export default function ProductCard({ data, compact = false }) {
                         </div>
                         <div className={styles.actionRow}>
                             <span className={styles.fixedLabel}>Fixed Price</span>
+                            <div className={styles.actionButtons}>
                             <button
                                 className={`${styles.cartBtn} ${isAlreadyInCart ? styles.cartBtnAdded : ''}`}
                                 onClick={handleAddToCart}
@@ -162,6 +172,15 @@ export default function ProductCard({ data, compact = false }) {
                                 <ShoppingCart size={13} />
                                 {isAdding ? 'Adding…' : isAlreadyInCart ? 'Added ✓' : 'Add to Cart'}
                             </button>
+                            <button
+                                className={styles.buyNowBtn}
+                                onClick={handleBuyNow}
+                                disabled={isAdding || isSoldOut}
+                            >
+                                <Zap size={13} />
+                                Buy Now
+                            </button>
+                            </div>
                         </div>
                     </div>
                 </div>

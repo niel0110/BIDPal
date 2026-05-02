@@ -198,6 +198,13 @@
     font-family: monospace;
 }
 
+.codNote {
+    margin: 0.35rem 0 0;
+    color: #92400e;
+    font-size: 0.82rem;
+    font-weight: 600;
+}
+
 .ctaBtn {
     display: inline-flex;
     align-items: center;

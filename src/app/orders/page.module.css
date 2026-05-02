@@ -127,6 +127,256 @@
     gap: 1.5rem;
 }
 
+.fixedListingsPanel {
+    background: white;
+    border: 1px solid #eee;
+    border-radius: 20px;
+    padding: 1.25rem;
+    display: flex;
+    flex-direction: column;
+    gap: 1rem;
+}
+
+.fixedListingsHeader {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 1rem;
+}
+
+.fixedListingsTitle {
+    display: flex;
+    align-items: center;
+    gap: 0.55rem;
+    color: #D32F2F;
+}
+
+.fixedListingsTitle h2 {
+    margin: 0;
+    color: #111;
+    font-size: 1.15rem;
+    font-weight: 850;
+}
+
+.fixedListingsCount {
+    min-width: 28px;
+    height: 28px;
+    padding: 0 0.5rem;
+    border-radius: 999px;
+    background: #D32F2F;
+    color: white;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 0.82rem;
+    font-weight: 850;
+}
+
+.fixedListingsList {
+    display: flex;
+    flex-direction: column;
+    gap: 0.75rem;
+}
+
+.fixedListingItem {
+    width: 100%;
+    border: 1px solid #eee;
+    background: #fff;
+    border-radius: 14px;
+    padding: 0.8rem;
+    display: flex;
+    align-items: center;
+    gap: 0.85rem;
+    cursor: pointer;
+    text-align: left;
+    transition: border-color 0.15s, background 0.15s, transform 0.15s;
+}
+
+.fixedListingItem:hover {
+    border-color: #f3b3ba;
+    background: #fffafa;
+    transform: translateY(-1px);
+}
+
+.fixedListingItem img {
+    width: 58px;
+    height: 58px;
+    border-radius: 10px;
+    object-fit: cover;
+    background: #f8f8f8;
+    flex-shrink: 0;
+}
+
+.fixedListingInfo {
+    min-width: 0;
+    display: flex;
+    flex-direction: column;
+    gap: 0.25rem;
+}
+
+.fixedListingName {
+    font-size: 0.92rem;
+    font-weight: 800;
+    color: #111;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    max-width: 260px;
+}
+
+.fixedListingInfo strong {
+    color: #D32F2F;
+    font-size: 0.95rem;
+}
+
+.fixedListingStatus {
+    align-self: flex-start;
+    padding: 0.25rem 0.55rem;
+    border-radius: 999px;
+    background: #dcfce7;
+    color: #15803d;
+    font-size: 0.68rem;
+    font-weight: 800;
+}
+
+.fixedProcessView {
+    display: flex;
+    flex-direction: column;
+    gap: 1rem;
+}
+
+.fixedProcessBack {
+    align-self: flex-start;
+    display: inline-flex;
+    align-items: center;
+    gap: 0.35rem;
+    border: none;
+    background: #f6f6f6;
+    color: #555;
+    border-radius: 9px;
+    padding: 0.45rem 0.7rem;
+    font-size: 0.8rem;
+    font-weight: 750;
+    cursor: pointer;
+}
+
+.fixedProcessProduct {
+    display: flex;
+    gap: 0.9rem;
+    align-items: center;
+}
+
+.fixedProcessProduct img {
+    width: 86px;
+    height: 86px;
+    border-radius: 14px;
+    object-fit: cover;
+    background: #f8f8f8;
+    flex-shrink: 0;
+}
+
+.fixedProcessProduct h2 {
+    margin: 0.2rem 0 0.1rem;
+    font-size: 1rem;
+    font-weight: 850;
+    color: #111;
+    line-height: 1.25;
+}
+
+.fixedProcessProduct p {
+    margin: 0;
+    color: #999;
+    font-size: 0.75rem;
+    font-weight: 700;
+}
+
+.fixedProcessProduct strong {
+    display: block;
+    margin-top: 0.35rem;
+    color: #D32F2F;
+    font-size: 1.1rem;
+}
+
+.fixedProcessBadge {
+    font-size: 0.68rem;
+    font-weight: 850;
+    color: #7c3aed;
+    text-transform: uppercase;
+    letter-spacing: 0.04em;
+}
+
+.fixedProcessTrack {
+    display: grid;
+    grid-template-columns: repeat(4, 1fr);
+    gap: 0;
+    padding: 0.8rem 0.5rem;
+    border: 1px solid #eee;
+    border-radius: 12px;
+    background: #fafafa;
+}
+
+.fixedProcessStep {
+    position: relative;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 0.35rem;
+    color: #c4c4c4;
+    font-size: 0.68rem;
+    font-weight: 800;
+}
+
+.fixedProcessStep:not(:last-child)::after {
+    content: '';
+    position: absolute;
+    top: 8px;
+    left: 50%;
+    width: 100%;
+    height: 2px;
+    background: #e5e7eb;
+    z-index: 0;
+}
+
+.fixedProcessStep span {
+    width: 18px;
+    height: 18px;
+    border-radius: 50%;
+    border: 2px solid #d1d5db;
+    background: white;
+    z-index: 1;
+}
+
+.fixedProcessStepActive {
+    color: #7c3aed;
+}
+
+.fixedProcessStepActive span {
+    border-color: #7c3aed;
+    background: #7c3aed;
+    box-shadow: inset 0 0 0 4px white;
+}
+
+.fixedProcessNotice {
+    display: flex;
+    gap: 0.75rem;
+    padding: 0.9rem;
+    border-radius: 12px;
+    background: #f5f0ff;
+    border: 1px solid #d8c7ff;
+    color: #5b21b6;
+}
+
+.fixedProcessNotice h3 {
+    margin: 0 0 0.2rem;
+    font-size: 0.9rem;
+}
+
+.fixedProcessNotice p {
+    margin: 0;
+    font-size: 0.82rem;
+    line-height: 1.45;
+}
+
 .orderCard {
     background: white;
     border: 1px solid #eee;

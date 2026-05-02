@@ -4,7 +4,7 @@ import bcrypt from 'bcrypt';
 import jwt from 'jsonwebtoken';
 import crypto from 'crypto';
 import { OAuth2Client } from 'google-auth-library';
-import { getEmailServiceStatus, isEmailConfigured, sendVerificationCodeEmail } from '../services/emailService.js';
+import { getEmailServiceStatus, isEmailConfigured, sendEmail, sendVerificationCodeEmail } from '../services/emailService.js';
 
 const CODE_TTL_MS = 10 * 60 * 1000;
 const TOKEN_TTL_MS = 15 * 60 * 1000;
@@ -85,21 +85,11 @@ export const sendEmailVerificationCode = async (req, res) => {
       } catch (mailError) {
         console.error('Email delivery failed:', mailError);
 
-        if (!isProduction && mailError.code === 'EMAIL_AUTH_FAILED') {
-          console.log(`[DEV] ${purpose} verification code for ${email}: ${code}`);
-          return res.json({
-            message: 'Development mode: the email provider rejected the sender credentials. Use the code shown below, then check RESEND_API_KEY or the Gmail App Password.',
-            devCode: code,
-          });
-        }
-
         return res.status(502).json({
           error: mailError.code === 'EMAIL_AUTH_FAILED'
-            ? 'The email provider rejected the sender credentials. Check the deployed email API key or Gmail App Password.'
+            ? 'Resend rejected the email API key or sender. Check RESEND_API_KEY and RESEND_FROM.'
             : mailError.code === 'EMAIL_API_FAILED'
-              ? 'The email API provider could not send this email. Check the sender address/domain in your deployed email settings.'
-              : mailError.code === 'EMAIL_DELIVERY_FAILED'
-                ? 'The deployed server cannot reach Gmail SMTP. Add RESEND_API_KEY and RESEND_FROM to the deployed backend environment, then redeploy.'
+              ? 'Resend could not send this email. Check the sender address/domain in your deployed email settings.'
               : 'Unable to send verification email. Please try again later.',
           code: mailError.code || 'EMAIL_SEND_FAILED',
           ...(!isProduction ? {
@@ -116,10 +106,9 @@ export const sendEmailVerificationCode = async (req, res) => {
       });
     }
 
-    console.log(`[DEV] ${purpose} verification code for ${email}: ${code}`);
-    return res.json({
-      message: 'Development mode: email service is not configured. Use the code shown below.',
-      devCode: code,
+    return res.status(503).json({
+      error: 'Email service is not configured. Add RESEND_API_KEY and RESEND_FROM, then restart the backend.',
+      code: 'EMAIL_NOT_CONFIGURED',
     });
   } catch (err) {
     console.error('Error sending verification code:', err);
@@ -133,6 +122,46 @@ export const getEmailStatus = async (req, res) => {
     ...status,
     environment: process.env.NODE_ENV || 'development',
   });
+};
+
+export const sendTestEmail = async (req, res) => {
+  if (isProduction) {
+    const expectedSecret = process.env.EMAIL_TEST_SECRET;
+    const providedSecret = req.get('x-email-test-secret');
+
+    if (!expectedSecret || providedSecret !== expectedSecret) {
+      return res.status(403).json({ error: 'Email test endpoint is locked in production.' });
+    }
+  }
+
+  const to = normalizeEmail(req.body.to);
+  const subject = String(req.body.subject || '').trim();
+  const message = String(req.body.message || '').trim();
+
+  if (!to || !subject || !message) {
+    return res.status(400).json({ error: 'To, subject, and message are required.' });
+  }
+
+  try {
+    await sendEmail({
+      to,
+      subject,
+      text: message,
+      html: `<p>${message
+        .replace(/&/g, '&amp;')
+        .replace(/</g, '&lt;')
+        .replace(/>/g, '&gt;')
+        .replace(/\n/g, '<br />')}</p>`,
+    });
+
+    res.json({ success: true });
+  } catch (err) {
+    console.error('Test email failed:', err);
+    res.status(400).json({
+      error: err.message || 'Unable to send test email.',
+      code: err.code || 'EMAIL_SEND_FAILED',
+    });
+  }
 };
 
 export const verifyEmailCode = async (req, res) => {

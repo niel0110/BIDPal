@@ -236,7 +236,15 @@
     min-width: 0;
 }
 
-.cartBtn {
+.actionButtons {
+    display: flex;
+    align-items: center;
+    gap: 0.35rem;
+    flex: 0 0 auto;
+}
+
+.cartBtn,
+.buyNowBtn {
     background: rgba(255, 255, 255, 0.18);
     border: 1px solid rgba(255, 255, 255, 0.4);
     color: white;
@@ -253,11 +261,21 @@
     white-space: nowrap;
     flex: 0 0 auto;
 }
-.cartBtn:hover:not(:disabled) {
+.buyNowBtn {
+    background: rgba(255, 255, 255, 0.92);
+    color: #8E2432;
+    border-color: transparent;
+}
+.cartBtn:hover:not(:disabled),
+.buyNowBtn:hover:not(:disabled) {
     background: rgba(255, 255, 255, 0.3);
     transform: scale(1.04);
 }
-.cartBtn:disabled { opacity: 0.55; cursor: not-allowed; transform: none; }
+.buyNowBtn:hover:not(:disabled) {
+    background: white;
+}
+.cartBtn:disabled,
+.buyNowBtn:disabled { opacity: 0.55; cursor: not-allowed; transform: none; }
 .cartBtnAdded {
     background: rgba(255, 255, 255, 0.9);
     color: #16a34a;
@@ -285,7 +303,9 @@
     .compactWrapper .sellerName { max-width: 52px; }
     .compactWrapper .followBtn { max-width: 58px; }
     .compactWrapper .priceText { font-size: 0.78rem; }
-    .compactWrapper .cartBtn { max-width: 78px; overflow: hidden; text-overflow: ellipsis; }
+    .compactWrapper .actionButtons { gap: 0.25rem; }
+    .compactWrapper .cartBtn,
+    .compactWrapper .buyNowBtn { max-width: 78px; overflow: hidden; text-overflow: ellipsis; }
     .imageWrapper { height: 140px; }
     .footer { padding: 0.45rem 0.5rem; gap: 0.25rem; min-height: 115px; }
     .sellerRow { margin-bottom: 0.5rem; }
@@ -297,8 +317,11 @@
     .titleText { font-size: 0.75rem; }
     .priceText { font-size: 0.85rem; }
     .fixedLabel { font-size: 0.65rem; }
-    .cartBtn { font-size: 0.6rem; padding: 0.2rem 0.4rem; gap: 3px; }
-    .cartBtn svg { width: 12px; height: 12px; }
+    .actionButtons { gap: 0.2rem; }
+    .cartBtn,
+    .buyNowBtn { font-size: 0.58rem; padding: 0.2rem 0.35rem; gap: 3px; }
+    .cartBtn svg,
+    .buyNowBtn svg { width: 11px; height: 11px; }
     .condBadge, .soldBadge { font-size: 0.6rem; padding: 2px 6px; top: 6px; left: 6px; }
     .overlayBadge { bottom: 6px; right: 6px; padding: 3px 6px; font-size: 0.6rem; gap: 4px; }
 }
