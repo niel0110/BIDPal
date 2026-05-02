@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, useEffect, useRef, Suspense } from 'react';
+import { useState, useEffect, useRef, Suspense, useCallback } from 'react';
 import { useAuth } from '@/context/AuthContext';
 import { useRouter, useSearchParams } from 'next/navigation';
 import Header from '@/components/layout/Header';
@@ -9,6 +9,64 @@ import HeroBanner from '@/components/home/HeroBanner';
 import AuctionCard from '@/components/card/AuctionCard';
 import ProductCard from '@/components/card/ProductCard';
 import styles from './page.module.css';
+
+function ScrollSection({ title, children, empty }) {
+  const headerRef = useRef(null);
+  const scrollRef = useRef(null);
+  const [indicator, setIndicator] = useState({ left: 0, width: 120 });
+
+  const updateIndicator = useCallback(() => {
+    const header = headerRef.current;
+    const scroller = scrollRef.current;
+    if (!header || !scroller) return;
+
+    const headerWidth = header.clientWidth;
+    const maxScroll = scroller.scrollWidth - scroller.clientWidth;
+
+    if (maxScroll <= 0) {
+      setIndicator({ left: 0, width: Math.min(120, headerWidth) });
+      return;
+    }
+
+    const thumbWidth = Math.max(48, (scroller.clientWidth / scroller.scrollWidth) * headerWidth);
+    const maxLeft = Math.max(0, headerWidth - thumbWidth);
+    const left = (scroller.scrollLeft / maxScroll) * maxLeft;
+
+    setIndicator({ left, width: thumbWidth });
+  }, []);
+
+  useEffect(() => {
+    updateIndicator();
+
+    const header = headerRef.current;
+    const scroller = scrollRef.current;
+    if (!header || !scroller) return;
+
+    const resizeObserver = new ResizeObserver(updateIndicator);
+    resizeObserver.observe(header);
+    resizeObserver.observe(scroller);
+
+    return () => resizeObserver.disconnect();
+  }, [children, updateIndicator]);
+
+  return (
+    <section className={styles.section}>
+      <div ref={headerRef} className={styles.sectionHeader}>
+        <h2 className={styles.sectionTitle}>{title}</h2>
+        <span
+          className={styles.scrollIndicator}
+          style={{
+            transform: `translateX(${indicator.left}px)`,
+            width: `${indicator.width}px`,
+          }}
+        />
+      </div>
+      <div ref={scrollRef} className={styles.horizontalScroll} onScroll={updateIndicator}>
+        {children || empty}
+      </div>
+    </section>
+  );
+}
 
 function HomeInner() {
   const { user, loading } = useAuth();
@@ -208,32 +266,22 @@ function HomeInner() {
           {searchLoading && <div className={styles.searchLoading}>Searching…</div>}
 
           {!searchLoading && searchAuctions.length > 0 && (
-            <section className={styles.section}>
-              <div className={`${styles.sectionHeader} ${styles.staticIndicator}`}>
-                <h2 className={styles.sectionTitle}>Auctions</h2>
-              </div>
-              <div className={styles.horizontalScroll}>
-                {searchAuctions.map(item => <AuctionCard key={item.id} data={item} />)}
-              </div>
-            </section>
+            <ScrollSection title="Auctions">
+              {searchAuctions.map(item => <AuctionCard key={item.id} data={item} />)}
+            </ScrollSection>
           )}
 
           {!searchLoading && searchProducts.length > 0 && (
-            <section className={styles.section}>
-              <div className={`${styles.sectionHeader} ${styles.staticIndicator}`}>
-                <h2 className={styles.sectionTitle}>Products</h2>
-              </div>
-              <div className={styles.horizontalScroll}>
-                {searchProducts.map(item => (
-                  <ProductCard key={item.products_id} data={{
-                    ...item,
-                    title: item.name,
-                    image: item.images?.[0]?.image_url,
-                    wishlistCount: item.wishlist_count || 0,
-                  }} />
-                ))}
-              </div>
-            </section>
+            <ScrollSection title="Products">
+              {searchProducts.map(item => (
+                <ProductCard key={item.products_id} data={{
+                  ...item,
+                  title: item.name,
+                  image: item.images?.[0]?.image_url,
+                  wishlistCount: item.wishlist_count || 0,
+                }} />
+              ))}
+            </ScrollSection>
           )}
 
           {!searchLoading && searchAuctions.length === 0 && searchProducts.length === 0 && (
@@ -248,53 +296,35 @@ function HomeInner() {
         <>
           <HeroBanner />
 
-          <section className={styles.section}>
-            <div className={`${styles.sectionHeader} ${styles.staticIndicator}`}>
-              <h2 className={styles.sectionTitle}>
-                {selectedCategory === 'all' ? <>Live <span className={styles.redText}>Auctions</span></> : <><span className={styles.redText} style={{ textTransform: 'capitalize' }}>{selectedCategory}</span> Live</>}
-              </h2>
-            </div>
-            <div className={styles.horizontalScroll}>
-              {liveAuctions.length > 0
-                ? liveAuctions.map(item => <AuctionCard key={item.id} data={item} />)
-                : <div className={styles.emptyState}>No live auctions at the moment.</div>}
-            </div>
-          </section>
+          <ScrollSection
+            title={selectedCategory === 'all' ? <>Live <span className={styles.redText}>Auctions</span></> : <><span className={styles.redText} style={{ textTransform: 'capitalize' }}>{selectedCategory}</span> Live</>}
+            empty={<div className={styles.emptyState}>No live auctions at the moment.</div>}
+          >
+            {liveAuctions.length > 0 && liveAuctions.map(item => <AuctionCard key={item.id} data={item} />)}
+          </ScrollSection>
 
-          <section className={styles.section}>
-            <div className={`${styles.sectionHeader} ${styles.staticIndicator}`}>
-              <h2 className={styles.sectionTitle}>
-                {selectedCategory === 'all' ? <>Scheduled <span className={styles.redText}>Auctions</span></> : <><span className={styles.redText} style={{ textTransform: 'capitalize' }}>{selectedCategory}</span> Scheduled</>}
-              </h2>
-            </div>
-            <div className={styles.horizontalScroll}>
-              {scheduledAuctions.length > 0
-                ? scheduledAuctions.map(item => <AuctionCard key={item.id} data={item} />)
-                : <div className={styles.emptyState}>No scheduled auctions at the moment.</div>}
-            </div>
-          </section>
+          <ScrollSection
+            title={selectedCategory === 'all' ? <>Scheduled <span className={styles.redText}>Auctions</span></> : <><span className={styles.redText} style={{ textTransform: 'capitalize' }}>{selectedCategory}</span> Scheduled</>}
+            empty={<div className={styles.emptyState}>No scheduled auctions at the moment.</div>}
+          >
+            {scheduledAuctions.length > 0 && scheduledAuctions.map(item => <AuctionCard key={item.id} data={item} />)}
+          </ScrollSection>
 
-          <section className={styles.section}>
-              <div className={`${styles.sectionHeader} ${styles.staticIndicator}`}>
-                <h2 className={styles.sectionTitle}>
-                  {selectedCategory === 'all'
-                    ? <>Fixed Price <span className={styles.redText}>Sale</span></>
-                    : <><span className={styles.redText} style={{ textTransform: 'capitalize' }}>{selectedCategory}</span> Fixed Price</>}
-                </h2>
-              </div>
-              <div className={styles.horizontalScroll}>
-                {fixedProducts.length > 0
-                  ? fixedProducts.map(item => (
-                      <ProductCard key={item.products_id} data={{
-                        ...item,
-                        title: item.name,
-                        image: item.images?.[0]?.image_url,
-                        wishlistCount: item.wishlist_count || 0,
-                      }} />
-                    ))
-                  : <div className={styles.emptyState}>No fixed price items at the moment.</div>}
-              </div>
-            </section>
+          <ScrollSection
+            title={selectedCategory === 'all'
+              ? <>Fixed Price <span className={styles.redText}>Sale</span></>
+              : <><span className={styles.redText} style={{ textTransform: 'capitalize' }}>{selectedCategory}</span> Fixed Price</>}
+            empty={<div className={styles.emptyState}>No fixed price items at the moment.</div>}
+          >
+            {fixedProducts.length > 0 && fixedProducts.map(item => (
+              <ProductCard key={item.products_id} data={{
+                ...item,
+                title: item.name,
+                image: item.images?.[0]?.image_url,
+                wishlistCount: item.wishlist_count || 0,
+              }} />
+            ))}
+          </ScrollSection>
         </>
       )}
     </main>

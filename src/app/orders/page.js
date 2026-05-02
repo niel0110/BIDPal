@@ -89,7 +89,6 @@ export default function OrdersPage() {
     const selectedFixedOrder = fixedPriceOrders.find(order => order.id === selectedFixedOrderId) || null;
 
     const filteredOrders = orders.filter(order => {
-        if (isFixedPriceOrder(order)) return false;
         // Map new status format to tab filter
         let tabStatus = order.status;
         if (order.status === 'pending_payment') tabStatus = 'pay';
@@ -164,6 +163,13 @@ export default function OrdersPage() {
     };
 
     const fixedOrderItem = (order) => order?.items?.[0] || {};
+    const isCodPayment = (order) => ['cash_on_delivery', 'cod', 'cash'].includes(String(order?.payment_method || '').toLowerCase());
+    const canCancelFixedPriceOrder = (order) => (
+        isFixedPriceOrder(order) &&
+        isCodPayment(order) &&
+        ['pending_payment', 'processing'].includes(order.status) &&
+        !order.tracking_number
+    );
 
     // Fetch cancellation limit + violation record together
     useEffect(() => {
@@ -343,7 +349,10 @@ export default function OrdersPage() {
                 setShowCancellationModal(false);
                 setOrderToCancel(null);
                 setActiveTab('cancelled');
-                setActionSuccess('Order cancelled successfully. The next eligible bidder has been notified.');
+                setActionSuccess(isFixedPriceOrder(orderToCancel)
+                    ? 'Order cancelled successfully.'
+                    : 'Order cancelled successfully. The next eligible bidder has been notified.'
+                );
                 setTimeout(() => setActionSuccess(''), 5000);
                 // Delay refetch so DB has time to commit winner_user_id = null before we re-query
                 setTimeout(() => fetchOrders(), 1500);
@@ -483,7 +492,7 @@ export default function OrdersPage() {
                     </div>
                 )}
 
-                {fixedPriceOrders.length > 0 ? (
+                {false && fixedPriceOrders.length > 0 ? (
                     <section className={styles.fixedListingsPanel}>
                         {!selectedFixedOrder ? (
                             <>
@@ -562,7 +571,11 @@ export default function OrdersPage() {
                                             <button className={styles.payNowBtn} onClick={() => handlePayNow(selectedFixedOrder)}>
                                                 Pay Now
                                             </button>
-                                            <button className={styles.cancelBtn} onClick={() => handleCancelCartOrder(selectedFixedOrder)}>
+                                                <button
+                                                    className={styles.cancelBtn}
+                                                    onClick={() => handleCancelOrder(selectedFixedOrder)}
+                                                    disabled={cancellingOrder === selectedFixedOrder.id}
+                                                >
                                                 <Ban size={16} /><span>Cancel Order</span>
                                             </button>
                                         </div>
@@ -776,9 +789,19 @@ export default function OrdersPage() {
                                                     <button className={styles.payNowBtn} onClick={() => handlePayNow(order)}>
                                                         Pay Now
                                                     </button>
-                                                    <button className={styles.cancelBtn} onClick={() => handleCancelCartOrder(order)}>
-                                                        <Ban size={16} /><span>Cancel Order</span>
-                                                    </button>
+                                                    {canCancelFixedPriceOrder(order) && (
+                                                        <button
+                                                            className={styles.cancelBtn}
+                                                            onClick={() => handleCancelOrder(order)}
+                                                            disabled={cancellingOrder === order.id}
+                                                        >
+                                                            {cancellingOrder === order.id ? (
+                                                                <><Loader2 className={styles.spin} size={16} /><span>Cancelling...</span></>
+                                                            ) : (
+                                                                <><Ban size={16} /><span>Cancel Order</span></>
+                                                            )}
+                                                        </button>
+                                                    )}
                                                 </>
                                             )}
                                         </>
@@ -809,10 +832,25 @@ export default function OrdersPage() {
                                             </button>
                                         </>
                                     ) : order.status === 'cancelled' ? null : order.status === 'processing' ? (
-                                        <button className={styles.receiptBtn} onClick={() => openReceiptModal(order.id)}>
-                                            <Receipt size={14} />
-                                            View Receipt
-                                        </button>
+                                        <>
+                                            <button className={styles.receiptBtn} onClick={() => openReceiptModal(order.id)}>
+                                                <Receipt size={14} />
+                                                View Receipt
+                                            </button>
+                                            {canCancelFixedPriceOrder(order) && (
+                                                <button
+                                                    className={styles.cancelBtn}
+                                                    onClick={() => handleCancelOrder(order)}
+                                                    disabled={cancellingOrder === order.id}
+                                                >
+                                                    {cancellingOrder === order.id ? (
+                                                        <><Loader2 className={styles.spin} size={16} /><span>Cancelling...</span></>
+                                                    ) : (
+                                                        <><Ban size={16} /><span>Cancel Order</span></>
+                                                    )}
+                                                </button>
+                                            )}
+                                        </>
                                     ) : null}
                                     {order.status !== 'cancelled' && (
                                         <button className={styles.primaryBtn} onClick={() => handleContactSeller(order)}>

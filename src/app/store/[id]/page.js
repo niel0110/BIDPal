@@ -23,13 +23,13 @@ export default function StorePage() {
     const [reviewsLoading, setReviewsLoading] = useState(false);
     const [followerCount, setFollowerCount] = useState(0);
     const [completedAuctions, setCompletedAuctions] = useState([]);
+    const [sellerOrders, setSellerOrders] = useState([]);
     const [completedLoading, setCompletedLoading] = useState(false);
     const [reportOpen, setReportOpen] = useState(false);
     const [reportReason, setReportReason] = useState('');
     const [reportDetails, setReportDetails] = useState('');
     const [reportSubmitting, setReportSubmitting] = useState(false);
     const [reportDone, setReportDone] = useState(false);
-    const [productScroll, setProductScroll] = useState({ progress: 0, ratio: 0.3 });
 
     const apiUrl = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:5000';
 
@@ -40,6 +40,7 @@ export default function StorePage() {
             const data = await res.json();
             setStore(data);
             setFollowerCount(prev => data.stats?.followerCount ?? prev);
+            return data;
         } catch {}
     };
 
@@ -47,16 +48,33 @@ export default function StorePage() {
         if (!id) return;
 
         const init = async () => {
+            setLoading(true);
+            setCompletedLoading(true);
+            setReviewsLoading(true);
             try {
                 const token = localStorage.getItem('bidpal_token');
 
-                const [, productsRes] = await Promise.all([
+                const [, productsRes, completedRes, reviewsRes, ordersRes] = await Promise.all([
                     fetchStore(),
-                    fetch(`${apiUrl}/api/products/seller/${id}?has_price=true`)
+                    fetch(`${apiUrl}/api/auctions?sale_type=sale&seller_id=${id}&limit=1000`),
+                    fetch(`${apiUrl}/api/auctions/seller/${id}?status=completed&limit=1000`),
+                    fetch(`${apiUrl}/api/reviews/seller/${id}`),
+                    fetch(`${apiUrl}/api/orders/seller/${id}`),
                 ]);
+
                 if (productsRes.ok) {
                     const d = await productsRes.json();
                     setProducts(d.data || []);
+                }
+                if (completedRes.ok) {
+                    const d = await completedRes.json();
+                    setCompletedAuctions(d.data || []);
+                }
+                if (reviewsRes.ok) {
+                    setReviews(await reviewsRes.json());
+                }
+                if (ordersRes.ok) {
+                    setSellerOrders(await ordersRes.json());
                 }
 
                 if (user) {
@@ -72,6 +90,8 @@ export default function StorePage() {
                 console.error('Failed to load store:', err);
             } finally {
                 setLoading(false);
+                setCompletedLoading(false);
+                setReviewsLoading(false);
             }
         };
 
@@ -81,35 +101,6 @@ export default function StorePage() {
         const poll = setInterval(fetchStore, 30000);
         return () => clearInterval(poll);
     }, [id, user]);
-
-    useEffect(() => {
-        if (activeTab !== 'reviews' || !store) return;
-        const load = async () => {
-            setReviewsLoading(true);
-            try {
-                const res = await fetch(`${apiUrl}/api/reviews/seller/${id}`);
-                if (res.ok) setReviews(await res.json());
-            } catch {}
-            setReviewsLoading(false);
-        };
-        load();
-    }, [activeTab, id, store]);
-
-    useEffect(() => {
-        if (activeTab !== 'completed' || !store) return;
-        const load = async () => {
-            setCompletedLoading(true);
-            try {
-                const res = await fetch(`${apiUrl}/api/auctions/seller/${id}?status=completed&limit=50`);
-                if (res.ok) {
-                    const d = await res.json();
-                    setCompletedAuctions(d.data || []);
-                }
-            } catch {}
-            setCompletedLoading(false);
-        };
-        load();
-    }, [activeTab, id, store]);
 
     const handleFollow = async () => {
         if (!user) { router.push('/login'); return; }
@@ -134,15 +125,6 @@ export default function StorePage() {
         } finally {
             setFollowLoading(false);
         }
-    };
-
-    const handleProductScroll = (e) => {
-        const { scrollLeft, scrollWidth, clientWidth } = e.target;
-        const maxScroll = scrollWidth - clientWidth;
-        setProductScroll({
-            progress: maxScroll > 0 ? scrollLeft / maxScroll : 0,
-            ratio: Math.min(clientWidth / scrollWidth, 1),
-        });
     };
 
     const handleMessage = () => {
@@ -191,6 +173,26 @@ export default function StorePage() {
     const sellerFullName = store.User?.Fname
         ? `${store.User.Fname} ${store.User.Lname || ''}`.trim()
         : null;
+    const soldFixedOrders = sellerOrders.filter(order =>
+        (order.order_type || 'regular') === 'regular' &&
+        order.status !== 'cancelled' &&
+        order.product?.products_id
+    );
+    const soldProductIds = new Set(soldFixedOrders.map(order => order.product.products_id));
+    const visibleProducts = products.filter(item =>
+        !soldProductIds.has(item.products_id) &&
+        item.status !== 'sold' &&
+        item.isSoldOut !== true
+    );
+    const soldFixedCards = soldFixedOrders.map(order => ({
+        auction_id: `fixed-${order.order_id}`,
+        product_name: order.product?.name || 'Fixed Price Item',
+        product_image: order.product?.image || null,
+        final_price: order.product?.final_price || order.total_amount || 0,
+        end_time: order.placed_at,
+        status: 'completed',
+    }));
+    const storefrontSoldItems = [...soldFixedCards, ...completedAuctions];
 
     return (
         <main className={styles.main}>
@@ -312,22 +314,24 @@ export default function StorePage() {
                 <div className={styles.contentArea}>
                     <div className={styles.tabs}>
                         <div className={`${styles.tab} ${activeTab === 'all' ? styles.activeTab : ''}`} onClick={() => setActiveTab('all')}>
-                            Fixed Price {products.length > 0 ? `(${products.length})` : ''}
+                            Fixed Price Listings {visibleProducts.length > 0 ? `(${visibleProducts.length})` : ''}
                         </div>
                         <div className={`${styles.tab} ${activeTab === 'completed' ? styles.activeTab : ''}`} onClick={() => setActiveTab('completed')}>
-                            Completed Auctions
+                            Completed Auctions {storefrontSoldItems.length > 0 ? `(${storefrontSoldItems.length})` : ''}
                         </div>
                         <div className={`${styles.tab} ${activeTab === 'reviews' ? styles.activeTab : ''}`} onClick={() => setActiveTab('reviews')}>
-                            Reviews {store.stats?.reviewCount ? `(${store.stats.reviewCount})` : ''}
+                            Reviews {reviews.length > 0 ? `(${reviews.length})` : ''}
                         </div>
                     </div>
 
                     {activeTab === 'completed' ? (
                         <div className={styles.completedGrid}>
                             {completedLoading ? (
-                                <BIDPalLoader size="section" />
-                            ) : completedAuctions.length > 0 ? (
-                                completedAuctions.map(a => (
+                                <div className={styles.panelState}>
+                                    <BIDPalLoader size="section" />
+                                </div>
+                            ) : storefrontSoldItems.length > 0 ? (
+                                storefrontSoldItems.map(a => (
                                     <div key={a.auction_id} className={styles.completedCard}>
                                         <div className={styles.completedImgWrap}>
                                             <img
@@ -353,13 +357,15 @@ export default function StorePage() {
                                     </div>
                                 ))
                             ) : (
-                                <div className={styles.empty}>No completed auctions yet.</div>
+                                <div className={`${styles.empty} ${styles.panelState}`}>No completed auctions yet.</div>
                             )}
                         </div>
                     ) : activeTab === 'reviews' ? (
                         <div className={styles.reviewsList}>
                             {reviewsLoading ? (
-                                <BIDPalLoader size="section" />
+                                <div className={styles.panelState}>
+                                    <BIDPalLoader size="section" />
+                                </div>
                             ) : reviews.length > 0 ? (
                                 <>
                                     {(() => {
@@ -442,33 +448,19 @@ export default function StorePage() {
                         </div>
                     ) : (
                         <>
-                            {/* Scroll indicator */}
-                            {products.length > 0 && (
-                                <div className={styles.scrollIndicatorBar}>
-                                    <div
-                                        className={styles.scrollThumb}
-                                        style={{
-                                            width: `${productScroll.ratio * 100}%`,
-                                            left: `${productScroll.progress * (100 - productScroll.ratio * 100)}%`,
-                                        }}
-                                    />
-                                </div>
-                            )}
-                            <div
-                                className={styles.productScroll}
-                                onScroll={handleProductScroll}
-                            >
-                                {products.length > 0 ? (
-                                    products.map(item => (
-                                        <ProductCard key={item.products_id} data={{
+                            <div className={styles.productScroll}>
+                                {visibleProducts.length > 0 ? (
+                                    visibleProducts.map(item => (
+                                        <ProductCard key={item.id || item.products_id} data={{
                                             ...item,
-                                            title: item.name,
-                                            image: item.images?.[0]?.image_url,
+                                            title: item.title || item.name,
+                                            image: item.image || item.images?.[0]?.image_url || item.images?.[0],
+                                            seller_name: item.seller_name || item.seller,
                                             wishlistCount: item.wishlist_count || 0,
                                         }} />
                                     ))
                                 ) : (
-                                    <div className={styles.empty}>No products listed yet.</div>
+                                    <div className={`${styles.empty} ${styles.panelState}`}>No fixed price listings yet.</div>
                                 )}
                             </div>
                         </>

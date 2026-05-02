@@ -161,6 +161,8 @@ export const getOrdersByUser = async (req, res) => {
             total: order.total_amount,
             order_type: 'auction',
             auction_id: order.auction_id,
+            payment_method: order.payment_method || null,
+            payment_confirmed: order.payment_confirmed || false,
             ...shippingFields,
             items: [{
               name: auctionData?.Products?.name || 'Auction Item',
@@ -184,6 +186,8 @@ export const getOrdersByUser = async (req, res) => {
             total: order.total_amount,
             order_type: 'auction',
             auction_id: order.auction_id,
+            payment_method: order.payment_method || null,
+            payment_confirmed: order.payment_confirmed || false,
             ...shippingFields,
             items: [{
               name: 'Auction Item',
@@ -208,6 +212,8 @@ export const getOrdersByUser = async (req, res) => {
         total: order.total_amount,
         order_type: 'regular',
         seller_id: order.seller_id || null,
+        payment_method: order.payment_method || null,
+        payment_confirmed: order.payment_confirmed || false,
         ...shippingFields,
         items: order.Order_items?.map(item => ({
           products_id: item.products_id,
@@ -456,6 +462,29 @@ export const createOrder = async (req, res) => {
 
     if (itemsError) {
         return res.status(400).json({ error: 'Order created but items failed: ' + itemsError.message });
+    }
+
+    const orderedProductIds = [...new Set(orderItems.map(item => item.products_id).filter(Boolean))];
+    if (orderedProductIds.length > 0) {
+      const { error: productStatusError } = await supabase
+        .from('Products')
+        .update({ status: 'sold', availability: 0 })
+        .in('products_id', orderedProductIds);
+
+      if (productStatusError) {
+        console.warn('Fixed-price product sold status update failed:', productStatusError.message);
+      }
+
+      const { error: auctionStatusError } = await supabase
+        .from('Auctions')
+        .update({ status: 'completed' })
+        .in('products_id', orderedProductIds)
+        .gt('buy_now_price', 0)
+        .in('status', ['active', 'scheduled']);
+
+      if (auctionStatusError) {
+        console.warn('Fixed-price listing completion update failed:', auctionStatusError.message);
+      }
     }
 
     await recordPlatformEarning(supabase, {

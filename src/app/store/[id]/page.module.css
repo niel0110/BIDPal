@@ -239,6 +239,7 @@
 
 .tabs {
     display: flex;
+    justify-content: center;
     gap: 1.75rem;
     border-bottom: 1.5px solid #e5e7eb;
 }
@@ -259,27 +260,6 @@
 .activeTab {
     color: #cc2b41;
     border-bottom-color: #cc2b41;
-}
-
-/* ── Scroll indicator (red line) ── */
-.scrollIndicatorBar {
-    position: relative;
-    height: 2px;
-    background: #eee;
-    margin-bottom: 1.25rem;
-    border-radius: 10px;
-    overflow: visible;
-}
-
-.scrollThumb {
-    position: absolute;
-    top: 0;
-    left: 0;
-    height: 100%;
-    background: #D32F2F;
-    border-radius: 10px;
-    min-width: 40px;
-    transition: left 0.08s ease-out, width 0.08s ease-out;
 }
 
 /* ── Horizontal scroll container ── */
@@ -303,6 +283,13 @@
     font-weight: 600;
     color: #aaa;
     font-size: 0.9rem;
+}
+
+.panelState {
+    grid-column: 1 / -1;
+    flex: 1 0 100%;
+    width: 100%;
+    min-height: 180px;
 }
 
 /* ── Completed Auctions ── */
@@ -625,6 +612,7 @@
     .tabs {
         gap: 0.5rem;
         overflow-x: auto;
+        justify-content: flex-start;
         scrollbar-width: none;
         padding-bottom: 2px;
     }

@@ -183,6 +183,51 @@ export const processCancellation = async (cancellationData) => {
       }
     }
 
+    let resolvedOrder = null;
+    if (resolvedOrderId) {
+      const { data: orderRow, error: orderFetchError } = await supabase
+        .from('Orders')
+        .select('order_id, user_id, auction_id, status, order_type, payment_method, tracking_number, seller_id')
+        .eq('order_id', resolvedOrderId)
+        .maybeSingle();
+
+      if (orderFetchError) {
+        throw new Error('Failed to validate order cancellation: ' + orderFetchError.message);
+      }
+      if (!orderRow) {
+        throw new Error('Order not found');
+      }
+      if (orderRow.user_id !== user_id) {
+        throw new Error('You can only cancel your own orders');
+      }
+
+      const paymentMethod = String(orderRow.payment_method || '').toLowerCase();
+      const isCod = ['cash_on_delivery', 'cod', 'cash'].includes(paymentMethod);
+      const isFixedPrice = orderRow.order_type === 'regular' || !orderRow.auction_id;
+      const canCancelPending = orderRow.status === 'pending_payment';
+      const canCancelCodFixed =
+        isFixedPrice &&
+        isCod &&
+        orderRow.status === 'processing' &&
+        !orderRow.tracking_number;
+
+      if (orderRow.status === 'cancelled') {
+        return {
+          success: true,
+          already_cancelled: true,
+          weekly_cancellation_number: 0,
+          triggered_violation: false,
+          remaining_cancellations: 3
+        };
+      }
+
+      if (!canCancelPending && !canCancelCodFixed) {
+        throw new Error('This order can no longer be cancelled');
+      }
+
+      resolvedOrder = orderRow;
+    }
+
     // Cancel the order using the resolved real order_id
     if (resolvedOrderId) {
       const { error: orderUpdateError } = await supabase
@@ -298,6 +343,41 @@ export const processCancellation = async (cancellationData) => {
         }
       } catch (sellerNotifErr) {
         console.warn('Seller cancellation notification failed:', sellerNotifErr.message);
+      }
+    }
+
+    // Notify seller for fixed-price/cart cancellations.
+    if (!auction_id && resolvedOrder?.seller_id) {
+      try {
+        const { data: sellerRow } = await supabase
+          .from('Seller')
+          .select('user_id')
+          .eq('seller_id', resolvedOrder.seller_id)
+          .maybeSingle();
+
+        const { data: itemRow } = await supabase
+          .from('Order_items')
+          .select('Products(name)')
+          .eq('order_id', resolvedOrderId)
+          .limit(1)
+          .maybeSingle();
+
+        if (sellerRow?.user_id) {
+          const productName = itemRow?.Products?.name || 'an item';
+          await supabase.from('Notifications').insert([{
+            user_id: sellerRow.user_id,
+            type: 'order_cancelled',
+            payload: {
+              title: 'Order Cancelled by Buyer',
+              message: `A buyer cancelled their COD fixed-price order for "${productName}".`
+            },
+            reference_id: resolvedOrderId,
+            reference_type: 'order',
+            read_at: '2099-12-31T23:59:59.000Z'
+          }]);
+        }
+      } catch (sellerNotifErr) {
+        console.warn('Fixed-price seller cancellation notification failed:', sellerNotifErr.message);
       }
     }
 
