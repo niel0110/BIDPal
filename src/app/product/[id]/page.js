@@ -2,7 +2,7 @@
 
 import { useState, useEffect } from 'react';
 import { useParams, useRouter } from 'next/navigation';
-import { ShoppingCart, Heart, Flag, X, CheckCircle, ShieldCheck, Star } from 'lucide-react';
+import { ShoppingCart, Heart, Flag, X, CheckCircle, ShieldCheck, Star, Zap } from 'lucide-react';
 import { useAuth } from '@/context/AuthContext';
 import { useCart } from '@/context/CartContext';
 import BIDPalLoader from '@/components/BIDPalLoader';
@@ -65,6 +65,12 @@ export default function ProductDetailPage() {
         const result = await addToCart(product.products_id);
         setIsAdding(false);
         if (!result.success) setAddError(result.error || 'Failed to add to cart');
+    };
+
+    const handleBuyNow = () => {
+        if (!user) { router.push('/'); return; }
+        if (isSoldOut) return;
+        router.push(`/checkout?product_id=${product.products_id}`);
     };
 
     const handleReport = async (e) => {
@@ -282,16 +288,26 @@ export default function ProductDetailPage() {
                             </div>
                         )}
 
-                        {/* Add to Cart */}
+                        {/* Purchase actions */}
                         {addError && <div className={styles.addError}>{addError}</div>}
-                        <button
-                            className={`${styles.addCartBtn} ${isAlreadyInCart ? styles.addCartBtnSuccess : ''}`}
-                            onClick={handleAddToCart}
-                            disabled={isAdding || isAlreadyInCart || isSoldOut}
-                        >
-                            <ShoppingCart size={18} />
-                            {isAdding ? 'Adding…' : isAlreadyInCart ? 'Added to Cart ✓' : isSoldOut ? 'Sold Out' : 'Add to Cart'}
-                        </button>
+                        <div className={styles.purchaseActions}>
+                            <button
+                                className={`${styles.addCartBtn} ${isAlreadyInCart ? styles.addCartBtnSuccess : ''}`}
+                                onClick={handleAddToCart}
+                                disabled={isAdding || isAlreadyInCart || isSoldOut}
+                            >
+                                <ShoppingCart size={18} />
+                                {isAdding ? 'Adding…' : isAlreadyInCart ? 'Added to Cart ✓' : isSoldOut ? 'Sold Out' : 'Add to Cart'}
+                            </button>
+                            <button
+                                className={styles.buyNowBtn}
+                                onClick={handleBuyNow}
+                                disabled={isAdding || isSoldOut}
+                            >
+                                <Zap size={18} />
+                                Buy Now
+                            </button>
+                        </div>
 
                         {/* Report */}
                         {user && user.user_id !== product.seller_id && (

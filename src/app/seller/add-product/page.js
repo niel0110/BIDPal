@@ -122,7 +122,8 @@ export default function AddProductPage() {
         formData.brand.trim().length > 0 &&
         formData.categories.length > 0 &&
         formData.reservePrice.toString().trim().length > 0 &&
-        formData.startingPrice.toString().trim().length > 0;
+        formData.startingPrice.toString().trim().length > 0 &&
+        formData.bidIncrement.toString().trim().length > 0;
 
     const toggleCategory = (catName) => {
         setFormData(prev => {
@@ -217,6 +218,16 @@ export default function AddProductPage() {
                 setCurrentStep(0);
                 return;
             }
+            if (Number(formData.startingPrice) > Number(formData.reservePrice)) {
+                alert("Starting bid cannot exceed the reserve price limit.");
+                setCurrentStep(3);
+                return;
+            }
+            if (!formData.bidIncrement || Number(formData.bidIncrement) <= 0) {
+                alert("Please enter a bid increment.");
+                setCurrentStep(3);
+                return;
+            }
             
             setIsSubmitting(true);
             try {
@@ -231,7 +242,7 @@ export default function AddProductPage() {
                 submitData.append('availability', formData.availability);
                 submitData.append('reserve_price', formData.reservePrice);
                 submitData.append('starting_price', formData.startingPrice);
-                submitData.append('bid_increment', formData.bidIncrement || '50');
+                submitData.append('bid_increment', formData.bidIncrement);
                 if (formData.size) submitData.append('size', formData.size);
                 submitData.append('categories', JSON.stringify(formData.categories));
                 
@@ -499,18 +510,18 @@ export default function AddProductPage() {
                             <label>Starting Bid Price *</label>
                             <div style={{display: 'flex', alignItems: 'center', gap: '6px'}}>
                                 <span className={styles.pesoSign}>₱</span>
-                                <input type="number" step="0.01" min="0" placeholder="0.00" value={formData.startingPrice} onChange={(e) => setFormData({ ...formData, startingPrice: e.target.value })} required style={{flex: 1}} />
+                                <input type="number" step="0.01" min="0" max={formData.reservePrice || undefined} placeholder="0.00" value={formData.startingPrice} onChange={(e) => setFormData({ ...formData, startingPrice: e.target.value })} required style={{flex: 1}} />
                             </div>
-                            <small className={styles.fieldHint}>The initial bid amount to attract buyers</small>
+                            <small className={styles.fieldHint}>The initial bid amount to attract buyers. Must not exceed the reserve limit.</small>
                         </div>
 
                         <div className={styles.inputGroup}>
                             <label>Bid Increment *</label>
                             <div style={{display: 'flex', alignItems: 'center', gap: '6px'}}>
                                 <span className={styles.pesoSign}>₱</span>
-                                <input type="number" step="1" min="1" placeholder="50" value={formData.bidIncrement} onChange={(e) => setFormData({ ...formData, bidIncrement: e.target.value })} style={{flex: 1}} />
+                                <input type="number" step="1" min="1" placeholder="50" value={formData.bidIncrement} onChange={(e) => setFormData({ ...formData, bidIncrement: e.target.value })} required style={{flex: 1}} />
                             </div>
-                            <small className={styles.fieldHint}>Minimum amount each new bid must exceed the current one. Defaults to ₱50.</small>
+                            <small className={styles.fieldHint}>Minimum amount each new bid must exceed the current one.</small>
                         </div>
                     </div>
                 )}

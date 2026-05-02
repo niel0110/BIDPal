@@ -269,7 +269,13 @@
     gap: 4px;
 }
 
-/* ── Add to Cart ── */
+/* ── Purchase actions ── */
+.purchaseActions {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 0.75rem;
+}
+
 .addCartBtn {
     width: 100%;
     padding: 0.9rem;
@@ -291,6 +297,26 @@
 .addCartBtn:disabled { opacity: 0.6; cursor: not-allowed; }
 .addCartBtnSuccess { background: #16a34a; }
 .addCartBtnSuccess:hover:not(:disabled) { background: #15803d; }
+
+.buyNowBtn {
+    width: 100%;
+    padding: 0.9rem;
+    background: #0f172a;
+    color: white;
+    border: none;
+    border-radius: 10px;
+    font-size: 1rem;
+    font-weight: 700;
+    cursor: pointer;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 8px;
+    font-family: inherit;
+    transition: background 0.15s;
+}
+.buyNowBtn:hover:not(:disabled) { background: #1e293b; }
+.buyNowBtn:disabled { opacity: 0.6; cursor: not-allowed; }
 
 .addError {
     background: #fff1f2;
@@ -340,6 +366,7 @@
     .priceBig { font-size: 1.6rem; }
     .mainImg { height: 220px; }
     .thumbImg { width: 48px; height: 48px; }
+    .purchaseActions { grid-template-columns: 1fr; }
 }
 
 /* ── Responsive: 320px ── */

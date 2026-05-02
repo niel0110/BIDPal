@@ -249,7 +249,7 @@ export const register = async (req, res) => {
     const { data, error } = await supabase
       .from('User')
       .insert([{ email, password: hashedPassword, Fname, Mname, Lname, role, contact_num, Avatar }])
-      .select('user_id, email, Fname, Mname, Lname, role, contact_num, Avatar');
+      .select('user_id, email, Fname, Mname, Lname, role, contact_num, Avatar, is_verified, kyc_status');
 
     if (error) {
       console.error('Supabase insert error:', error);
@@ -317,7 +317,7 @@ export const login = async (req, res) => {
   }
   const { data, error } = await supabase
     .from('User')
-    .select('user_id, email, password, Fname, Mname, Lname, role, contact_num, Avatar')
+    .select('user_id, email, password, Fname, Mname, Lname, role, contact_num, Avatar, is_verified, kyc_status')
     .eq('email', email)
     .maybeSingle();
   if (error) return res.status(500).json({ error: error.message });
@@ -342,7 +342,7 @@ export const login = async (req, res) => {
 
   // Generate JWT
   const token = jwt.sign({ user_id: data.user_id, email: data.email, role: data.role }, process.env.JWT_SECRET, { expiresIn: '1d' });
-  res.json({ message: 'Login successful', user: { user_id: data.user_id, email: data.email, Fname: data.Fname, Mname: data.Mname, Lname: data.Lname, role: data.role, contact_num: data.contact_num, Avatar: data.Avatar, seller_id }, token });
+  res.json({ message: 'Login successful', user: { user_id: data.user_id, email: data.email, Fname: data.Fname, Mname: data.Mname, Lname: data.Lname, role: data.role, contact_num: data.contact_num, Avatar: data.Avatar, is_verified: data.is_verified, kyc_status: data.kyc_status, seller_id }, token });
 };
 
 // Google OAuth login (with token verification)
@@ -375,7 +375,7 @@ export const googleLogin = async (req, res) => {
     // Check if user already exists
     const { data: existingUser, error: findError } = await supabase
       .from('User')
-      .select('user_id, email, Fname, Mname, Lname, role, contact_num, Avatar')
+      .select('user_id, email, Fname, Mname, Lname, role, contact_num, Avatar, is_verified, kyc_status')
       .eq('email', email)
       .maybeSingle();
 
@@ -413,7 +413,7 @@ export const googleLogin = async (req, res) => {
           Avatar: picture || null,
           role: 'Buyer'
         }])
-        .select('user_id, email, Fname, Mname, Lname, role, contact_num, Avatar')
+        .select('user_id, email, Fname, Mname, Lname, role, contact_num, Avatar, is_verified, kyc_status')
         .single();
 
       if (insertError) {
@@ -457,7 +457,7 @@ export const socialLogin = async (req, res) => {
     // Check if user already exists
     const { data: existingUser, error: findError } = await supabase
       .from('User')
-      .select('user_id, email, Fname, Mname, Lname, role, contact_num, Avatar')
+      .select('user_id, email, Fname, Mname, Lname, role, contact_num, Avatar, is_verified, kyc_status')
       .eq('email', email)
       .maybeSingle();
 
@@ -495,7 +495,7 @@ export const socialLogin = async (req, res) => {
           Avatar,
           role: role || 'Buyer'
         }])
-        .select('user_id, email, Fname, Mname, Lname, role, contact_num, Avatar')
+        .select('user_id, email, Fname, Mname, Lname, role, contact_num, Avatar, is_verified, kyc_status')
         .single();
 
       if (insertError) {

@@ -19,6 +19,7 @@ function ScheduleAuctionPageInner() {
         startDate: '',
         startTime: '',
         fixedPrice: '',
+        bidIncrement: '',
     });
     const { isSubmitting, runWithLock } = useSubmitLock();
     
@@ -76,10 +77,12 @@ function ScheduleAuctionPageInner() {
                     user_id: user.user_id || user.id,
                     seller_id: user.seller_id,
                     sale_type: saleType,
-                    starting_bid: saleType === 'bid' ? productDetails?.reserve_price : null,
+                    starting_bid: saleType === 'bid' ? productDetails?.starting_price : null,
+                    reserve_price: saleType === 'bid' ? productDetails?.reserve_price : null,
                     buy_now_price: saleType === 'sale' ? (parseFloat(formData.fixedPrice) || productDetails?.buy_now_price) : null,
                     start_date: formData.startDate,
                     start_time: formData.startTime,
+                    bid_increment: saleType === 'bid' ? parseFloat(formData.bidIncrement) : null,
                 };
                 
                 const apiUrl = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:5000';
@@ -299,6 +302,27 @@ function ScheduleAuctionPageInner() {
                             </div>
                         )}
                     </div>
+
+                    {saleType === 'bid' && (
+                        <div className={styles.section}>
+                            <label className={styles.sectionLabel}>Bid Increment</label>
+                            <div className={styles.field}>
+                                <div className={styles.inputWithIcon}>
+                                    <span className={styles.pesoIcon}>₱</span>
+                                    <input
+                                        type="number"
+                                        step="1"
+                                        min="1"
+                                        placeholder="50"
+                                        required
+                                        value={formData.bidIncrement}
+                                        onChange={(e) => setFormData({ ...formData, bidIncrement: e.target.value })}
+                                    />
+                                </div>
+                                <small className={styles.fieldNote}>Every new bid must increase by this seller-set amount.</small>
+                            </div>
+                        </div>
+                    )}
 
                     <div className={styles.section}>
                         <label className={styles.sectionLabel}>Date & Time</label>

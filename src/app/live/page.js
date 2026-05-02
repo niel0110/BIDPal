@@ -16,7 +16,7 @@ let AgoraRTC = null;
 function LivePageInner() {
     const searchParams = useSearchParams();
     const auctionId = searchParams.get('id');
-    const { user } = useAuth();
+    const { user, loading: authLoading } = useAuth();
 
     const [auction, setAuction] = useState(null);
     const [loading, setLoading] = useState(true);
@@ -30,6 +30,7 @@ function LivePageInner() {
     const [showPaymentModal, setShowPaymentModal] = useState(false);
     const [shippingOption, setShippingOption] = useState('standard');
     const [bidAmount, setBidAmount] = useState('');
+    const [bidNotice, setBidNotice] = useState(null);
     const [viewerCount, setViewerCount] = useState(0);
     const [streamReady, setStreamReady] = useState(false);
     const [isMuted, setIsMuted] = useState(false);
@@ -83,6 +84,14 @@ function LivePageInner() {
     const desktopChatScrollRef = useRef(null);
 
     const apiUrl = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:5000';
+    const userIsVerified = Boolean(user?.is_verified) || user?.kyc_status === 'approved';
+    const userNeedsVerification = Boolean(user) && !authLoading && !userIsVerified;
+    const bidStep = Number(auction?.incremental_bid_step || 100);
+    const bidLimit = Number(auction?.reserve_price || 0);
+    const currentAuctionPrice = Number(
+        (bids[0]?.amount ?? auction?.current_price ?? auction?.reserve_price ?? 0).toString().replace(/,/g, '')
+    );
+    const nextBidAmount = Math.max(Number(minBid || 0), currentAuctionPrice + bidStep);
 
     useEffect(() => {
         const query = '(max-width: 768px), (pointer: coarse)';
@@ -662,14 +671,21 @@ function LivePageInner() {
 
     const handleBidButtonClick = () => {
         if (!user) { setShowLoginPrompt(true); return; }
-        if (!user.is_verified) { setShowVerifyPrompt(true); return; }
+        if (authLoading) return;
+        if (!userIsVerified) { setShowVerifyPrompt(true); return; }
         if (biddingEligibility && !biddingEligibility.canBid) return; // suspended — button is disabled
         if (biddingEligibility?.requiresPreAuthorization) {
             setShowPreAuthModal(true);
             return;
         }
-        if (minBid) setBidAmount(minBid);
+        setBidAmount(nextBidAmount);
+        setBidNotice(null);
         setShowModal(true);
+    };
+
+    const closeBidModal = () => {
+        setShowModal(false);
+        setBidNotice(null);
     };
 
     const handleSendMessage = () => {
@@ -692,24 +708,44 @@ function LivePageInner() {
 
     const handlePlaceBid = async () => {
         if (!user) { setShowLoginPrompt(true); return; }
-        if (!user.is_verified) { setShowVerifyPrompt(true); return; }
+        if (authLoading) return;
+        if (!userIsVerified) { setShowVerifyPrompt(true); return; }
         if (!bidAmount) return;
 
-        const reservePrice = parseFloat(auction?.reserve_price || 0);
-        const maxBid = reservePrice > 0 ? reservePrice * 10 : Infinity;
-        if (parseFloat(bidAmount) > maxBid) {
-            alert(`❌ Bid cannot exceed ₱${maxBid.toLocaleString('en-PH')} (10× the reserve price)`);
+        const numericBidAmount = parseFloat(bidAmount);
+        if (bidLimit > 0 && numericBidAmount > bidLimit) {
+            setBidNotice({
+                title: 'Bid limit reached',
+                message: `Bid cannot exceed the seller reserve price limit of ₱${bidLimit.toLocaleString('en-PH')}.`,
+            });
+            return;
+        }
+
+        const overMinimumBy = numericBidAmount - currentAuctionPrice;
+        const remainder = bidStep > 0 ? overMinimumBy % bidStep : 0;
+        const followsSellerIncrement = Math.abs(remainder) < 0.0001 || Math.abs(remainder - bidStep) < 0.0001;
+        if (numericBidAmount < nextBidAmount || !followsSellerIncrement) {
+            setBidNotice({
+                title: 'Invalid bid amount',
+                message: `Bid must be at least ₱${nextBidAmount.toLocaleString('en-PH')} and follow the seller's ₱${bidStep.toLocaleString('en-PH')} increment.`,
+            });
             return;
         }
 
         if (biddingEligibility && !biddingEligibility.canBid) {
-            alert('Your bidding privileges are suspended. You cannot place bids at this time.');
+            setBidNotice({
+                title: 'Bidding unavailable',
+                message: 'Your bidding privileges are suspended. You cannot place bids at this time.',
+            });
             return;
         }
 
         if (!auctionId) {
             console.error('❌ No auction ID available');
-            alert('Invalid auction - please check the URL');
+            setBidNotice({
+                title: 'Invalid auction',
+                message: 'Invalid auction - please check the URL.',
+            });
             return;
         }
 
@@ -735,7 +771,10 @@ function LivePageInner() {
                 console.error('❌ Bid API error:', { status: res.status, error: errMsg, data });
                 // Update the minimum bid if the server tells us
                 if (data.minBid) setMinBid(data.minBid);
-                alert(`❌ ${errMsg}`);
+                setBidNotice({
+                    title: 'Bid not placed',
+                    message: errMsg,
+                });
                 return; // Don't close modal — let user correct the amount
             }
 
@@ -773,10 +812,14 @@ function LivePageInner() {
 
             // Close modal and reset only on success
             setShowModal(false);
+            setBidNotice(null);
             setBidAmount('');
         } catch (err) {
             console.error('❌ Bid network error:', err);
-            alert(`❌ Network error: ${err.message}`);
+            setBidNotice({
+                title: 'Connection problem',
+                message: `Network error: ${err.message}`,
+            });
         }
     };
 
@@ -1329,9 +1372,9 @@ function LivePageInner() {
                                     className={styles.mobileBidBtn}
                                     onClick={handleBidButtonClick}
                                     disabled={biddingEligibility && !biddingEligibility.canBid}
-                                    style={biddingEligibility && !biddingEligibility.canBid ? { background: '#9ca3af', cursor: 'not-allowed' } : (user && !user.is_verified ? { background: '#ea580c' } : undefined)}
+                                    style={biddingEligibility && !biddingEligibility.canBid ? { background: '#9ca3af', cursor: 'not-allowed' } : (userNeedsVerification ? { background: '#ea580c' } : undefined)}
                                 >
-                                    {biddingEligibility && !biddingEligibility.canBid ? 'Blocked' : (user && !user.is_verified ? 'Verify' : 'Bid')}
+                                    {biddingEligibility && !biddingEligibility.canBid ? 'Blocked' : (userNeedsVerification ? 'Verify' : 'Bid')}
                                 </button>
                             </div>
 
@@ -1786,9 +1829,9 @@ function LivePageInner() {
                                     className={styles.mobileBidBtn}
                                     onClick={handleBidButtonClick}
                                     disabled={!isHost && biddingEligibility && !biddingEligibility.canBid}
-                                    style={!isHost && biddingEligibility && !biddingEligibility.canBid ? { background: '#9ca3af', cursor: 'not-allowed' } : (!isHost && user && !user.is_verified ? { background: '#ea580c' } : undefined)}
+                                    style={!isHost && biddingEligibility && !biddingEligibility.canBid ? { background: '#9ca3af', cursor: 'not-allowed' } : (!isHost && userNeedsVerification ? { background: '#ea580c' } : undefined)}
                                 >
-                                    {!isHost && biddingEligibility && !biddingEligibility.canBid ? '🚫' : (!isHost && user && !user.is_verified ? '🔒 Verify to Bid' : 'Bid')}
+                                    {!isHost && biddingEligibility && !biddingEligibility.canBid ? '🚫' : (!isHost && userNeedsVerification ? '🔒 Verify to Bid' : 'Bid')}
                                 </button>
                             </div>
 
@@ -1990,9 +2033,9 @@ function LivePageInner() {
                                 className={styles.bidButton}
                                 onClick={handleBidButtonClick}
                                 disabled={!isHost && biddingEligibility && !biddingEligibility.canBid}
-                                style={!isHost && biddingEligibility && !biddingEligibility.canBid ? { background: '#9ca3af', cursor: 'not-allowed', opacity: 0.7 } : (!isHost && user && !user.is_verified ? { background: '#ea580c' } : undefined)}
+                                style={!isHost && biddingEligibility && !biddingEligibility.canBid ? { background: '#9ca3af', cursor: 'not-allowed', opacity: 0.7 } : (!isHost && userNeedsVerification ? { background: '#ea580c' } : undefined)}
                             >
-                                {!isHost && biddingEligibility && !biddingEligibility.canBid ? '🚫 Suspended' : (!isHost && user && !user.is_verified ? '🔒 Verify to Bid' : 'Bid')}
+                                {!isHost && biddingEligibility && !biddingEligibility.canBid ? '🚫 Suspended' : (!isHost && userNeedsVerification ? '🔒 Verify to Bid' : 'Bid')}
                             </button>
                         </div>
 
@@ -2122,7 +2165,7 @@ function LivePageInner() {
                     <div className={styles.modalContent}>
                         <div className={styles.modalHeader}>
                             <h2 className={styles.modalTitle}>Place your bid</h2>
-                            <button className={styles.closeBtn} onClick={() => setShowModal(false)}>
+                            <button className={styles.closeBtn} onClick={closeBidModal}>
                                 <X size={12} />
                             </button>
                         </div>
@@ -2140,11 +2183,14 @@ function LivePageInner() {
 
                         <div className={styles.inputGroup}>
                             <label className={styles.inputLabel}>
-                                Minimum bid: <strong>₱ {(minBid || ((auction.current_price || auction.reserve_price) + (auction.incremental_bid_step || 100))).toLocaleString('en-PH')}</strong>
+                                Minimum bid: <strong>₱ {nextBidAmount.toLocaleString('en-PH')}</strong>
                             </label>
-                            {parseFloat(auction?.reserve_price || 0) > 0 && (
+                            <div style={{ fontSize: '0.73rem', color: '#999', marginTop: '2px' }}>
+                                Bid increment: <strong style={{ color: '#666' }}>₱{bidStep.toLocaleString('en-PH')}</strong>
+                            </div>
+                            {bidLimit > 0 && (
                                 <div style={{ fontSize: '0.73rem', color: '#999', marginTop: '2px' }}>
-                                    Bid cap: <strong style={{ color: '#666' }}>₱{(parseFloat(auction.reserve_price) * 10).toLocaleString('en-PH')}</strong> <span style={{ color: '#bbb' }}>(10× reserve)</span>
+                                    Bid limit: <strong style={{ color: '#666' }}>₱{bidLimit.toLocaleString('en-PH')}</strong>
                                 </div>
                             )}
                             <div className={styles.currencyInputWrapper}>
@@ -2153,13 +2199,28 @@ function LivePageInner() {
                                     type="number"
                                     className={styles.bidInput}
                                     value={bidAmount}
-                                    placeholder={minBid || ((auction.current_price || auction.reserve_price) + (auction.incremental_bid_step || 100))}
-                                    min={minBid || ((auction.current_price || auction.reserve_price) + (auction.incremental_bid_step || 100))}
-                                    onChange={(e) => setBidAmount(e.target.value)}
+                                    placeholder={nextBidAmount}
+                                    min={nextBidAmount}
+                                    max={bidLimit || undefined}
+                                    step={bidStep}
+                                    onChange={(e) => {
+                                        setBidAmount(e.target.value);
+                                        if (bidNotice) setBidNotice(null);
+                                    }}
                                     autoFocus
                                 />
                             </div>
                         </div>
+
+                        {bidNotice && (
+                            <div className={styles.bidNotice} role="alert" aria-live="polite">
+                                <div className={styles.bidNoticeIcon}>!</div>
+                                <div className={styles.bidNoticeText}>
+                                    <strong>{bidNotice.title}</strong>
+                                    <span>{bidNotice.message}</span>
+                                </div>
+                            </div>
+                        )}
 
                         <button className={styles.placeBidBtn} onClick={handlePlaceBid}>
                             Place bid
@@ -2288,9 +2349,9 @@ function LivePageInner() {
                                             handleBidButtonClick();
                                         }}
                                         disabled={!isHost && biddingEligibility && !biddingEligibility.canBid}
-                                        style={!isHost && biddingEligibility && !biddingEligibility.canBid ? { background: '#9ca3af', cursor: 'not-allowed' } : (!isHost && user && !user.is_verified ? { background: '#ea580c' } : undefined)}
+                                        style={!isHost && biddingEligibility && !biddingEligibility.canBid ? { background: '#9ca3af', cursor: 'not-allowed' } : (!isHost && userNeedsVerification ? { background: '#ea580c' } : undefined)}
                                     >
-                                        {!isHost && biddingEligibility && !biddingEligibility.canBid ? '🚫 Bidding Suspended' : (!isHost && user && !user.is_verified ? '🔒 Verify to Bid' : 'Join Bid')}
+                                        {!isHost && biddingEligibility && !biddingEligibility.canBid ? '🚫 Bidding Suspended' : (!isHost && userNeedsVerification ? '🔒 Verify to Bid' : 'Join Bid')}
                                     </button>
                                     <button className={styles.wishlistBtn}>
                                         <Heart size={24} />

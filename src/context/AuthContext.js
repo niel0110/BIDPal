@@ -47,8 +47,9 @@ export function AuthProvider({ children }) {
             try {
                 const parsed = JSON.parse(storedUser);
                 setUser(parsed);
-                // Background sync — does not block the loading state
-                refreshUser(parsed.user_id, token);
+                // Keep auth loading until fresh verification fields are available.
+                refreshUser(parsed.user_id, token).finally(() => setLoading(false));
+                return;
             } catch {
                 localStorage.removeItem('bidpal_user');
             }

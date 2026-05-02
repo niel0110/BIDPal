@@ -46,11 +46,12 @@ export default function SelectProductPage() {
                 user_id: user.user_id || user.id,
                 seller_id: user.seller_id,
                 sale_type: saleType,
-                starting_bid: saleType === 'bid' ? scheduleProduct.reserve_price : null,
+                starting_bid: saleType === 'bid' ? scheduleProduct.starting_price : null,
+                reserve_price: saleType === 'bid' ? scheduleProduct.reserve_price : null,
                 buy_now_price: saleType === 'sale' ? (parseFloat(scheduleForm.fixedPrice) || scheduleProduct.buy_now_price) : null,
                 start_date: saleType === 'sale' ? now.toISOString().slice(0, 10) : scheduleForm.startDate,
                 start_time: saleType === 'sale' ? now.toTimeString().slice(0, 5) : scheduleForm.startTime,
-                bid_increment: saleType === 'bid' ? (parseFloat(scheduleForm.bidIncrement) || 50) : null,
+                bid_increment: saleType === 'bid' ? parseFloat(scheduleForm.bidIncrement) : null,
             };
             const res = await fetch(`${apiUrl}/api/auctions/schedule`, {
                 method: 'POST',
@@ -330,14 +331,14 @@ export default function SelectProductPage() {
                                     <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', border: '1.5px solid #e2e8f0', borderRadius: 10, padding: '0 0.85rem', background: '#fafafa' }}>
                                         <span style={{ fontWeight: 700, color: '#475569', fontSize: '0.9rem' }}>₱</span>
                                         <input
-                                            type="number" step="1" min="1" placeholder="50"
+                                            type="number" step="1" min="1" placeholder="50" required
                                             value={scheduleForm.bidIncrement}
                                             onChange={e => setScheduleForm(p => ({ ...p, bidIncrement: e.target.value }))}
                                             style={{ flex: 1, border: 'none', background: 'transparent', padding: '0.75rem 0', fontSize: '0.9rem', outline: 'none', color: '#0f172a' }}
                                         />
                                     </div>
                                     <p style={{ fontSize: '0.72rem', color: '#94a3b8', marginTop: '0.35rem', marginBottom: 0 }}>
-                                        Minimum amount each new bid must exceed the current one. Defaults to ₱50.
+                                        Every new bid must increase by this seller-set amount.
                                     </p>
                                 </div>
                             )}

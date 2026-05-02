@@ -186,6 +186,10 @@ export const createProduct = async (req, res) => {
       return res.status(400).json({ error: 'seller_id (or user_id belonging to a seller) and name are required.' });
     }
 
+    if (starting_price && reserve_price && parseFloat(starting_price) > parseFloat(reserve_price)) {
+      return res.status(400).json({ error: 'Starting bid cannot exceed the reserve price limit.' });
+    }
+
     let final_image_urls = image_urls ? (Array.isArray(image_urls) ? image_urls : [image_urls]) : [];
 
     // Process file uploads from multer

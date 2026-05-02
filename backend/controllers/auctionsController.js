@@ -289,6 +289,7 @@ export const scheduleAuction = async (req, res) => {
       seller_id,
       sale_type,
       starting_bid,
+      reserve_price,
       buy_now_price,
       start_date,
       start_time,
@@ -327,7 +328,7 @@ export const scheduleAuction = async (req, res) => {
     // Verify that the product exists and belongs to this seller
     const { data: productData, error: productError } = await supabase
         .from('Products')
-        .select('products_id, seller_id, status')
+        .select('products_id, seller_id, status, reserve_price, starting_price')
         .eq('products_id', product_id)
         .is('deleted_at', null)
         .maybeSingle();
@@ -375,6 +376,17 @@ export const scheduleAuction = async (req, res) => {
     }
 
     const isBid = sale_type === 'bid';
+    const startingBidAmount = parseFloat(starting_bid ?? productData.starting_price ?? 0) || 0;
+    const reserveLimit = parseFloat(reserve_price ?? productData.reserve_price ?? startingBidAmount) || 0;
+    const bidStep = parseFloat(bid_increment);
+
+    if (isBid && reserveLimit > 0 && startingBidAmount > reserveLimit) {
+      return res.status(400).json({ error: 'Starting bid cannot exceed the seller reserve price limit.' });
+    }
+
+    if (isBid && (!bidStep || bidStep <= 0)) {
+      return res.status(400).json({ error: 'Bid increment is required and must be greater than 0.' });
+    }
 
     // Insert into Auctions table
     const { data: auctionData, error: auctionError } = await supabase
@@ -386,8 +398,9 @@ export const scheduleAuction = async (req, res) => {
           start_time: start_timestamp,
           end_time: end_timestamp,
           buy_now_price: !isBid ? (buy_now_price || 0) : 0,
-          reserve_price: isBid ? (starting_bid || 0) : 0,
-          incremental_bid_step: isBid ? (parseFloat(bid_increment) || 50) : 0,
+          reserve_price: isBid ? reserveLimit : 0,
+          current_price: isBid ? startingBidAmount : 0,
+          incremental_bid_step: isBid ? bidStep : 0,
           status: isBid ? 'scheduled' : 'active',
           timezone: timezone
         }
@@ -894,7 +907,7 @@ export const placeBid = async (req, res) => {
     // Get auction details to validate bid (include current_price)
     const { data: auction, error: auctionError } = await supabase
       .from('Auctions')
-      .select('auction_id, reserve_price, current_price, incremental_bid_step, status')
+      .select('auction_id, products_id, reserve_price, current_price, incremental_bid_step, status')
       .eq('auction_id', id)
       .single();
 
@@ -931,8 +944,18 @@ export const placeBid = async (req, res) => {
       });
     }
 
+    let startingPriceFallback = 0;
+    if (auction.current_price == null && auction.products_id) {
+      const { data: productForPrice } = await supabase
+        .from('Products')
+        .select('starting_price')
+        .eq('products_id', auction.products_id)
+        .maybeSingle();
+      startingPriceFallback = parseFloat(productForPrice?.starting_price || 0);
+    }
+
     // Use current_price from Auctions table (kept up-to-date by DB trigger)
-    const currentPrice = parseFloat(auction.current_price || auction.reserve_price || 0);
+    const currentPrice = parseFloat(auction.current_price ?? startingPriceFallback ?? 0);
     const step = parseFloat(auction.incremental_bid_step || 100);
 
     // Validate bid amount — must exceed current price by at least one step
@@ -947,12 +970,23 @@ export const placeBid = async (req, res) => {
       });
     }
 
-    const reservePrice = parseFloat(auction.reserve_price || 0);
-    const maxBid = reservePrice * 10;
-    if (reservePrice > 0 && bidAmount > maxBid) {
+    const reserveLimit = parseFloat(auction.reserve_price || 0);
+    if (reserveLimit > 0 && bidAmount > reserveLimit) {
       return res.status(400).json({
-        error: `Bid cannot exceed ₱${maxBid.toLocaleString('en-PH')} (10× the reserve price)`,
-        maxBid
+        error: `Bid cannot exceed the seller reserve price limit of ₱${reserveLimit.toLocaleString('en-PH')}`,
+        bidLimit: reserveLimit,
+        minBid,
+        currentPrice
+      });
+    }
+
+    const incrementCount = step > 0 ? (bidAmount - currentPrice) / step : 1;
+    if (step > 0 && Math.abs(incrementCount - Math.round(incrementCount)) > 0.0001) {
+      return res.status(400).json({
+        error: `Bid must follow the seller's ₱${step.toLocaleString('en-PH')} increment`,
+        minBid,
+        currentPrice,
+        bidIncrement: step
       });
     }
 
