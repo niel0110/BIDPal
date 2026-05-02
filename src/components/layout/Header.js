@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, useEffect, useRef } from 'react';
+import { Suspense, useState, useEffect, useRef } from 'react';
 import Link from 'next/link';
 import { Search, SlidersHorizontal, User, ShoppingCart, Home, Heart, MessageCircle, LogOut, LayoutDashboard, Package, Gavel, BarChart3, ClipboardList, AlignJustify, X } from 'lucide-react';
 import { useAuth } from '@/context/AuthContext';
@@ -11,7 +11,7 @@ import NotificationBell from '@/components/NotificationBell';
 import { useNotifications } from '@/hooks/useNotifications';
 import styles from './Header.module.css';
 
-export default function Header() {
+function HeaderInner() {
   const { user, logout } = useAuth();
   const { totalUnreadCount, unreadMsgCount } = useNotifications();
   const [isMenuOpen, setIsMenuOpen] = useState(false);
@@ -332,5 +332,13 @@ export default function Header() {
         </div>
       )}
     </div >
+  );
+}
+
+export default function Header() {
+  return (
+    <Suspense fallback={null}>
+      <HeaderInner />
+    </Suspense>
   );
 }
