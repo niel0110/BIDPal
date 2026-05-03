@@ -205,6 +205,8 @@ export const getAllAuctions = async (req, res) => {
       if (aid) reminderCountMap[aid] = (reminderCountMap[aid] || 0) + 1;
     }
 
+    const getViewerCount = req.app.locals.getViewerCount || (() => 0);
+
     // Fetch product details for each auction
     const transformedData = await Promise.all(
       auctionsData.map(async (auction) => {
@@ -218,6 +220,7 @@ export const getAllAuctions = async (req, res) => {
         const primaryImage = images.find(img => img.is_primary) || images[0];
         const bids_count = bidCountMap[auction.auction_id] || 0;
         const reminder_count = reminderCountMap[auction.auction_id] || 0;
+        const live_viewers = auction.status === 'active' ? getViewerCount(auction.auction_id) : 0;
 
         const categoryStr = (productData?.categories || [])
           .map(c => c.category_name || '').join(' ');
@@ -236,6 +239,7 @@ export const getAllAuctions = async (req, res) => {
           seller_banner: auction.Seller?.banner_url,
           bids_count,
           reminder_count,
+          live_viewers,
           timeLeft: auction.status === 'active' ? 'Active Now' : new Date(auction.start_time).toLocaleString(),
           image: primaryImage?.image_url || null,
           images: images.map(img => img.image_url).filter(Boolean),
@@ -1080,7 +1084,7 @@ export const getAuctionStats = async (req, res) => {
 
     res.json({
       stats: {
-        viewers: Math.max(liveViewers, totalViews || 0),
+        viewers: liveViewers,
         liveViewers,
         totalViews: totalViews || 0,
         likes: likes || 0,

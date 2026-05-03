@@ -57,7 +57,8 @@ app.use(cors({
 app.locals.io = io
 
 // Track active viewers per auction
-const auctionViewers = new Map() // auctionId -> Set of socket IDs
+// auctionId -> Map(viewerKey -> Set(socket IDs))
+const auctionViewers = new Map()
 
 // Track blocked users per auction
 const blockedUsers = new Map() // auctionId -> Set of user_ids
@@ -74,6 +75,22 @@ const broadcastViewerCount = (auctionId) => {
 }
 
 io.on('connection', (socket) => {
+  const removeSocketFromAuctionViewerMap = (auctionId, viewerKey, socketId) => {
+    if (!auctionId || !viewerKey || !auctionViewers.has(auctionId)) return
+
+    const viewers = auctionViewers.get(auctionId)
+    const sockets = viewers.get(viewerKey)
+    if (!sockets) return
+
+    sockets.delete(socketId)
+    if (sockets.size === 0) {
+      viewers.delete(viewerKey)
+    }
+    if (viewers.size === 0) {
+      auctionViewers.delete(auctionId)
+    }
+  }
+
   // Client joins their own user room for targeted events
   socket.on('join', (userId) => {
     socket.join(`user:${userId}`)
@@ -81,19 +98,33 @@ io.on('connection', (socket) => {
 
   // Join an auction room — sellers pass { auctionId, role: 'seller' } to skip viewer count
   socket.on('join-auction', (payload) => {
+    if (socket.currentAuction) {
+      socket.leave(`auction:${socket.currentAuction}`)
+      if (socket.currentRole !== 'seller') {
+        removeSocketFromAuctionViewerMap(socket.currentAuction, socket.viewerKey, socket.id)
+        broadcastViewerCount(socket.currentAuction)
+      }
+    }
+
     const auctionId = typeof payload === 'object' ? payload.auctionId : payload
     const role = typeof payload === 'object' ? payload.role : 'viewer'
+    const viewerKey = typeof payload === 'object' ? payload.viewerKey : null
 
     socket.join(`auction:${auctionId}`)
     socket.currentAuction = auctionId
     socket.currentRole = role
+    socket.viewerKey = role === 'seller' ? null : (viewerKey || `socket:${socket.id}`)
 
     // Only count actual viewers (not the seller)
     if (role !== 'seller') {
       if (!auctionViewers.has(auctionId)) {
-        auctionViewers.set(auctionId, new Set())
+        auctionViewers.set(auctionId, new Map())
       }
-      auctionViewers.get(auctionId).add(socket.id)
+      const viewers = auctionViewers.get(auctionId)
+      if (!viewers.has(socket.viewerKey)) {
+        viewers.set(socket.viewerKey, new Set())
+      }
+      viewers.get(socket.viewerKey).add(socket.id)
       broadcastViewerCount(auctionId)
     }
   })
@@ -103,11 +134,14 @@ io.on('connection', (socket) => {
     socket.leave(`auction:${auctionId}`)
 
     if (socket.currentRole !== 'seller' && auctionViewers.has(auctionId)) {
-      auctionViewers.get(auctionId).delete(socket.id)
-      if (auctionViewers.get(auctionId).size === 0) {
-        auctionViewers.delete(auctionId)
-      }
+      removeSocketFromAuctionViewerMap(auctionId, socket.viewerKey, socket.id)
       broadcastViewerCount(auctionId)
+    }
+
+    if (socket.currentAuction === auctionId) {
+      socket.currentAuction = null
+      socket.currentRole = null
+      socket.viewerKey = null
     }
   })
 
@@ -178,10 +212,7 @@ io.on('connection', (socket) => {
     if (socket.currentAuction && socket.currentRole !== 'seller') {
       const auctionId = socket.currentAuction
       if (auctionViewers.has(auctionId)) {
-        auctionViewers.get(auctionId).delete(socket.id)
-        if (auctionViewers.get(auctionId).size === 0) {
-          auctionViewers.delete(auctionId)
-        }
+        removeSocketFromAuctionViewerMap(auctionId, socket.viewerKey, socket.id)
         broadcastViewerCount(auctionId)
       }
     }
