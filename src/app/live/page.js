@@ -61,6 +61,7 @@ function LivePageInner() {
     const [scheduledAuctions, setScheduledAuctions] = useState([]);
     const [liveLandingLoading, setLiveLandingLoading] = useState(false);
     const [forceMobileLive, setForceMobileLive] = useState(false);
+    const [viewerSessionKey, setViewerSessionKey] = useState(null);
 
     // Permission and Stream State
     const [permissionStatus, setPermissionStatus] = useState('idle'); // idle, requesting, granted, denied
@@ -109,6 +110,20 @@ function LivePageInner() {
     }, []);
 
     useEffect(() => {
+        if (typeof window === 'undefined') return;
+
+        const storageKey = 'bidpal-live-viewer-session';
+        let sessionId = window.sessionStorage.getItem(storageKey);
+
+        if (!sessionId) {
+            sessionId = `${Date.now()}-${Math.random().toString(36).slice(2)}`;
+            window.sessionStorage.setItem(storageKey, sessionId);
+        }
+
+        setViewerSessionKey(`guest:${sessionId}`);
+    }, []);
+
+    useEffect(() => {
         if (auctionId) return;
 
         const fetchLiveLanding = async () => {
@@ -137,6 +152,9 @@ function LivePageInner() {
 
     // Determine if the current user is the seller (host)
     const isHost = auction && user && String(auction.seller_info?.seller_id) === String(user.seller_id || user.id);
+    const currentViewerKey = user
+        ? `user:${user.user_id || user.id}`
+        : viewerSessionKey;
 
     // ── Fetch own bidding eligibility + standing when user is known ──────────
     useEffect(() => {
@@ -178,13 +196,17 @@ function LivePageInner() {
 
     // ── Socket.IO setup ──────────────────────────────────────────────────────
     useEffect(() => {
-        if (!auctionId) return;
+        if (!auctionId || !auction || (!isHost && !currentViewerKey)) return;
 
         const socket = io(apiUrl, { transports: ['websocket', 'polling'] });
         socketRef.current = socket;
 
         socket.on('connect', () => {
-            socket.emit('join-auction', auctionId);
+            socket.emit('join-auction', {
+                auctionId,
+                role: isHost ? 'seller' : 'viewer',
+                viewerKey: isHost ? null : currentViewerKey,
+            });
         });
 
         socket.on('bid-update', (bid) => {
@@ -297,7 +319,7 @@ function LivePageInner() {
             socket.emit('leave-auction', auctionId);
             socket.disconnect();
         };
-    }, [auctionId, apiUrl, user]);
+    }, [auctionId, apiUrl, auction, currentViewerKey, isHost, user]);
 
     // ── Auto-scroll chat to the latest message ───────────────────────────────
     useEffect(() => {
@@ -979,14 +1001,14 @@ function LivePageInner() {
 
     // Track view/join event — only for logged-in, non-host viewers
     useEffect(() => {
-        if (!auctionId || isHost || !user) return;
+        if (!auctionId || !auction || isHost || !user) return;
         const session_id = `${Date.now()}-${Math.random().toString(36).slice(2)}`;
         fetch(`${apiUrl}/api/dashboard/auction/${auctionId}/view`, {
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },
             body: JSON.stringify({ user_id: user?.user_id || user?.id || null, session_id })
         }).catch(() => {}); // Fire-and-forget — non-critical
-    }, [auctionId, isHost, user]); // re-runs when user auth resolves
+    }, [auctionId, auction, apiUrl, isHost, user]); // re-runs when user auth resolves
 
     const handleShare = async () => {
         try {

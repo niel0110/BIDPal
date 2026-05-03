@@ -3,7 +3,7 @@
 import { useState, useEffect } from 'react';
 import { useRouter } from 'next/navigation';
 import Link from 'next/link';
-import { User, Heart } from 'lucide-react';
+import { User, Heart, Eye } from 'lucide-react';
 import { useAuth } from '@/context/AuthContext';
 import styles from './AuctionCard.module.css';
 
@@ -15,7 +15,11 @@ export default function AuctionCard({ data }) {
     const [isFollowing, setIsFollowing] = useState(data.isFollowing || false);
     const [isFollowLoading, setIsFollowLoading] = useState(false);
     const [interestedCount, setInterestedCount] = useState(
-        data.status === 'scheduled' ? (data.reminder_count ?? 0) : (data.bids_count ?? 0)
+        data.status === 'active'
+            ? (data.live_viewers ?? 0)
+            : data.status === 'scheduled'
+                ? (data.reminder_count ?? 0)
+                : (data.bids_count ?? 0)
     );
 
     // All images — deduplicate and filter nulls/noposter
@@ -31,9 +35,13 @@ export default function AuctionCard({ data }) {
 
     useEffect(() => {
         setInterestedCount(
-            data.status === 'scheduled' ? (data.reminder_count ?? 0) : (data.bids_count ?? 0)
+            data.status === 'active'
+                ? (data.live_viewers ?? 0)
+                : data.status === 'scheduled'
+                    ? (data.reminder_count ?? 0)
+                    : (data.bids_count ?? 0)
         );
-    }, [data.reminder_count, data.bids_count, data.status]);
+    }, [data.live_viewers, data.reminder_count, data.bids_count, data.status]);
 
     // Check follow status once user is known
     useEffect(() => {
@@ -133,7 +141,7 @@ export default function AuctionCard({ data }) {
                     </button>
 
                     <div className={`${styles.overlayBadge} ${styles.redBadge}`}>
-                        <User size={12} />
+                        {data.status === 'active' ? <Eye size={12} /> : <User size={12} />}
                         <span>{interestedCount}</span>
                         <span>|</span>
                         <span>{data.timeLeft}</span>

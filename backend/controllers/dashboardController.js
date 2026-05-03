@@ -227,7 +227,7 @@ export const getDashboardSummary = async (req, res) => {
       completed,
       liveDuration,
       stats: {
-        viewers: Math.max(liveViewers, totalViews),
+        viewers: liveViewers,
         liveViewers,
         totalViews,
         shares: shares,

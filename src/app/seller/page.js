@@ -329,7 +329,7 @@ export default function SellerDashboard() {
         socket.on('total-views-update', (count) => {
             setDashboardData(prev => ({
                 ...prev,
-                stats: { ...prev.stats, viewers: count }
+                stats: { ...prev.stats, totalViews: count }
             }));
         });
 
