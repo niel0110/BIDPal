@@ -46,8 +46,9 @@
     display: flex;
     align-items: center;
     justify-content: space-between;
-    padding: 1rem 1.25rem 0.85rem;
-    border-bottom: 1px solid #f1f5f9;
+    padding: 1.25rem 1.25rem;
+    background: linear-gradient(135deg, #D32F2F, #b71c1c);
+    color: white;
     flex-shrink: 0;
 }
 
@@ -58,15 +59,15 @@
 }
 
 .brand {
-    font-size: 1.1rem;
+    font-size: 1.2rem;
     font-weight: 800;
-    color: #D32F2F;
+    color: white;
     letter-spacing: -0.02em;
 }
 
 .brandSub {
-    font-size: 0.7rem;
-    color: #94a3b8;
+    font-size: 0.75rem;
+    color: rgba(255, 255, 255, 0.85);
     font-weight: 600;
     text-transform: uppercase;
     letter-spacing: 0.05em;
@@ -92,20 +93,20 @@
 }
 
 .printBtn {
-    background: #f1f5f9;
-    color: #475569;
+    background: rgba(255, 255, 255, 0.2);
+    color: white;
 }
 .printBtn:hover {
-    background: #e2e8f0;
+    background: rgba(255, 255, 255, 0.3);
     transform: scale(1.05);
 }
 
 .closeBtn {
-    background: #fff1f2;
-    color: #D32F2F;
+    background: rgba(255, 255, 255, 0.2);
+    color: white;
 }
 .closeBtn:hover {
-    background: #ffe4e6;
+    background: rgba(255, 255, 255, 0.3);
     transform: scale(1.05);
 }
 
@@ -401,6 +402,8 @@
         max-height: none;
         box-shadow: none;
         border-radius: 0;
+        -webkit-print-color-adjust: exact;
+        print-color-adjust: exact;
     }
     .topBar,
     .footer,

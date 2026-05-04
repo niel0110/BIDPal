@@ -89,13 +89,13 @@ export const getDashboardSummary = async (req, res) => {
         }
     }
 
-    // 2. Get Auction Queue (scheduled bid auctions only — exclude fixed price sale_type='sale')
+    // 2. Get Auction Queue (scheduled bid auctions only — exclude fixed price where buy_now_price > 0)
     const { data: queueAuctions, error: queueError } = await supabase
       .from('Auctions')
       .select('*')
       .eq('seller_id', final_seller_id)
       .eq('status', 'scheduled')
-      .or('sale_type.eq.bid,sale_type.is.null')
+      .or('buy_now_price.eq.0,buy_now_price.is.null')
       .order('start_time', { ascending: true });
 
     if (queueError) throw queueError;

@@ -101,8 +101,19 @@ export default function InventoryPage() {
             const token = localStorage.getItem('bidpal_token');
 
             const now = new Date();
-            const todayDate = now.toISOString().slice(0, 10);
-            const nowTime = now.toTimeString().slice(0, 5);
+            let startISO, endISO;
+
+            if (saleType === 'sale') {
+                startISO = now.toISOString();
+            } else {
+                const startDateObj = new Date(`${scheduleForm.startDate}T${scheduleForm.startTime}:00`);
+                startISO = startDateObj.toISOString();
+                
+                if (scheduleForm.endDate && scheduleForm.endTime) {
+                    const endDateObj = new Date(`${scheduleForm.endDate}T${scheduleForm.endTime}:00`);
+                    endISO = endDateObj.toISOString();
+                }
+            }
 
             const payload = {
                 product_id: scheduleProduct.products_id,
@@ -112,10 +123,11 @@ export default function InventoryPage() {
                 starting_bid: saleType === 'bid' ? scheduleProduct.starting_price : null,
                 reserve_price: saleType === 'bid' ? scheduleProduct.reserve_price : null,
                 buy_now_price: saleType === 'sale' ? (parseFloat(scheduleForm.fixedPrice) || scheduleProduct.buy_now_price) : null,
-                start_date: saleType === 'sale' ? todayDate : scheduleForm.startDate,
-                start_time: saleType === 'sale' ? nowTime : scheduleForm.startTime,
+                start_timestamp: startISO,
+                end_timestamp: endISO,
+                timezone: Intl.DateTimeFormat().resolvedOptions().timeZone,
                 bid_increment: saleType === 'bid' ? parseFloat(scheduleForm.bidIncrement) : null,
-                availability: scheduleForm.availability || 1,
+                availability: saleType === 'sale' ? 1 : (scheduleForm.availability || 1),
             };
 
             const res = await fetch(`${apiUrl}/api/auctions/schedule`, {
@@ -219,14 +231,8 @@ export default function InventoryPage() {
 
             {/* Schedule Modal */}
             {scheduleProduct && (
-                <div style={{
-                    position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.45)', backdropFilter: 'blur(4px)',
-                    display: 'flex', alignItems: 'center', justifyContent: 'center', zIndex: 1000, padding: '1rem'
-                }} onClick={closeScheduleModal}>
-                    <div style={{
-                        background: 'white', borderRadius: 20, padding: '2rem', width: '100%', maxWidth: 500,
-                        maxHeight: '90vh', overflowY: 'auto', boxShadow: '0 20px 60px rgba(0,0,0,0.18)'
-                    }} onClick={e => e.stopPropagation()}>
+                <div className={styles.modalOverlay} onClick={closeScheduleModal}>
+                    <div className={styles.modalContent} onClick={e => e.stopPropagation()}>
 
                         {/* Modal header */}
                         <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '1.5rem' }}>
@@ -271,7 +277,7 @@ export default function InventoryPage() {
                             {/* Sale type */}
                             <div style={{ marginBottom: '1.25rem' }}>
                                 <label style={{ fontSize: '0.78rem', fontWeight: 700, color: '#475569', textTransform: 'uppercase', letterSpacing: '0.05em', display: 'block', marginBottom: '0.5rem' }}>Sale Type</label>
-                                <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '0.6rem' }}>
+                                <div className={styles.modalGrid}>
                                     {[
                                         { id: 'bid', icon: <Gavel size={18} />, label: 'Bid it', sub: 'Live auction' },
                                         { id: 'sale', icon: <Tag size={18} />, label: 'Fixed sale', sub: 'Set price' },
@@ -318,10 +324,8 @@ export default function InventoryPage() {
                                         <label style={{ fontSize: '0.78rem', fontWeight: 700, color: '#475569', textTransform: 'uppercase', letterSpacing: '0.05em', display: 'block', marginBottom: '0.5rem' }}>Stock (Quantity)</label>
                                         <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', border: '1.5px solid #e2e8f0', borderRadius: 10, padding: '0 0.85rem', background: '#fafafa' }}>
                                             <input
-                                                type="number" min="1" placeholder="1" required
-                                                value={scheduleForm.availability || 1}
-                                                onChange={e => setScheduleForm(p => ({ ...p, availability: e.target.value }))}
-                                                style={{ flex: 1, border: 'none', background: 'transparent', padding: '0.75rem 0', fontSize: '0.9rem', outline: 'none', color: '#0f172a' }}
+                                                type="number" value="1" disabled
+                                                style={{ flex: 1, border: 'none', background: 'transparent', padding: '0.75rem 0', fontSize: '0.9rem', outline: 'none', color: '#94a3b8', cursor: 'not-allowed' }}
                                             />
                                         </div>
                                     </div>
@@ -350,7 +354,7 @@ export default function InventoryPage() {
                             {saleType !== 'sale' && (
                                 <div style={{ marginBottom: '1.25rem' }}>
                                     <label style={{ fontSize: '0.78rem', fontWeight: 700, color: '#475569', textTransform: 'uppercase', letterSpacing: '0.05em', display: 'block', marginBottom: '0.5rem' }}>Date & Time</label>
-                                    <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '0.6rem' }}>
+                                    <div className={styles.modalGrid}>
                                         <div style={{ border: '1.5px solid #e2e8f0', borderRadius: 10, padding: '0.6rem 0.85rem', display: 'flex', alignItems: 'center', gap: '0.5rem', background: '#fafafa' }}>
                                             <Calendar size={15} color="#94a3b8" />
                                             <input

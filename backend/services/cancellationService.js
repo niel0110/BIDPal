@@ -239,6 +239,48 @@ export const processCancellation = async (cancellationData) => {
         console.error('Failed to update order status:', orderUpdateError.message);
         throw new Error('Failed to cancel order: ' + orderUpdateError.message);
       }
+
+      // Restock fixed-price items if applicable
+      if (isFixedPrice) {
+        try {
+          if (resolvedOrder.auction_id) {
+            // Find the product_id for this auction/order
+            const { data: auctionRow } = await supabase
+              .from('Auctions')
+              .select('products_id')
+              .eq('auction_id', resolvedOrder.auction_id)
+              .maybeSingle();
+
+            if (auctionRow?.products_id) {
+              await supabase
+                .from('Products')
+                .update({ availability: 1, status: 'active' })
+                .eq('products_id', auctionRow.products_id);
+              console.log(`✅ Restocked product ${auctionRow.products_id} for cancelled fixed-price order`);
+            }
+          } else if (resolvedOrderId) {
+            // Cart-based order: check Order_items
+            const { data: orderItems } = await supabase
+              .from('Order_items')
+              .select('products_id, quantity')
+              .eq('order_id', resolvedOrderId);
+
+            if (orderItems && orderItems.length > 0) {
+              for (const item of orderItems) {
+                // In a true multi-stock setup we'd increment by item.quantity, 
+                // but since these are single-stock items, we just reset to 1
+                await supabase
+                  .from('Products')
+                  .update({ availability: 1, status: 'active' })
+                  .eq('products_id', item.products_id);
+                console.log(`✅ Restocked product ${item.products_id} from cart-based order cancellation`);
+              }
+            }
+          }
+        } catch (restockErr) {
+          console.warn('Failed to restock product:', restockErr.message);
+        }
+      }
     } else if (auction_id) {
       // Last-resort fallback: cancel by auction_id
       await supabase

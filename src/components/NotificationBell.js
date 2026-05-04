@@ -55,10 +55,11 @@ function getNotificationTarget(notification) {
 
         // order_update / order_cancelled:
         //   reference_type='auction' → seller notification → seller orders
-        //   reference_type='order'  → buyer notification → buyer orders
+        //   reference_type='order'  → buyer notification → buyer orders (unless payload title indicates it's for seller)
         case 'order_update':
         case 'order_cancelled':
-            return isSeller ? '/seller/orders' : '/orders';
+            const forSeller = reference_type === 'auction' || notification.payload?.title?.toLowerCase().includes('by buyer');
+            return forSeller ? '/seller/orders' : '/orders';
 
         // KYC decisions → re-submit or view profile
         case 'kyc_approved':
@@ -168,7 +169,9 @@ export default function NotificationBell() {
                                 <p>No notifications yet</p>
                             </div>
                         ) : (
-                            notifications.slice(0, 20).map(n => (
+                            notifications
+                                .filter(n => n.payload && (n.payload.title || n.payload.message || n.payload.itemName || n.type === 'order_update'))
+                                .slice(0, 20).map(n => (
                                 <div
                                     key={n.notification_id}
                                     className={`${styles.item} ${isUnread(n) ? styles.unread : ''} ${isUnread(n) ? (styles[n.type] || '') : ''}`}

@@ -310,6 +310,8 @@ export const scheduleAuction = async (req, res) => {
       start_time,
       end_date,
       end_time,
+      start_timestamp: client_start_timestamp,
+      end_timestamp: client_end_timestamp,
       timezone = 'UTC',
       bid_increment,
       availability,
@@ -320,8 +322,8 @@ export const scheduleAuction = async (req, res) => {
       return res.status(400).json({ error: 'product_id and user_id/seller_id are required.' });
     }
 
-    if (!start_date || !start_time) {
-      return res.status(400).json({ error: 'start_date and start_time are required.' });
+    if (!client_start_timestamp && (!start_date || !start_time)) {
+      return res.status(400).json({ error: 'start_date and start_time (or start_timestamp) are required.' });
     }
 
     let final_seller_id = seller_id;
@@ -376,19 +378,24 @@ export const scheduleAuction = async (req, res) => {
         });
     }
 
-    // Combine date and time to ISO timestamp
-    const startDateTimeStr = `${start_date}T${start_time}:00`;
-    const start_timestamp = new Date(startDateTimeStr).toISOString();
+    // Combine date and time to ISO timestamp (fallback for old clients)
+    let start_timestamp = client_start_timestamp;
+    if (!start_timestamp) {
+      const startDateTimeStr = `${start_date}T${start_time}:00`;
+      start_timestamp = new Date(startDateTimeStr).toISOString();
+    }
 
-    let end_timestamp;
-    if (end_date && end_time) {
-      const endDateTimeStr = `${end_date}T${end_time}:00`;
-      end_timestamp = new Date(endDateTimeStr).toISOString();
-    } else {
-      // Default: end at 23:59:59 of the same day as the start
-      const d = new Date(startDateTimeStr);
-      d.setHours(23, 59, 59, 0);
-      end_timestamp = d.toISOString();
+    let end_timestamp = client_end_timestamp;
+    if (!end_timestamp) {
+      if (end_date && end_time) {
+        const endDateTimeStr = `${end_date}T${end_time}:00`;
+        end_timestamp = new Date(endDateTimeStr).toISOString();
+      } else {
+        // Default: end at 23:59:59 of the same day as the start
+        const d = new Date(start_timestamp);
+        d.setHours(23, 59, 59, 0);
+        end_timestamp = d.toISOString();
+      }
     }
 
     const isBid = sale_type === 'bid';

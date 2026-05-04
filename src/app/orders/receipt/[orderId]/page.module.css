@@ -64,7 +64,7 @@
     justify-content: space-between;
     align-items: flex-start;
     padding: 1.5rem 1.5rem 1.25rem;
-    background: linear-gradient(135deg, #1a1a2e 0%, #16213e 100%);
+    background: linear-gradient(135deg, #D32F2F, #b71c1c);
     color: white;
 }
 
@@ -78,7 +78,7 @@
     font-size: 1.5rem;
     font-weight: 900;
     letter-spacing: -0.5px;
-    color: #e53e3e;
+    color: white;
 }
 
 .brandSub {
@@ -331,7 +331,7 @@
 @media print {
     .page { background: white; padding: 0; }
     .nav, .actions { display: none; }
-    .receiptCard { box-shadow: none; border: 1px solid #ddd; }
+    .receiptCard { box-shadow: none; border: 1px solid #ddd; -webkit-print-color-adjust: exact; print-color-adjust: exact; }
 }
 
 @media (max-width: 480px) {

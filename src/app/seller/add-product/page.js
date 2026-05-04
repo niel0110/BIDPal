@@ -100,6 +100,7 @@ export default function AddProductPage() {
     const [isSubmitting, setIsSubmitting] = useState(false);
     const [images, setImages] = useState([]);
     const [previewUrls, setPreviewUrls] = useState([]);
+    const [fullPreviewUrl, setFullPreviewUrl] = useState(null);
     const [imageErrors, setImageErrors] = useState([]);
     const [formData, setFormData] = useState({
         name: '',
@@ -186,7 +187,8 @@ export default function AddProductPage() {
         }
     };
 
-    const removeImage = (index) => {
+    const removeImage = (e, index) => {
+        e.stopPropagation();
         setImages(prev => prev.filter((_, i) => i !== index));
         setPreviewUrls(prev => {
             const newPreviews = [...prev];
@@ -559,12 +561,10 @@ export default function AddProductPage() {
 
                             {previewUrls.map((url, idx) => (
                               <div key={idx} className={styles.photoCard}>
-                                  <div className={styles.photoPreview}>
+                                  <div className={styles.photoPreview} onClick={() => setFullPreviewUrl(url)} style={{cursor: 'pointer'}}>
                                       <img src={url} alt={`preview ${idx}`} />
-                                      <div className={styles.deleteOverlay} onClick={() => removeImage(idx)}>
-                                          <div className={styles.trashCircle}>
-                                              <Trash2 size={24} color="white" fill="white" />
-                                          </div>
+                                      <div className={styles.deleteCorner} onClick={(e) => removeImage(e, idx)}>
+                                          <Trash2 size={16} color="white" />
                                       </div>
                                   </div>
                                   <div className={styles.photoInfoDetailed}>
@@ -573,6 +573,18 @@ export default function AddProductPage() {
                                   </div>
                               </div>
                             ))}
+                        </div>
+                    </div>
+                )}
+
+                {/* Full Image Preview Modal */}
+                {fullPreviewUrl && (
+                    <div className={styles.fullPreviewModal} onClick={() => setFullPreviewUrl(null)}>
+                        <div className={styles.fullPreviewContent} onClick={e => e.stopPropagation()}>
+                            <button className={styles.closePreviewBtn} onClick={() => setFullPreviewUrl(null)}>
+                                <X size={24} />
+                            </button>
+                            <img src={fullPreviewUrl} alt="Full Preview" />
                         </div>
                     </div>
                 )}
