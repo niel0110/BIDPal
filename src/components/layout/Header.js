@@ -4,6 +4,7 @@ import { Suspense, useState, useEffect, useRef } from 'react';
 import Link from 'next/link';
 import { Search, SlidersHorizontal, User, ShoppingCart, Home, Heart, MessageCircle, LogOut, LayoutDashboard, Package, Gavel, BarChart3, ClipboardList, AlignJustify, X } from 'lucide-react';
 import { useAuth } from '@/context/AuthContext';
+import { useCart } from '@/context/CartContext';
 import { useRouter, usePathname, useSearchParams } from 'next/navigation';
 
 import Logo from '@/components/Logo';
@@ -13,6 +14,7 @@ import styles from './Header.module.css';
 
 function HeaderInner() {
   const { user, logout } = useAuth();
+  const { cartItems } = useCart();
   const { totalUnreadCount, unreadMsgCount } = useNotifications();
   const [isMenuOpen, setIsMenuOpen] = useState(false);
   const [showFilter, setShowFilter] = useState(false);
@@ -260,7 +262,27 @@ function HeaderInner() {
                 <span>Orders</span>
               </Link>
               <Link href="/cart" className={styles.navItem}>
-                <ShoppingCart size={18} className={styles.cartIcon} color="#D32F2F" />
+                <div style={{ position: 'relative', display: 'flex', alignItems: 'center' }}>
+                  <ShoppingCart size={18} className={styles.cartIcon} color="#D32F2F" />
+                  {cartItems.length > 0 && (
+                    <span style={{ 
+                      position: 'absolute', 
+                      top: '-8px', 
+                      right: '-8px', 
+                      background: '#ef4444', 
+                      color: 'white', 
+                      fontSize: '0.65rem', 
+                      fontWeight: 700, 
+                      padding: '1px 5px', 
+                      borderRadius: '8px',
+                      minWidth: '14px',
+                      textAlign: 'center',
+                      border: '2px solid white'
+                    }}>
+                      {cartItems.length > 9 ? '9+' : cartItems.length}
+                    </span>
+                  )}
+                </div>
                 <span>Cart</span>
               </Link>
             </>

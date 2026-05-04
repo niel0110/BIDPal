@@ -525,6 +525,8 @@ export const getWishlist = async (req, res) => {
           end_time: auction.end_time,
           current_price: auction.current_price || auction.reserve_price || 0,
           buy_now_price: auction.buy_now_price || 0,
+          product_status: productData?.status || 'active',
+          availability: productData?.availability || 1,
           is_liked: true
         };
       })

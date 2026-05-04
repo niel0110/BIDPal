@@ -45,7 +45,7 @@ function ReceiptPageInner() {
                     <Package size={48} color="#ddd" strokeWidth={1.5} />
                     <h2>Receipt not found</h2>
                     <p>{error || 'This receipt could not be loaded.'}</p>
-                    <button className={styles.backBtn} onClick={() => router.push('/orders')}>
+                    <button className={styles.backBtn} onClick={() => router.back()}>
                         <ArrowLeft size={16} /> Back to Orders
                     </button>
                 </div>
@@ -76,7 +76,7 @@ function ReceiptPageInner() {
 
                 {/* Nav bar */}
                 <div className={styles.nav}>
-                    <button className={styles.backBtn} onClick={() => router.push('/orders')}>
+                    <button className={styles.backBtn} onClick={() => router.back()}>
                         <ArrowLeft size={16} /> My Orders
                     </button>
                     <button className={styles.printBtn} onClick={() => window.print()}>
@@ -242,7 +242,7 @@ function ReceiptPageInner() {
 
                 {/* Actions */}
                 <div className={styles.actions}>
-                    <button className={styles.ordersBtn} onClick={() => router.push('/orders')}>
+                    <button className={styles.ordersBtn} onClick={() => router.back()}>
                         View My Orders
                     </button>
                 </div>

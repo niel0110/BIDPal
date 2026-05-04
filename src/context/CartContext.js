@@ -9,18 +9,22 @@ const API_URL = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:5000';
 export function CartProvider({ children }) {
     const { user } = useAuth();
     const [cartItems, setCartItems] = useState([]);
+    const [stashedItems, setStashedItems] = useState([]);
+    const [cartLimit, setCartLimit] = useState(15);
     const [loading, setLoading] = useState(true);
 
     const fetchCart = useCallback(async () => {
         if (!user || !user.user_id) {
             setCartItems([]);
+            setStashedItems([]);
             setLoading(false);
             return;
         }
 
-        // Skip cart fetch for sellers (they don't need a cart)
+        // Skip cart fetch for sellers
         if (user.role?.toLowerCase() === 'seller') {
             setCartItems([]);
+            setStashedItems([]);
             setLoading(false);
             return;
         }
@@ -29,9 +33,9 @@ export function CartProvider({ children }) {
             const res = await fetch(`${API_URL}/api/cart/${user.user_id}`);
 
             if (!res.ok) {
-                // If it's a 404 or validation error, just set empty cart silently
                 if (res.status === 404 || res.status === 400) {
                     setCartItems([]);
+                    setStashedItems([]);
                     setLoading(false);
                     return;
                 }
@@ -40,11 +44,21 @@ export function CartProvider({ children }) {
             }
 
             const data = await res.json();
-            setCartItems(Array.isArray(data) ? data : []);
+            
+            // Handle new object format { active, stashed, limit }
+            if (data.active && Array.isArray(data.active)) {
+                setCartItems(data.active);
+                setStashedItems(data.stashed || []);
+                setCartLimit(data.limit || 15);
+            } else {
+                // Fallback for old format
+                setCartItems(Array.isArray(data) ? data : []);
+                setStashedItems([]);
+            }
         } catch (err) {
-            // Silently fail - cart is optional, don't break the app
             console.warn('Cart unavailable:', err.message);
             setCartItems([]);
+            setStashedItems([]);
         } finally {
             setLoading(false);
         }
@@ -78,6 +92,34 @@ export function CartProvider({ children }) {
         }
     };
 
+    const stashItem = async (cartItem_id) => {
+        try {
+            const res = await fetch(`${API_URL}/api/cart/stash/${cartItem_id}`, {
+                method: 'PATCH'
+            });
+            if (!res.ok) throw new Error('Failed to stash item');
+            await fetchCart();
+            return { success: true };
+        } catch (err) {
+            console.error('Stash item error:', err);
+            return { success: false, error: err.message };
+        }
+    };
+
+    const unstashItem = async (cartItem_id) => {
+        try {
+            const res = await fetch(`${API_URL}/api/cart/unstash/${cartItem_id}`, {
+                method: 'PATCH'
+            });
+            if (!res.ok) throw new Error('Failed to unstash item');
+            await fetchCart();
+            return { success: true };
+        } catch (err) {
+            console.error('Unstash item error:', err);
+            return { success: false, error: err.message };
+        }
+    };
+
     const removeItem = async (cart_id) => {
         try {
             const res = await fetch(`${API_URL}/api/cart/${cart_id}`, {
@@ -88,6 +130,7 @@ export function CartProvider({ children }) {
                 throw new Error(errorData.error || 'Failed to remove item');
             }
             setCartItems(prev => prev.filter(item => item.cart_id !== cart_id));
+            setStashedItems(prev => prev.filter(item => item.cart_id !== cart_id));
             return { success: true };
         } catch (err) {
             console.error('Remove cart item error:', err);
@@ -96,11 +139,22 @@ export function CartProvider({ children }) {
     };
 
     const isInCart = (product_id) => {
-        return cartItems.some(item => item.id === product_id);
+        return cartItems.some(item => item.id === product_id) || stashedItems.some(item => item.id === product_id);
     };
 
     return (
-        <CartContext.Provider value={{ cartItems, loading, addToCart, removeItem, isInCart, refreshCart: fetchCart }}>
+        <CartContext.Provider value={{ 
+            cartItems, 
+            stashedItems, 
+            cartLimit,
+            loading, 
+            addToCart, 
+            stashItem,
+            unstashItem,
+            removeItem, 
+            isInCart, 
+            refreshCart: fetchCart 
+        }}>
             {children}
         </CartContext.Provider>
     );

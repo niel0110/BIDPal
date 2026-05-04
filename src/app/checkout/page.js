@@ -2,6 +2,7 @@
 
 import BIDPalLoader from '@/components/BIDPalLoader';
 import BackButton from '@/components/BackButton';
+import ReceiptModal from '@/components/ReceiptModal';
 import { useState, useEffect, useCallback, Suspense } from 'react';
 import { useRouter, useSearchParams } from 'next/navigation';
 import { MapPin, Plus, CreditCard, Truck, CheckCircle2, Loader2, AlertCircle, X, ShoppingBag, Gavel, Smartphone, Copy, Tag } from 'lucide-react';
@@ -35,6 +36,9 @@ function CheckoutPageInner() {
     const [showErrorModal, setShowErrorModal] = useState(false);
     const [modalError, setModalError] = useState('');
     const [gcashCopied, setGcashCopied] = useState(false);
+
+    // Receipt modal state (replaces full-page navigation)
+    const [receiptInfo, setReceiptInfo] = useState(null); // { orderId, paymentRef, paidAt, method }
 
     // Fetch order/auction data — check real order status first
     useEffect(() => {
@@ -232,9 +236,24 @@ function CheckoutPageInner() {
                 const order = await orderRes.json();
                 if (!orderRes.ok) throw new Error(order.error || 'Failed to place order');
 
-                router.push(
-                    `/orders/receipt/${order.order_id}?ref=${encodeURIComponent(payment_reference || '')}&paid_at=${encodeURIComponent(paid_at || '')}&method=${encodeURIComponent(paymentMethod)}`
-                );
+                // Remove the purchased item from cart WITHOUT restoring stock
+                // (product is now "sold" — stock must stay at 0)
+                const orderedProductIds = orderData.items.map(item => item.products_id || item.id).filter(Boolean);
+                if (orderedProductIds.length > 0) {
+                    fetch(`${API_URL}/api/cart/user/${user.user_id}/ordered`, {
+                        method: 'DELETE',
+                        headers: { 'Content-Type': 'application/json' },
+                        body: JSON.stringify({ product_ids: orderedProductIds })
+                    }).catch(() => {}); // fire-and-forget; non-critical
+                }
+
+                // Show receipt as popup instead of navigating away
+                setReceiptInfo({
+                    orderId: order.order_id,
+                    paymentRef: payment_reference || '',
+                    paidAt: paid_at || '',
+                    method: paymentMethod,
+                });
                 return;
             }
 
@@ -253,9 +272,13 @@ function CheckoutPageInner() {
             const data = await res.json();
 
             if (res.ok) {
-                router.push(
-                    `/orders/receipt/${data.order_id}?ref=${encodeURIComponent(data.payment_reference || '')}&paid_at=${encodeURIComponent(data.paid_at || '')}&method=${encodeURIComponent(paymentMethod)}`
-                );
+                // Show receipt as popup instead of navigating away
+                setReceiptInfo({
+                    orderId: data.order_id,
+                    paymentRef: data.payment_reference || '',
+                    paidAt: data.paid_at || '',
+                    method: paymentMethod,
+                });
             } else {
                 throw new Error(data.error || 'Failed to create order');
             }
@@ -698,6 +721,17 @@ function CheckoutPageInner() {
                     </button>
                 </div>
             </div>
+        )}
+        {/* ── Receipt Modal (shown after successful order) ── */}
+        {receiptInfo && (
+            <ReceiptModal
+                orderId={receiptInfo.orderId}
+                paymentRef={receiptInfo.paymentRef}
+                paidAt={receiptInfo.paidAt}
+                method={receiptInfo.method}
+                onClose={() => setReceiptInfo(null)}
+                onViewOrders={() => router.push('/orders')}
+            />
         )}
         </>
     );

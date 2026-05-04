@@ -200,7 +200,8 @@ export default function AddProductPage() {
         setFormData(prev => ({
             ...prev,
             reservePrice: prices.reservePrice.toString(),
-            startingPrice: prices.startingBid.toString()
+            startingPrice: prices.startingBid.toString(),
+            bidIncrement: prices.bidIncrement.toString()
         }));
     };
 

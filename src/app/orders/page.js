@@ -2,6 +2,7 @@
 
 import BIDPalLoader from '@/components/BIDPalLoader';
 import BackButton from '@/components/BackButton';
+import ReceiptModal from '@/components/ReceiptModal';
 import { useState, useEffect, useCallback } from 'react';
 import Link from 'next/link';
 import { useRouter } from 'next/navigation';
@@ -25,7 +26,6 @@ export default function OrdersPage() {
     const [cancellingOrder, setCancellingOrder] = useState(null);
     const [showCancellationModal, setShowCancellationModal] = useState(false);
     const [orderToCancel, setOrderToCancel] = useState(null);
-    const [selectedFixedOrderId, setSelectedFixedOrderId] = useState(null);
 
     // Review state
     const [reviewTarget, setReviewTarget] = useState(null);   // order being reviewed
@@ -85,9 +85,6 @@ export default function OrdersPage() {
         return idMatch || itemMatch;
     };
 
-    const fixedPriceOrders = orders.filter(order => isFixedPriceOrder(order) && matchesSearch(order));
-    const selectedFixedOrder = fixedPriceOrders.find(order => order.id === selectedFixedOrderId) || null;
-
     const filteredOrders = orders.filter(order => {
         // Map new status format to tab filter
         let tabStatus = order.status;
@@ -113,56 +110,6 @@ export default function OrdersPage() {
         }
     };
 
-    const getFixedStatusCopy = (order) => {
-        switch (order.status) {
-            case 'pending_payment':
-                return {
-                    title: 'Awaiting checkout',
-                    text: 'Complete checkout or cancel this fixed-price order.',
-                    step: 0,
-                };
-            case 'processing':
-            case 'ship':
-                return {
-                    title: order.payment_method === 'cash_on_delivery' ? 'Preparing shipment' : 'Ready to ship',
-                    text: order.payment_method === 'cash_on_delivery'
-                        ? 'Your order is confirmed. Cash will be collected when the item is delivered.'
-                        : 'Payment is confirmed. The seller is preparing your item for shipping.',
-                    step: 1,
-                };
-            case 'shipped':
-            case 'receive':
-                return {
-                    title: 'Out for delivery',
-                    text: order.tracking_number
-                        ? `${order.courier || 'Courier'} tracking: ${order.tracking_number}`
-                        : 'The seller has shipped your item. Confirm once you receive it.',
-                    step: 2,
-                };
-            case 'completed':
-                return {
-                    title: 'Order completed',
-                    text: order.payment_method === 'cash_on_delivery'
-                        ? 'Item received and cash collection is complete.'
-                        : 'Item received and payment is complete.',
-                    step: 3,
-                };
-            case 'cancelled':
-                return {
-                    title: 'Order cancelled',
-                    text: 'This fixed-price order was cancelled.',
-                    step: 0,
-                };
-            default:
-                return {
-                    title: 'Order in progress',
-                    text: 'Your fixed-price listing order is being processed.',
-                    step: 1,
-                };
-        }
-    };
-
-    const fixedOrderItem = (order) => order?.items?.[0] || {};
     const isCodPayment = (order) => ['cash_on_delivery', 'cod', 'cash'].includes(String(order?.payment_method || '').toLowerCase());
     const canCancelFixedPriceOrder = (order) => (
         isFixedPriceOrder(order) &&
@@ -492,7 +439,7 @@ export default function OrdersPage() {
                     </div>
                 )}
 
-                {false && fixedPriceOrders.length > 0 ? (
+                {false ? (
                     <section className={styles.fixedListingsPanel}>
                         {!selectedFixedOrder ? (
                             <>
@@ -1026,132 +973,10 @@ export default function OrdersPage() {
 
             {/* Receipt Modal */}
             {receiptModal.open && (
-                <div className={styles.modalOverlay} onClick={() => setReceiptModal(p => ({ ...p, open: false }))}>
-                    <div className={styles.receiptModal} onClick={e => e.stopPropagation()}>
-                        <div className={styles.receiptModalNav}>
-                            <button className={styles.reviewModalClose} onClick={() => setReceiptModal(p => ({ ...p, open: false }))}>
-                                <X size={18} />
-                            </button>
-                            <button className={styles.printBtn} onClick={() => window.print()}>
-                                <Receipt size={15} /> Print
-                            </button>
-                        </div>
-                        {receiptModal.loading ? (
-                            <div className={styles.receiptModalLoading}>
-                                <Loader2 className={styles.spin} size={28} color="#D32F2F" />
-                                <span>Loading receipt…</span>
-                            </div>
-                        ) : receiptModal.error ? (
-                            <div className={styles.receiptModalError}>
-                                <XCircle size={24} color="#D32F2F" />
-                                <p>{receiptModal.error}</p>
-                            </div>
-                        ) : receiptModal.data ? (() => {
-                            const r = receiptModal.data;
-                            const methodLabel = r.payment_method === 'gcash' ? 'GCash' : 'Cash on Delivery';
-                            const isCod = ['cash_on_delivery', 'cod', 'cash'].includes(String(r.payment_method || '').toLowerCase());
-                            const isPaid = !isCod && ['processing', 'shipped', 'completed'].includes(r.status);
-                            const totalLabel = isCod ? 'Amount to Collect' : 'Total Paid';
-                            const formatAddress = (addr) => {
-                                if (!addr) return '—';
-                                return [addr.Line1, addr.Line2, addr['Household/blk st.'], addr.Barangay, addr['Municipality/City'], addr.province, addr['zip code']].filter(Boolean).join(', ');
-                            };
-                            return (
-                                <div className={styles.receiptCard} id="receipt-print">
-                                    <div className={styles.receiptHeader}>
-                                        <div className={styles.brandRow}>
-                                            <span className={styles.brand}>BIDPal</span>
-                                            <span className={styles.brandSub}>{isCod ? 'Order Payment Summary' : 'Official Payment Receipt'}</span>
-                                        </div>
-                                        {isCod ? (
-                                            <div className={styles.pendingBadge}>Collect on Delivery</div>
-                                        ) : isPaid ? (
-                                            <div className={styles.paidBadge}><CheckCircle2 size={14} /> Payment Confirmed</div>
-                                        ) : (
-                                            <div className={styles.pendingBadge}>Pending</div>
-                                        )}
-                                    </div>
-                                    <div className={styles.divider} />
-                                    <div className={styles.refSection}>
-                                        {r.payment_reference && (
-                                            <div className={styles.refBlock}>
-                                                <span className={styles.refLabel}>Payment Reference</span>
-                                                <span className={styles.refValue}>{r.payment_reference}</span>
-                                            </div>
-                                        )}
-                                        <div className={styles.refBlock}>
-                                            <span className={styles.refLabel}>Order ID</span>
-                                            <span className={styles.refValueSmall}>{r.order_id}</span>
-                                        </div>
-                                        {r.paid_at && (
-                                            <div className={styles.refBlock}>
-                                                <span className={styles.refLabel}>Date & Time</span>
-                                                <span className={styles.refValueSmall}>{new Date(r.paid_at).toLocaleString('en-PH', { month: 'long', day: 'numeric', year: 'numeric', hour: '2-digit', minute: '2-digit' })}</span>
-                                            </div>
-                                        )}
-                                    </div>
-                                    <div className={styles.divider} />
-                                    {r.product && (
-                                        <div className={styles.productRow}>
-                                            {r.product.image && <img src={r.product.image} alt={r.product.name} className={styles.productImg} />}
-                                            <div className={styles.productInfo}>
-                                                <span className={styles.auctionTag}>{r.order_type === 'cart' ? 'Purchase' : 'Auction Win'}</span>
-                                                <p className={styles.productName}>{r.product.name}</p>
-                                                <p className={styles.productPrice}>₱{(r.product.price || 0).toLocaleString()}</p>
-                                            </div>
-                                        </div>
-                                    )}
-                                    <div className={styles.divider} />
-                                    <div className={styles.breakdown}>
-                                        <div className={styles.breakdownRow}><span>Item Total</span><span>₱{(r.product?.price || 0).toLocaleString()}</span></div>
-                                        <div className={styles.breakdownRow}><span>Shipping Fee</span><span>₱{(r.shipping_fee || 0).toLocaleString()}</span></div>
-                                        <div className={`${styles.breakdownRow} ${styles.totalRow}`}><span>{totalLabel}</span><span>₱{(r.total_amount || 0).toLocaleString()}</span></div>
-                                    </div>
-                                    <div className={styles.divider} />
-                                    <div className={styles.infoGrid}>
-                                        <div className={styles.infoBlock}>
-                                            <div className={styles.infoIcon}><CreditCard size={14} /></div>
-                                            <div><p className={styles.infoLabel}>Payment Method</p><p className={styles.infoValue}>{methodLabel}</p></div>
-                                        </div>
-                                        {isCod && (
-                                            <div className={styles.infoBlock}>
-                                                <div className={styles.infoIcon}><Truck size={14} /></div>
-                                                <div><p className={styles.infoLabel}>Payment Status</p><p className={styles.infoValue}>Cash will be received once delivered.</p></div>
-                                            </div>
-                                        )}
-                                        {r.buyer && (
-                                            <div className={styles.infoBlock}>
-                                                <div className={styles.infoIcon}><Package size={14} /></div>
-                                                <div><p className={styles.infoLabel}>Buyer</p><p className={styles.infoValue}>{r.buyer.name}</p><p className={styles.infoSub}>{r.buyer.email}</p></div>
-                                            </div>
-                                        )}
-                                        {r.seller && (
-                                            <div className={styles.infoBlock}>
-                                                <div className={styles.infoIcon}><Package size={14} /></div>
-                                                <div><p className={styles.infoLabel}>Seller</p><p className={styles.infoValue}>{r.seller.name}</p></div>
-                                            </div>
-                                        )}
-                                        {r.shipping_address && (
-                                            <div className={styles.infoBlock}>
-                                                <div className={styles.infoIcon}><MapPin size={14} /></div>
-                                                <div><p className={styles.infoLabel}>Ship To</p><p className={styles.infoValue}>{formatAddress(r.shipping_address)}</p></div>
-                                            </div>
-                                        )}
-                                        {r.tracking_number && (
-                                            <div className={styles.infoBlock}>
-                                                <div className={styles.infoIcon}><Truck size={14} /></div>
-                                                <div><p className={styles.infoLabel}>Tracking</p><p className={styles.infoValue}>{r.courier} · {r.tracking_number}</p></div>
-                                            </div>
-                                        )}
-                                    </div>
-                                    <div className={styles.receiptFooter}>
-                                        <p>Thank you for using BIDPal!</p>
-                                    </div>
-                                </div>
-                            );
-                        })() : null}
-                    </div>
-                </div>
+                <ReceiptModal
+                    orderId={receiptModal.orderId}
+                    onClose={() => setReceiptModal(p => ({ ...p, open: false }))}
+                />
             )}
 
             {/* Product Quick-View Modal */}

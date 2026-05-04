@@ -1,12 +1,12 @@
 'use client';
 
 import BIDPalLoader from '@/components/BIDPalLoader';
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useRef } from 'react';
 import { useParams, useRouter } from 'next/navigation';
 import Header from '@/components/layout/Header';
 import ProductCard from '@/components/card/ProductCard';
 import { useAuth } from '@/context/AuthContext';
-import { Calendar, Star, MessageCircle, CheckCircle, ShieldCheck, Users, Flag, X, RefreshCw } from 'lucide-react';
+import { Calendar, Star, MessageCircle, CheckCircle, ShieldCheck, Users, Flag, X, RefreshCw, ChevronLeft, ChevronRight } from 'lucide-react';
 import styles from './page.module.css';
 
 export default function StorePage() {
@@ -30,6 +30,9 @@ export default function StorePage() {
     const [reportDetails, setReportDetails] = useState('');
     const [reportSubmitting, setReportSubmitting] = useState(false);
     const [reportDone, setReportDone] = useState(false);
+    const onSaleScrollRef = useRef(null);
+    const soldScrollRef = useRef(null);
+    const completedScrollRef = useRef(null);
 
     const apiUrl = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:5000';
 
@@ -163,6 +166,13 @@ export default function StorePage() {
         }
     };
 
+    const scrollRow = (ref, direction) => {
+        const node = ref.current;
+        if (!node) return;
+        const amount = Math.max(220, Math.floor(node.clientWidth * 0.8));
+        node.scrollBy({ left: direction === 'left' ? -amount : amount, behavior: 'smooth' });
+    };
+
     if (loading) return <div className={styles.main}><Header /><BIDPalLoader /></div>;
     if (!store) return <div className={styles.main}><Header /><div className={styles.empty}>Store not found.</div></div>;
 
@@ -190,9 +200,50 @@ export default function StorePage() {
         product_image: order.product?.image || null,
         final_price: order.product?.final_price || order.total_amount || 0,
         end_time: order.placed_at,
-        status: 'completed',
+        status: 'sold',
     }));
-    const storefrontSoldItems = [...soldFixedCards, ...completedAuctions];
+
+    const renderSliderHeader = (title, count, ref) => (
+        <div className={styles.sliderHeader}>
+            <h2>{title} <span>{count}</span></h2>
+            {count > 1 && (
+                <div className={styles.sliderControls}>
+                    <button type="button" onClick={() => scrollRow(ref, 'left')} aria-label={`Scroll ${title} left`}>
+                        <ChevronLeft size={16} />
+                    </button>
+                    <button type="button" onClick={() => scrollRow(ref, 'right')} aria-label={`Scroll ${title} right`}>
+                        <ChevronRight size={16} />
+                    </button>
+                </div>
+            )}
+        </div>
+    );
+
+    const renderSoldCard = (item) => (
+        <div key={item.auction_id} className={styles.completedCard}>
+            <div className={styles.completedImgWrap}>
+                <img
+                    src={item.product_image || 'https://placehold.co/400x300?text=No+Image'}
+                    alt={item.product_name}
+                    className={styles.completedImg}
+                />
+                <span className={styles.completedBadge}>
+                    {item.status === 'sold' ? 'Sold' : 'Ended'}
+                </span>
+            </div>
+            <div className={styles.completedInfo}>
+                <p className={styles.completedName}>{item.product_name}</p>
+                <p className={styles.completedPrice}>
+                    ₱{(item.final_price || item.current_price || 0).toLocaleString()}
+                </p>
+                {item.end_time && (
+                    <p className={styles.completedDate}>
+                        {new Date(item.end_time).toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' })}
+                    </p>
+                )}
+            </div>
+        </div>
+    );
 
     return (
         <main className={styles.main}>
@@ -314,10 +365,10 @@ export default function StorePage() {
                 <div className={styles.contentArea}>
                     <div className={styles.tabs}>
                         <div className={`${styles.tab} ${activeTab === 'all' ? styles.activeTab : ''}`} onClick={() => setActiveTab('all')}>
-                            Fixed Price Listings {visibleProducts.length > 0 ? `(${visibleProducts.length})` : ''}
+                            Fixed Price Listings {(visibleProducts.length + soldFixedCards.length) > 0 ? `(${visibleProducts.length + soldFixedCards.length})` : ''}
                         </div>
                         <div className={`${styles.tab} ${activeTab === 'completed' ? styles.activeTab : ''}`} onClick={() => setActiveTab('completed')}>
-                            Completed Auctions {storefrontSoldItems.length > 0 ? `(${storefrontSoldItems.length})` : ''}
+                            Completed Auctions {completedAuctions.length > 0 ? `(${completedAuctions.length})` : ''}
                         </div>
                         <div className={`${styles.tab} ${activeTab === 'reviews' ? styles.activeTab : ''}`} onClick={() => setActiveTab('reviews')}>
                             Reviews {reviews.length > 0 ? `(${reviews.length})` : ''}
@@ -325,13 +376,15 @@ export default function StorePage() {
                     </div>
 
                     {activeTab === 'completed' ? (
-                        <div className={styles.completedGrid}>
+                        <div className={styles.sliderSection}>
+                            {renderSliderHeader('Completed Auctions', completedAuctions.length, completedScrollRef)}
+                            <div className={styles.completedSlider} ref={completedScrollRef}>
                             {completedLoading ? (
                                 <div className={styles.panelState}>
                                     <BIDPalLoader size="section" />
                                 </div>
-                            ) : storefrontSoldItems.length > 0 ? (
-                                storefrontSoldItems.map(a => (
+                            ) : completedAuctions.length > 0 ? (
+                                completedAuctions.map(a => (
                                     <div key={a.auction_id} className={styles.completedCard}>
                                         <div className={styles.completedImgWrap}>
                                             <img
@@ -359,6 +412,7 @@ export default function StorePage() {
                             ) : (
                                 <div className={`${styles.empty} ${styles.panelState}`}>No completed auctions yet.</div>
                             )}
+                            </div>
                         </div>
                     ) : activeTab === 'reviews' ? (
                         <div className={styles.reviewsList}>
@@ -447,8 +501,10 @@ export default function StorePage() {
                             )}
                         </div>
                     ) : (
-                        <>
-                            <div className={styles.productScroll}>
+                        <div className={styles.fixedPriceSections}>
+                            <section className={styles.sliderSection}>
+                                {renderSliderHeader('On Sale', visibleProducts.length, onSaleScrollRef)}
+                                <div className={styles.productScroll} ref={onSaleScrollRef}>
                                 {visibleProducts.length > 0 ? (
                                     visibleProducts.map(item => (
                                         <ProductCard key={item.id || item.products_id} data={{
@@ -462,8 +518,20 @@ export default function StorePage() {
                                 ) : (
                                     <div className={`${styles.empty} ${styles.panelState}`}>No fixed price listings yet.</div>
                                 )}
-                            </div>
-                        </>
+                                </div>
+                            </section>
+
+                            <section className={styles.sliderSection}>
+                                {renderSliderHeader('Sold', soldFixedCards.length, soldScrollRef)}
+                                {soldFixedCards.length > 0 ? (
+                                    <div className={styles.completedSlider} ref={soldScrollRef}>
+                                        {soldFixedCards.map(renderSoldCard)}
+                                    </div>
+                                ) : (
+                                    <div className={`${styles.empty} ${styles.panelState}`}>No sold fixed-price items yet.</div>
+                                )}
+                            </section>
+                        </div>
                     )}
                 </div>
 

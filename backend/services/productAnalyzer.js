@@ -9,15 +9,43 @@ export function extractProductInfo(product) {
     const { name, description, brand, condition, category, specifications } = product;
 
     const combined = `${name} ${description} ${specifications || ''}`.toLowerCase();
+    const specs = extractSpecs(combined, category);
+    const model = extractModel(name || '');
 
     return {
+        name: name || '',
+        description: description || '',
         brand: brand || extractBrand(combined),
-        model: extractModel(name),
-        specs: extractSpecs(combined, category),
-        keywords: extractKeywords(combined),
-        condition: condition || 'Used',
+        model,
+        specs,
+        keywords: extractKeywords(combined, model, specs),
+        condition: normalizeCondition(condition || 'Used'),
         category: normalizeCategory(category || detectCategory(combined))
     };
+}
+
+function normalizeCondition(condition) {
+    const normalized = condition.toString().trim().toLowerCase();
+    const mapping = {
+        new: 'Brand New',
+        brand_new: 'Brand New',
+        'brand new': 'Brand New',
+        like_new: 'Like New',
+        'like new': 'Like New',
+        good: 'Lightly Used',
+        lightly_used: 'Lightly Used',
+        'lightly used': 'Lightly Used',
+        used: 'Used',
+        fair: 'Used',
+        poor: 'Heavily Used',
+        heavily_used: 'Heavily Used',
+        'heavily used': 'Heavily Used',
+        parts: 'For Parts',
+        for_parts: 'For Parts',
+        'for parts': 'For Parts'
+    };
+
+    return mapping[normalized] || condition;
 }
 
 /**
@@ -103,7 +131,7 @@ function extractBrand(text) {
     const commonBrands = [
         // Electronics
         'Apple', 'Samsung', 'Sony', 'LG', 'Huawei', 'Xiaomi', 'Oppo', 'Vivo', 'OnePlus', 'Google',
-        'Dell', 'HP', 'Lenovo', 'Asus', 'Acer', 'MSI', 'Microsoft', 'Razer',
+        'Dell', 'HP', 'Lenovo', 'Asus', 'Acer', 'MSI', 'Microsoft', 'Razer', 'TCL', 'Hisense',
         // Fashion
         'Nike', 'Adidas', 'Puma', 'Under Armour', 'Reebok', 'New Balance', 'Converse',
         'Gucci', 'Louis Vuitton', 'Prada', 'Chanel', 'Hermes', 'Dior', 'Burberry',
@@ -132,6 +160,11 @@ function extractBrand(text) {
  * Extract model name
  */
 function extractModel(name) {
+    if (!name) return null;
+
+    const exactModel = name.match(/\b([A-Z]{1,4}\d{2,5}[A-Z0-9-]*)\b/);
+    if (exactModel) return exactModel[1];
+
     // Common model patterns
     const patterns = [
         /(\d+\s*(pro|max|ultra|plus|mini|air|lite))/gi,
@@ -203,7 +236,7 @@ function extractSpecs(text) {
 /**
  * Extract relevant keywords
  */
-function extractKeywords(text) {
+function extractKeywords(text, model, specs = {}) {
     const keywords = [];
 
     const importantKeywords = [
@@ -211,13 +244,22 @@ function extractKeywords(text) {
         'charger', 'case', 'screen protector', 'original', 'authentic',
         'limited edition', 'rare', 'vintage', 'collectible', 'mint',
         'water resistant', 'wireless', 'bluetooth', 'wifi', '5g', 'lte',
-        'gaming', 'professional', 'business', 'student', 'portable'
+        'gaming', 'professional', 'business', 'student', 'portable',
+        'tv', 'television', 'smart tv', 'oled', 'qled', 'led', '4k', '8k',
+        'uhd', 'hdr', 'dolby vision', 'soundbar'
     ];
 
     for (const keyword of importantKeywords) {
         if (text.includes(keyword)) {
             keywords.push(keyword);
         }
+    }
+
+    if (model) keywords.push(model.toLowerCase());
+    if (specs.resolution) keywords.push(specs.resolution.toLowerCase());
+    if (specs.screenSize) {
+        keywords.push(`${specs.screenSize}`);
+        keywords.push(`${specs.screenSize} inch`);
     }
 
     return keywords;

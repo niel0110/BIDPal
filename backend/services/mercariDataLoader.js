@@ -7,11 +7,35 @@ import { createReadStream } from 'fs';
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
 
-const DATA_PATH = path.join(__dirname, '../data/train.tsv');
-const PROCESSED_DATA_PATH = path.join(__dirname, '../data/mercari_processed.json');
+const DATA_PATH = resolveDataPath('MERCARI_DATASET_PATH', [
+    path.join(__dirname, '../data/train.tsv'),
+    path.join(process.cwd(), 'backend/data/train.tsv'),
+    path.join(process.cwd(), 'data/train.tsv')
+]);
+const PROCESSED_DATA_PATH = resolveDataPath('MERCARI_PROCESSED_DATA_PATH', [
+    path.join(__dirname, '../data/mercari_processed.json'),
+    path.join(process.cwd(), 'backend/data/mercari_processed.json'),
+    path.join(process.cwd(), 'data/mercari_processed.json')
+], true);
+const DEPLOY_SAMPLE_DATA_PATH = resolveDataPath('MERCARI_DEPLOY_SAMPLE_PATH', [
+    path.join(__dirname, '../data/mercari_deploy_sample.json'),
+    path.join(process.cwd(), 'backend/data/mercari_deploy_sample.json'),
+    path.join(process.cwd(), 'data/mercari_deploy_sample.json')
+], true);
 
 // USD to PHP conversion rate (approximate)
-const USD_TO_PHP = 56.0;
+const USD_TO_PHP = Number(process.env.MERCARI_USD_TO_PHP || 56.0);
+const DEFAULT_APP_LOAD_LIMIT = Number(process.env.MERCARI_APP_LOAD_LIMIT || 500000);
+
+function resolveDataPath(envName, candidates, allowMissing = false) {
+    const envPath = process.env[envName];
+    if (envPath) return path.resolve(envPath);
+
+    const existing = candidates.find(candidate => fs.existsSync(candidate));
+    if (existing) return existing;
+
+    return allowMissing ? candidates[0] : candidates[0];
+}
 
 /**
  * Load and process Mercari dataset
@@ -70,14 +94,53 @@ export async function loadMercariData() {
         }
     }
 
+    if (fs.existsSync(DEPLOY_SAMPLE_DATA_PATH)) {
+        console.log('Loading deploy Mercari sample dataset...');
+        return loadJsonArray(DEPLOY_SAMPLE_DATA_PATH, 500000);
+    }
+
     return processRawData();
+}
+
+async function loadJsonArray(filePath, maxProducts = 500000) {
+    const JSONStream = (await import('JSONStream')).default;
+
+    return new Promise((resolve, reject) => {
+        const products = [];
+        const stream = fs.createReadStream(filePath, { encoding: 'utf8' });
+        const parser = JSONStream.parse('*');
+        let limitReached = false;
+
+        stream.pipe(parser);
+
+        parser.on('data', (product) => {
+            if (products.length < maxProducts) {
+                products.push(product);
+                if (products.length % 100000 === 0) {
+                    console.log(`   Loaded ${products.length.toLocaleString()} products...`);
+                }
+            } else if (!limitReached) {
+                console.log(`   Reached memory limit (${maxProducts.toLocaleString()} products). Skipping remaining records for stability.`);
+                limitReached = true;
+            }
+        });
+
+        parser.on('end', () => {
+            console.log(`Loaded ${products.length.toLocaleString()} products from ${path.basename(filePath)}`);
+            resolve(products);
+        });
+
+        parser.on('error', reject);
+        stream.on('error', reject);
+    });
 }
 
 function processRawData() {
 
     // Check if raw data exists
     if (!fs.existsSync(DATA_PATH)) {
-        console.error('❌ Mercari dataset not found at:', DATA_PATH);
+        console.error('❌ Mercari dataset not found. Checked primary path:', DATA_PATH);
+        console.error('Set MERCARI_DATASET_PATH to the deployed train.tsv path, or include backend/data/train.tsv in the backend deploy.');
         console.log('Please download it from: https://www.kaggle.com/competitions/mercari-price-suggestion-challenge/data');
         console.log('Or run: kaggle competitions download -c mercari-price-suggestion-challenge');
         return null;
@@ -92,25 +155,10 @@ function processRawData() {
             .pipe(csv({ separator: '\t' }))
             .on('data', (row) => {
                 try {
-                    // Parse and convert data
-                    const product = {
-                        id: row.train_id,
-                        name: row.name,
-                        condition: mapCondition(parseInt(row.item_condition_id)),
-                        category: parseCategoryName(row.category_name),
-                        brand: row.brand_name || 'Unknown',
-                        price: Math.round(parseFloat(row.price) * USD_TO_PHP), // Convert USD to PHP
-                        priceUSD: parseFloat(row.price),
-                        shipping: parseInt(row.shipping) === 1, // true if seller pays shipping
-                        description: row.item_description || '',
-                        // Extracted features for ML
-                        conditionId: parseInt(row.item_condition_id),
-                        categoryHierarchy: row.category_name ? row.category_name.split('/') : [],
-                        hasDescription: !!row.item_description && row.item_description.length > 10
-                    };
+                    const product = parseMercariRow(row);
 
                     // Only include products with valid prices
-                    if (product.price > 0 && product.price < 1000000 && products.length < 500000) {
+                    if (product && products.length < DEFAULT_APP_LOAD_LIMIT) {
                         products.push(product);
                     }
                 } catch (error) {
@@ -222,7 +270,9 @@ export function getMercariMarketStats(products, category, brand = null) {
     }
 
     const prices = filtered.map(p => p.price).sort((a, b) => a - b);
+    const trimmedPrices = trimOutliers(prices);
     const avgPrice = prices.reduce((sum, p) => sum + p, 0) / prices.length;
+    const trimmedAvgPrice = trimmedPrices.reduce((sum, p) => sum + p, 0) / trimmedPrices.length;
     const medianPrice = prices[Math.floor(prices.length / 2)];
     const minPrice = prices[0];
     const maxPrice = prices[prices.length - 1];
@@ -256,6 +306,7 @@ export function getMercariMarketStats(products, category, brand = null) {
         brand,
         totalItems: filtered.length,
         avgPrice: Math.round(avgPrice),
+        trimmedAvgPrice: Math.round(trimmedAvgPrice),
         medianPrice: Math.round(medianPrice),
         priceRange: { min: minPrice, max: maxPrice },
         topBrands,
@@ -263,6 +314,77 @@ export function getMercariMarketStats(products, category, brand = null) {
         // Depreciation rates (relative to "New" condition)
         depreciation: calculateDepreciation(conditionPrices)
     };
+}
+
+function parseMercariRow(row) {
+    const priceUSD = parseFloat(row.price);
+    const price = Math.round(priceUSD * USD_TO_PHP);
+    if (!Number.isFinite(price) || price <= 0 || price >= 1000000) return null;
+
+    return {
+        id: row.train_id,
+        name: row.name || '',
+        condition: mapCondition(parseInt(row.item_condition_id)),
+        category: parseCategoryName(row.category_name),
+        brand: row.brand_name || 'Unknown',
+        price,
+        priceUSD,
+        shipping: parseInt(row.shipping) === 1,
+        description: row.item_description || '',
+        conditionId: parseInt(row.item_condition_id),
+        categoryHierarchy: row.category_name ? row.category_name.split('/') : [],
+        hasDescription: !!row.item_description && row.item_description.length > 10
+    };
+}
+
+export async function streamMercariProducts(onProduct, options = {}) {
+    const { limit = Infinity } = options;
+
+    if (!fs.existsSync(DATA_PATH)) {
+        throw new Error(`Mercari raw dataset not found at ${DATA_PATH}`);
+    }
+
+    return new Promise((resolve, reject) => {
+        let validCount = 0;
+        let totalRows = 0;
+        let stopped = false;
+
+        const stream = createReadStream(DATA_PATH)
+            .pipe(csv({ separator: '\t' }))
+            .on('data', (row) => {
+                if (stopped) return;
+                totalRows += 1;
+
+                try {
+                    const product = parseMercariRow(row);
+                    if (!product) return;
+
+                    onProduct(product);
+                    validCount += 1;
+
+                    if (validCount % 100000 === 0) {
+                        console.log(`   Streamed ${validCount.toLocaleString()} valid Mercari products...`);
+                    }
+
+                    if (validCount >= limit) {
+                        stopped = true;
+                        stream.destroy();
+                    }
+                } catch {
+                    // Skip invalid rows.
+                }
+            })
+            .on('close', () => resolve({ totalRows, validCount }))
+            .on('end', () => resolve({ totalRows, validCount }))
+            .on('error', reject);
+    });
+}
+
+function trimOutliers(sortedPrices) {
+    if (sortedPrices.length < 20) return sortedPrices;
+    const start = Math.floor(sortedPrices.length * 0.10);
+    const end = Math.ceil(sortedPrices.length * 0.90);
+    return sortedPrices.slice(start, end);
 }
 
 /**
@@ -293,18 +415,21 @@ function calculateDepreciation(conditionPrices) {
  * Find comparable items from Mercari dataset
  */
 export function findMercariComparables(products, productInfo, limit = 10) {
-    const { category, brand, condition, keywords } = productInfo;
+    const { category, brand, condition, keywords = [], model, specs = {} } = productInfo;
+    const modelToken = model?.toLowerCase();
+    const screenSize = Number(specs.screenSize);
+    const isTv = keywords.some(k => ['tv', 'television', 'smart tv', 'oled', 'qled', '4k', '8k'].includes(k));
 
     // Score and filter products
     const scored = products.map(product => {
         let score = 0;
 
         // Category match (most important)
-        if (product.category === category) score += 50;
+        if (product.category === category) score += 35;
 
         // Brand match
         if (brand && product.brand.toLowerCase() === brand.toLowerCase()) {
-            score += 30;
+            score += 25;
         }
 
         // Condition match
@@ -312,9 +437,30 @@ export function findMercariComparables(products, productInfo, limit = 10) {
 
         // Keyword matches in name or description
         const text = (product.name + ' ' + product.description).toLowerCase();
+        const hierarchy = (product.categoryHierarchy || []).join(' ').toLowerCase();
+        const tvMarker = /\b(tv|television|oled|qled|uhd|4k|8k)\b/.test(text);
+        const tvAccessoryMarker = /\b(earbud|earphone|headphone|speaker|blu[-\s]?ray|dvd|player|hdmi|cable|remote|charger|case|fire stick|streaming stick|adapter)\b/.test(text);
+        if (modelToken && text.includes(modelToken)) score += 40;
+        if (specs.resolution && new RegExp(`\\b${specs.resolution.toLowerCase()}\\b`).test(text)) score += 12;
+        if (isTv && tvMarker) score += 35;
+        if (isTv && !tvMarker) score -= 80;
+        if (isTv && tvAccessoryMarker) score -= 90;
+        if (screenSize) {
+            const sizeMatch = text.match(/(\d{2,3}(?:\.\d+)?)\s*(?:inch|"|in\b)/i);
+            if (sizeMatch) {
+                const itemSize = Number(sizeMatch[1]);
+                const diff = Math.abs(itemSize - screenSize);
+                if (diff <= 2) score += 28;
+                else if (diff <= 8) score += 12;
+                else score -= 8;
+            } else if (isTv) {
+                score -= 25;
+            }
+        }
         keywords.forEach(keyword => {
-            if (text.includes(keyword.toLowerCase())) {
-                score += 5;
+            const clean = keyword.toString().toLowerCase();
+            if (clean.length >= 3 && new RegExp(`\\b${clean.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')}\\b`).test(text)) {
+                score += clean === modelToken ? 25 : 5;
             }
         });
 
@@ -322,8 +468,9 @@ export function findMercariComparables(products, productInfo, limit = 10) {
     });
 
     // Sort by score and return top matches
+    const minScore = isTv ? 55 : 30;
     return scored
-        .filter(item => item.score > 30) // Minimum relevance threshold
+        .filter(item => item.score > minScore) // Minimum relevance threshold
         .sort((a, b) => b.score - a.score)
         .slice(0, limit)
         .map(item => ({
@@ -331,7 +478,8 @@ export function findMercariComparables(products, productInfo, limit = 10) {
             price: item.product.price,
             condition: item.product.condition,
             brand: item.product.brand,
-            relevance: item.score
+            relevance: Math.min(100, Math.max(0, item.score)),
+            demand: item.score >= 90 ? 'High' : item.score >= 60 ? 'Medium' : 'Low'
         }));
 }
 
@@ -362,5 +510,6 @@ export default {
     loadMercariData,
     getMercariMarketStats,
     findMercariComparables,
-    prepareMercariTrainingData
+    prepareMercariTrainingData,
+    streamMercariProducts
 };

@@ -2,7 +2,7 @@
 
 import BIDPalLoader from '@/components/BIDPalLoader';
 import { useState, useEffect, useRef, Suspense } from 'react';
-import { useSearchParams } from 'next/navigation';
+import { useSearchParams, useRouter } from 'next/navigation';
 import Header from '@/components/layout/Header';
 import AuctionCard from '@/components/card/AuctionCard';
 import { Clock, Eye, Heart, Send, X, Truck, Pencil, CheckCircle, Loader2, Mic, MicOff, Video, VideoOff, Share2, Users, Lock } from 'lucide-react';
@@ -15,6 +15,7 @@ let AgoraRTC = null;
 
 function LivePageInner() {
     const searchParams = useSearchParams();
+    const router = useRouter();
     const auctionId = searchParams.get('id');
     const { user, loading: authLoading } = useAuth();
 
@@ -1121,8 +1122,8 @@ function LivePageInner() {
                 <Header />
                 <div className={styles.errorContainer}>
                     <h2>{error || 'Auction not found'}</h2>
-                    <button onClick={() => window.location.href = '/'} className={styles.backBtn}>
-                        Go Back Home
+                    <button onClick={() => router.back()} className={styles.backBtn}>
+                        Go Back
                     </button>
                 </div>
             </main>

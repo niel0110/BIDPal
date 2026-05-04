@@ -11,6 +11,7 @@ interface Stats {
   suspendedUsers: number;
   totalUsers: number;
   pendingCancellations: number;
+  potentialJoyReservers: number;
 }
 
 interface DayCount { name: string; registrations: number; }
@@ -25,6 +26,7 @@ const Dashboard = () => {
     suspendedUsers: 0,
     totalUsers: 0,
     pendingCancellations: 0,
+    potentialJoyReservers: 0,
   });
   const [chartData, setChartData] = useState<DayCount[]>([]);
   const [loading, setLoading] = useState(true);
@@ -45,15 +47,27 @@ const Dashboard = () => {
     ]);
 
     // Pending cancellations
-    const { data: cancellations } = await supabase
+    const { data: cancellationData } = await supabase
       .from('Order_Cancellations')
       .select('Violation_Events(Moderation_Cases(case_status))')
       .limit(500);
 
-    const pendingCancellations = (cancellations || []).filter(c => {
+    const pendingCancellations = (cancellationData || []).filter(c => {
       const status = (c as any).Violation_Events?.Moderation_Cases?.case_status;
       return !status || status === 'pending' || status === 'under_review';
     }).length;
+
+    // Potential Joy Reservers (> 25 stashed items)
+    const { data: joyData } = await supabase
+      .from('Cart_items')
+      .select('user_id')
+      .eq('is_stashed', true);
+
+    const joyUserCounts: Record<string, number> = {};
+    (joyData || []).forEach(item => {
+      joyUserCounts[item.user_id] = (joyUserCounts[item.user_id] || 0) + 1;
+    });
+    const potentialJoyReservers = Object.values(joyUserCounts).filter(count => count > 25).length;
 
     setStats({
       pendingVerifications: pendingVerifications || 0,
@@ -62,6 +76,7 @@ const Dashboard = () => {
       suspendedUsers: suspendedUsers || 0,
       totalUsers: totalUsers || 0,
       pendingCancellations,
+      potentialJoyReservers,
     });
   };
 
@@ -270,7 +285,19 @@ const Dashboard = () => {
                 <div className="badge badge-pending">Normal</div>
               </div>
             )}
-            {stats.flaggedListings === 0 && stats.pendingVerifications === 0 && stats.suspendedUsers === 0 && stats.pendingCancellations === 0 && (
+            {stats.potentialJoyReservers > 0 && (
+              <div style={{ display: 'flex', gap: '12px', alignItems: 'center' }}>
+                <div style={{ width: '40px', height: '40px', borderRadius: '50%', background: 'rgba(16,185,129,0.1)', display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0 }}>
+                  <Users color="#10b981" size={20} />
+                </div>
+                <div style={{ flex: 1 }}>
+                  <p style={{ fontSize: '14px', fontWeight: 500 }}>{stats.potentialJoyReservers} Joy Reservers</p>
+                  <p style={{ fontSize: '12px', color: 'var(--text-secondary)' }}>Users with excessive stashed items</p>
+                </div>
+                <div className="badge badge-warning" style={{ background: '#fef3c7', color: '#92400e' }}>Medium</div>
+              </div>
+            )}
+            {stats.flaggedListings === 0 && stats.pendingVerifications === 0 && stats.suspendedUsers === 0 && stats.pendingCancellations === 0 && stats.potentialJoyReservers === 0 && (
               <p style={{ color: 'var(--text-secondary)', fontSize: '14px', textAlign: 'center', padding: '20px' }}>
                 No alerts at this time.
               </p>
@@ -278,6 +305,7 @@ const Dashboard = () => {
           </div>
         </div>
       </div>
+
     </div>
   );
 };

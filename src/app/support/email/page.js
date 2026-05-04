@@ -70,7 +70,10 @@ export default function EmailSupportPage() {
           'Content-Type': 'application/json',
           ...(token ? { Authorization: `Bearer ${token}` } : {}),
         },
-        body: JSON.stringify(form),
+        body: JSON.stringify({
+          ...form,
+          user_id: user?.user_id || null,
+        }),
       });
       const data = await res.json().catch(() => ({}));
 
@@ -78,7 +81,7 @@ export default function EmailSupportPage() {
         throw new Error(data.error || 'Unable to send your inquiry right now.');
       }
 
-      setStatus({ type: 'success', message: data.message || 'Support inquiry sent.' });
+      setStatus({ type: 'success', message: data.delivery?.inApp ? 'Inquiry sent to BIDPal support.' : 'Inquiry sent to BIDPal support email.' });
       setForm(current => ({
         ...current,
         referenceId: '',
@@ -95,7 +98,7 @@ export default function EmailSupportPage() {
   return (
     <main className={styles.page}>
       <section className={styles.shell}>
-        <button className={styles.backBtn} onClick={() => router.push('/profile?tab=help')} type="button">
+        <button className={styles.backBtn} onClick={() => router.back()} type="button">
           <ArrowLeft size={18} />
           Back
         </button>
@@ -113,15 +116,8 @@ export default function EmailSupportPage() {
 
         <div className={styles.notice}>
           <ShieldCheck size={18} />
-          <span>Use the email address where you want to receive BIDPal support replies.</span>
+          <span>Use the email address where you want to receive replies.</span>
         </div>
-
-        {status && (
-          <div className={`${styles.status} ${status.type === 'success' ? styles.success : styles.error}`}>
-            {status.type === 'success' && <CheckCircle2 size={18} />}
-            <span>{status.message}</span>
-          </div>
-        )}
 
         <form className={styles.form} onSubmit={handleSubmit}>
           <div className={styles.grid}>
@@ -194,6 +190,19 @@ export default function EmailSupportPage() {
             {submitting ? 'Sending...' : 'Send Support Inquiry'}
           </button>
         </form>
+
+        {status && (
+          <div className={styles.toastOverlay} onClick={() => setStatus(null)}>
+            <div
+              className={`${styles.toast} ${status.type === 'success' ? styles.success : styles.error}`}
+              onClick={(event) => event.stopPropagation()}
+            >
+              {status.type === 'success' ? <CheckCircle2 size={20} /> : null}
+              <span>{status.message}</span>
+              <button type="button" onClick={() => setStatus(null)}>OK</button>
+            </div>
+          </div>
+        )}
       </section>
     </main>
   );

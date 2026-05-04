@@ -1657,6 +1657,12 @@ input:checked+.slider:before {
     gap: 2rem;
 }
 
+.wishlistBack {
+    display: flex;
+    align-items: center;
+    margin-bottom: 0.25rem;
+}
+
 .wishlistGrid {
     display: grid;
     grid-template-columns: repeat(auto-fill, minmax(280px, 1fr));

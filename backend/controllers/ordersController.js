@@ -466,21 +466,25 @@ export const createOrder = async (req, res) => {
 
     const orderedProductIds = [...new Set(orderItems.map(item => item.products_id).filter(Boolean))];
     if (orderedProductIds.length > 0) {
+      // Update product status and availability
       const { error: productStatusError } = await supabase
         .from('Products')
         .update({ status: 'sold', availability: 0 })
         .in('products_id', orderedProductIds);
-
+      
       if (productStatusError) {
-        console.warn('Fixed-price product sold status update failed:', productStatusError.message);
+        console.error('⚠️ Product status update error:', productStatusError.message);
+      } else {
+        console.log(`✅ Successfully marked ${orderedProductIds.length} products as sold.`);
       }
 
+      // Also update any associated Buy Now auctions to 'completed'
       const { error: auctionStatusError } = await supabase
         .from('Auctions')
         .update({ status: 'completed' })
         .in('products_id', orderedProductIds)
         .gt('buy_now_price', 0)
-        .in('status', ['active', 'scheduled']);
+        .in('status', ['active', 'scheduled', 'live']);
 
       if (auctionStatusError) {
         console.warn('Fixed-price listing completion update failed:', auctionStatusError.message);
@@ -619,11 +623,17 @@ export const processAuctionPayment = async (req, res) => {
         }]);
     }
 
-    // 3. Update auction status
-    await supabase
-      .from('Auctions')
-      .update({ status: 'completed' })
-      .eq('auction_id', auction_id);
+    // 3. Update auction and product status
+    await Promise.all([
+      supabase
+        .from('Auctions')
+        .update({ status: 'completed' })
+        .eq('auction_id', auction_id),
+      supabase
+        .from('Products')
+        .update({ status: 'sold', availability: 0 })
+        .eq('products_id', auction.Products.products_id)
+    ]);
 
     // 4. Generate payment reference
     const payment_reference = generatePaymentReference();

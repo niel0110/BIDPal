@@ -1267,3 +1267,287 @@
         min-height: 48px;
     }
 }
+
+/* ── Cart Lifecycle / Stashing Styles ── */
+.cartStats {
+    display: flex;
+    align-items: center;
+    gap: 0.75rem;
+}
+
+.stashedCount {
+    font-size: 0.8rem;
+    color: #64748b;
+    font-weight: 500;
+    background: #f1f5f9;
+    padding: 0.15rem 0.5rem;
+    border-radius: 12px;
+}
+
+.limitAlert {
+    display: flex;
+    align-items: center;
+    gap: 0.75rem;
+    background: #fff9eb;
+    border: 1px solid #ffeeba;
+    padding: 0.85rem 1.25rem;
+    border-radius: 12px;
+    margin-bottom: 1.5rem;
+    font-size: 0.85rem;
+    color: #856404;
+    font-weight: 500;
+}
+
+.itemActions {
+    display: flex;
+    align-items: center;
+    gap: 0.5rem;
+}
+
+.stashBtn {
+    display: flex;
+    align-items: center;
+    gap: 0.4rem;
+    background: #f8fafc;
+    border: 1px solid #e2e8f0;
+    color: #64748b;
+    padding: 0.4rem 0.75rem;
+    border-radius: 8px;
+    font-size: 0.75rem;
+    font-weight: 600;
+    cursor: pointer;
+    transition: all 0.2s;
+}
+
+.stashBtn:hover {
+    background: #f1f5f9;
+    color: #334155;
+    border-color: #cbd5e1;
+}
+
+.stashBtn svg {
+    color: #94a3b8;
+}
+
+/* ── Stashed Section ── */
+.stashedSection {
+    margin-top: 3rem;
+    padding: 2rem 1.5rem;
+    background: #f8fafc;
+    border-radius: 20px;
+    border: 2px dashed #e2e8f0;
+}
+
+.stashedHeader {
+    margin-bottom: 1.5rem;
+}
+
+.stashedTitle {
+    display: flex;
+    align-items: center;
+    gap: 0.75rem;
+    margin-bottom: 0.25rem;
+}
+
+.stashedTitle h2 {
+    font-size: 1.2rem;
+    font-weight: 800;
+    color: #1e293b;
+    margin: 0;
+}
+
+.stashedBadge {
+    background: #334155;
+    color: white;
+    font-size: 0.75rem;
+    font-weight: 700;
+    padding: 0.1rem 0.6rem;
+    border-radius: 20px;
+}
+
+.stashedSub {
+    font-size: 0.85rem;
+    color: #64748b;
+    margin: 0;
+}
+
+.stashedList {
+    display: flex;
+    flex-direction: column;
+    gap: 1rem;
+}
+
+.stashedItem {
+    display: flex;
+    align-items: center;
+    gap: 1.25rem;
+    background: white;
+    padding: 1rem;
+    border-radius: 14px;
+    border: 1px solid #e2e8f0;
+    transition: transform 0.2s;
+}
+
+.stashedItem:hover {
+    transform: translateX(4px);
+}
+
+.stashedImg {
+    width: 64px;
+    height: 64px;
+    border-radius: 10px;
+    overflow: hidden;
+    flex-shrink: 0;
+    background: #f1f5f9;
+}
+
+.stashedImg img {
+    width: 100%;
+    height: 100%;
+    object-fit: cover;
+}
+
+.stashedInfo {
+    flex: 1;
+    min-width: 0;
+}
+
+.stashedName {
+    font-size: 0.9rem;
+    font-weight: 700;
+    color: #334155;
+    margin: 0 0 0.15rem;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+}
+
+.stashedSeller {
+    font-size: 0.75rem;
+    color: #94a3b8;
+    margin: 0 0 0.35rem;
+}
+
+.stashedPrice {
+    font-size: 0.95rem;
+    font-weight: 800;
+    color: #475569;
+}
+
+.stashedActions {
+    display: flex;
+    flex-direction: column;
+    gap: 0.5rem;
+    flex-shrink: 0;
+}
+
+.unstashBtn {
+    background: #334155;
+    color: white;
+    border: none;
+    padding: 0.5rem 1rem;
+    border-radius: 8px;
+    font-size: 0.75rem;
+    font-weight: 700;
+    cursor: pointer;
+    transition: background 0.2s;
+}
+
+.unstashBtn:hover {
+    background: #0f172a;
+}
+
+.stashedRemove {
+    background: none;
+    border: none;
+    color: #94a3b8;
+    font-size: 0.75rem;
+    font-weight: 600;
+    cursor: pointer;
+    padding: 0.25rem;
+}
+
+.stashedRemove:hover {
+    color: #ef4444;
+    text-decoration: underline;
+}
+
+.stashedOnlyBox {
+    margin-top: 1.5rem;
+    padding: 1.25rem;
+    background: #f1f5f9;
+    border-radius: 12px;
+    border: 1px solid #e2e8f0;
+}
+
+.stashedOnlyBox p {
+    margin-bottom: 0.75rem;
+    font-size: 0.85rem;
+    color: #475569;
+}
+
+.viewStashedBtn {
+    background: white;
+    border: 1px solid #cbd5e1;
+    color: #334155;
+    padding: 0.5rem 1.25rem;
+    border-radius: 8px;
+    font-size: 0.8rem;
+    font-weight: 700;
+    cursor: pointer;
+}
+
+.viewStashedBtn:hover {
+    background: #f8fafc;
+    border-color: #94a3b8;
+}
+
+@media (max-width: 600px) {
+    .stashedItem {
+        gap: 0.85rem;
+        padding: 0.85rem;
+    }
+    
+    .stashedImg {
+        width: 50px;
+        height: 50px;
+    }
+    
+    .itemActions {
+        flex-direction: column;
+        align-items: flex-end;
+        gap: 0.35rem;
+    }
+    
+    .stashBtn span {
+        display: none;
+    }
+    
+    .stashBtn {
+        padding: 0.35rem;
+    }
+}
+
+.soldBadge {
+    background-color: #fee2e2;
+    color: #ef4444;
+    padding: 0.15rem 0.5rem;
+    border-radius: 4px;
+    font-size: 0.7rem;
+    font-weight: 600;
+    text-transform: uppercase;
+}
+
+.cartItemSold .itemImage {
+    filter: grayscale(1);
+    opacity: 0.6;
+}
+
+.cartItemSold .itemName {
+    color: #94a3b8 !important;
+}
+
+.cartItemSold {
+    background-color: #f8fafc;
+    border-color: #e2e8f0 !important;
+}

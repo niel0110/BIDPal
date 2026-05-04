@@ -88,7 +88,7 @@ export default function ProductCard({ data, compact = false }) {
     const conditionLabel = formatCondition(data.condition);
     const displayPrice = data.price ?? data.starting_price;
     const isAlreadyInCart = isInCart(data.products_id);
-    const isSoldOut = data.isSoldOut || data.availability === 0 || data.status === 'sold';
+    const isSoldOut = data.isSoldOut || data.availability === 0 || data.status === 'sold' || data.product_status === 'sold';
     const lowStock = data.availability > 0 && data.availability <= 5;
     const sellerName = data.seller_name || data.store_name || data.seller || 'Unknown Store';
     const sellerAvatar = data.seller_avatar || data.seller_logo || null;
@@ -105,7 +105,7 @@ export default function ProductCard({ data, compact = false }) {
                     <img
                         src={mainImg || 'https://placehold.co/280x280?text=No+Image'}
                         alt={data.title}
-                        className={styles.image}
+                        className={`${styles.image} ${isSoldOut ? styles.grayscale : ''}`}
                     />
 
                     {isSoldOut && <div className={styles.soldBadge}>Sold Out</div>}

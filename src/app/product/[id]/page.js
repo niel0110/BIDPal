@@ -126,6 +126,14 @@ export default function ProductDetailPage() {
     const isAlreadyInCart = isInCart(product.products_id);
     const lowStock = product.availability > 0 && product.availability <= 5;
     const isVerified = seller?.User?.kyc_status === 'approved';
+    const isOwnListing = Boolean(
+        user &&
+        (
+            user.seller_id === product.seller_id ||
+            user.user_id === seller?.user_id ||
+            user.user_id === seller?.User?.user_id
+        )
+    );
 
     return (
         <main style={{ background: '#f8f9fb', minHeight: '100vh', display: 'flex', flexDirection: 'column' }}>
@@ -160,12 +168,14 @@ export default function ProductDetailPage() {
                                 className={styles.mainImg}
                             />
                             {isSoldOut && <div className={styles.soldOverlay}>SOLD OUT</div>}
-                            <button
-                                className={styles.heartBtn}
-                                onClick={() => setLiked(l => !l)}
-                            >
-                                <Heart size={16} fill={liked ? '#D32F2F' : 'none'} color={liked ? '#D32F2F' : 'white'} />
-                            </button>
+                            {!isOwnListing && (
+                                <button
+                                    className={styles.heartBtn}
+                                    onClick={() => setLiked(l => !l)}
+                                >
+                                    <Heart size={16} fill={liked ? '#D32F2F' : 'none'} color={liked ? '#D32F2F' : 'white'} />
+                                </button>
+                            )}
                         </div>
 
                         {thumbs.length > 1 && (
@@ -261,12 +271,14 @@ export default function ProductDetailPage() {
                                             <div className={styles.sellerSubName}>{seller.full_name}</div>
                                         )}
                                     </div>
-                                    <button
-                                        className={styles.visitBtn}
-                                        onClick={() => router.push(`/store/${product.seller_id}`)}
-                                    >
-                                        Visit
-                                    </button>
+                                    {!isOwnListing && (
+                                        <button
+                                            className={styles.visitBtn}
+                                            onClick={() => router.push(`/store/${product.seller_id}`)}
+                                        >
+                                            Visit
+                                        </button>
+                                    )}
                                 </div>
                                 <div className={styles.sellerStatsRow}>
                                     {isVerified && (
@@ -288,29 +300,45 @@ export default function ProductDetailPage() {
                             </div>
                         )}
 
-                        {/* Purchase actions */}
-                        {addError && <div className={styles.addError}>{addError}</div>}
-                        <div className={styles.purchaseActions}>
-                            <button
-                                className={`${styles.addCartBtn} ${isAlreadyInCart ? styles.addCartBtnSuccess : ''}`}
-                                onClick={handleAddToCart}
-                                disabled={isAdding || isAlreadyInCart || isSoldOut}
-                            >
-                                <ShoppingCart size={18} />
-                                {isAdding ? 'Adding…' : isAlreadyInCart ? 'Added to Cart ✓' : isSoldOut ? 'Sold Out' : 'Add to Cart'}
-                            </button>
-                            <button
-                                className={styles.buyNowBtn}
-                                onClick={handleBuyNow}
-                                disabled={isAdding || isSoldOut}
-                            >
-                                <Zap size={18} />
-                                Buy Now
-                            </button>
-                        </div>
+                        {isOwnListing ? (
+                            <div className={styles.sellerListingActions}>
+                                <div className={styles.ownerNotice}>
+                                    This is your fixed-price listing.
+                                </div>
+                                <button
+                                    className={styles.manageListingBtn}
+                                    onClick={() => router.push('/seller/orders')}
+                                >
+                                    Manage Fixed Price Listings
+                                </button>
+                            </div>
+                        ) : (
+                            <>
+                                {/* Purchase actions */}
+                                {addError && <div className={styles.addError}>{addError}</div>}
+                                <div className={styles.purchaseActions}>
+                                    <button
+                                        className={`${styles.addCartBtn} ${isAlreadyInCart ? styles.addCartBtnSuccess : ''}`}
+                                        onClick={handleAddToCart}
+                                        disabled={isAdding || isAlreadyInCart || isSoldOut}
+                                    >
+                                        <ShoppingCart size={18} />
+                                        {isAdding ? 'Adding…' : isAlreadyInCart ? 'Added to Cart ✓' : isSoldOut ? 'Sold Out' : 'Add to Cart'}
+                                    </button>
+                                    <button
+                                        className={styles.buyNowBtn}
+                                        onClick={handleBuyNow}
+                                        disabled={isAdding || isSoldOut}
+                                    >
+                                        <Zap size={18} />
+                                        Buy Now
+                                    </button>
+                                </div>
+                            </>
+                        )}
 
                         {/* Report */}
-                        {user && user.user_id !== product.seller_id && (
+                        {user && !isOwnListing && (
                             <button
                                 className={styles.reportBtn}
                                 onClick={() => { setReportOpen(true); setReportDone(false); setReportReason(''); setReportDetails(''); }}

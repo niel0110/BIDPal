@@ -122,7 +122,7 @@ function AccountContent() {
     };
 
     useEffect(() => {
-        const validTabs = ['profile', 'address', 'notifications', 'payment', 'wishlist', 'security', 'privacy', 'help', 'invite', 'merchant-insights', 'store-profile', 'pickup-address', 'account-standing'];
+        const validTabs = ['profile', 'address', 'notifications', 'payment', 'wishlist', 'security', 'help', 'invite', 'merchant-insights', 'store-profile', 'pickup-address', 'account-standing'];
         if (tabParam && validTabs.includes(tabParam)) {
             setActiveTab(tabParam);
             setMobileView('content');
@@ -136,7 +136,6 @@ function AccountContent() {
         { id: 'payment', label: 'Payment', icon: <CreditCard size={20} /> },
         { id: 'account-standing', label: 'Account Standing', icon: <Shield size={20} /> },
         { id: 'security', label: 'Security', icon: <ShieldCheck size={20} /> },
-        { id: 'privacy', label: 'Privacy Policy', icon: <Lock size={20} /> },
         { id: 'help', label: 'Help Center', icon: <HelpCircle size={20} /> },
         { id: 'invite', label: 'Invite Friends', icon: <UserPlus size={20} /> },
     ];
@@ -248,9 +247,9 @@ function AccountContent() {
             {/* Sidebar / Menu */}
             {activeTab !== 'wishlist' && (
                 <aside className={styles.sidebar}>
-                    <button className={styles.globalBack} onClick={() => router.push(isSeller ? '/seller' : '/')}>
+                    <button className={styles.globalBack} onClick={() => router.back()}>
                         <ArrowLeft size={18} />
-                        <span>{isSeller ? 'Back to Seller Hub' : 'Back to Marketplace'}</span>
+                        <span>Back</span>
                     </button>
 
                     <div className={styles.userBrief}>
@@ -342,7 +341,6 @@ function AccountContent() {
                 {activeTab === 'wishlist' && <WishlistSection />}
                 {activeTab === 'account-standing' && <AccountStandingSection />}
                 {activeTab === 'security' && <SecuritySection />}
-                {activeTab === 'privacy' && <PrivacySection />}
                 {activeTab === 'help' && <HelpCenterSection />}
                 {activeTab === 'invite' && <InviteSection />}
 
@@ -880,13 +878,7 @@ function ProfileSection() {
 
     useEffect(() => {
         if (!user?.user_id) return;
-        const init = seedForm(user);
-        initRef.current = init;
-
-        const token = localStorage.getItem('bidpal_token');
-        fetch(`${apiUrl}/api/users/${user.user_id}`, {
-            headers: { ...(token && { Authorization: `Bearer ${token}` }) },
-        })
+        fetch(`${apiUrl}/api/users/${user.user_id}`)
             .then(r => r.ok ? r.json() : null)
             .then(data => {
                 if (!data) return;
@@ -2548,21 +2540,6 @@ function SecuritySection() {
     );
 }
 
-function PrivacySection() {
-    return (
-        <div className={styles.section}>
-            <header className={styles.sectionHeader}>
-                <h1>Privacy Policy</h1>
-                <p>Last Updated: January 08, 2026</p>
-            </header>
-            <div className={styles.policyContent}>
-                <p>Your privacy is important to us. This policy explains how we handle your data.</p>
-                {/* Simplified for brevity in this specific task context */}
-            </div>
-        </div>
-    );
-}
-
 function HelpCenterSection() {
     const [activePanel, setActivePanel] = useState(null); // 'privacy' | 'terms' | 'faq' | null
     const router = useRouter();
@@ -2571,7 +2548,7 @@ function HelpCenterSection() {
         { id: 'privacy', label: 'Privacy Policy', icon: <Lock size={20} /> },
         { id: 'terms', label: 'Terms & Agreements', icon: <FileText size={20} /> },
         { id: 'faq', label: 'FAQs', icon: <HelpCircle size={20} /> },
-        { id: 'email', label: 'Email Support', detail: 'support@bidpal.ph', icon: <Mail size={20} /> },
+        { id: 'email', label: 'Email Support', detail: 'support@bidpal.shop', icon: <Mail size={20} /> },
     ];
 
     const faqItems = [
@@ -2609,7 +2586,7 @@ function HelpCenterSection() {
         },
         {
             q: 'How do I contact BIDPal support?',
-            a: 'You can email BIDPal support at support@bidpal.ph. Include your account email, order or auction ID if applicable, and a short description of the issue.'
+            a: 'You can email BIDPal support at support@bidpal.shop. Include your account email, order or auction ID if applicable, and a short description of the issue.'
         },
         {
             q: 'How do I delete my account?',
@@ -2729,7 +2706,7 @@ function HelpCenterSection() {
                 <h3>9. Contact Us</h3>
                 <p>For privacy inquiries, send a message to the BIDPal Admin via in-app messaging, or reach us at:</p>
                 <ul>
-                    <li>Email: support@bidpal.ph</li>
+                    <li>Email: support@bidpal.shop</li>
                     <li>National Privacy Commission: www.privacy.gov.ph | info@privacy.gov.ph | Hotline: 8234-2228</li>
                 </ul>
                 <p style={{ marginTop: '1rem' }}>We aim to respond to all inquiries within <strong>3–5 business days</strong>.</p>
@@ -3034,12 +3011,15 @@ function WishlistSection() {
     const [error, setError] = useState(null);
     const apiUrl = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:5000';
     const router = useRouter();
+    const isSeller = user?.role?.toLowerCase() === 'seller';
+
 
     useEffect(() => {
         if (user?.user_id) {
             fetchWishlist();
         }
     }, [user?.user_id]);
+
 
     const fetchWishlist = async () => {
         try {
@@ -3066,7 +3046,6 @@ function WishlistSection() {
             });
 
             if (res.ok) {
-                // If successful, remove from local state immediately
                 setItems(prev => prev.filter(item => item.auction_id !== auctionId));
             }
         } catch (err) {
@@ -3082,9 +3061,43 @@ function WishlistSection() {
         }
     };
 
+    const getBadgeLabel = (item) => {
+        if (item.product_status === 'sold') return 'Sold';
+        switch (item.status?.toLowerCase()) {
+            case 'active': return '🔴 Live Now';
+            case 'scheduled': return '🕐 Scheduled';
+            case 'ended': return 'Ended';
+            case 'completed': return 'Completed';
+            default: return item.status;
+        }
+    };
+
+    const getButtonStyle = (item) => {
+        if (item.product_status === 'sold') return { background: '#333', opacity: 0.6, cursor: 'not-allowed' };
+        switch (item.status?.toLowerCase()) {
+            case 'active': return { background: '#D32F2F' };
+            case 'scheduled': return { background: '#1976D2' };
+            default: return { background: '#555' };
+        }
+    };
+
+    const getButtonLabel = (item) => {
+        if (item.product_status === 'sold') return 'Sold';
+        switch (item.status?.toLowerCase()) {
+            case 'active': return 'Bid Now →';
+            case 'scheduled': return 'View Auction →';
+            default: return 'View Detail →';
+        }
+    };
+
     if (loading) {
         return (
             <div className={styles.section}>
+                <div className={styles.wishlistBack}>
+                    <button className={styles.backBtn} onClick={() => router.back()}>
+                        <ArrowLeft size={18} /> Back
+                    </button>
+                </div>
                 <header className={styles.sectionHeader}>
                     <h1>My Wishlist</h1>
                 </header>
@@ -3096,6 +3109,11 @@ function WishlistSection() {
     if (error) {
         return (
             <div className={styles.section}>
+                <div className={styles.wishlistBack}>
+                    <button className={styles.backBtn} onClick={() => router.back()}>
+                        <ArrowLeft size={18} /> Back
+                    </button>
+                </div>
                 <header className={styles.sectionHeader}>
                     <h1>My Wishlist</h1>
                 </header>
@@ -3109,6 +3127,11 @@ function WishlistSection() {
     if (items.length === 0) {
         return (
             <div className={styles.section}>
+                <div className={styles.wishlistBack}>
+                    <button className={styles.backBtn} onClick={() => router.back()}>
+                        <ArrowLeft size={18} /> Back
+                    </button>
+                </div>
                 <header className={styles.sectionHeader}>
                     <h1>My Wishlist</h1>
                 </header>
@@ -3126,34 +3149,13 @@ function WishlistSection() {
         );
     }
 
-    const getBadgeLabel = (status) => {
-        switch (status?.toLowerCase()) {
-            case 'active': return '🔴 Live Now';
-            case 'scheduled': return '🕐 Scheduled';
-            case 'ended': return 'Ended';
-            case 'completed': return 'Completed';
-            default: return status;
-        }
-    };
-
-    const getButtonStyle = (status) => {
-        switch (status?.toLowerCase()) {
-            case 'active': return { background: '#D32F2F' };
-            case 'scheduled': return { background: '#1976D2' };
-            default: return { background: '#555' };
-        }
-    };
-
-    const getButtonLabel = (status) => {
-        switch (status?.toLowerCase()) {
-            case 'active': return 'Bid Now →';
-            case 'scheduled': return 'View Auction →';
-            default: return 'View Detail →';
-        }
-    };
-
     return (
         <div className={styles.section}>
+            <div className={styles.wishlistBack}>
+                <button className={styles.backBtn} onClick={() => router.back()}>
+                    <ArrowLeft size={18} /> Back
+                </button>
+            </div>
             <header className={styles.sectionHeader}>
                 <h1>My Wishlist</h1>
                 <p>You have {items.length} item{items.length !== 1 ? 's' : ''} in your wishlist.</p>
@@ -3164,16 +3166,20 @@ function WishlistSection() {
                     <div
                         key={item.auction_id}
                         className={styles.wishlistCard}
-                        onClick={() => router.push(`/live?id=${item.auction_id}`)}
+                        onClick={() => {
+                            if (item.product_status !== 'sold') {
+                                router.push(`/live?id=${item.auction_id}`);
+                            }
+                        }}
                     >
                         <div className={styles.wishlistImageWrapper}>
                             <img
                                 src={item.image || '/placeholder-product.png'}
                                 alt={item.title}
-                                className={styles.wishlistImage}
+                                className={`${styles.wishlistImage} ${item.product_status === 'sold' ? styles.grayscale : ''}`}
                             />
-                            <div className={`${styles.wishlistBadge} ${getStatusBadgeClass(item.status)}`}>
-                                {getBadgeLabel(item.status)}
+                            <div className={`${styles.wishlistBadge} ${item.product_status === 'sold' ? styles.badgeEnded : getStatusBadgeClass(item.status)}`}>
+                                {getBadgeLabel(item)}
                             </div>
                             <button
                                 className={styles.wishlistHeartBtn}
@@ -3215,10 +3221,16 @@ function WishlistSection() {
                                 </div>
                                 <button
                                     className={styles.viewAuctionBtn}
-                                    style={getButtonStyle(item.status)}
-                                    onClick={(e) => { e.stopPropagation(); router.push(`/live?id=${item.auction_id}`); }}
+                                    style={getButtonStyle(item)}
+                                    onClick={(e) => { 
+                                        e.stopPropagation(); 
+                                        if (item.product_status !== 'sold') {
+                                            router.push(`/live?id=${item.auction_id}`);
+                                        }
+                                    }}
+                                    disabled={item.product_status === 'sold'}
                                 >
-                                    {getButtonLabel(item.status)}
+                                    {getButtonLabel(item)}
                                 </button>
                             </div>
                         </div>

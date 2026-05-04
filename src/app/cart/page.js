@@ -6,7 +6,8 @@ import Link from 'next/link';
 import { useRouter } from 'next/navigation';
 import { 
     Trash2, ShoppingBag, ArrowRight, Loader2, ChevronLeft, Shield, Tag, 
-    MapPin, Plus, CreditCard, Truck, CheckCircle2, AlertCircle, X, Smartphone, Copy 
+    MapPin, Plus, CreditCard, Truck, CheckCircle2, AlertCircle, X, Smartphone, Copy,
+    Archive, Clock, Info
 } from 'lucide-react';
 import { useAuth } from '@/context/AuthContext';
 import { useCart } from '@/context/CartContext';
@@ -15,7 +16,16 @@ import styles from './page.module.css';
 export default function CartPage() {
     const router = useRouter();
     const { user } = useAuth();
-    const { cartItems, loading, removeItem, refreshCart } = useCart();
+    const { 
+        cartItems, 
+        stashedItems, 
+        cartLimit, 
+        loading, 
+        removeItem, 
+        stashItem, 
+        unstashItem, 
+        refreshCart 
+    } = useCart();
 
     const [selectedIds, setSelectedIds] = useState(new Set());
     const [isCheckingOut, setIsCheckingOut] = useState(false);
@@ -76,9 +86,10 @@ export default function CartPage() {
         });
     };
 
-    const allSelected = cartItems.length > 0 && selectedIds.size === cartItems.length;
+    const availableItems = cartItems.filter(i => i.status !== 'sold' && (i.availability === undefined || i.availability > 0));
+    const allSelected = availableItems.length > 0 && selectedIds.size === availableItems.length;
     const toggleAll = () => {
-        setSelectedIds(allSelected ? new Set() : new Set(cartItems.map(i => i.cart_id)));
+        setSelectedIds(allSelected ? new Set() : new Set(availableItems.map(i => i.cart_id)));
     };
 
     const selectedItems = cartItems.filter(i => selectedIds.has(i.cart_id));
@@ -222,11 +233,25 @@ export default function CartPage() {
                     </button>
                     <div className={styles.headerRow}>
                         <h1 className={styles.cartTitle}>Shopping Cart</h1>
-                        {cartItems.length > 0 && (
-                            <span className={styles.itemCount}>{cartItems.length} item{cartItems.length !== 1 ? 's' : ''}</span>
-                        )}
+                        <div className={styles.cartStats}>
+                            <span className={styles.itemCount}>
+                                {cartItems.length} / {cartLimit} Active
+                            </span>
+                            {stashedItems.length > 0 && (
+                                <span className={styles.stashedCount}>
+                                    {stashedItems.length} Stashed
+                                </span>
+                            )}
+                        </div>
                     </div>
                 </header>
+
+                {cartItems.length >= cartLimit && (
+                    <div className={styles.limitAlert}>
+                        <Info size={16} />
+                        <span>Your active cart is full. New items will automatically move older ones to &quot;Saved for Later&quot;.</span>
+                    </div>
+                )}
 
                 {cartItems.length > 0 ? (
                     <div className={styles.cartMain}>
@@ -253,18 +278,22 @@ export default function CartPage() {
                             <div className={styles.itemsList}>
                                 {cartItems.map(item => {
                                     const isSelected = selectedIds.has(item.cart_id);
+                                    const isSold = item.status === 'sold' || (item.availability !== undefined && item.availability <= 0);
+                                    
                                     return (
                                         <div
                                             key={item.cart_id}
-                                            className={`${styles.cartItem} ${isSelected ? styles.cartItemSelected : ''}`}
-                                            onClick={() => toggleItem(item.cart_id)}
+                                            className={`${styles.cartItem} ${isSelected ? styles.cartItemSelected : ''} ${isSold ? styles.cartItemSold : ''}`}
+                                            onClick={() => !isSold && toggleItem(item.cart_id)}
+                                            style={isSold ? { opacity: 0.7, cursor: 'not-allowed' } : {}}
                                         >
                                             {/* Checkbox */}
                                             <div className={styles.itemCheckbox} onClick={e => e.stopPropagation()}>
                                                 <input
                                                     type="checkbox"
                                                     checked={isSelected}
-                                                    onChange={() => toggleItem(item.cart_id)}
+                                                    onChange={() => !isSold && toggleItem(item.cart_id)}
+                                                    disabled={isSold}
                                                     className={styles.checkbox}
                                                 />
                                             </div>
@@ -281,9 +310,14 @@ export default function CartPage() {
                                             <div className={styles.itemInfo}>
                                                 <Link href={`/product/${item.id}`} onClick={e => e.stopPropagation()} className={styles.itemName} style={{ textDecoration: 'none', color: 'inherit' }}>{item.name}</Link>
                                                 <div className={styles.itemSeller}>Sold by: {item.seller}</div>
-                                                {item.condition && (
-                                                    <span className={styles.conditionBadge}>{item.condition}</span>
-                                                )}
+                                                <div style={{ display: 'flex', gap: '8px', marginTop: '6px' }}>
+                                                    {item.condition && (
+                                                        <span className={styles.conditionBadge}>{item.condition}</span>
+                                                    )}
+                                                    {isSold && (
+                                                        <span className={styles.soldBadge}>Sold Out</span>
+                                                    )}
+                                                </div>
                                             </div>
 
                                             {/* Price & actions */}
@@ -291,18 +325,71 @@ export default function CartPage() {
                                                 <div className={styles.itemPrice}>
                                                     ₱{item.price.toLocaleString('en-PH')}
                                                 </div>
-                                                <button
-                                                    className={styles.removeBtn}
-                                                    onClick={e => { e.stopPropagation(); removeItem(item.cart_id); }}
-                                                    title="Remove"
-                                                >
-                                                    <Trash2 size={16} />
-                                                </button>
+                                                <div className={styles.itemActions}>
+                                                    <button
+                                                        className={styles.stashBtn}
+                                                        onClick={e => { e.stopPropagation(); stashItem(item.cart_id); }}
+                                                        title="Save for Later"
+                                                    >
+                                                        <Archive size={16} />
+                                                        <span>Save for Later</span>
+                                                    </button>
+                                                    <button
+                                                        className={styles.removeBtn}
+                                                        onClick={e => { e.stopPropagation(); removeItem(item.cart_id); }}
+                                                        title="Remove"
+                                                    >
+                                                        <Trash2 size={16} />
+                                                    </button>
+                                                </div>
                                             </div>
                                         </div>
                                     );
                                 })}
                             </div>
+
+                            {/* Stashed items section */}
+                            {stashedItems.length > 0 && (
+                                <div className={styles.stashedSection}>
+                                    <div className={styles.stashedHeader}>
+                                        <div className={styles.stashedTitle}>
+                                            <Clock size={18} />
+                                            <h2>Saved for Later</h2>
+                                            <span className={styles.stashedBadge}>{stashedItems.length}</span>
+                                        </div>
+                                        <p className={styles.stashedSub}>Items here don&apos;t count toward your cart limit and aren&apos;t included in checkout.</p>
+                                    </div>
+                                    
+                                    <div className={styles.stashedList}>
+                                        {stashedItems.map(item => (
+                                            <div key={item.cart_id} className={styles.stashedItem}>
+                                                <div className={styles.stashedImg}>
+                                                    <img src={item.image || 'https://placehold.co/100x100?text=No+Image'} alt={item.name} />
+                                                </div>
+                                                <div className={styles.stashedInfo}>
+                                                    <h3 className={styles.stashedName}>{item.name}</h3>
+                                                    <p className={styles.stashedSeller}>Sold by: {item.seller}</p>
+                                                    <div className={styles.stashedPrice}>₱{item.price.toLocaleString('en-PH')}</div>
+                                                </div>
+                                                <div className={styles.stashedActions}>
+                                                    <button 
+                                                        className={styles.unstashBtn}
+                                                        onClick={() => unstashItem(item.cart_id)}
+                                                    >
+                                                        Move to Cart
+                                                    </button>
+                                                    <button 
+                                                        className={styles.stashedRemove}
+                                                        onClick={() => removeItem(item.cart_id)}
+                                                    >
+                                                        Remove
+                                                    </button>
+                                                </div>
+                                            </div>
+                                        ))}
+                                    </div>
+                                </div>
+                            )}
                         </div>
 
                         {/* Order summary */}
@@ -481,6 +568,13 @@ export default function CartPage() {
                         <h2>Your cart is empty</h2>
                         <p>Looks like you haven&apos;t added anything yet.</p>
                         <Link href="/" className={styles.exploreBtn}>Start Browsing</Link>
+                        
+                        {stashedItems.length > 0 && (
+                            <div className={styles.stashedOnlyBox}>
+                                <p>You have <strong>{stashedItems.length}</strong> items saved for later.</p>
+                                <button onClick={() => window.scrollTo({ top: 500, behavior: 'smooth' })} className={styles.viewStashedBtn}>View Stashed Items</button>
+                            </div>
+                        )}
                     </div>
                 )}
             </div>

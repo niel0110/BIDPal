@@ -262,6 +262,66 @@
     border-bottom-color: #cc2b41;
 }
 
+.fixedPriceSections,
+.sliderSection {
+    display: flex;
+    flex-direction: column;
+    gap: 0.85rem;
+    min-width: 0;
+}
+
+.fixedPriceSections {
+    gap: 1.5rem;
+}
+
+.sliderHeader {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 0.75rem;
+    border-bottom: 1.5px solid #e5e7eb;
+    padding-bottom: 0.45rem;
+}
+
+.sliderHeader h2 {
+    margin: 0;
+    color: #111827;
+    font-size: 1rem;
+    font-weight: 800;
+}
+
+.sliderHeader h2 span {
+    color: #9ca3af;
+    font-size: 0.82rem;
+    font-weight: 700;
+}
+
+.sliderControls {
+    display: flex;
+    align-items: center;
+    gap: 0.4rem;
+}
+
+.sliderControls button {
+    width: 32px;
+    height: 32px;
+    border: 1px solid #e5e7eb;
+    background: white;
+    color: #374151;
+    border-radius: 50%;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    cursor: pointer;
+    transition: border-color 0.15s, color 0.15s, background 0.15s;
+}
+
+.sliderControls button:hover {
+    border-color: #cc2b41;
+    color: #cc2b41;
+    background: #fff5f7;
+}
+
 /* ── Horizontal scroll container ── */
 .productScroll {
     display: flex;
@@ -292,12 +352,18 @@
     min-height: 180px;
 }
 
-/* ── Completed Auctions ── */
-.completedGrid {
-    display: grid;
-    grid-template-columns: repeat(auto-fill, minmax(180px, 1fr));
+.completedSlider {
+    display: flex;
+    align-items: flex-start;
     gap: 1.25rem;
+    overflow-x: auto;
+    overflow-y: visible;
+    padding: 0.25rem 0 1rem;
+    scroll-snap-type: x proximity;
+    scrollbar-width: none;
+    -ms-overflow-style: none;
 }
+.completedSlider::-webkit-scrollbar { display: none; }
 
 .completedCard {
     background: white;
@@ -306,6 +372,8 @@
     border: 1px solid #f0f0f0;
     box-shadow: 0 1px 4px rgba(0,0,0,0.05);
     transition: box-shadow 0.15s;
+    flex: 0 0 180px;
+    scroll-snap-align: start;
 }
 .completedCard:hover { box-shadow: 0 4px 12px rgba(0,0,0,0.1); }
 
@@ -622,9 +690,18 @@
         padding: 0.6rem 0.25rem;
     }
 
-    .completedGrid {
-        grid-template-columns: repeat(auto-fill, minmax(140px, 1fr));
+    .completedSlider,
+    .productScroll {
         gap: 0.75rem;
+    }
+
+    .completedCard {
+        flex-basis: 145px;
+    }
+
+    .sliderControls button {
+        width: 30px;
+        height: 30px;
     }
 
     .container {

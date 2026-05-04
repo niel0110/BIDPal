@@ -1,9 +1,35 @@
 import { supabase } from '../config/supabase.js';
 
+const ACTIVE_CART_LIMIT = 15;
+
 const getProductFixedPrice = (product) => {
   const price = parseFloat(product?.price || 0);
   const startingPrice = parseFloat(product?.starting_price || 0);
   return price || startingPrice || 0;
+};
+
+// Helper to adjust product availability (stock)
+const adjustProductAvailability = async (product_id, delta) => {
+  try {
+    const { data: product, error: fetchError } = await supabase
+      .from('Products')
+      .select('availability, name')
+      .eq('products_id', product_id)
+      .single();
+    
+    if (fetchError || !product) return;
+
+    const newAvail = Math.max(0, (product.availability || 0) + delta);
+    
+    await supabase
+      .from('Products')
+      .update({ availability: newAvail })
+      .eq('products_id', product_id);
+      
+    console.log(`📦 Adjusted availability for "${product.name}" by ${delta}. New stock: ${newAvail}`);
+  } catch (err) {
+    console.error('Error adjusting availability:', err.message);
+  }
 };
 
 // Helper to get or create a cart for a user
@@ -52,6 +78,8 @@ export const getCartByUser = async (req, res) => {
         product_id,
         quantity,
         price_snapshot,
+        is_stashed,
+        added_at,
         Products (
             name,
             price,
@@ -64,11 +92,14 @@ export const getCartByUser = async (req, res) => {
             ),
             Seller (
                 store_name
-            )
+            ),
+            status,
+            availability
         )
       `)
       .eq('cart_id', cart_id)
-      .order('added_at', { ascending: false });
+      .order('is_stashed', { ascending: true }) // Active items first
+      .order('added_at', { ascending: false }); // Newest items first
 
     if (error) {
       console.error(`Supabase error fetching cart for user ${user_id}:`, error.message);
@@ -87,15 +118,27 @@ export const getCartByUser = async (req, res) => {
         name: item.Products?.name || 'Unknown Product',
         price,
         quantity: item.quantity,
+        is_stashed: item.is_stashed || false,
+        added_at: item.added_at,
         image: item.Products?.Product_Images?.[0]?.image_url || null,
         seller: item.Products?.Seller?.store_name || 'Unknown Store',
         seller_id: item.Products?.seller_id || null,
         condition: item.Products?.condition || 'N/A',
-        description: item.Products?.description || ''
+        description: item.Products?.description || '',
+        status: item.Products?.status || 'active',
+        availability: item.Products?.availability ?? 1
       });
     });
 
-    res.json(formattedData);
+    // Split into active and stashed for better frontend handling
+    const response = {
+      active: formattedData.filter(item => !item.is_stashed),
+      stashed: formattedData.filter(item => item.is_stashed),
+      total_active: formattedData.filter(item => !item.is_stashed).length,
+      limit: ACTIVE_CART_LIMIT
+    };
+
+    res.json(response);
   } catch (err) {
     console.error(`Unexpected error in getCartByUser for user ${req.params.user_id}:`, err.message);
     res.status(500).json({ error: err.message });
@@ -145,6 +188,10 @@ export const addToCart = async (req, res) => {
         .select('*');
 
       if (error) return res.status(400).json({ error: error.message });
+
+      // Decrease availability
+      await adjustProductAvailability(products_id, -parseInt(quantity));
+
       return res.json({ message: 'Cart updated', data: data[0] });
     } else {
       const { data: product } = await supabase
@@ -167,10 +214,111 @@ export const addToCart = async (req, res) => {
         .select('*');
 
       if (error) return res.status(400).json({ error: error.message });
+      
+      // Decrease availability
+      await adjustProductAvailability(products_id, -parseInt(quantity));
+
+      // Post-process: Manage cart limits
+      await enforceCartLimit(cart_id);
+      
       return res.status(201).json({ message: 'Added to cart', data: data[0] });
     }
   } catch (err) {
     console.error(`Error in ${req.method} ${req.originalUrl}:`, err.message);
+    res.status(500).json({ error: err.message });
+  }
+};
+
+// Internal helper to enforce the active cart limit
+const enforceCartLimit = async (cart_id) => {
+  try {
+    // 1. Get all active items ordered by added_at
+    const { data: activeItems, error: fetchError } = await supabase
+      .from('Cart_items')
+      .select('cartItem_id')
+      .eq('cart_id', cart_id)
+      .eq('is_stashed', false)
+      .order('added_at', { ascending: false });
+
+    if (fetchError) throw fetchError;
+
+    // 2. If we exceed the limit, stash the oldest ones
+    if (activeItems && activeItems.length > ACTIVE_CART_LIMIT) {
+      const itemsToStash = activeItems.slice(ACTIVE_CART_LIMIT);
+      const idsToStash = itemsToStash.map(item => item.cartItem_id);
+
+      // Fetch items to return stock
+      const { data: itemsReturningStock } = await supabase
+        .from('Cart_items')
+        .select('product_id, quantity')
+        .in('cartItem_id', idsToStash);
+
+      await supabase
+        .from('Cart_items')
+        .update({ is_stashed: true })
+        .in('cartItem_id', idsToStash);
+      
+      // Return stock for stashed items
+      if (itemsReturningStock) {
+        for (const item of itemsReturningStock) {
+          await adjustProductAvailability(item.product_id, item.quantity);
+        }
+      }
+        
+      console.log(`Auto-stashed ${idsToStash.length} items for cart ${cart_id} and returned stock.`);
+    }
+  } catch (err) {
+    console.error('Error enforcing cart limit:', err.message);
+  }
+};
+
+// Manually stash an item
+export const stashCartItem = async (req, res) => {
+  try {
+    const { cartItem_id } = req.params;
+    const { data, error } = await supabase
+      .from('Cart_items')
+      .update({ is_stashed: true })
+      .eq('cartItem_id', cartItem_id)
+      .select('*');
+
+    if (error) return res.status(400).json({ error: error.message });
+    if (data && data[0]) {
+      // Return stock to product
+      await adjustProductAvailability(data[0].product_id, data[0].quantity);
+    }
+    res.json({ message: 'Item stashed', data: data[0] });
+  } catch (err) {
+    res.status(500).json({ error: err.message });
+  }
+};
+
+// Manually unstash an item (moves back to active, might trigger stashing of others)
+export const unstashCartItem = async (req, res) => {
+  try {
+    const { cartItem_id } = req.params;
+    
+    // 1. Move to active
+    const { data, error } = await supabase
+      .from('Cart_items')
+      .update({ is_stashed: false, added_at: new Date().toISOString() }) // Reset added_at to make it "newest" active
+      .eq('cartItem_id', cartItem_id)
+      .select('cart_id, cartItem_id');
+
+    if (error) return res.status(400).json({ error: error.message });
+    if (!data || data.length === 0) return res.status(404).json({ error: 'Item not found' });
+
+    // 2. Enforce limit (this might stash the oldest active item)
+    await enforceCartLimit(data[0].cart_id);
+
+    // 3. Take stock from product
+    const { data: item } = await supabase.from('Cart_items').select('product_id, quantity').eq('cartItem_id', cartItem_id).single();
+    if (item) {
+        await adjustProductAvailability(item.product_id, -item.quantity);
+    }
+
+    res.json({ message: 'Item moved to active cart', data: data[0] });
+  } catch (err) {
     res.status(500).json({ error: err.message });
   }
 };
@@ -185,6 +333,9 @@ export const updateCartQuantity = async (req, res) => {
       return res.status(400).json({ error: 'Quantity must be at least 1' });
     }
 
+    const { data: existingItem } = await supabase.from('Cart_items').select('quantity, is_stashed').eq('cartItem_id', cartItem_id).single();
+    if (!existingItem) return res.status(404).json({ error: 'Cart item not found' });
+
     const { data, error } = await supabase
       .from('Cart_items')
       .update({ quantity })
@@ -192,7 +343,13 @@ export const updateCartQuantity = async (req, res) => {
       .select('*');
 
     if (error) return res.status(400).json({ error: error.message });
-    if (!data || data.length === 0) return res.status(404).json({ error: 'Cart item not found' });
+    if (!data || data.length === 0) return res.status(404).json({ error: 'Cart item found' });
+
+    // Adjust availability based on diff IF NOT STASHED
+    if (!existingItem.is_stashed) {
+      const diff = parseInt(quantity) - parseInt(existingItem.quantity);
+      await adjustProductAvailability(data[0].product_id, -diff);
+    }
 
     res.json({ message: 'Quantity updated', data: data[0] });
   } catch (err) {
@@ -213,6 +370,12 @@ export const removeFromCart = async (req, res) => {
       .select('*');
 
     if (error) return res.status(400).json({ error: error.message });
+    
+    if (data && data[0] && !data[0].is_stashed) {
+      // Return stock
+      await adjustProductAvailability(data[0].product_id, data[0].quantity);
+    }
+
     res.json({ message: 'Removed from cart', data: data[0] });
   } catch (err) {
     console.error(`Error in ${req.method} ${req.originalUrl}:`, err.message);
@@ -226,13 +389,56 @@ export const clearCart = async (req, res) => {
     const { user_id } = req.params;
     const cart_id = await getOrCreateCartId(user_id);
 
+    // Fetch items that were NOT stashed to return stock
+    const { data: activeItems } = await supabase
+      .from('Cart_items')
+      .select('product_id, quantity')
+      .eq('cart_id', cart_id)
+      .eq('is_stashed', false);
+
     const { error } = await supabase
       .from('Cart_items')
       .delete()
       .eq('cart_id', cart_id);
 
     if (error) return res.status(400).json({ error: error.message });
+
+    if (activeItems) {
+      for (const item of activeItems) {
+        await adjustProductAvailability(item.product_id, item.quantity);
+      }
+    }
+
     res.json({ message: 'Cart cleared' });
+  } catch (err) {
+    res.status(500).json({ error: err.message });
+  }
+};
+
+// Remove specific products from cart after a successful order — WITHOUT restoring stock
+// (The product is now "sold", so stock should stay at 0)
+export const removeOrderedItemsFromCart = async (req, res) => {
+  try {
+    const { user_id } = req.params;
+    const { product_ids } = req.body; // array of product UUIDs that were ordered
+
+    if (!user_id || !Array.isArray(product_ids) || product_ids.length === 0) {
+      return res.status(400).json({ error: 'user_id and product_ids[] are required' });
+    }
+
+    const cart_id = await getOrCreateCartId(user_id);
+
+    // Delete those cart items WITHOUT calling adjustProductAvailability
+    // because the product status/availability was already finalized by createOrder
+    const { error } = await supabase
+      .from('Cart_items')
+      .delete()
+      .eq('cart_id', cart_id)
+      .in('product_id', product_ids);
+
+    if (error) return res.status(400).json({ error: error.message });
+
+    res.json({ message: 'Ordered items removed from cart' });
   } catch (err) {
     res.status(500).json({ error: err.message });
   }

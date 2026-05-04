@@ -18,6 +18,8 @@ interface User {
   Avatar?: string;
   kyc_status?: string;
   violation_record: ViolationRecord | null;
+  active_cart_count?: number;
+  stashed_cart_count?: number;
 }
 
 // DB account_status → display standing
@@ -93,22 +95,29 @@ const UserManagement = () => {
       return;
     }
 
-    const ids = userData.map((u: any) => u.user_id);
-    const { data: vrData, error: vrError } = await supabase
-      .from('Violation_Records')
-      .select('user_id, account_status, strike_count')
+    // Fetch Cart Stats (Joy Reserver Metrics)
+    const { data: cartData, error: cartError } = await supabase
+      .from('Cart_items')
+      .select('user_id, is_stashed')
       .in('user_id', ids);
 
-    if (vrError) console.error('Violation_Records fetch error:', vrError);
+    if (cartError) console.error('Cart_items fetch error:', cartError);
 
-    const vrMap: Record<string, ViolationRecord> = {};
-    if (vrData) {
-      for (const vr of vrData as any[]) {
-        vrMap[vr.user_id] = { account_status: vr.account_status, strike_count: vr.strike_count };
+    const cartMap: Record<string, { active: number, stashed: number }> = {};
+    if (cartData) {
+      for (const item of cartData as any[]) {
+        if (!cartMap[item.user_id]) cartMap[item.user_id] = { active: 0, stashed: 0 };
+        if (item.is_stashed) cartMap[item.user_id].stashed++;
+        else cartMap[item.user_id].active++;
       }
     }
 
-    setUsers(userData.map((u: any) => ({ ...u, violation_record: vrMap[u.user_id] || null })));
+    setUsers(userData.map((u: any) => ({ 
+      ...u, 
+      violation_record: vrMap[u.user_id] || null,
+      active_cart_count: cartMap[u.user_id]?.active || 0,
+      stashed_cart_count: cartMap[u.user_id]?.stashed || 0
+    })));
     setLoading(false);
   };
 
@@ -226,6 +235,7 @@ const UserManagement = () => {
                 <tr>
                   <th>Buyer</th>
                   <th>ID Verified</th>
+                  <th>Cart (Active/Stashed)</th>
                   <th>Strikes</th>
                   <th>Standing</th>
                   <th>Actions</th>
@@ -258,6 +268,20 @@ const UserManagement = () => {
                           ? <div style={{ display: 'flex', alignItems: 'center', gap: '4px', color: 'var(--success)', fontSize: '13px', fontWeight: 600 }}><UserCheck size={14} /> Verified</div>
                           : <div style={{ display: 'flex', alignItems: 'center', gap: '4px', color: 'var(--text-secondary)', fontSize: '13px' }}><ShieldOff size={14} /> Unverified</div>
                         }
+                      </td>
+                      <td>
+                        <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+                          <span style={{ fontSize: '13px', fontWeight: 600, color: (user.active_cart_count || 0) > 10 ? '#D32F2F' : 'var(--text-primary)' }}>
+                            {user.active_cart_count || 0}
+                          </span>
+                          <span style={{ color: '#94a3b8' }}>/</span>
+                          <span style={{ fontSize: '13px', fontWeight: 600, color: (user.stashed_cart_count || 0) > 20 ? '#6366f1' : 'var(--text-secondary)' }}>
+                            {user.stashed_cart_count || 0}
+                          </span>
+                          {(user.stashed_cart_count || 0) > 30 && (
+                            <span title="Potential Joy Reserver" style={{ background: '#fef2f2', color: '#dc2626', fontSize: '10px', padding: '1px 5px', borderRadius: '4px', border: '1px solid #fecdd3', fontWeight: 700 }}>JOY?</span>
+                          )}
+                        </div>
                       </td>
                       <td>
                         <span style={{ fontSize: '14px', fontWeight: 700, color: (user.violation_record?.strike_count || 0) > 0 ? 'var(--danger)' : 'var(--text-secondary)' }}>
@@ -333,18 +357,20 @@ const UserManagement = () => {
               {/* Body */}
               <div style={{ padding: '24px', display: 'flex', flexDirection: 'column', gap: '20px' }}>
                 {/* Account info */}
-                <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr 1fr', gap: '10px' }}>
+                <div style={{ display: 'grid', gridTemplateColumns: 'repeat(4, 1fr)', gap: '10px' }}>
                   {[
                     { label: 'ID Verification', value: selectedUser.kyc_status || (selectedUser.is_verified ? 'approved' : 'none'), ok: selectedUser.is_verified },
-                    { label: 'Strike Count', value: String(selectedUser.violation_record?.strike_count || 0), ok: (selectedUser.violation_record?.strike_count || 0) === 0 },
-                    { label: 'Role', value: selectedUser.role, ok: true },
+                    { label: 'Strikes', value: String(selectedUser.violation_record?.strike_count || 0), ok: (selectedUser.violation_record?.strike_count || 0) === 0 },
+                    { label: 'Active Cart', value: String(selectedUser.active_cart_count || 0), ok: (selectedUser.active_cart_count || 0) <= 12 },
+                    { label: 'Stashed', value: String(selectedUser.stashed_cart_count || 0), ok: (selectedUser.stashed_cart_count || 0) <= 25 },
                   ].map(item => (
                     <div key={item.label} style={{ padding: '12px', background: '#F8FAFC', borderRadius: '10px', border: '1px solid #E2E8F0', textAlign: 'center' }}>
-                      <div style={{ fontSize: '10px', fontWeight: 700, color: 'var(--text-secondary)', textTransform: 'uppercase', letterSpacing: '0.5px', marginBottom: '4px' }}>{item.label}</div>
-                      <div style={{ fontSize: '13px', fontWeight: 700, color: item.ok ? 'var(--text-primary)' : 'var(--danger)', textTransform: 'capitalize' }}>{item.value}</div>
+                      <div style={{ fontSize: '9px', fontWeight: 700, color: 'var(--text-secondary)', textTransform: 'uppercase', letterSpacing: '0.5px', marginBottom: '4px' }}>{item.label}</div>
+                      <div style={{ fontSize: '12px', fontWeight: 700, color: item.ok ? 'var(--text-primary)' : 'var(--danger)', textTransform: 'capitalize' }}>{item.value}</div>
                     </div>
                   ))}
                 </div>
+
 
                 {/* Standing actions */}
                 <div>

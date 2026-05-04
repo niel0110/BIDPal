@@ -326,3 +326,8 @@
     .condBadge, .soldBadge { font-size: 0.6rem; padding: 2px 6px; top: 6px; left: 6px; }
     .overlayBadge { bottom: 6px; right: 6px; padding: 3px 6px; font-size: 0.6rem; gap: 4px; }
 }
+
+.grayscale {
+    filter: grayscale(1);
+    opacity: 0.8;
+}

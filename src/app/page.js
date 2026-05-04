@@ -134,6 +134,7 @@ function HomeInner() {
         fetch(`${apiUrl}/api/auctions?sale_type=bid&limit=50${catParam}`),
         fetch(`${apiUrl}/api/auctions?sale_type=sale&limit=50${catParam}`),
       ]);
+      
       const auctionJson = await auctionRes.json();
       const fetchedAuctions = auctionJson.data || [];
 
@@ -148,6 +149,7 @@ function HomeInner() {
         seller_avatar: a.seller_avatar,
         seller_id: a.seller_id,
         category: a.category,
+        availability: a.availability,
       }));
 
       const filteredFixed = category === 'all'
@@ -182,7 +184,6 @@ function HomeInner() {
   useEffect(() => {
     fetchHomeData('all');
   }, [user?.user_id]);
-
   // Fetch search results when query or sort changes
   useEffect(() => {
     if (!searchQuery) {
@@ -216,6 +217,7 @@ function HomeInner() {
           seller_avatar: a.seller_avatar,
           seller_id: a.seller_id,
           category: a.category,
+          availability: a.availability,
         })));
       } catch (err) {
         console.error('Search failed:', err);
@@ -278,6 +280,7 @@ function HomeInner() {
                   ...item,
                   title: item.name,
                   image: item.images?.[0]?.image_url,
+                  availability: item.availability,
                   wishlistCount: item.wishlist_count || 0,
                 }} />
               ))}
@@ -321,6 +324,7 @@ function HomeInner() {
                 ...item,
                 title: item.name,
                 image: item.images?.[0]?.image_url,
+                availability: item.availability,
                 wishlistCount: item.wishlist_count || 0,
               }} />
             ))}

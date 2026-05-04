@@ -115,6 +115,7 @@ export default function InventoryPage() {
                 start_date: saleType === 'sale' ? todayDate : scheduleForm.startDate,
                 start_time: saleType === 'sale' ? nowTime : scheduleForm.startTime,
                 bid_increment: saleType === 'bid' ? parseFloat(scheduleForm.bidIncrement) : null,
+                availability: scheduleForm.availability || 1,
             };
 
             const res = await fetch(`${apiUrl}/api/auctions/schedule`, {
@@ -300,16 +301,29 @@ export default function InventoryPage() {
 
                             {/* Fixed price input (sale type only) */}
                             {saleType === 'sale' && (
-                                <div style={{ marginBottom: '1.25rem' }}>
-                                    <label style={{ fontSize: '0.78rem', fontWeight: 700, color: '#475569', textTransform: 'uppercase', letterSpacing: '0.05em', display: 'block', marginBottom: '0.5rem' }}>Buy Now Price</label>
-                                    <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', border: '1.5px solid #e2e8f0', borderRadius: 10, padding: '0 0.85rem', background: '#fafafa' }}>
-                                        <span style={{ fontWeight: 700, color: '#475569', fontSize: '0.9rem' }}>₱</span>
-                                        <input
-                                            type="number" step="0.01" min="0" placeholder="0.00" required={saleType === 'sale'}
-                                            value={scheduleForm.fixedPrice}
-                                            onChange={e => setScheduleForm(p => ({ ...p, fixedPrice: e.target.value }))}
-                                            style={{ flex: 1, border: 'none', background: 'transparent', padding: '0.75rem 0', fontSize: '0.9rem', outline: 'none', color: '#0f172a' }}
-                                        />
+                                <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '1rem', marginBottom: '1.25rem' }}>
+                                    <div>
+                                        <label style={{ fontSize: '0.78rem', fontWeight: 700, color: '#475569', textTransform: 'uppercase', letterSpacing: '0.05em', display: 'block', marginBottom: '0.5rem' }}>Buy Now Price</label>
+                                        <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', border: '1.5px solid #e2e8f0', borderRadius: 10, padding: '0 0.85rem', background: '#fafafa' }}>
+                                            <span style={{ fontWeight: 700, color: '#475569', fontSize: '0.9rem' }}>₱</span>
+                                            <input
+                                                type="number" step="0.01" min="0" placeholder="0.00" required={saleType === 'sale'}
+                                                value={scheduleForm.fixedPrice}
+                                                onChange={e => setScheduleForm(p => ({ ...p, fixedPrice: e.target.value }))}
+                                                style={{ flex: 1, border: 'none', background: 'transparent', padding: '0.75rem 0', fontSize: '0.9rem', outline: 'none', color: '#0f172a' }}
+                                            />
+                                        </div>
+                                    </div>
+                                    <div>
+                                        <label style={{ fontSize: '0.78rem', fontWeight: 700, color: '#475569', textTransform: 'uppercase', letterSpacing: '0.05em', display: 'block', marginBottom: '0.5rem' }}>Stock (Quantity)</label>
+                                        <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', border: '1.5px solid #e2e8f0', borderRadius: 10, padding: '0 0.85rem', background: '#fafafa' }}>
+                                            <input
+                                                type="number" min="1" placeholder="1" required
+                                                value={scheduleForm.availability || 1}
+                                                onChange={e => setScheduleForm(p => ({ ...p, availability: e.target.value }))}
+                                                style={{ flex: 1, border: 'none', background: 'transparent', padding: '0.75rem 0', fontSize: '0.9rem', outline: 'none', color: '#0f172a' }}
+                                            />
+                                        </div>
                                     </div>
                                 </div>
                             )}

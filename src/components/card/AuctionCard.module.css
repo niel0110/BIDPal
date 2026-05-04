@@ -450,6 +450,17 @@
 
     .heartBtn {
         top: 6px;
+
+    .liveBadge,
+    .scheduledBadge {
+        font-size: 0.6rem;
+        padding: 2px 6px;
+        top: 6px;
+        left: 6px;
+    }
+
+    .heartBtn {
+        top: 6px;
         right: 6px;
         width: 28px;
         height: 28px;
@@ -462,4 +473,51 @@
         font-size: 0.6rem;
         gap: 4px;
     }
+}
+
+/* Sold Status Styles */
+.soldCard {
+    opacity: 0.85;
+    position: relative;
+}
+
+.disabledCard {
+    cursor: not-allowed;
+    pointer-events: none;
+}
+
+/* Allow heart button to be clickable even if card is disabled */
+.disabledCard .heartBtn {
+    pointer-events: auto;
+}
+
+.grayscale {
+    filter: grayscale(100%);
+    opacity: 0.7;
+}
+
+.soldOverlay {
+    position: absolute;
+    top: 0;
+    left: 0;
+    right: 0;
+    bottom: 0;
+    background: rgba(0, 0, 0, 0.4);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    z-index: 4;
+}
+
+.soldBadge {
+    background: #333;
+    color: white;
+    padding: 6px 16px;
+    border-radius: 4px;
+    font-weight: 800;
+    font-size: 1.1rem;
+    letter-spacing: 2px;
+    border: 2px solid white;
+    box-shadow: 0 4px 15px rgba(0, 0, 0, 0.5);
+    transform: rotate(-15deg);
 }

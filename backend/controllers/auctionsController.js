@@ -112,6 +112,8 @@ export const getSellerAuctions = async (req, res) => {
             current_price: auction.current_price || auction.reserve_price || 0,
             final_price: auction.final_price || null,
             status: auction.status,
+            product_status: productData?.status || 'active',
+            availability: productData?.availability || 1,
             created_at: auction.created_at,
           };
         } catch (mapErr) {
@@ -175,9 +177,11 @@ export const getAllAuctions = async (req, res) => {
     }
 
     if (status) {
-      query = query.eq('status', status);
+      if (status !== 'all') {
+        query = query.eq('status', status);
+      }
     } else {
-      query = query.in('status', ['active', 'scheduled']);
+      query = query.in('status', ['active', 'scheduled', 'completed']);
     }
 
     query = query.range(offset, offset + parseInt(limit) - 1);
@@ -243,7 +247,9 @@ export const getAllAuctions = async (req, res) => {
           timeLeft: auction.status === 'active' ? 'Active Now' : new Date(auction.start_time).toLocaleString(),
           image: primaryImage?.image_url || null,
           images: images.map(img => img.image_url).filter(Boolean),
-          status: auction.status
+          status: auction.status,
+          product_status: productData?.status || 'active',
+          availability: productData?.availability || 1,
         };
       })
     );
@@ -278,6 +284,11 @@ export const getAllAuctions = async (req, res) => {
       );
     }
 
+    // Exclude sold products for general discovery (unless seller is looking at their own items)
+    if (!seller_id) {
+      result = result.filter(a => a.product_status !== 'sold');
+    }
+
     res.json({ count: result.length, data: result });
   } catch (err) {
     res.status(500).json({ error: err.message });
@@ -301,6 +312,7 @@ export const scheduleAuction = async (req, res) => {
       end_time,
       timezone = 'UTC',
       bid_increment,
+      availability,
     } = req.body;
 
     // Validation
@@ -432,10 +444,13 @@ export const scheduleAuction = async (req, res) => {
       // Even if this fails, we created the auction, but log the error
     }
 
-    // Update Product status to 'scheduled'
+    // Update Product status and availability
     await supabase
-      .from('Products') // Or your active products table
-      .update({ status: 'scheduled' })
+      .from('Products')
+      .update({ 
+        status: isBid ? 'scheduled' : 'active',
+        availability: availability !== undefined ? parseInt(availability) : 1
+      })
       .eq('products_id', product_id);
 
     res.status(201).json({ message: 'Auction scheduled successfully', auction_id: auctionData.auction_id });
@@ -542,10 +557,13 @@ export const endAuction = async (req, res) => {
       }
     }
 
-    // Update Product status
+    // Update Product status and availability
     await supabase
       .from('Products')
-      .update({ status: productStatus })
+      .update({ 
+        status: productStatus,
+        availability: productStatus === 'sold' ? 0 : auction.availability 
+      })
       .eq('products_id', auction.products_id);
 
     // 5. Create notifications and order if there's a winner and reserve is met

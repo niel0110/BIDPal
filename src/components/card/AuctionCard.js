@@ -63,7 +63,10 @@ export default function AuctionCard({ data }) {
         setActiveImg(imgs[0] || null);
     }, [data.image, data.images]);
 
+    const isSold = data.product_status === 'sold' || (data.status === 'ended' && data.product_status === 'sold');
+
     const handleCardClick = () => {
+        if (isSold) return;
         router.push(`/live?id=${data.id}`);
     };
 
@@ -113,18 +116,24 @@ export default function AuctionCard({ data }) {
     };
 
     return (
-        <div className={styles.cardLink} onClick={handleCardClick}>
-            <div className={styles.card}>
+        <div className={`${styles.cardLink} ${isSold ? styles.disabledCard : ''}`} onClick={handleCardClick}>
+            <div className={`${styles.card} ${isSold ? styles.soldCard : ''}`}>
 
                 {/* Main image */}
                 <div className={styles.imageWrapper}>
                     <img
                         src={activeImg || 'https://placehold.co/280x280?text=No+Image'}
                         alt={data.title}
-                        className={styles.image}
+                        className={`${styles.image} ${isSold ? styles.grayscale : ''}`}
                     />
 
-                    {data.status === 'active' && (
+                    {isSold && (
+                        <div className={styles.soldOverlay}>
+                            <div className={styles.soldBadge}>SOLD</div>
+                        </div>
+                    )}
+
+                    {data.status === 'active' && !isSold && (
                         <div className={styles.liveBadge}>🔴 LIVE</div>
                     )}
                     {data.status === 'scheduled' && (

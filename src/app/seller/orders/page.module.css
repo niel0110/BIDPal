@@ -802,12 +802,14 @@
 }
 
 .fixedCardImg {
-    width: 52px;
-    height: 52px;
-    border-radius: 8px;
-    object-fit: cover;
+    width: 64px;
+    height: 64px;
+    border-radius: 10px;
+    object-fit: contain;
+    object-position: center;
     flex-shrink: 0;
-    background: #eee;
+    background: white;
+    border: 1px solid #f1f5f9;
 }
 
 .fixedCardInfo {

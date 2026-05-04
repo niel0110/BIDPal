@@ -30,21 +30,25 @@ export const getAllProducts = async (req, res) => {
       search,
       has_price,
       sort = 'recent',
-      limit = 50,
+      limit = 50,
       offset = 0
     } = req.query;
 
     let query = supabase.from('vw_product_details').select('*', { count: 'exact' });
 
     // Filters
-    if (status)    query = query.eq('status', status);
+    if (status) {
+      query = query.eq('status', status);
+    } else {
+      // By default, exclude sold, delisted, and archived products for discovery
+      query = query.not('status', 'in', '("sold","delisted","archived")');
+    }
     if (seller_id) query = query.eq('seller_id', seller_id);
     if (condition) query = query.eq('condition', condition);
     if (category)  query = query.ilike('category', `%${category}%`);
     if (search)    query = query.or(`name.ilike.%${search}%,description.ilike.%${search}%`);
     if (has_price === 'true') query = query.not('price', 'is', null);
 
-    // Sorting
     switch (sort) {
       case 'price_asc':
         query = query.order('price', { ascending: true });

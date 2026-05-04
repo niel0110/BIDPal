@@ -22,6 +22,15 @@ function peso(value) {
     return `₱${Number(value || 0).toLocaleString('en-PH')}`;
 }
 
+function listingImage(listing) {
+    return (
+        listing.image ||
+        listing.images?.[0]?.image_url ||
+        listing.images?.[0] ||
+        'https://placehold.co/96x96?text=Item'
+    );
+}
+
 export default function SellerOrdersPage() {
     const router = useRouter();
     const { user } = useAuth();
@@ -151,7 +160,7 @@ export default function SellerOrdersPage() {
                                 onClick={() => openListing(listing)}
                             >
                                 <img
-                                    src={listing.image || listing.images?.[0] || 'https://placehold.co/72x72?text=Item'}
+                                    src={listingImage(listing)}
                                     alt={listing.title || 'Fixed price item'}
                                     className={styles.fixedCardImg}
                                 />
