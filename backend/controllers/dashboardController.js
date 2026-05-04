@@ -9,9 +9,10 @@ export const getDashboardSummary = async (req, res) => {
       return res.status(400).json({ error: 'seller_id or user_id is required' });
     }
 
-    let final_seller_id = seller_id;
+    let final_seller_id = null;
 
-    if (!final_seller_id && user_id) {
+    // Always resolve via user_id lookup when available — most reliable path
+    if (user_id) {
       const { data: sellerData, error: sellerError } = await supabase
         .from('Seller')
         .select('seller_id')
@@ -19,20 +20,27 @@ export const getDashboardSummary = async (req, res) => {
         .maybeSingle();
 
       if (sellerError) throw sellerError;
-      if (!sellerData) return res.status(404).json({ error: 'Seller not found' });
-      final_seller_id = sellerData.seller_id;
+      if (sellerData) final_seller_id = sellerData.seller_id;
+    }
+
+    // Fallback: use seller_id directly if user_id lookup didn't resolve
+    if (!final_seller_id && seller_id) {
+      final_seller_id = seller_id;
+    }
+
+    if (!final_seller_id) {
+      return res.status(404).json({ error: 'Seller not found' });
     }
 
     // Get viewer count function from app.locals (set in server.js)
     const getViewerCount = req.app.locals.getViewerCount || (() => 0);
 
-    // 1. Get Active Auction (selling — bid auctions only, not fixed price)
+    // 1. Get Active Auction
     const { data: activeAuction, error: activeError } = await supabase
       .from('Auctions')
       .select('*')
       .eq('seller_id', final_seller_id)
       .eq('status', 'active')
-      .or('sale_type.eq.bid,sale_type.is.null')
       .maybeSingle();
 
     if (activeError) throw activeError;
@@ -71,10 +79,7 @@ export const getDashboardSummary = async (req, res) => {
             console.log(`Auction ${activeAuction.auction_id} has been live for ${hoursLive} hours. Auto-ending for safety.`);
             const { error: endError } = await supabase
                 .from('Auctions')
-                .update({
-                    status: 'ended',
-                    live_ended_at: new Date().toISOString()
-                })
+                .update({ status: 'ended' })
                 .eq('auction_id', activeAuction.auction_id);
 
             if (!endError) {
@@ -89,20 +94,48 @@ export const getDashboardSummary = async (req, res) => {
         }
     }
 
-    // 2. Get Auction Queue (scheduled bid auctions only — exclude fixed price where buy_now_price > 0)
+    // 2. Get Auction Queue (all scheduled auctions — status='scheduled' already implies bid-type)
     const { data: queueAuctions, error: queueError } = await supabase
       .from('Auctions')
       .select('*')
       .eq('seller_id', final_seller_id)
       .eq('status', 'scheduled')
-      .or('buy_now_price.eq.0,buy_now_price.is.null')
       .order('start_time', { ascending: true });
 
     if (queueError) throw queueError;
 
+    // Auto-transition: scheduled auctions whose start_time has passed → 'ended'
+    const nowTs = new Date();
+    const expiredAuctionIds = (queueAuctions || [])
+      .filter(a => a.start_time && new Date(a.start_time) <= nowTs)
+      .map(a => a.auction_id);
+
+    if (expiredAuctionIds.length > 0) {
+      await supabase
+        .from('Auctions')
+        .update({ status: 'ended' })
+        .in('auction_id', expiredAuctionIds);
+
+      // Update related product statuses back to inactive
+      const expiredProductIds = (queueAuctions || [])
+        .filter(a => expiredAuctionIds.includes(a.auction_id) && a.products_id)
+        .map(a => a.products_id);
+      if (expiredProductIds.length > 0) {
+        await supabase
+          .from('Products')
+          .update({ status: 'inactive' })
+          .in('products_id', expiredProductIds);
+      }
+    }
+
+    // Only return auctions that are still in the future
+    const activeQueueAuctions = (queueAuctions || []).filter(
+      a => !expiredAuctionIds.includes(a.auction_id)
+    );
+
     // Fetch product details for queue
     const queue = await Promise.all(
-      (queueAuctions || []).map(async (auction) => {
+      activeQueueAuctions.map(async (auction) => {
         const { data: productData } = await supabase
           .from('vw_product_details')
           .select('*')

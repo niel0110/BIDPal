@@ -21,6 +21,7 @@ export default function ProductCard({ data, compact = false }) {
     const [isAdding, setIsAdding] = useState(false);
     const [isFollowing, setIsFollowing] = useState(false);
     const [isFollowLoading, setIsFollowLoading] = useState(false);
+    const [localAvailability, setLocalAvailability] = useState(data.availability);
 
     const mainImg = (data.images?.length
         ? data.images.map(i => i.image_url || i).filter(Boolean)
@@ -73,6 +74,7 @@ export default function ProductCard({ data, compact = false }) {
         if (isAlreadyInCart || isSoldOut) return;
         setIsAdding(true);
         await addToCart(data.products_id);
+        setLocalAvailability(prev => (prev != null ? Math.max(0, prev - 1) : prev));
         setIsAdding(false);
     };
 
@@ -88,8 +90,8 @@ export default function ProductCard({ data, compact = false }) {
     const conditionLabel = formatCondition(data.condition);
     const displayPrice = data.price ?? data.starting_price;
     const isAlreadyInCart = isInCart(data.products_id);
-    const isSoldOut = data.isSoldOut || data.availability === 0 || data.status === 'sold' || data.product_status === 'sold';
-    const lowStock = data.availability > 0 && data.availability <= 5;
+    const isSoldOut = data.isSoldOut || localAvailability === 0 || data.status === 'sold' || data.product_status === 'sold';
+    const lowStock = localAvailability > 0 && localAvailability <= 5;
     const sellerName = data.seller_name || data.store_name || data.seller || 'Unknown Store';
     const sellerAvatar = data.seller_avatar || data.seller_logo || null;
 
@@ -119,9 +121,9 @@ export default function ProductCard({ data, compact = false }) {
                             {isSoldOut
                                 ? 'Sold Out'
                                 : lowStock
-                                    ? `${data.availability} left`
-                                    : data.availability != null
-                                        ? `${data.availability} in stock`
+                                    ? `${localAvailability} left`
+                                    : localAvailability != null
+                                        ? `${localAvailability} in stock`
                                         : 'In Stock'}
                         </span>
                     </div>

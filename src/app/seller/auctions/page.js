@@ -1113,7 +1113,7 @@ export default function MyAuctions() {
                     display: 'flex', alignItems: 'center', justifyContent: 'center', zIndex: 1000, padding: '1rem'
                 }} onClick={closeScheduleModal}>
                     <div style={{
-                        background: 'white', borderRadius: 20, padding: '2rem', width: '100%', maxWidth: 500,
+                        background: 'white', borderRadius: 20, padding: 'clamp(1.25rem, 5vw, 2rem)', width: '100%', maxWidth: 500,
                         maxHeight: '90vh', overflowY: 'auto', boxShadow: '0 20px 60px rgba(0,0,0,0.18)'
                     }} onClick={e => e.stopPropagation()}>
                         <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '1.5rem' }}>
@@ -1213,19 +1213,19 @@ export default function MyAuctions() {
                             {saleType !== 'sale' && (
                                 <div style={{ marginBottom: '1.25rem' }}>
                                     <label style={{ fontSize: '0.78rem', fontWeight: 700, color: '#475569', textTransform: 'uppercase', letterSpacing: '0.05em', display: 'block', marginBottom: '0.5rem' }}>Date & Time</label>
-                                    <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '0.6rem' }}>
+                                    <div style={{ display: 'flex', flexDirection: 'column', gap: '0.6rem' }}>
                                         <div style={{ border: '1.5px solid #e2e8f0', borderRadius: 10, padding: '0.6rem 0.85rem', display: 'flex', alignItems: 'center', gap: '0.5rem', background: '#fafafa' }}>
-                                            <Calendar size={15} color="#94a3b8" />
+                                            <Calendar size={15} color="#94a3b8" style={{ flexShrink: 0 }} />
                                             <input type="date" required value={scheduleForm.startDate}
                                                 onChange={e => setScheduleForm(p => ({ ...p, startDate: e.target.value }))}
-                                                style={{ border: 'none', background: 'transparent', fontSize: '0.85rem', outline: 'none', color: '#0f172a', flex: 1, minWidth: 0 }}
+                                                style={{ border: 'none', background: 'transparent', fontSize: '0.85rem', outline: 'none', color: '#0f172a', flex: 1, minWidth: 0, width: '100%' }}
                                             />
                                         </div>
                                         <div style={{ border: '1.5px solid #e2e8f0', borderRadius: 10, padding: '0.6rem 0.85rem', display: 'flex', alignItems: 'center', gap: '0.5rem', background: '#fafafa' }}>
-                                            <Clock size={15} color="#94a3b8" />
+                                            <Clock size={15} color="#94a3b8" style={{ flexShrink: 0 }} />
                                             <input type="time" required value={scheduleForm.startTime}
                                                 onChange={e => setScheduleForm(p => ({ ...p, startTime: e.target.value }))}
-                                                style={{ border: 'none', background: 'transparent', fontSize: '0.85rem', outline: 'none', color: '#0f172a', flex: 1, minWidth: 0 }}
+                                                style={{ border: 'none', background: 'transparent', fontSize: '0.85rem', outline: 'none', color: '#0f172a', flex: 1, minWidth: 0, width: '100%' }}
                                             />
                                         </div>
                                     </div>

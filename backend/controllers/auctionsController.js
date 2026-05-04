@@ -22,6 +22,24 @@ export const getSellerAuctions = async (req, res) => {
       final_seller_id = sellerData.seller_id;
     }
 
+    // Auto-transition: end any scheduled auctions whose start_time has passed
+    const nowTs = new Date();
+    const { data: overdueAuctions } = await supabase
+      .from('Auctions')
+      .select('auction_id, products_id')
+      .eq('seller_id', final_seller_id)
+      .eq('status', 'scheduled')
+      .lte('start_time', nowTs.toISOString());
+
+    if (overdueAuctions && overdueAuctions.length > 0) {
+      const overdueIds = overdueAuctions.map(a => a.auction_id);
+      const overdueProductIds = overdueAuctions.map(a => a.products_id).filter(Boolean);
+      await supabase.from('Auctions').update({ status: 'ended' }).in('auction_id', overdueIds);
+      if (overdueProductIds.length > 0) {
+        await supabase.from('Products').update({ status: 'inactive' }).in('products_id', overdueProductIds);
+      }
+    }
+
     // Build query to fetch auctions
     let query = supabase
       .from('Auctions')
@@ -249,19 +267,19 @@ export const getAllAuctions = async (req, res) => {
           images: images.map(img => img.image_url).filter(Boolean),
           status: auction.status,
           product_status: productData?.status || 'active',
-          availability: productData?.availability || 1,
+          availability: productData?.availability || 0,
         };
       })
     );
 
     const CATEGORY_KEYWORDS = {
-      clothing:    ['cloth', 'shirt', 'dress', 'pants', 'top', 'wear', 'apparel', 'fashion', 'blouse', 'skirt', 'suit', 'jacket', 'coat', 'jeans'],
+      clothing:    ['cloth', 'shirt', 'dress', 'pants', 'wear', 'apparel', 'fashion', 'blouse', 'skirt', 'suit', 'jacket', 'coat', 'jeans'],
       shoes:       ['shoe', 'footwear', 'sneaker', 'boot', 'sandal', 'slipper', 'heel'],
       bags:        ['bag', 'purse', 'tote', 'pouch', 'backpack', 'luggage', 'satchel', 'handbag', 'clutch'],
       jewelry:     ['jewel', 'necklace', 'ring', 'watch', 'bracelet', 'gem', 'earring', 'pendant', 'luxury'],
-      gadgets:     ['gadget', 'electron', 'phone', 'tablet', 'laptop', 'computer', 'camera', 'gaming', 'headphone', 'audio', 'tv', 'charger', 'cable', 'tech'],
+      gadgets:     ['gadget', 'electron', 'phone', 'tablet', 'smartphone', 'laptop', 'computer', 'camera', 'gaming', 'headphone', 'audio', 'tv', 'charger', 'cable', 'tech'],
       appliances:  ['appliance', 'kitchen', 'laundry', 'refriger', 'vacuum', 'blender', 'oven', 'microwave'],
-      furniture:   ['furniture', 'sofa', 'bed', 'dining', 'table', 'chair', 'storage', 'couch', 'decor', 'shelf', 'cabinet'],
+      furniture:   ['furniture', 'sofa', 'bed', 'dining', 'chair', 'storage', 'couch', 'decor', 'shelf', 'cabinet'],
       garden:      ['garden', 'plant', 'outdoor', 'lawn', 'tool', 'pot', 'soil'],
       instruments: ['instrument', 'music', 'guitar', 'piano', 'violin', 'drum', 'vinyl', 'bass', 'keyboard'],
     };

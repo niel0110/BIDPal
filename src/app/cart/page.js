@@ -278,7 +278,7 @@ export default function CartPage() {
                             <div className={styles.itemsList}>
                                 {cartItems.map(item => {
                                     const isSelected = selectedIds.has(item.cart_id);
-                                    const isSold = item.status === 'sold' || (item.availability !== undefined && item.availability <= 0);
+                                    const isSold = item.status === 'sold';
                                     
                                     return (
                                         <div
@@ -363,22 +363,22 @@ export default function CartPage() {
                                     <div className={styles.stashedList}>
                                         {stashedItems.map(item => (
                                             <div key={item.cart_id} className={styles.stashedItem}>
-                                                <div className={styles.stashedImg}>
+                                                <Link href={`/product/${item.id}`} className={styles.stashedImg} style={{ textDecoration: 'none' }}>
                                                     <img src={item.image || 'https://placehold.co/100x100?text=No+Image'} alt={item.name} />
-                                                </div>
+                                                </Link>
                                                 <div className={styles.stashedInfo}>
-                                                    <h3 className={styles.stashedName}>{item.name}</h3>
+                                                    <Link href={`/product/${item.id}`} className={styles.stashedName} style={{ textDecoration: 'none', color: 'inherit' }}>{item.name}</Link>
                                                     <p className={styles.stashedSeller}>Sold by: {item.seller}</p>
                                                     <div className={styles.stashedPrice}>₱{item.price.toLocaleString('en-PH')}</div>
                                                 </div>
                                                 <div className={styles.stashedActions}>
-                                                    <button 
+                                                    <button
                                                         className={styles.unstashBtn}
                                                         onClick={() => unstashItem(item.cart_id)}
                                                     >
                                                         Move to Cart
                                                     </button>
-                                                    <button 
+                                                    <button
                                                         className={styles.stashedRemove}
                                                         onClick={() => removeItem(item.cart_id)}
                                                     >
@@ -572,9 +572,52 @@ export default function CartPage() {
                         {stashedItems.length > 0 && (
                             <div className={styles.stashedOnlyBox}>
                                 <p>You have <strong>{stashedItems.length}</strong> items saved for later.</p>
-                                <button onClick={() => window.scrollTo({ top: 500, behavior: 'smooth' })} className={styles.viewStashedBtn}>View Stashed Items</button>
+                                <button onClick={() => document.getElementById('stashed-section')?.scrollIntoView({ behavior: 'smooth' })} className={styles.viewStashedBtn}>View Stashed Items</button>
                             </div>
                         )}
+                    </div>
+                )}
+
+                {/* Stashed items section - ALWAYS visible if there are stashed items */}
+                {stashedItems.length > 0 && (
+                    <div id="stashed-section" className={styles.stashedSection} style={{ marginTop: '2rem' }}>
+                        <div className={styles.stashedHeader}>
+                            <div className={styles.stashedTitle}>
+                                <Clock size={18} />
+                                <h2>Saved for Later</h2>
+                                <span className={styles.stashedBadge}>{stashedItems.length}</span>
+                            </div>
+                            <p className={styles.stashedSub}>Items here don&apos;t count toward your cart limit and aren&apos;t included in checkout.</p>
+                        </div>
+                        
+                        <div className={styles.stashedList}>
+                            {stashedItems.map(item => (
+                                <div key={item.cart_id} className={styles.stashedItem}>
+                                    <Link href={`/product/${item.id}`} className={styles.stashedImg} style={{ textDecoration: 'none' }}>
+                                        <img src={item.image || 'https://placehold.co/100x100?text=No+Image'} alt={item.name} />
+                                    </Link>
+                                    <div className={styles.stashedInfo}>
+                                        <Link href={`/product/${item.id}`} className={styles.stashedName} style={{ textDecoration: 'none', color: 'inherit' }}>{item.name}</Link>
+                                        <p className={styles.stashedSeller}>Sold by: {item.seller}</p>
+                                        <div className={styles.stashedPrice}>₱{item.price.toLocaleString('en-PH')}</div>
+                                    </div>
+                                    <div className={styles.stashedActions}>
+                                        <button
+                                            className={styles.unstashBtn}
+                                            onClick={() => unstashItem(item.cart_id)}
+                                        >
+                                            Move to Cart
+                                        </button>
+                                        <button
+                                            className={styles.stashedRemove}
+                                            onClick={() => removeItem(item.cart_id)}
+                                        >
+                                            Remove
+                                        </button>
+                                    </div>
+                                </div>
+                            ))}
+                        </div>
                     </div>
                 )}
             </div>

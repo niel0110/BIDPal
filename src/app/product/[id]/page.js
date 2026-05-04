@@ -2,7 +2,7 @@
 
 import { useState, useEffect } from 'react';
 import { useParams, useRouter } from 'next/navigation';
-import { ShoppingCart, Heart, Flag, X, CheckCircle, ShieldCheck, Star, Zap } from 'lucide-react';
+import { ShoppingCart, Flag, X, CheckCircle, ShieldCheck, Star, Zap } from 'lucide-react';
 import { useAuth } from '@/context/AuthContext';
 import { useCart } from '@/context/CartContext';
 import BIDPalLoader from '@/components/BIDPalLoader';
@@ -25,7 +25,6 @@ export default function ProductDetailPage() {
     const [loading, setLoading] = useState(true);
     const [mainImg, setMainImg] = useState(null);
     const [isAdding, setIsAdding] = useState(false);
-    const [liked, setLiked] = useState(false);
     const [addError, setAddError] = useState('');
 
     const [reportOpen, setReportOpen] = useState(false);
@@ -168,14 +167,6 @@ export default function ProductDetailPage() {
                                 className={styles.mainImg}
                             />
                             {isSoldOut && <div className={styles.soldOverlay}>SOLD OUT</div>}
-                            {!isOwnListing && (
-                                <button
-                                    className={styles.heartBtn}
-                                    onClick={() => setLiked(l => !l)}
-                                >
-                                    <Heart size={16} fill={liked ? '#D32F2F' : 'none'} color={liked ? '#D32F2F' : 'white'} />
-                                </button>
-                            )}
                         </div>
 
                         {thumbs.length > 1 && (

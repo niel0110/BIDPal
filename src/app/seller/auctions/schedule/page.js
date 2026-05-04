@@ -182,8 +182,8 @@ function ScheduleAuctionPageInner() {
                         />
                     </div>
                     <div className={styles.briefInfo}>
-                        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-                            <h2>{productDetails?.name || "Unknown Product"}</h2>
+                        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', minWidth: 0, gap: '0.5rem' }}>
+                            <h2 style={{ overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap', minWidth: 0 }}>{productDetails?.name || "Unknown Product"}</h2>
                             {productDetails?.status && (
                                 <span style={{ 
                                     padding: '4px 8px', 
@@ -257,7 +257,7 @@ function ScheduleAuctionPageInner() {
                         </label>
 
                         {saleType === 'bid' ? (
-                            <div style={{ display: 'flex', gap: '0.75rem' }}>
+                            <div className={styles.priceDisplayRow} style={{ display: 'flex', gap: '0.75rem' }}>
                                 <div className={styles.priceDisplay} style={{ flex: 1 }}>
                                     <div className={styles.priceDisplayIcon}>
                                         <Gavel size={18} />

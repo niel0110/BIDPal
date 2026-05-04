@@ -6,7 +6,7 @@ import { useParams, useRouter } from 'next/navigation';
 import Header from '@/components/layout/Header';
 import ProductCard from '@/components/card/ProductCard';
 import { useAuth } from '@/context/AuthContext';
-import { Calendar, Star, MessageCircle, CheckCircle, ShieldCheck, Users, Flag, X, RefreshCw, ChevronLeft, ChevronRight } from 'lucide-react';
+import { Calendar, Star, MessageCircle, CheckCircle, ShieldCheck, Users, Flag, X, ChevronLeft, ChevronRight } from 'lucide-react';
 import styles from './page.module.css';
 
 export default function StorePage() {
@@ -190,9 +190,7 @@ export default function StorePage() {
     );
     const soldProductIds = new Set(soldFixedOrders.map(order => order.product.products_id));
     const visibleProducts = products.filter(item =>
-        !soldProductIds.has(item.products_id) &&
-        item.status !== 'sold' &&
-        item.isSoldOut !== true
+        !soldProductIds.has(item.products_id)
     );
     const soldFixedCards = soldFixedOrders.map(order => ({
         auction_id: `fixed-${order.order_id}`,

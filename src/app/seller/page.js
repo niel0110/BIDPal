@@ -68,6 +68,7 @@ export default function SellerDashboard() {
     const [deletedAt, setDeletedAt] = useState(null);
     const [showCancelConfirm, setShowCancelConfirm] = useState(false);
     const [cancelling, setCancelling] = useState(false);
+    const [currentTime, setCurrentTime] = useState(new Date());
     const kycStatusRef = useRef(null);
     const kycLoadedRef = useRef(false);
     const kycNotifRef = useRef(null); // tracks notification_id currently shown (prevents duplicate toasts)
@@ -151,7 +152,7 @@ export default function SellerDashboard() {
             const seller_id = user.seller_id;
             const user_id = user.user_id || user.id;
 
-            const res = await fetch(`${apiUrl}/api/dashboard/summary?${seller_id ? `seller_id=${seller_id}` : `user_id=${user_id}`}`, {
+            const res = await fetch(`${apiUrl}/api/dashboard/summary?user_id=${user_id}${seller_id ? `&seller_id=${seller_id}` : ''}`, {
                 headers: {
                     ...(token ? { 'Authorization': `Bearer ${token}` } : {})
                 }
@@ -244,6 +245,12 @@ export default function SellerDashboard() {
         return () => clearInterval(interval);
     }, [user, router, fetchDashboardData, fetchLatestMessages]);
     
+    // ── Real-time clock tick (1 second) for scheduled date display ───
+    useEffect(() => {
+        const tick = setInterval(() => setCurrentTime(new Date()), 1000);
+        return () => clearInterval(tick);
+    }, []);
+
     // ── Poll auction stats while live ───
     useEffect(() => {
         const auctionId = dashboardData.activeAuction?.auction_id;
@@ -1496,12 +1503,23 @@ export default function SellerDashboard() {
                         </Link>
                     </div>
                     <div className={styles.queueGrid}>
-                            {dashboardData.queue.length > 0 ? dashboardData.queue.map((item, idx) => (
+                            {dashboardData.queue.length > 0 ? dashboardData.queue.map((item, idx) => {
+                                const scheduledDate = item.start_time ? new Date(item.start_time) : null;
+                                const isPast = scheduledDate && scheduledDate <= currentTime;
+                                const formattedDate = scheduledDate
+                                    ? scheduledDate.toLocaleString('en-US', { month: 'short', day: 'numeric', hour: 'numeric', minute: '2-digit', hour12: true })
+                                    : null;
+                                return (
                                 <div key={item.auction_id} className={`${styles.queueGridItem} ${idx === 0 ? styles.queueGridItemFirst : ''}`}>
                                     <img src={(item.products?.images?.[0]?.image_url && item.products?.images?.[0]?.image_url !== 'noposter') ? item.products?.images?.[0]?.image_url : 'https://placehold.co/100x100?text=No+Image'} alt={item.products?.name} />
                                     <div className={styles.queueGridMeta}>
                                         <h4>{item.products?.name}</h4>
                                         <span>₱{item.reserve_price?.toLocaleString() || item.buy_now_price?.toLocaleString()}</span>
+                                        {formattedDate && (
+                                            <span style={{ fontSize: '11px', color: isPast ? '#e53935' : '#666', marginTop: '2px', display: 'block' }}>
+                                                {isPast ? 'Overdue · ' : ''}{formattedDate}
+                                            </span>
+                                        )}
                                     </div>
                                     {!isLive ? (
                                         idx === 0 ? (
@@ -1517,7 +1535,8 @@ export default function SellerDashboard() {
                                         )
                                     )}
                                 </div>
-                            )) : (
+                                );
+                            }) : (
                                 <div className={styles.emptyQueue}>
                                     <p>Queue is empty.</p>
                                     <Link href="/seller/add-product">+ Add a product</Link>
