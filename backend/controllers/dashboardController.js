@@ -2,275 +2,144 @@ import { supabase } from '../config/supabase.js';
 
 // Get dashboard summary (active auction and queue)
 export const getDashboardSummary = async (req, res) => {
+  const { seller_id, user_id } = req.query;
+
+  if (!seller_id && !user_id) {
+    return res.status(400).json({ error: 'seller_id or user_id is required' });
+  }
+
+  // ── Resolve seller_id ──────────────────────────────────────────────────────
+  let final_seller_id = null;
   try {
-    const { seller_id, user_id } = req.query;
-
-    if (!seller_id && !user_id) {
-      return res.status(400).json({ error: 'seller_id or user_id is required' });
-    }
-
-    let final_seller_id = null;
-
-    // Always resolve via user_id lookup when available — most reliable path
     if (user_id) {
-      const { data: sellerData, error: sellerError } = await supabase
-        .from('Seller')
-        .select('seller_id')
-        .eq('user_id', user_id)
-        .maybeSingle();
-
-      if (sellerError) throw sellerError;
+      const { data: sellerData } = await supabase
+        .from('Seller').select('seller_id').eq('user_id', user_id).maybeSingle();
       if (sellerData) final_seller_id = sellerData.seller_id;
     }
+    if (!final_seller_id && seller_id) final_seller_id = seller_id;
+  } catch (e) {
+    console.error('[dashboard] seller lookup error:', e.message);
+  }
 
-    // Fallback: use seller_id directly if user_id lookup didn't resolve
-    if (!final_seller_id && seller_id) {
-      final_seller_id = seller_id;
-    }
+  if (!final_seller_id) {
+    return res.status(404).json({ error: 'Seller not found' });
+  }
 
-    if (!final_seller_id) {
-      return res.status(404).json({ error: 'Seller not found' });
-    }
+  const getViewerCount = req.app.locals.getViewerCount || (() => 0);
 
-    // Get viewer count function from app.locals (set in server.js)
-    const getViewerCount = req.app.locals.getViewerCount || (() => 0);
+  // ── 1. Active auction ──────────────────────────────────────────────────────
+  let currentActiveAuction = null;
+  try {
+    const { data: activeAuction } = await supabase
+      .from('Auctions').select('*')
+      .eq('seller_id', final_seller_id).eq('status', 'active').maybeSingle();
 
-    // 1. Get Active Auction
-    const { data: activeAuction, error: activeError } = await supabase
-      .from('Auctions')
-      .select('*')
-      .eq('seller_id', final_seller_id)
-      .eq('status', 'active')
-      .maybeSingle();
-
-    if (activeError) throw activeError;
-
-    // Fetch product details separately if there's an active auction
-    if (activeAuction && activeAuction.products_id) {
-      const { data: productData } = await supabase
-        .from('vw_product_details')
-        .select('*')
-        .eq('products_id', activeAuction.products_id)
-        .maybeSingle();
-
-      if (productData) {
-        activeAuction.products = productData;
+    if (activeAuction) {
+      if (activeAuction.products_id) {
+        const { data: productData } = await supabase
+          .from('vw_product_details').select('*')
+          .eq('products_id', activeAuction.products_id).maybeSingle();
+        if (productData) activeAuction.products = productData;
       }
-
-      // Get bid count for active auction
       const { count: bidCount } = await supabase
-        .from('Bids')
-        .select('*', { count: 'exact', head: true })
+        .from('Bids').select('*', { count: 'exact', head: true })
         .eq('auction_id', activeAuction.auction_id);
-
       activeAuction.bids = [{ count: bidCount || 0 }];
+      currentActiveAuction = activeAuction;
     }
+  } catch (e) {
+    console.error('[dashboard] active auction error:', e.message);
+  }
 
-    // Auto-end if expired AND has been live for more than 24 hours (safety check)
-    // Don't auto-end ongoing live sessions that seller is actively controlling
-    let currentActiveAuction = activeAuction;
-    if (activeAuction && activeAuction.live_started_at) {
-        const liveStarted = new Date(activeAuction.live_started_at);
-        const now = new Date();
-        const hoursLive = (now - liveStarted) / (1000 * 60 * 60);
-
-        // Only auto-end if live for more than 24 hours (safety check for abandoned streams)
-        if (hoursLive > 24) {
-            console.log(`Auction ${activeAuction.auction_id} has been live for ${hoursLive} hours. Auto-ending for safety.`);
-            const { error: endError } = await supabase
-                .from('Auctions')
-                .update({ status: 'ended' })
-                .eq('auction_id', activeAuction.auction_id);
-
-            if (!endError) {
-                // Also update product status
-                await supabase
-                    .from('Products')
-                    .update({ status: 'inactive' })
-                    .eq('products_id', activeAuction.products_id);
-
-                currentActiveAuction = null;
-            }
-        }
-    }
-
-    // 2. Get Auction Queue (all scheduled auctions — status='scheduled' already implies bid-type)
-    const { data: queueAuctions, error: queueError } = await supabase
-      .from('Auctions')
-      .select('*')
-      .eq('seller_id', final_seller_id)
-      .eq('status', 'scheduled')
+  // ── 2. Queue (scheduled auctions) ─────────────────────────────────────────
+  let queue = [];
+  try {
+    const { data: queueAuctions } = await supabase
+      .from('Auctions').select('*')
+      .eq('seller_id', final_seller_id).eq('status', 'scheduled')
       .order('start_time', { ascending: true });
 
-    if (queueError) throw queueError;
-
-    // Auto-transition: scheduled auctions whose start_time has passed → 'ended'
     const nowTs = new Date();
-    const expiredAuctionIds = (queueAuctions || [])
+    const expiredIds = (queueAuctions || [])
       .filter(a => a.start_time && new Date(a.start_time) <= nowTs)
       .map(a => a.auction_id);
 
-    if (expiredAuctionIds.length > 0) {
-      await supabase
-        .from('Auctions')
-        .update({ status: 'ended' })
-        .in('auction_id', expiredAuctionIds);
-
-      // Update related product statuses back to inactive
+    if (expiredIds.length > 0) {
+      await supabase.from('Auctions').update({ status: 'ended' }).in('auction_id', expiredIds);
       const expiredProductIds = (queueAuctions || [])
-        .filter(a => expiredAuctionIds.includes(a.auction_id) && a.products_id)
+        .filter(a => expiredIds.includes(a.auction_id) && a.products_id)
         .map(a => a.products_id);
       if (expiredProductIds.length > 0) {
-        await supabase
-          .from('Products')
-          .update({ status: 'inactive' })
-          .in('products_id', expiredProductIds);
+        await supabase.from('Products').update({ status: 'inactive' }).in('products_id', expiredProductIds);
       }
     }
 
-    // Only return auctions that are still in the future
-    const activeQueueAuctions = (queueAuctions || []).filter(
-      a => !expiredAuctionIds.includes(a.auction_id)
-    );
+    const futureAuctions = (queueAuctions || []).filter(a => !expiredIds.includes(a.auction_id));
 
-    // Fetch product details for queue
-    const queue = await Promise.all(
-      activeQueueAuctions.map(async (auction) => {
+    queue = await Promise.allSettled(
+      futureAuctions.map(async (auction) => {
         const { data: productData } = await supabase
-          .from('vw_product_details')
-          .select('*')
-          .eq('products_id', auction.products_id)
-          .maybeSingle();
-
-        return {
-          ...auction,
-          products: productData
-        };
+          .from('vw_product_details').select('*')
+          .eq('products_id', auction.products_id).maybeSingle();
+        return { ...auction, products: productData };
       })
+    ).then(results => results
+      .filter(r => r.status === 'fulfilled')
+      .map(r => r.value)
     );
+  } catch (e) {
+    console.error('[dashboard] queue error:', e.message);
+  }
 
-    // 3. Get Completed Auctions (ended)
-    const { data: completedAuctions, error: completedError } = await supabase
-      .from('Auctions')
-      .select('*')
-      .eq('seller_id', final_seller_id)
-      .eq('status', 'ended')
-      .order('end_time', { ascending: false })
-      .limit(10);
+  // ── 3. Completed auctions ──────────────────────────────────────────────────
+  let completed = [];
+  try {
+    const { data: completedAuctions } = await supabase
+      .from('Auctions').select('*')
+      .eq('seller_id', final_seller_id).eq('status', 'ended')
+      .order('created_at', { ascending: false }).limit(10);
 
-    if (completedError) { console.warn('Completed auctions query error:', completedError.message); }
-
-    // Fetch product details, bid counts, and winner info for completed auctions
-    const completed = await Promise.all(
+    completed = await Promise.allSettled(
       (completedAuctions || []).map(async (auction) => {
         const { data: productData } = await supabase
-          .from('vw_product_details')
-          .select('*')
-          .eq('products_id', auction.products_id)
-          .maybeSingle();
-
+          .from('vw_product_details').select('*')
+          .eq('products_id', auction.products_id).maybeSingle();
         const { count: bidCount } = await supabase
-          .from('Bids')
-          .select('*', { count: 'exact', head: true })
+          .from('Bids').select('*', { count: 'exact', head: true })
           .eq('auction_id', auction.auction_id);
-
-        // Fetch winner information if auction has a winner
-        let winner = null;
-        if (auction.winner_user_id && auction.winning_bid_id) {
-          const { data: winningBid } = await supabase
-            .from('Bids')
-            .select('bid_id, bid_amount, placed_at, user_id')
-            .eq('bid_id', auction.winning_bid_id)
-            .maybeSingle();
-
-          if (winningBid) {
-            const { data: bidderUser } = await supabase
-              .from('User')
-              .select('user_id, Fname, Lname, Avatar, email')
-              .eq('user_id', winningBid.user_id)
-              .maybeSingle();
-
-            const fName = bidderUser?.Fname;
-            const lName = bidderUser?.Lname;
-            const emailName = bidderUser?.email ? bidderUser.email.split('@')[0] : 'Winner';
-            const fullName = (fName || lName) ? `${fName || ''} ${lName || ''}`.trim() : emailName;
-
-            winner = {
-              user_id: winningBid.user_id,
-              name: fullName,
-              avatar: bidderUser?.Avatar || null,
-              bid_amount: winningBid.bid_amount,
-              placed_at: winningBid.placed_at
-            };
-          }
-        }
-
-        return {
-          ...auction,
-          products: productData,
-          bids: [{ count: bidCount || 0 }],
-          winner: winner
-        };
+        return { ...auction, products: productData, bids: [{ count: bidCount || 0 }], winner: null };
       })
+    ).then(results => results
+      .filter(r => r.status === 'fulfilled')
+      .map(r => r.value)
     );
-
-    // Calculate live duration if there's an active auction
-    let liveDuration = null;
-    if (currentActiveAuction && currentActiveAuction.start_time) {
-      const startTime = new Date(currentActiveAuction.start_time);
-      const now = new Date();
-      const durationMs = now - startTime;
-
-      // Convert to hours, minutes, seconds
-      const hours = Math.floor(durationMs / (1000 * 60 * 60));
-      const minutes = Math.floor((durationMs % (1000 * 60 * 60)) / (1000 * 60));
-      const seconds = Math.floor((durationMs % (1000 * 60)) / 1000);
-
-      liveDuration = {
-        hours,
-        minutes,
-        seconds,
-        totalSeconds: Math.floor(durationMs / 1000)
-      };
-    }
-
-    // Get real-time viewer count for active auction
-    const auctionId = currentActiveAuction?.auction_id;
-    const liveViewers = auctionId ? getViewerCount(auctionId) : 0;
-
-    // Get shares, likes and views — wrapped individually so a missing table doesn't 500 the endpoint
-    let shares = 0;
-    let likes = 0;
-    let totalViews = 0;
-
-    if (auctionId) {
-      const [sharesRes, likesRes, viewsRes] = await Promise.allSettled([
-        supabase.from('Auction_Shares').select('*', { count: 'exact', head: true }).eq('auction_id', auctionId),
-        supabase.from('Auction_Likes').select('*', { count: 'exact', head: true }).eq('auction_id', auctionId),
-        supabase.from('Auction_Views').select('*', { count: 'exact', head: true }).eq('auction_id', auctionId),
-      ]);
-      if (sharesRes.status === 'fulfilled' && !sharesRes.value.error) shares = sharesRes.value.count || 0;
-      if (likesRes.status === 'fulfilled' && !likesRes.value.error) likes = likesRes.value.count || 0;
-      if (viewsRes.status === 'fulfilled' && !viewsRes.value.error) totalViews = viewsRes.value.count || 0;
-    }
-
-    res.json({
-      activeAuction: currentActiveAuction,
-      queue,
-      completed,
-      liveDuration,
-      stats: {
-        viewers: liveViewers,
-        liveViewers,
-        totalViews,
-        shares: shares,
-        likes: likes
-      }
-    });
-  } catch (err) {
-    console.error('Dashboard summary error:', err);
-    res.status(500).json({ error: err.message });
+  } catch (e) {
+    console.error('[dashboard] completed auctions error:', e.message);
   }
+
+  // ── 4. Stats ───────────────────────────────────────────────────────────────
+  const auctionId = currentActiveAuction?.auction_id;
+  const liveViewers = auctionId ? getViewerCount(auctionId) : 0;
+  let shares = 0, likes = 0, totalViews = 0;
+
+  if (auctionId) {
+    const [sharesRes, likesRes, viewsRes] = await Promise.allSettled([
+      supabase.from('Auction_Shares').select('*', { count: 'exact', head: true }).eq('auction_id', auctionId),
+      supabase.from('Auction_Likes').select('*', { count: 'exact', head: true }).eq('auction_id', auctionId),
+      supabase.from('Auction_Views').select('*', { count: 'exact', head: true }).eq('auction_id', auctionId),
+    ]);
+    if (sharesRes.status === 'fulfilled' && !sharesRes.value.error) shares = sharesRes.value.count || 0;
+    if (likesRes.status === 'fulfilled' && !likesRes.value.error) likes = likesRes.value.count || 0;
+    if (viewsRes.status === 'fulfilled' && !viewsRes.value.error) totalViews = viewsRes.value.count || 0;
+  }
+
+  res.json({
+    activeAuction: currentActiveAuction,
+    queue,
+    completed,
+    liveDuration: null,
+    stats: { viewers: liveViewers, liveViewers, totalViews, shares, likes }
+  });
 };
 
 // Get recent bids for an auction

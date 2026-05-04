@@ -51,74 +51,59 @@ function normalizeCondition(condition) {
 /**
  * Normalize category string to match Mercari dataset categories
  */
+// Granular categories that map directly — checked before broad fallbacks
+const GRANULAR_CATEGORY_MAP = {
+    smartphone: 'Smartphones', mobile: 'Smartphones', cellphone: 'Smartphones',
+    laptop: 'Laptops', notebook: 'Laptops', macbook: 'Laptops',
+    television: 'TVs', ' tv': 'TVs', 'smart tv': 'TVs', oled: 'TVs', qled: 'TVs',
+    tablet: 'Tablets', ipad: 'Tablets',
+    camera: 'Cameras', dslr: 'Cameras', mirrorless: 'Cameras',
+    'gaming console': 'Gaming Consoles', playstation: 'Gaming Consoles',
+    xbox: 'Gaming Consoles', nintendo: 'Gaming Consoles',
+    headphone: 'Headphones', earphone: 'Headphones', airpods: 'Headphones',
+    smartwatch: 'Smartwatches', 'apple watch': 'Smartwatches',
+};
+
 function normalizeCategory(category) {
     if (!category) return 'Other';
 
     const normalized = category.toLowerCase();
 
+    // Preserve exact granular matches first (e.g. "Smartphones", "Laptops")
+    const granularMatch = Object.keys(GRANULAR_CATEGORY_MAP)
+        .find(k => normalized.includes(k));
+    if (granularMatch) return GRANULAR_CATEGORY_MAP[granularMatch];
+
     if (category.includes(':')) {
         const main = category.split(':')[0].toLowerCase();
         const mapping = {
-            electronics: 'Electronics',
-            fashion: 'Fashion',
-            home: 'Home & Garden',
-            culture: 'Collectibles',
-            sports: 'Sports',
-            automotive: 'Other'
+            electronics: 'Electronics', fashion: 'Fashion',
+            home: 'Home & Garden', culture: 'Collectibles',
+            sports: 'Sports', automotive: 'Other'
         };
         return mapping[main] || 'Other';
     }
 
-    if (
-        normalized.includes('phone') ||
-        normalized.includes('tablet') ||
-        normalized.includes('laptop') ||
-        normalized.includes('computer') ||
-        normalized.includes('camera') ||
-        normalized.includes('gaming') ||
-        normalized.includes('audio') ||
-        normalized.includes('tv') ||
-        normalized.includes('electronic')
-    ) {
+    if (normalized.includes('electronic') || normalized.includes('computer') ||
+        normalized.includes('gaming') || normalized.includes('audio'))
         return 'Electronics';
-    }
 
-    if (
-        normalized.includes('fashion') ||
-        normalized.includes('clothing') ||
-        normalized.includes('shoe') ||
-        normalized.includes('bag') ||
-        normalized.includes('watch') ||
-        normalized.includes('jewelry')
-    ) {
+    if (normalized.includes('fashion') || normalized.includes('clothing') ||
+        normalized.includes('shoe') || normalized.includes('bag') ||
+        normalized.includes('watch') || normalized.includes('jewelry'))
         return 'Fashion';
-    }
 
-    if (
-        normalized.includes('home') ||
-        normalized.includes('kitchen') ||
-        normalized.includes('furniture') ||
-        normalized.includes('garden')
-    ) {
+    if (normalized.includes('home') || normalized.includes('kitchen') ||
+        normalized.includes('furniture') || normalized.includes('garden'))
         return 'Home & Garden';
-    }
 
-    if (
-        normalized.includes('sport') ||
-        normalized.includes('outdoor') ||
-        normalized.includes('bicycle')
-    ) {
+    if (normalized.includes('sport') || normalized.includes('outdoor') ||
+        normalized.includes('bicycle'))
         return 'Sports';
-    }
 
-    if (
-        normalized.includes('collectible') ||
-        normalized.includes('vintage') ||
-        normalized.includes('culture') ||
-        normalized.includes('instrument')
-    ) {
+    if (normalized.includes('collectible') || normalized.includes('vintage') ||
+        normalized.includes('culture') || normalized.includes('instrument'))
         return 'Collectibles';
-    }
 
     return category;
 }
@@ -223,11 +208,20 @@ function extractSpecs(text) {
         }
     }
 
-    // Year
+    // Age — try explicit year first, then plain-English ("2 years old", "bought last year")
     const yearMatch = text.match(/(20\d{2})/);
     if (yearMatch) {
         specs.year = parseInt(yearMatch[1]);
         specs.age = new Date().getFullYear() - specs.year;
+    } else {
+        const ageMatch = text.match(/(\d+)\s*(?:year|yr)s?\s*old/i);
+        if (ageMatch) {
+            specs.age = parseInt(ageMatch[1]);
+        } else if (/bought\s+last\s+year|purchased\s+last\s+year/i.test(text)) {
+            specs.age = 1;
+        } else if (/brand\s*new\s+this\s+year|bought\s+this\s+year/i.test(text)) {
+            specs.age = 0;
+        }
     }
 
     return specs;
@@ -293,48 +287,143 @@ function detectCategory(text) {
 }
 
 
+// ─── PH Secondhand Price Formula ─────────────────────────────────────────────
+// Price = PH_SRP × condition × age × brand × demand × spec
+
+const CONDITION_FACTORS = {
+    'Brand New':    0.90,
+    'Like New':     0.75,
+    'Lightly Used': 0.60,
+    'Used':         0.45,
+    'Heavily Used': 0.28,
+    'For Parts':    0.10,
+};
+
+const BRAND_PREMIUMS = {
+    'Apple':        { default: 1.20 },
+    'Sony':         { default: 1.15, 'Electronics': 1.20 },
+    'LG':           { default: 1.10, 'Electronics': 1.15 },
+    'Samsung':      { default: 1.10 },
+    'Canon':        { default: 1.10 },
+    'Nikon':        { default: 1.10 },
+    'Bose':         { default: 1.15 },
+    'Dell':         { default: 1.05 },
+    'HP':           { default: 1.03 },
+    'Lenovo':       { default: 1.03 },
+    'Xiaomi':       { default: 0.95 },
+    'OPPO':         { default: 0.95 },
+    'Vivo':         { default: 0.95 },
+    'Realme':       { default: 0.92 },
+    'Huawei':       { default: 0.95 },
+    'Gucci':        { default: 1.30 },
+    'Louis Vuitton':{ default: 1.35 },
+    'Prada':        { default: 1.30 },
+    'Chanel':       { default: 1.35 },
+    'Hermes':       { default: 1.40 },
+    'Rolex':        { default: 1.35 },
+    'Omega':        { default: 1.25 },
+};
+
+const CATEGORY_DEMAND = {
+    'Smartphones':      1.20,
+    'Laptops':          1.05,
+    'TVs':              1.00,
+    'Tablets':          1.05,
+    'Cameras':          1.05,
+    'Gaming Consoles':  1.10,
+    'Headphones':       1.00,
+    'Smartwatches':     1.00,
+    'Electronics':      1.00,
+    'Fashion':          0.80,
+    'Home & Garden':    0.95,
+    'Sports':           0.95,
+    'Collectibles':     1.05,
+    'Other':            0.95,
+};
+
+function getPHConditionFactor(condition) {
+    return CONDITION_FACTORS[condition] ?? 0.45;
+}
+
+function getPHAgeFactor(age) {
+    if (!age || age <= 0) return 1.00;
+    if (age < 1)  return 1.00;
+    if (age < 2)  return 0.92;
+    if (age < 3)  return 0.82;
+    if (age < 5)  return 0.68;
+    return Math.max(0.45, 0.68 - (age - 5) * 0.05);
+}
+
+function getPHBrandPremium(brand, category) {
+    if (!brand) return 0.80;
+    const entry = BRAND_PREMIUMS[brand];
+    if (!entry) return 1.00;
+    return entry[category] ?? entry.default ?? 1.00;
+}
+
+function getPHCategoryDemand(category, name = '') {
+    if (/iphone|macbook|ipad|airpods|apple watch/i.test(name)) return 1.15;
+    return CATEGORY_DEMAND[category] ?? 1.00;
+}
+
+function getPHSpecMultiplier(specs = {}, keywords = []) {
+    let m = 1.00;
+    const has = (...terms) => terms.some(t => keywords.includes(t));
+
+    const storage = parseInt(specs.storage || '0');
+    if (storage >= 512) m *= 1.15;
+    else if (storage >= 256) m *= 1.08;
+
+    if (has('oled')) m *= 1.12;
+    else if (has('qled')) m *= 1.08;
+    if (has('4k', 'uhd')) m *= 1.08;
+    if (has('5g')) m *= 1.10;
+    if (has('box') && has('accessories')) m *= 1.08;
+    if (has('warranty')) m *= 1.10;
+    if (has('sealed') || has('factory')) m *= 1.05;
+    if (has('limited edition') || has('rare')) m *= 1.20;
+
+    return Math.min(m, 1.60);
+}
+
 /**
- * Calculate price adjustment based on product features
+ * Apply PH secondhand pricing formula to a known PH SRP.
+ * Returns the estimated secondhand market price in PHP.
+ */
+export function applyPHFormula(srp, productInfo) {
+    const condition = getPHConditionFactor(productInfo.condition);
+    const age      = getPHAgeFactor(productInfo.specs?.age);
+    const brand    = getPHBrandPremium(productInfo.brand, productInfo.category);
+    const demand   = getPHCategoryDemand(productInfo.category, productInfo.name);
+    const spec     = getPHSpecMultiplier(productInfo.specs, productInfo.keywords);
+
+    return Math.max(100, Math.round(srp * condition * age * brand * demand * spec));
+}
+
+export function getPHFormulaBreakdown(srp, productInfo) {
+    const condition = getPHConditionFactor(productInfo.condition);
+    const age      = getPHAgeFactor(productInfo.specs?.age);
+    const brand    = getPHBrandPremium(productInfo.brand, productInfo.category);
+    const demand   = getPHCategoryDemand(productInfo.category, productInfo.name);
+    const spec     = getPHSpecMultiplier(productInfo.specs, productInfo.keywords);
+    const result   = Math.max(100, Math.round(srp * condition * age * brand * demand * spec));
+
+    return { srp, condition, age, brand, demand, spec, result };
+}
+
+/**
+ * Legacy: kept for callers that still pass basePrice directly.
  */
 export function calculateFeatureAdjustment(productInfo, basePrice) {
-    let multiplier = 1.0;
-    const { keywords, specs, brand } = productInfo;
-
-    // Positive adjustments
-    if (keywords.includes('sealed') || keywords.includes('factory')) multiplier *= 1.15;
-    if (keywords.includes('warranty')) multiplier *= 1.10;
-    if (keywords.includes('box') && keywords.includes('accessories')) multiplier *= 1.08;
-    if (keywords.includes('unlocked')) multiplier *= 1.05;
-    if (keywords.includes('limited edition') || keywords.includes('rare')) multiplier *= 1.20;
-    if (keywords.includes('authentic')) multiplier *= 1.05;
-
-    // Age adjustment
-    if (specs.age !== undefined) {
-        if (specs.age === 0) multiplier *= 1.10; // Brand new this year
-        else if (specs.age === 1) multiplier *= 0.95;
-        else if (specs.age === 2) multiplier *= 0.85;
-        else if (specs.age >= 3) multiplier *= Math.max(0.60, 0.85 - (specs.age - 2) * 0.05);
-    }
-
-    // Storage adjustment (higher storage = higher value)
-    if (specs.storage) {
-        const storage = parseInt(specs.storage);
-        if (storage >= 512) multiplier *= 1.15;
-        else if (storage >= 256) multiplier *= 1.10;
-        else if (storage <= 64) multiplier *= 0.95;
-    }
-
-    // Premium brands
-    const premiumBrands = ['Apple', 'Samsung', 'Sony', 'Canon', 'Nikon', 'Bose'];
-    if (brand && premiumBrands.includes(brand)) {
-        multiplier *= 1.05;
-    }
-
-    return Math.round(basePrice * multiplier);
+    const spec = getPHSpecMultiplier(productInfo.specs, productInfo.keywords);
+    const age  = getPHAgeFactor(productInfo.specs?.age);
+    return Math.round(basePrice * spec * age);
 }
 
 
 export default {
     extractProductInfo,
-    calculateFeatureAdjustment
+    calculateFeatureAdjustment,
+    applyPHFormula,
+    getPHFormulaBreakdown
 };

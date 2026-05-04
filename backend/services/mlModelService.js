@@ -99,7 +99,15 @@ export async function trainWithMercariData(samples = 10000) {
             seed: 42
         });
 
+        const trainStart = Date.now();
+        // ml-random-forest is a synchronous black box — heartbeat so the log shows life
+        const heartbeat = setInterval(() => {
+            const elapsed = ((Date.now() - trainStart) / 1000).toFixed(0);
+            process.stdout.write(`   Still training... ${elapsed}s elapsed\n`);
+        }, 30000);
         rfModel.train(X, y);
+        clearInterval(heartbeat);
+        console.log(`   RF fit complete in ${((Date.now() - trainStart) / 1000).toFixed(1)}s`);
         rfFeatureVersion = MODEL_FEATURE_VERSION;
         rfModelMetadata = {
             source: 'Mercari Price Suggestion Challenge',
@@ -278,9 +286,14 @@ function getConditionScore(condition) {
 }
 
 function getCategoryIndex(category) {
-    const categories = ['Electronics', 'Fashion', 'Home & Garden', 'Sports', 'Collectibles', 'Other'];
-    const rawCategoryIdx = categories.indexOf(category);
-    return rawCategoryIdx === -1 ? 5 : rawCategoryIdx;
+    // Finer-grained buckets so the model can distinguish high-value from low-value electronics
+    const categories = [
+        'Smartphones', 'Laptops', 'TVs', 'Tablets', 'Cameras', 'Gaming Consoles',
+        'Headphones', 'Electronics', 'Fashion', 'Home & Garden', 'Sports',
+        'Collectibles', 'Smartwatches', 'Other'
+    ];
+    const idx = categories.indexOf(category);
+    return idx === -1 ? categories.length - 1 : idx;
 }
 
 function getProductText(product) {

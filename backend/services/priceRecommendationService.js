@@ -1,7 +1,9 @@
 import { supabase } from '../config/supabase.js';
 import {
     extractProductInfo,
-    calculateFeatureAdjustment
+    calculateFeatureAdjustment,
+    applyPHFormula,
+    getPHFormulaBreakdown
 } from './productAnalyzer.js';
 import {
     initModel,
@@ -63,100 +65,73 @@ export async function generatePriceRecommendation(productData) {
         const productInfo = extractProductInfo(productData);
         console.log('📊 Extracted product info:', productInfo);
 
+        // ── Step 1: PH SRP from Gemini (primary anchor) ──────────────────────
+        const srpResult = await fetchPHSRP(productInfo, productData);
+
+        // ── Step 2: Apply PH formula to SRP ───────────────────────────────────
+        let basePrice;
+        let formulaBreakdown = null;
+
+        if (srpResult?.srp > 0) {
+            formulaBreakdown = getPHFormulaBreakdown(srpResult.srp, productInfo);
+            basePrice = roundToMarketStep(formulaBreakdown.result);
+            console.log('🇵🇭 PH formula base price:', basePrice, formulaBreakdown);
+        }
+
+        // ── Step 3: Mercari + ML as sanity check / fallback ───────────────────
         let mercariData = getMercariData();
         const mlPriceEstimate = predictPrice(productInfo);
         if (!mercariData || mercariData.length === 0) {
             mercariData = await waitForMercariData();
         }
+        ensureMercariLoaded();
 
-        if ((!mercariData || mercariData.length === 0) && mlPriceEstimate) {
-            ensureMercariLoaded();
-            console.log('Using local ML fallback because the Mercari dataset is unavailable');
-            const specEstimate = estimateSpecDrivenPrice(productInfo);
-            return generateHeuristicRecommendation(
-                productInfo,
-                [],
-                specEstimate || mlPriceEstimate,
-                'Mercari dataset unavailable',
-                true
-            );
-        }
+        const mercariData_ = mercariData || [];
+        const marketData = mercariData_.length
+            ? getMercariMarketStats(mercariData_, productInfo.category, productInfo.brand)
+            : null;
+        const comparableItems = mercariData_.length
+            ? findMercariComparables(mercariData_, productInfo, 10)
+            : [];
 
-        if (!mercariData || mercariData.length === 0) {
-            // Trigger background load if not already in progress, then continue with Gemini
-            ensureMercariLoaded();
-            console.log('📦 Mercari dataset loading in background — using Gemini for this request');
-            return generateAIOnlyRecommendation(productData, productInfo);
-        }
-
-        console.log('🎯 Using Mercari dataset for analysis');
-
-        // Get Mercari market statistics
-        const marketData = getMercariMarketStats(mercariData, productInfo.category, productInfo.brand);
-        console.log('📈 Market data stats:', {
-            avgPrice: marketData?.avgPrice,
-            totalItems: marketData?.totalItems,
-            category: productInfo.category,
-            brand: productInfo.brand
-        });
-
-        // Find comparable items from Mercari
-        const comparableItems = findMercariComparables(mercariData, productInfo, 10);
-        console.log('🔍 Found Mercari comparable items:', comparableItems.length);
-
-        // Calculate base price from Mercari data
-        let basePrice = calculateDataDrivenBasePrice(productInfo, comparableItems, marketData, mlPriceEstimate);
-        /*
-            basePrice = marketData.avgPrice;
-
-            // Apply condition depreciation from Mercari data
-            if (marketData.depreciation && productInfo.condition) {
-                basePrice = basePrice * (marketData.depreciation[productInfo.condition] || 0.7);
-            }
-        } else {
-            // If no exact category match, use comparable items average
-            if (comparableItems && comparableItems.length > 0) {
-                const avgComparablePrice = comparableItems.reduce((sum, item) => sum + item.price, 0) / comparableItems.length;
-                basePrice = avgComparablePrice;
-                console.log('💡 Using average from comparable items:', basePrice);
-            } else {
-                basePrice = 5000; // ultimate fallback
-                console.log('⚠️ No market data or comparables found, using base fallback');
+        if (!basePrice) {
+            const mercariBase = calculateDataDrivenBasePrice(productInfo, comparableItems, marketData, mlPriceEstimate);
+            basePrice = roundToMarketStep(calculateFeatureAdjustment(productInfo, mercariBase));
+            console.log('📦 Mercari fallback base price:', basePrice);
+        } else if (comparableItems.length >= 3) {
+            // Sanity-check: blend if formula and Mercari diverge strongly (>2.5x gap)
+            const mercariMedian = comparableItems.slice(0, 5)
+                .reduce((s, i) => s + i.price, 0) / Math.min(5, comparableItems.length);
+            const ratio = basePrice / mercariMedian;
+            if (ratio > 2.5 || ratio < 0.4) {
+                console.warn(`⚠️ Formula ₱${basePrice.toLocaleString()} vs Mercari ₱${Math.round(mercariMedian).toLocaleString()} — blending.`);
+                basePrice = roundToMarketStep(basePrice * 0.80 + mercariMedian * 0.20);
             }
         }
 
-        */
-
-        // Fetch historical data from database
+        // ── Step 4: Blend with BIDPal historical sales ────────────────────────
         const historicalData = await fetchHistoricalData(productInfo.category, productInfo.brand);
-
-        // Apply feature adjustments
-        basePrice = calculateFeatureAdjustment(productInfo, basePrice);
         basePrice = blendWithHistoricalSales(basePrice, historicalData);
-        console.log('💰 Calculated base price:', basePrice);
+        console.log('💰 Final base price:', basePrice);
 
-        // Build comprehensive prompt with dataset
-        const prompt = buildPricePrompt(productData, historicalData, marketData, productInfo, comparableItems, basePrice, mlPriceEstimate);
+        // Build prompt — Gemini frames auction params around the formula-derived price
+        const prompt = buildPricePrompt(productData, historicalData, marketData, productInfo, comparableItems, basePrice, mlPriceEstimate, formulaBreakdown, srpResult);
 
         if (!isGeminiEnabled()) {
             console.log('Deterministic recommendation mode enabled; skipping Gemini refinement');
             return generateHeuristicRecommendation(
-                productInfo,
-                comparableItems,
-                basePrice,
+                productInfo, comparableItems, basePrice,
                 'Gemini disabled by configuration',
-                !!mlPriceEstimate
+                !!formulaBreakdown || !!mlPriceEstimate
             );
         }
 
         if (isGeminiCoolingDown()) {
             console.log('Gemini quota cooldown active; using deterministic recommendation');
             return generateHeuristicRecommendation(
-                productInfo,
-                comparableItems,
-                basePrice,
+                productInfo, comparableItems, basePrice,
                 'Gemini cooldown active',
-                !!mlPriceEstimate
+                !!formulaBreakdown || !!mlPriceEstimate
             );
         }
 
@@ -203,33 +178,20 @@ export async function generatePriceRecommendation(productData) {
     } catch (error) {
         console.error('Price recommendation error:', error);
 
-        // FALLBACK: Use heuristic recommendation if Gemini fails
+        // FALLBACK: heuristic recommendation when the main flow throws
         try {
             console.log('⚠️ AI Service failed, attempting heuristic fallback...');
             const productInfo = extractProductInfo(productData);
             const mercariData = getMercariData();
             const mlPriceEstimate = predictPrice(productInfo);
+            const comparableItems = mercariData?.length
+                ? findMercariComparables(mercariData, productInfo, 10) : [];
+            const marketData = mercariData?.length
+                ? getMercariMarketStats(mercariData, productInfo.category, productInfo.brand) : null;
 
-            if (mercariData && mercariData.length > 0) {
-                const comparableItems = findMercariComparables(mercariData, productInfo, 10);
-                const marketData = getMercariMarketStats(mercariData, productInfo.category, productInfo.brand);
-                let basePrice = calculateDataDrivenBasePrice(productInfo, comparableItems, marketData, mlPriceEstimate);
-                /*
-                if (mlPriceEstimate) {
-                    basePrice = mlPriceEstimate;
-                    console.log('🤖 Using Random Forest prediction for fallback:', basePrice);
-                } else if (comparableItems.length > 0) {
-                    basePrice = comparableItems.reduce((sum, item) => sum + item.price, 0) / comparableItems.length;
-                    console.log('💡 Using comparable average for fallback:', basePrice);
-                } else if (marketData && marketData.avgPrice) {
-                    basePrice = marketData.avgPrice;
-                    console.log('📈 Using market average for fallback:', basePrice);
-                }
-                */
-                console.log('Using deterministic fallback base:', basePrice);
-
-                return generateHeuristicRecommendation(productInfo, comparableItems, basePrice, error.message, !!mlPriceEstimate);
-            }
+            let basePrice = calculateDataDrivenBasePrice(productInfo, comparableItems, marketData, mlPriceEstimate);
+            console.log('Using deterministic fallback base:', basePrice);
+            return generateHeuristicRecommendation(productInfo, comparableItems, basePrice, error.message, !!mlPriceEstimate);
         } catch (fallbackError) {
             console.error('Fallback recommendation failed:', fallbackError);
         }
@@ -373,8 +335,8 @@ function roundBidIncrement(value, startingBid) {
 function clampRecommendationToBase(recommendation, basePrice) {
     if (!basePrice || !recommendation?.reservePrice) return recommendation;
 
-    const maxReasonable = basePrice * 1.25;
-    const minReasonable = basePrice * 0.65;
+    const maxReasonable = basePrice * 1.60;
+    const minReasonable = basePrice * 0.50;
     if (recommendation.reservePrice > maxReasonable || recommendation.reservePrice < minReasonable) {
         const reservePrice = roundToMarketStep(basePrice);
         const startingBid = roundToMarketStep(reservePrice * 0.75);
@@ -717,6 +679,46 @@ Provide ONLY the JSON, no extra text.`;
     }
 }
 
+/**
+ * Ask Gemini for the current Philippine SRP (brand-new retail price) of a product.
+ * Returns the SRP in PHP, or null if unavailable.
+ */
+async function fetchPHSRP(productInfo, productData) {
+    if (!isGeminiEnabled() || isGeminiCoolingDown()) return null;
+
+    const specs = Object.entries(productInfo.specs || {})
+        .map(([k, v]) => `${k}: ${v}`).join(', ') || 'not specified';
+
+    const prompt = `You are a Philippine retail price reference database.
+
+Return the current Philippine SRP (Suggested Retail Price) for a BRAND NEW unit of this product.
+
+Product: ${productData.name || productInfo.name}
+Brand: ${productData.brand || productInfo.brand || 'Unknown'}
+Category: ${productData.category || productInfo.category}
+Specs: ${productData.specifications || specs}
+
+RESPOND ONLY IN THIS JSON FORMAT (PHP, no symbols, no markdown):
+{
+  "phSRP": <number>,
+  "confidence": "High|Medium|Low",
+  "note": "<model or reference>"
+}`;
+
+    try {
+        const raw = await callGeminiWithRetry(prompt);
+        const cleaned = raw.trim().replace(/```json\n?/g, '').replace(/```\n?/g, '');
+        const parsed = JSON.parse(cleaned);
+        if (parsed.phSRP > 0) {
+            console.log(`💡 PH SRP: ₱${parsed.phSRP.toLocaleString()} (${parsed.confidence}) — ${parsed.note}`);
+            return { srp: parsed.phSRP, confidence: parsed.confidence, note: parsed.note };
+        }
+    } catch (err) {
+        console.warn('⚠️ PH SRP fetch failed:', err.message);
+    }
+    return null;
+}
+
 async function callAIWithRetry(prompt) {
     if (process.env.GEMINI_API_KEY && !isGeminiCoolingDown()) {
         return callGeminiWithRetry(prompt);
@@ -806,14 +808,26 @@ async function callGeminiWithRetry(prompt) {
 /**
  * Build comprehensive prompt for Gemini
  */
-function buildPricePrompt(productData, historicalData, marketData, productInfo, comparableItems, basePrice, mlPriceEstimate) {
+function buildPricePrompt(productData, historicalData, marketData, productInfo, comparableItems, basePrice, mlPriceEstimate, formulaBreakdown = null, srpResult = null) {
     const { name, description, category, condition, brand, specifications } = productData;
 
-    let prompt = `You are an expert auction pricing analyst. Analyze the following product and provide a detailed price recommendation for an online auction.
+    let formulaSection = '';
+    if (formulaBreakdown) {
+        formulaSection = `
+PH SECONDHAND PRICE FORMULA (primary anchor):
+- PH Retail SRP (brand new): ₱${formulaBreakdown.srp.toLocaleString()} — ${srpResult?.note || ''}
+- Condition factor (${condition}): ×${formulaBreakdown.condition}
+- Age depreciation: ×${formulaBreakdown.age}
+- Brand premium (${productInfo.brand || 'unbranded'}): ×${formulaBreakdown.brand}
+- PH category demand: ×${formulaBreakdown.demand}
+- Spec multiplier: ×${formulaBreakdown.spec.toFixed(2)}
+- Formula result: ₱${formulaBreakdown.result.toLocaleString()}
+- Final base price (after historical blend): ₱${basePrice.toLocaleString()}
 
-DYNAMIC ML PREDICTION (RANDOM FOREST):
-- Numerical Price Estimate: ₱${mlPriceEstimate?.toLocaleString() || 'Calculating...'}
-- Note: This estimate was generated by a Random Forest Regression model trained on platform historical data and market trends.
+`;
+    }
+
+    let prompt = `You are an expert auction pricing analyst for BIDPal, a Philippine online auction platform. Use the data below to recommend auction prices in Philippine Peso.
 
 PRODUCT DETAILS:
 - Name: ${name}
@@ -822,12 +836,11 @@ PRODUCT DETAILS:
 - Brand: ${brand || productInfo.brand || 'Not specified'}
 - Description: ${description}
 - Specifications: ${specifications || 'Not specified'}
-
-EXTRACTED PRODUCT INFORMATION:
-- Detected Brand: ${productInfo.brand || 'Not detected'}
 - Detected Model: ${productInfo.model || 'Not detected'}
 - Key Features: ${productInfo.keywords.join(', ') || 'None detected'}
 - Technical Specs: ${Object.entries(productInfo.specs).map(([k, v]) => `${k}: ${v}`).join(', ') || 'None detected'}
+
+${formulaSection}RANDOM FOREST ML ESTIMATE: ₱${mlPriceEstimate?.toLocaleString() || 'N/A'}
 
 `;
 
@@ -904,29 +917,24 @@ ${historicalData.activeCompetition.items.map((item, i) => `${i + 1}. ${item.name
     }
 
     prompt += `
-ANALYSIS REQUIRED:
-1. Suggest a competitive RESERVE PRICE (minimum acceptable selling price)
-   - Use the calculated base price (₱${basePrice.toLocaleString()}) as a reference point
-   - Consider market dataset averages and historical auction data
-2. Suggest an attractive STARTING BID (initial bid to draw interest)
-3. Suggest appropriate BID INCREMENT
-4. Provide price range (realistic minimum and maximum based on market data)
-5. Explain your reasoning (reference the dataset insights and comparable items)
-6. Provide market insights and tips for the seller
-7. Assign a confidence level (High/Medium/Low)
+TASK:
+The computed secondhand price using the PH formula is ₱${basePrice.toLocaleString()}.
+${formulaBreakdown ? 'This already factors in PH retail SRP, condition, age, brand premium, category demand, and specs. Treat it as the reserve price anchor.' : 'Use this as the reserve price reference point.'}
 
-IMPORTANT GUIDELINES:
-- All items listed are SECONDHAND. Condition scale: Brand New (1.0x) > Like New (0.85x) > Lightly Used (0.70x) > Used (0.55x) > Heavily Used (0.35x) > For Parts (0.15x)
-- Apply the appropriate depreciation multiplier to the base price before recommending prices
-- Reserve price should protect the seller's interest; align with secondhand market data
-- Starting bid should be 60-80% of reserve price to encourage early bidding
-- Bid increment should be 5-10% of starting bid
-- "For Parts" items should have very low reserve prices — buyers expect non-functional or incomplete goods
-- "Brand New" secondhand items (still sealed/unused) can price close to retail market value
-- Consider brand value and demand from comparable items
-- Philippine Peso (₱) currency
-- Be conservative but competitive
-- The calculated base price (₱${basePrice.toLocaleString()}) is data-informed and should heavily influence your recommendation
+1. Set RESERVE PRICE close to ₱${basePrice.toLocaleString()} — adjust only if historical or comparable data strongly suggests otherwise (max ±15%)
+2. Set STARTING BID at 70-80% of reserve to attract early bids
+3. Set BID INCREMENT at 5% of starting bid, rounded to nearest ₱50/₱100/₱500 depending on price tier
+4. Set PRICE RANGE: min = reserve × 0.85, max = reserve × 1.20
+5. Write REASONING that explains the formula inputs and market context
+6. List 3 MARKET INSIGHTS relevant to selling this item in the Philippine market
+7. Set CONFIDENCE: High if SRP was confirmed, Medium if estimated, Low if guessed
+
+GUIDELINES:
+- Philippine Peso (₱) — all amounts must reflect PH secondhand market reality
+- Starting bid 60-80% of reserve to maximise early bidding engagement
+- For Parts items: reserve ≤ 15% of SRP regardless of formula output
+- Do NOT re-apply condition depreciation — the formula already did it
+- Bid increment tiers: <₱3,000 → ₱50-100 | ₱3,000-10,000 → ₱100-500 | ₱10,000-50,000 → ₱500-1,000 | >₱50,000 → ₱1,000-2,000
 
 RESPOND IN THIS EXACT JSON FORMAT:
 {

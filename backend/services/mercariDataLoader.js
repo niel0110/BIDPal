@@ -25,7 +25,6 @@ const DEPLOY_SAMPLE_DATA_PATH = resolveDataPath('MERCARI_DEPLOY_SAMPLE_PATH', [
 
 // USD to PHP conversion rate (approximate)
 const USD_TO_PHP = Number(process.env.MERCARI_USD_TO_PHP || 56.0);
-const DEFAULT_APP_LOAD_LIMIT = Number(process.env.MERCARI_APP_LOAD_LIMIT || 500000);
 
 function resolveDataPath(envName, candidates, allowMissing = false) {
     const envPath = process.env[envName];
@@ -58,16 +57,10 @@ export async function loadMercariData() {
 
                 stream.pipe(parser);
 
-                let limitReached = false;
                 parser.on('data', (product) => {
-                    if (products.length < 500000) {
-                        products.push(product);
-                        if (products.length % 100000 === 0) {
-                            console.log(`   Loaded ${products.length.toLocaleString()} products...`);
-                        }
-                    } else if (!limitReached) {
-                        console.log(`   Reached memory limit (500,000 products). Skipping remaining records for stability.`);
-                        limitReached = true;
+                    products.push(product);
+                    if (products.length % 100000 === 0) {
+                        console.log(`   Loaded ${products.length.toLocaleString()} products...`);
                     }
                 });
 
@@ -96,32 +89,26 @@ export async function loadMercariData() {
 
     if (fs.existsSync(DEPLOY_SAMPLE_DATA_PATH)) {
         console.log('Loading deploy Mercari sample dataset...');
-        return loadJsonArray(DEPLOY_SAMPLE_DATA_PATH, 500000);
+        return loadJsonArray(DEPLOY_SAMPLE_DATA_PATH);
     }
 
     return processRawData();
 }
 
-async function loadJsonArray(filePath, maxProducts = 500000) {
+async function loadJsonArray(filePath) {
     const JSONStream = (await import('JSONStream')).default;
 
     return new Promise((resolve, reject) => {
         const products = [];
         const stream = fs.createReadStream(filePath, { encoding: 'utf8' });
         const parser = JSONStream.parse('*');
-        let limitReached = false;
 
         stream.pipe(parser);
 
         parser.on('data', (product) => {
-            if (products.length < maxProducts) {
-                products.push(product);
-                if (products.length % 100000 === 0) {
-                    console.log(`   Loaded ${products.length.toLocaleString()} products...`);
-                }
-            } else if (!limitReached) {
-                console.log(`   Reached memory limit (${maxProducts.toLocaleString()} products). Skipping remaining records for stability.`);
-                limitReached = true;
+            products.push(product);
+            if (products.length % 100000 === 0) {
+                console.log(`   Loaded ${products.length.toLocaleString()} products...`);
             }
         });
 
@@ -158,7 +145,7 @@ function processRawData() {
                     const product = parseMercariRow(row);
 
                     // Only include products with valid prices
-                    if (product && products.length < DEFAULT_APP_LOAD_LIMIT) {
+                    if (product) {
                         products.push(product);
                     }
                 } catch (error) {
@@ -316,9 +303,24 @@ export function getMercariMarketStats(products, category, brand = null) {
     };
 }
 
+// PH market correction: Mercari is 2018 US data; PH prices differ structurally by category.
+// Electronics carry import premiums (~30% above US); fashion/beauty are cheaper in PH.
+const PH_MARKET_CORRECTION = {
+    Electronics: 1.30,
+    Men: 0.85,
+    Women: 0.85,
+    Beauty: 0.90,
+    Kids: 0.90,
+    Home: 1.00,
+    'Sports & Outdoors': 1.00,
+    Handmade: 1.00,
+};
+
 function parseMercariRow(row) {
     const priceUSD = parseFloat(row.price);
-    const price = Math.round(priceUSD * USD_TO_PHP);
+    const topCategory = row.category_name ? row.category_name.split('/')[0] : '';
+    const marketCorrection = PH_MARKET_CORRECTION[topCategory] ?? 1.00;
+    const price = Math.round(priceUSD * USD_TO_PHP * marketCorrection);
     if (!Number.isFinite(price) || price <= 0 || price >= 1000000) return null;
 
     return {
