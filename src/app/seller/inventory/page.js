@@ -17,7 +17,7 @@ export default function InventoryPage() {
     // Schedule modal state
     const [scheduleProduct, setScheduleProduct] = useState(null); // { products_id, name, images, reserve_price, starting_price }
     const [saleType, setSaleType] = useState('bid');
-    const [scheduleForm, setScheduleForm] = useState({ startDate: '', startTime: '', fixedPrice: '', bidIncrement: '' });
+    const [scheduleForm, setScheduleForm] = useState({ startDate: '', startTime: '', fixedPrice: '' });
     const [isScheduling, setIsScheduling] = useState(false);
     const [scheduleToast, setScheduleToast] = useState(null);
 
@@ -87,6 +87,8 @@ export default function InventoryPage() {
         setScheduleToast(null);
     };
 
+    const isAlreadyScheduled = scheduleToast?.type === 'error' && scheduleToast?.message?.toLowerCase().includes('already scheduled');
+
     const closeScheduleModal = () => {
         setScheduleProduct(null);
         setScheduleToast(null);
@@ -126,7 +128,7 @@ export default function InventoryPage() {
                 start_timestamp: startISO,
                 end_timestamp: endISO,
                 timezone: Intl.DateTimeFormat().resolvedOptions().timeZone,
-                bid_increment: saleType === 'bid' ? parseFloat(scheduleForm.bidIncrement) : null,
+                bid_increment: saleType === 'bid' ? (parseFloat(scheduleProduct.bid_increment) || 50) : null,
                 availability: saleType === 'sale' ? 1 : (scheduleForm.availability || 1),
             };
 
@@ -222,9 +224,14 @@ export default function InventoryPage() {
                     )}
 
                     <Link href="/seller/add-product" className={styles.addCard}>
-                        <div className={styles.plusCircle}>
-                            <Plus size={48} color="var(--color-primary)" strokeWidth={1.5} />
+                        <div className={styles.addCardImage}>
+                            <Plus size={36} color="var(--color-primary)" strokeWidth={1.5} />
                         </div>
+                        <div className={styles.productInfo}>
+                            <strong style={{ color: '#888' }}>New Product</strong>
+                            <span>Tap to create listing</span>
+                        </div>
+                        <span className={styles.addCardBtn}>Add New</span>
                     </Link>
                 </div>
             )}
@@ -332,24 +339,6 @@ export default function InventoryPage() {
                                 </div>
                             )}
 
-                            {saleType !== 'sale' && (
-                                <div style={{ marginBottom: '1.25rem' }}>
-                                    <label style={{ fontSize: '0.78rem', fontWeight: 700, color: '#475569', textTransform: 'uppercase', letterSpacing: '0.05em', display: 'block', marginBottom: '0.5rem' }}>Bid Increment</label>
-                                    <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', border: '1.5px solid #e2e8f0', borderRadius: 10, padding: '0 0.85rem', background: '#fafafa' }}>
-                                        <span style={{ fontWeight: 700, color: '#475569', fontSize: '0.9rem' }}>₱</span>
-                                        <input
-                                            type="number" step="1" min="1" placeholder="50" required
-                                            value={scheduleForm.bidIncrement}
-                                            onChange={e => setScheduleForm(p => ({ ...p, bidIncrement: e.target.value }))}
-                                            style={{ flex: 1, border: 'none', background: 'transparent', padding: '0.75rem 0', fontSize: '0.9rem', outline: 'none', color: '#0f172a' }}
-                                        />
-                                    </div>
-                                    <p style={{ fontSize: '0.72rem', color: '#94a3b8', marginTop: '0.35rem', marginBottom: 0 }}>
-                                        Every new bid must increase by this seller-set amount.
-                                    </p>
-                                </div>
-                            )}
-
                             {/* Date & time (auction only) */}
                             {saleType !== 'sale' && (
                                 <div style={{ marginBottom: '1.25rem' }}>
@@ -398,12 +387,12 @@ export default function InventoryPage() {
 
                             <button
                                 type="submit"
-                                disabled={isScheduling}
+                                disabled={isScheduling || isAlreadyScheduled}
                                 style={{
-                                    width: '100%', background: '#D32F2F', color: 'white', border: 'none',
+                                    width: '100%', background: isAlreadyScheduled ? '#e2e8f0' : '#D32F2F', color: isAlreadyScheduled ? '#94a3b8' : 'white', border: 'none',
                                     borderRadius: 12, padding: '0.9rem', fontWeight: 700, fontSize: '0.92rem',
-                                    cursor: isScheduling ? 'not-allowed' : 'pointer', opacity: isScheduling ? 0.7 : 1,
-                                    transition: 'opacity 0.15s'
+                                    cursor: (isScheduling || isAlreadyScheduled) ? 'not-allowed' : 'pointer', opacity: isScheduling ? 0.7 : 1,
+                                    transition: 'opacity 0.15s, background 0.15s'
                                 }}
                             >
                                 {isScheduling

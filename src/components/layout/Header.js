@@ -265,20 +265,7 @@ function HeaderInner() {
                 <div style={{ position: 'relative', display: 'flex', alignItems: 'center' }}>
                   <ShoppingCart size={18} className={styles.cartIcon} color="#D32F2F" />
                   {cartItems.length > 0 && (
-                    <span style={{ 
-                      position: 'absolute', 
-                      top: '-8px', 
-                      right: '-8px', 
-                      background: '#ef4444', 
-                      color: 'white', 
-                      fontSize: '0.65rem', 
-                      fontWeight: 700, 
-                      padding: '1px 5px', 
-                      borderRadius: '8px',
-                      minWidth: '14px',
-                      textAlign: 'center',
-                      border: '2px solid white'
-                    }}>
+                    <span className={styles.cartBadge}>
                       {cartItems.length > 9 ? '9+' : cartItems.length}
                     </span>
                   )}

@@ -13,7 +13,10 @@ import {
 } from './mlModelService.js';
 import {
     getMercariMarketStats,
-    findMercariComparables
+    findMercariComparables,
+    getMercariMarketStatsFromIndex,
+    findMercariComparablesFromIndex,
+    loadMercariIndex,
 } from './mercariDataLoader.js';
 
 // Initialize ML model at startup
@@ -87,12 +90,19 @@ export async function generatePriceRecommendation(productData) {
         ensureMercariLoaded();
 
         const mercariData_ = mercariData || [];
-        const marketData = mercariData_.length
+        const hasFullDataset = mercariData_.length > 0;
+
+        // Use full in-memory dataset when available; fall back to precomputed index
+        const marketData = hasFullDataset
             ? getMercariMarketStats(mercariData_, productInfo.category, productInfo.brand)
-            : null;
-        const comparableItems = mercariData_.length
+            : getMercariMarketStatsFromIndex(productInfo.category, productInfo.brand);
+        const comparableItems = hasFullDataset
             ? findMercariComparables(mercariData_, productInfo, 10)
-            : [];
+            : findMercariComparablesFromIndex(productInfo, 10);
+
+        if (!hasFullDataset && loadMercariIndex()) {
+            console.log('📊 Using precomputed Mercari market index (production mode)');
+        }
 
         if (!basePrice) {
             const mercariBase = calculateDataDrivenBasePrice(productInfo, comparableItems, marketData, mlPriceEstimate);

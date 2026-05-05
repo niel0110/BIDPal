@@ -151,7 +151,8 @@ export default function AddProductPage() {
         }
         const url = URL.createObjectURL(file);
         const img = new Image();
-        img.onload = () => { URL.revokeObjectURL(url); resolve({ valid: true, url }); };
+        // Don't revoke on success — url is reused as the preview src
+        img.onload = () => { resolve({ valid: true, url }); };
         img.onerror = () => { URL.revokeObjectURL(url); resolve({ valid: false, error: `"${file.name}" could not be read. The file may be corrupted.` }); };
         img.src = url;
     });
@@ -166,19 +167,17 @@ export default function AddProductPage() {
         }
 
         setImageErrors([]);
+        const results = await Promise.all(files.map(f => validateImage(f)));
+
         const errors = [];
         const validFiles = [];
         const validPreviews = [];
 
-        for (const file of files) {
-            const result = await validateImage(file);
-            if (!result.valid) {
-                errors.push(result.error);
-                continue;
-            }
-            validFiles.push(file);
+        results.forEach((result, i) => {
+            if (!result.valid) { errors.push(result.error); return; }
+            validFiles.push(files[i]);
             validPreviews.push(result.url);
-        }
+        });
 
         if (errors.length > 0) setImageErrors(errors);
         if (validFiles.length > 0) {

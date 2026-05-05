@@ -1945,7 +1945,7 @@
 /* ── Mobile Responsive ── */
 @media (max-width: 768px) {
     .liveHero {
-        padding: 1.5rem 1rem 1.25rem;
+        padding: 0.6rem 1rem 0.4rem;
     }
 
     .liveHero h1 {
@@ -1954,11 +1954,29 @@
 
     .liveLandingSection {
         padding: 0 1rem;
+        overflow: hidden;
+        margin-top: 0.6rem;
     }
 
     .liveGrid {
-        grid-template-columns: repeat(auto-fill, minmax(160px, 1fr));
+        display: flex;
+        flex-direction: row;
+        overflow-x: auto;
+        overflow-y: hidden;
         gap: 0.75rem;
+        scrollbar-width: none;
+        -ms-overflow-style: none;
+        padding-bottom: 0.25rem;
+    }
+
+    .liveGrid::-webkit-scrollbar {
+        display: none;
+    }
+
+    .liveGrid > * {
+        flex-shrink: 0;
+        width: 78vw;
+        max-width: 300px;
     }
 
     .container {

@@ -136,21 +136,44 @@
 }
 
 .addCard {
-    height: 100%;
-    min-height: 220px;
+    display: flex;
+    flex-direction: column;
+    gap: 0.5rem;
+    background-color: #FFF9F9;
+    border-radius: 12px;
+    text-decoration: none;
+    transition: transform 0.2s ease, box-shadow 0.2s ease;
+    border: 1.5px dashed #FFCDD2;
+    overflow: hidden;
+}
+
+.addCard:hover {
+    transform: translateY(-3px);
+    box-shadow: 0 8px 20px rgba(211, 47, 47, 0.08);
+}
+
+.addCardImage {
+    aspect-ratio: 1;
     background-color: #FFF9F9;
     border-radius: 12px;
     display: flex;
     align-items: center;
     justify-content: center;
-    text-decoration: none;
-    transition: transform 0.2s ease, box-shadow 0.2s ease;
-    border: 1px solid #FFEBEB;
 }
 
-.addCard:hover {
-    transform: translateY(-5px);
-    box-shadow: 0 10px 20px rgba(211, 47, 47, 0.05);
+.addCardBtn {
+    margin-top: 0.35rem;
+    display: block;
+    width: 100%;
+    padding: 0.5rem;
+    background-color: #fff;
+    border: 1.5px solid #FFCDD2;
+    border-radius: 8px;
+    color: var(--color-primary);
+    font-size: 0.75rem;
+    font-weight: 700;
+    text-align: center;
+    box-sizing: border-box;
 }
 
 .scheduledBtn {
@@ -167,17 +190,6 @@
     text-align: center;
     text-decoration: none;
     cursor: default;
-}
-
-.plusCircle {
-    width: 52px;
-    height: 52px;
-    background-color: white;
-    border-radius: 50%;
-    display: flex;
-    align-items: center;
-    justify-content: center;
-    box-shadow: 0 4px 15px rgba(0, 0, 0, 0.03);
 }
 
 /* Modal Responsiveness */
@@ -202,6 +214,7 @@
     max-height: 90vh;
     overflow-y: auto;
     box-shadow: 0 20px 60px rgba(0,0,0,0.18);
+    box-sizing: border-box;
 }
 
 .modalGrid {
@@ -269,5 +282,14 @@
     .backLinkIcon {
         width: 16px;
         height: 16px;
+    }
+
+    .modalOverlay {
+        padding: 0.5rem;
+    }
+
+    .modalContent {
+        padding: 0.875rem;
+        border-radius: 14px;
     }
 }

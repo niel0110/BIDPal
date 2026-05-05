@@ -259,6 +259,26 @@ button.dropdownItem {
     gap: 1.5rem;
 }
 
+.cartBadge {
+    position: absolute;
+    top: -5px;
+    right: -6px;
+    background: #ef4444;
+    color: white;
+    font-size: 0.6rem;
+    font-weight: 800;
+    min-width: 15px;
+    height: 15px;
+    border-radius: 8px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    padding: 0 3px;
+    line-height: 1;
+    border: 1.5px solid white;
+    pointer-events: none;
+}
+
 .navItem {
     display: flex;
     align-items: center;

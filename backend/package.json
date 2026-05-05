@@ -9,6 +9,7 @@
     "test": "echo \"Error: no test specified\" && exit 1",
     "setup-mercari": "node scripts/setupMercariData.js",
     "train-model": "node scripts/trainMercariModel.js",
+    "precompute-index": "node scripts/precomputeMercariIndex.js",
     "test-recommendation": "node test-recommendation.js"
   },
   "keywords": [],

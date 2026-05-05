@@ -485,6 +485,116 @@ export function findMercariComparables(products, productInfo, limit = 10) {
         }));
 }
 
+// ─── Market Index (production / no full dataset) ─────────────────────────────
+
+const INDEX_CANDIDATES = [
+    path.join(__dirname, '../data/models/mercari_market_index.json'),
+    path.join(process.cwd(), 'backend/data/models/mercari_market_index.json'),
+    path.join(process.cwd(), 'data/models/mercari_market_index.json'),
+];
+
+let _marketIndex = null;
+
+export function loadMercariIndex() {
+    if (_marketIndex) return _marketIndex;
+    const indexPath = process.env.MERCARI_INDEX_PATH
+        || INDEX_CANDIDATES.find(p => fs.existsSync(p));
+    if (!indexPath) return null;
+    try {
+        _marketIndex = JSON.parse(fs.readFileSync(indexPath, 'utf8'));
+        console.log(`✅ Mercari market index loaded (${Object.keys(_marketIndex.categoryStats || {}).length} categories, built ${_marketIndex.builtAt})`);
+        return _marketIndex;
+    } catch (err) {
+        console.warn('⚠️ Could not load Mercari market index:', err.message);
+        return null;
+    }
+}
+
+/**
+ * getMercariMarketStats using precomputed index (used in production).
+ * Falls back to scanning live products array if index unavailable.
+ */
+export function getMercariMarketStatsFromIndex(category, brand = null) {
+    const index = loadMercariIndex();
+    if (!index) return null;
+
+    if (brand) {
+        const key = `${category}::${brand}`;
+        const brandStat = index.brandLevelStats?.[key];
+        if (brandStat) return { ...brandStat, topBrands: index.categoryStats?.[category]?.topBrands || [] };
+    }
+
+    const catStat = index.categoryStats?.[category];
+    return catStat || null;
+}
+
+/**
+ * findMercariComparables using precomputed index samples (used in production).
+ * Falls back to scanning live products array if index unavailable.
+ */
+export function findMercariComparablesFromIndex(productInfo, limit = 10) {
+    const index = loadMercariIndex();
+    if (!index) return [];
+
+    const { category, brand, condition, keywords = [], model, specs = {} } = productInfo;
+    const products = index.samples?.[category] || [];
+    if (!products.length) return [];
+
+    const modelToken = model?.toLowerCase();
+    const screenSize = Number(specs.screenSize || 0);
+    const isTv = keywords.some(k => ['tv', 'television', 'smart tv', 'oled', 'qled', '4k', '8k'].includes(k));
+
+    const scored = products.map(product => {
+        let score = 0;
+        const text = (product.name + ' ' + (product.description || '')).toLowerCase();
+
+        if (product.category === category) score += 35;
+        if (brand && product.brand?.toLowerCase() === brand.toLowerCase()) score += 25;
+        if (product.condition === condition) score += 15;
+        if (modelToken && text.includes(modelToken)) score += 40;
+
+        const tvMarker = /\b(tv|television|oled|qled|uhd|4k|8k)\b/.test(text);
+        const tvAccessory = /\b(earbud|earphone|hdmi|cable|remote|charger|case|streaming|adapter)\b/.test(text);
+        if (isTv && tvMarker) score += 35;
+        if (isTv && !tvMarker) score -= 80;
+        if (isTv && tvAccessory) score -= 90;
+
+        if (screenSize) {
+            const sizeMatch = text.match(/(\d{2,3}(?:\.\d+)?)\s*(?:inch|"|in\b)/i);
+            if (sizeMatch) {
+                const diff = Math.abs(Number(sizeMatch[1]) - screenSize);
+                score += diff <= 2 ? 28 : diff <= 8 ? 12 : -8;
+            } else if (isTv) score -= 25;
+        }
+
+        if (specs.resolution) {
+            const res = specs.resolution.toLowerCase();
+            if (text.includes(res)) score += 12;
+        }
+
+        keywords.forEach(kw => {
+            const k = kw.toString().toLowerCase();
+            if (k.length >= 3 && text.includes(k)) score += k === modelToken ? 25 : 5;
+        });
+
+        return { product, score };
+    });
+
+    const minScore = isTv ? 55 : 30;
+    return scored
+        .filter(i => i.score > minScore)
+        .sort((a, b) => b.score - a.score)
+        .slice(0, limit)
+        .map(i => ({
+            name: i.product.name,
+            price: i.product.price,
+            condition: i.product.condition,
+            brand: i.product.brand,
+            relevance: Math.min(100, Math.max(0, i.score)),
+            demand: i.score >= 90 ? 'High' : i.score >= 60 ? 'Medium' : 'Low',
+        }));
+}
+
 /**
  * Prepare training data from Mercari dataset for ML model
  */

@@ -68,19 +68,33 @@ export async function trainWithMercariData(samples = 10000) {
             scannedRows = stats.totalRows;
             validRows = stats.validCount;
         } else {
-            const products = await loadMercariData();
-            if (!products || products.length === 0) {
-                throw new Error('No products found in Mercari dataset');
-            }
+            // Stream-sample directly — never load the full dataset into memory.
+            // Reservoir sampling over the stream keeps memory at O(sampleSize).
+            const sampleSize = Number(samples);
+            console.log(`Reservoir-sampling ${sampleSize.toLocaleString()} products from stream...`);
+            const reservoir = [];
+            let streamCount = 0;
 
-            console.log(`Preparing training data from ${products.length.toLocaleString()} loaded products...`);
-            const trainingSamples = sampleProducts(products, Number(samples));
-            trainingSamples.forEach(product => {
+            const stats = await streamMercariProducts((product) => {
+                streamCount++;
+                if (reservoir.length < sampleSize) {
+                    reservoir.push(product);
+                } else {
+                    const j = Math.floor(Math.random() * streamCount);
+                    if (j < sampleSize) reservoir[j] = product;
+                }
+                if (streamCount % 100000 === 0) {
+                    console.log(`   Scanned ${streamCount.toLocaleString()}, reservoir: ${reservoir.length.toLocaleString()}`);
+                }
+            });
+
+            scannedRows = stats.totalRows;
+            validRows = reservoir.length;
+            console.log(`Encoding ${reservoir.length.toLocaleString()} sampled products...`);
+            reservoir.forEach(product => {
                 X.push(encodeFeatures(product, MODEL_FEATURE_VERSION));
                 y.push(product.price);
             });
-            scannedRows = products.length;
-            validRows = trainingSamples.length;
         }
 
         if (X.length === 0) {

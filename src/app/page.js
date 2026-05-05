@@ -118,8 +118,19 @@ function HomeInner() {
     instruments: ['instrument', 'music', 'guitar', 'piano', 'violin', 'drum', 'vinyl', 'bass', 'keyboard'],
   };
 
+  const getPrimaryCategory = (item) => {
+    const haystack = `${item.category || ''} ${item.name || ''}`.toLowerCase();
+    for (const [cat, kws] of Object.entries(CATEGORY_KEYWORDS)) {
+      if (kws.some(kw => haystack.includes(kw))) return cat;
+    }
+    return null;
+  };
+
   const matchesCategory = (item, category) => {
     if (category === 'all') return true;
+    const primary = getPrimaryCategory(item);
+    if (primary) return primary === category;
+    // no keyword matched at all — fall back to raw field check
     const keywords = CATEGORY_KEYWORDS[category] || [category];
     const haystack = (item.category || '').toLowerCase();
     return keywords.some(kw => haystack.includes(kw));

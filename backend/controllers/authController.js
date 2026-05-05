@@ -55,7 +55,7 @@ export const sendEmailVerificationCode = async (req, res) => {
   }
 
   try {
-    if (purpose === 'forgot-password') {
+    if (purpose === 'forgot-password' || purpose === 'register') {
       const { data: existingUser, error } = await findUserByEmail(email);
 
       if (error) {
@@ -66,8 +66,12 @@ export const sendEmailVerificationCode = async (req, res) => {
         });
       }
 
-      if (!existingUser) {
+      if (purpose === 'forgot-password' && !existingUser) {
         return res.status(404).json({ error: 'No BIDPal account exists for this email.' });
+      }
+
+      if (purpose === 'register' && existingUser) {
+        return res.status(409).json({ error: 'An account with this email already exists. Please sign in instead.', code: 'EMAIL_ALREADY_REGISTERED' });
       }
     }
 
