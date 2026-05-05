@@ -57,6 +57,12 @@ export default function MyAuctions() {
     const [scheduleToast, setScheduleToast] = useState(null);
     const [isScheduling, setIsScheduling] = useState(false);
 
+    // Reschedule modal state (for ended never-went-live auctions)
+    const [rescheduleAuction, setRescheduleAuction] = useState(null); // { auction_id, product_name, product_image, incremental_bid_step }
+    const [rescheduleForm, setRescheduleForm] = useState({ startDate: '', startTime: '', bidIncrement: '' });
+    const [rescheduleToast, setRescheduleToast] = useState(null);
+    const [isRescheduling, setIsRescheduling] = useState(false);
+
     const [modalConfig, setModalConfig] = useState({
         isOpen: false,
         title: '',
@@ -142,6 +148,68 @@ export default function MyAuctions() {
             setScheduleToast({ type: 'error', message: 'An error occurred. Please try again.' });
         } finally {
             setIsScheduling(false);
+        }
+    };
+
+    const openRescheduleModal = (auction) => {
+        setRescheduleAuction({
+            auction_id: auction.auction_id,
+            product_name: auction.product_name,
+            product_image: auction.product_image,
+            incremental_bid_step: auction.incremental_bid_step || 0,
+            reserve_price: auction.reserve_price || 0,
+        });
+        setRescheduleForm({ startDate: '', startTime: '', bidIncrement: auction.incremental_bid_step ? String(auction.incremental_bid_step) : '' });
+        setRescheduleToast(null);
+    };
+
+    const closeRescheduleModal = () => {
+        setRescheduleAuction(null);
+        setRescheduleToast(null);
+    };
+
+    const handleRescheduleSubmit = async (e) => {
+        e.preventDefault();
+        if (!rescheduleAuction || !user) return;
+        setIsRescheduling(true);
+        try {
+            const apiUrl = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:5000';
+            const token = localStorage.getItem('bidpal_token');
+
+            const startTimestamp = new Date(`${rescheduleForm.startDate}T${rescheduleForm.startTime}:00`).toISOString();
+            if (isNaN(new Date(startTimestamp).getTime())) {
+                setRescheduleToast({ type: 'error', message: 'Invalid date or time selected.' });
+                return;
+            }
+
+            const payload = {
+                start_time: startTimestamp,
+                bid_increment: rescheduleForm.bidIncrement ? parseFloat(rescheduleForm.bidIncrement) : undefined,
+            };
+            const res = await fetch(`${apiUrl}/api/auctions/${rescheduleAuction.auction_id}/reschedule`, {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json', ...(token ? { Authorization: `Bearer ${token}` } : {}) },
+                body: JSON.stringify(payload)
+            });
+
+            // Safe JSON parse — server may return HTML on unhandled routes
+            let data = {};
+            try { data = await res.json(); } catch { /* non-JSON response */ }
+
+            if (!res.ok) {
+                setRescheduleToast({ type: 'error', message: data.error || `Server error (${res.status})` });
+                return;
+            }
+            setRescheduleToast({ type: 'success', message: 'Auction rescheduled successfully!' });
+            setTimeout(() => {
+                closeRescheduleModal();
+                setRefreshKey(k => k + 1);
+            }, 1500);
+        } catch (err) {
+            console.error('Reschedule error:', err);
+            setRescheduleToast({ type: 'error', message: err?.message || 'An error occurred. Please try again.' });
+        } finally {
+            setIsRescheduling(false);
         }
     };
 
@@ -597,7 +665,7 @@ export default function MyAuctions() {
             itemsToClean = auctions.filter(a => a.status === 'scheduled');
             itemType = 'scheduled auctions';
         } else if (activeTab === 'completed') {
-            itemsToClean = auctions.filter(a => a.status === 'ended' || a.status === 'completed');
+            itemsToClean = auctions.filter(a => (a.status === 'ended' || a.status === 'completed') && a.winner_user_id);
             itemType = 'completed auctions';
         } else {
             showModal({
@@ -668,7 +736,7 @@ export default function MyAuctions() {
                     } else if (activeTab === 'scheduled') {
                         setAuctions(auctions.filter(a => a.status !== 'scheduled'));
                     } else if (activeTab === 'completed') {
-                        setAuctions(auctions.filter(a => a.status !== 'ended' && a.status !== 'completed'));
+                        setAuctions(auctions.filter(a => !((a.status === 'ended' || a.status === 'completed') && a.winner_user_id)));
                     }
 
                     showModal({
@@ -843,8 +911,16 @@ export default function MyAuctions() {
         const isDeleting = deletingId === auction.auction_id;
         const isActive = auction.status === 'active';
         const isScheduled = auction.status === 'scheduled';
-        const isCompleted = auction.status === 'ended' || auction.status === 'completed';
+        // Completed = had a winner (successful bid)
+        const isCompletedLive = (auction.status === 'ended' || auction.status === 'completed') && !!auction.winner_user_id;
+        // Ended = no winner (never went live OR went live but no bid won)
+        const isEndedOverdue = auction.status === 'ended' && !auction.winner_user_id;
         const isSelected = selectedItems.includes(auction.auction_id);
+
+        // Badge display values
+        const badgeStatus = isEndedOverdue ? 'ended' : isCompletedLive ? 'completed' : auction.status;
+        const badgeLabel = badgeStatus.toUpperCase();
+
         return (
             <div
                 key={auction.auction_id}
@@ -852,11 +928,12 @@ export default function MyAuctions() {
                 onClick={(e) => handleCardClick(auction.auction_id, e)}
             >
                 <div className={styles.cardHeader}>
-                    <span className={`${styles.statusBadge} ${styles[auction.status === 'ended' ? 'completed' : auction.status]}`}>
-                        {auction.status === 'active' && <TrendingUp size={12} />}
-                        {auction.status === 'scheduled' && <Calendar size={12} />}
-                        {(auction.status === 'completed' || auction.status === 'ended') && <CheckCircle2 size={12} />}
-                        {(auction.status === 'ended' ? 'completed' : auction.status).toUpperCase()}
+                    <span className={`${styles.statusBadge} ${styles[badgeStatus]}`}>
+                        {isActive && <TrendingUp size={12} />}
+                        {isScheduled && <Calendar size={12} />}
+                        {isCompletedLive && <CheckCircle2 size={12} />}
+                        {isEndedOverdue && <AlertOctagon size={12} />}
+                        {badgeLabel}
                     </span>
                     <span className={styles.auctionId}>#{auction.auction_id.slice(0, 8)}</span>
                     {!selectMode && (
@@ -886,14 +963,23 @@ export default function MyAuctions() {
                                             Edit
                                         </button>
                                     )}
-                                    {isCompleted && (
+                                    {isEndedOverdue && (
+                                        <button
+                                            className={styles.dropdownItem}
+                                            onClick={() => { setOpenDropdown(null); openRescheduleModal(auction); }}
+                                        >
+                                            <Calendar size={14} />
+                                            Reschedule
+                                        </button>
+                                    )}
+                                    {isCompletedLive && (
                                         <Link
                                             href={`/seller/auctions/${auction.auction_id}/results`}
                                             className={styles.dropdownItem}
                                             onClick={() => setOpenDropdown(null)}
                                         >
                                             <CheckCircle2 size={14} />
-                                            View
+                                            View Results
                                         </Link>
                                     )}
                                     {!isActive && (
@@ -909,7 +995,7 @@ export default function MyAuctions() {
                                     {isActive && (
                                         <div className={styles.dropdownItem} style={{ opacity: 0.5, cursor: 'not-allowed' }}>
                                             <X size={14} />
-                                            Can't delete
+                                            Can&apos;t delete
                                         </div>
                                     )}
                                 </div>
@@ -946,13 +1032,19 @@ export default function MyAuctions() {
                                     <Clock size={14} />
                                     <span>{formattedStartTime}</span>
                                 </div>
+                                {isEndedOverdue && (
+                                    <div className={styles.meta} style={{ color: '#dc2626', marginTop: '0.25rem' }}>
+                                        <AlertOctagon size={14} />
+                                        <span>Not streamed — scheduled time passed</span>
+                                    </div>
+                                )}
                             </div>
                         </div>
 
                         <div className={styles.cardFooter}>
                             <div className={styles.metric}>
                                 <span className={styles.metricLabel}>
-                                    {auction.status === 'completed' ? 'Final Price' : auction.buy_now_price > 0 ? 'Buy Now Price' : 'Starting Bid'}
+                                    {isCompletedLive ? 'Final Price' : auction.buy_now_price > 0 ? 'Buy Now Price' : 'Starting Bid'}
                                 </span>
                                 <span className={styles.metricValue}>
                                     ₱ {(auction.buy_now_price > 0 ? auction.buy_now_price : auction.current_price || auction.reserve_price || 0).toLocaleString()}
@@ -967,7 +1059,7 @@ export default function MyAuctions() {
                         </div>
 
                         <div className={styles.cardActions}>
-                            {auction.status === 'scheduled' && (
+                            {isScheduled && (
                                 <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', width: '100%', justifyContent: 'space-between' }}>
                                     <button
                                         className={styles.primaryBtn}
@@ -988,11 +1080,20 @@ export default function MyAuctions() {
                                     </div>
                                 </div>
                             )}
-                            {auction.status === 'active' && <Link href="/seller" className={styles.primaryBtn}>Control Hub</Link>}
-                            {(auction.status === 'completed' || auction.status === 'ended') && (
+                            {isActive && <Link href="/seller" className={styles.primaryBtn}>Control Hub</Link>}
+                            {isCompletedLive && (
                                 <Link href={`/seller/auctions/${auction.auction_id}/results`} className={styles.primaryBtn}>
                                     View Results
                                 </Link>
+                            )}
+                            {isEndedOverdue && (
+                                <button
+                                    className={styles.primaryBtn}
+                                    onClick={() => openRescheduleModal(auction)}
+                                    style={{ background: '#D32F2F' }}
+                                >
+                                    Reschedule
+                                </button>
                             )}
                         </div>
                     </>
@@ -1061,13 +1162,17 @@ export default function MyAuctions() {
                         </>
                     ) : (
                         <>
-                            <Link href="/seller/inventory" className={styles.productsBtn}>
+                            <Link href="/seller/inventory" className={styles.productsBtn} title="My Products">
                                 <Package size={20} />
-                                My Products
+                                <span className={styles.btnLabel}>My Products</span>
                             </Link>
-                            <Link href="/seller/auctions/create" className={styles.createBtn}>
+                            <Link href="/seller/auctions/ended" className={styles.unsuccessfulBtn} title="Unsuccessful Auctions">
+                                <AlertOctagon size={20} />
+                                <span className={styles.btnLabel}>Unsuccessful</span>
+                            </Link>
+                            <Link href="/seller/auctions/create" className={styles.createBtn} title="Create Auction">
                                 <Plus size={20} />
-                                Create Auction
+                                <span className={styles.btnLabel}>Create Auction</span>
                             </Link>
                         </>
                     )}
@@ -1105,6 +1210,99 @@ export default function MyAuctions() {
                 {...modalConfig}
                 onClose={() => setModalConfig(prev => ({ ...prev, isOpen: false }))}
             />
+
+            {/* Reschedule Modal — for ended (never went live) auctions */}
+            {rescheduleAuction && (
+                <div style={{
+                    position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.45)', backdropFilter: 'blur(4px)',
+                    display: 'flex', alignItems: 'center', justifyContent: 'center', zIndex: 1000, padding: '1rem'
+                }} onClick={closeRescheduleModal}>
+                    <div style={{
+                        background: 'white', borderRadius: 20, padding: 'clamp(1.25rem, 5vw, 2rem)', width: '100%', maxWidth: 480,
+                        maxHeight: '90vh', overflowY: 'auto', boxShadow: '0 20px 60px rgba(0,0,0,0.18)'
+                    }} onClick={e => e.stopPropagation()}>
+                        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '1.5rem' }}>
+                            <div>
+                                <h2 style={{ margin: 0, fontSize: '1.1rem', fontWeight: 800, color: '#0f172a' }}>Reschedule Auction</h2>
+                                <p style={{ margin: '2px 0 0', fontSize: '0.78rem', color: '#94a3b8' }}>Set a new date and time for this auction</p>
+                            </div>
+                            <button onClick={closeRescheduleModal} style={{ background: '#f1f5f9', border: 'none', borderRadius: 8, padding: '6px', cursor: 'pointer', display: 'flex' }}>
+                                <X size={18} color="#64748b" />
+                            </button>
+                        </div>
+
+                        <div style={{ display: 'flex', alignItems: 'center', gap: '0.85rem', padding: '0.85rem', background: '#fef2f2', borderRadius: 12, marginBottom: '1.5rem', border: '1px solid #fecdd3' }}>
+                            <img
+                                src={rescheduleAuction.product_image || 'https://placehold.co/56x56?text=No+Image'}
+                                alt={rescheduleAuction.product_name}
+                                style={{ width: 52, height: 52, borderRadius: 10, objectFit: 'cover', flexShrink: 0 }}
+                            />
+                            <div style={{ flex: 1, minWidth: 0 }}>
+                                <div style={{ fontWeight: 700, fontSize: '0.88rem', color: '#0f172a', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{rescheduleAuction.product_name}</div>
+                                <div style={{ fontSize: '0.73rem', color: '#dc2626', marginTop: '0.25rem', fontWeight: 600 }}>⚠️ Previously ended — not streamed</div>
+                            </div>
+                        </div>
+
+                        <form onSubmit={handleRescheduleSubmit}>
+                            <div style={{ marginBottom: '1.25rem' }}>
+                                <label style={{ fontSize: '0.78rem', fontWeight: 700, color: '#475569', textTransform: 'uppercase', letterSpacing: '0.05em', display: 'block', marginBottom: '0.5rem' }}>New Date &amp; Time</label>
+                                <div style={{ display: 'flex', flexDirection: 'column', gap: '0.6rem' }}>
+                                    <div style={{ border: '1.5px solid #e2e8f0', borderRadius: 10, padding: '0.6rem 0.85rem', display: 'flex', alignItems: 'center', gap: '0.5rem', background: '#fafafa' }}>
+                                        <Calendar size={15} color="#94a3b8" style={{ flexShrink: 0 }} />
+                                        <input type="date" required value={rescheduleForm.startDate}
+                                            onChange={e => setRescheduleForm(p => ({ ...p, startDate: e.target.value }))}
+                                            style={{ border: 'none', background: 'transparent', fontSize: '0.85rem', outline: 'none', color: '#0f172a', flex: 1 }}
+                                        />
+                                    </div>
+                                    <div style={{ border: '1.5px solid #e2e8f0', borderRadius: 10, padding: '0.6rem 0.85rem', display: 'flex', alignItems: 'center', gap: '0.5rem', background: '#fafafa' }}>
+                                        <Clock size={15} color="#94a3b8" style={{ flexShrink: 0 }} />
+                                        <input type="time" required value={rescheduleForm.startTime}
+                                            onChange={e => setRescheduleForm(p => ({ ...p, startTime: e.target.value }))}
+                                            style={{ border: 'none', background: 'transparent', fontSize: '0.85rem', outline: 'none', color: '#0f172a', flex: 1 }}
+                                        />
+                                    </div>
+                                </div>
+                            </div>
+
+                            {rescheduleAuction.incremental_bid_step > 0 && (
+                                <div style={{ marginBottom: '1.25rem' }}>
+                                    <label style={{ fontSize: '0.78rem', fontWeight: 700, color: '#475569', textTransform: 'uppercase', letterSpacing: '0.05em', display: 'block', marginBottom: '0.5rem' }}>Bid Increment</label>
+                                    <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', border: '1.5px solid #e2e8f0', borderRadius: 10, padding: '0 0.85rem', background: '#fafafa' }}>
+                                        <span style={{ fontWeight: 700, color: '#475569', fontSize: '0.9rem' }}>₱</span>
+                                        <input type="number" step="1" min="1" placeholder={rescheduleAuction.incremental_bid_step}
+                                            value={rescheduleForm.bidIncrement}
+                                            onChange={e => setRescheduleForm(p => ({ ...p, bidIncrement: e.target.value }))}
+                                            style={{ flex: 1, border: 'none', background: 'transparent', padding: '0.75rem 0', fontSize: '0.9rem', outline: 'none', color: '#0f172a' }}
+                                        />
+                                    </div>
+                                    <p style={{ fontSize: '0.72rem', color: '#94a3b8', marginTop: '0.35rem', marginBottom: 0 }}>Leave blank to keep the existing bid increment.</p>
+                                </div>
+                            )}
+
+                            {rescheduleToast && (
+                                <div style={{
+                                    padding: '0.75rem 1rem', borderRadius: 10, marginBottom: '1rem',
+                                    background: rescheduleToast.type === 'success' ? '#f0fdf4' : '#fff1f2',
+                                    border: `1px solid ${rescheduleToast.type === 'success' ? '#bbf7d0' : '#fecdd3'}`,
+                                    color: rescheduleToast.type === 'success' ? '#166534' : '#991b1b',
+                                    fontSize: '0.82rem', fontWeight: 600
+                                }}>
+                                    {rescheduleToast.type === 'success' ? '✓ ' : '✕ '}{rescheduleToast.message}
+                                </div>
+                            )}
+
+                            <button type="submit" disabled={isRescheduling} style={{
+                                width: '100%', background: '#D32F2F', color: 'white', border: 'none',
+                                borderRadius: 12, padding: '0.9rem', fontWeight: 700, fontSize: '0.92rem',
+                                cursor: isRescheduling ? 'not-allowed' : 'pointer', opacity: isRescheduling ? 0.7 : 1,
+                                transition: 'opacity 0.15s'
+                            }}>
+                                {isRescheduling ? 'Rescheduling...' : 'Confirm Reschedule'}
+                            </button>
+                        </form>
+                    </div>
+                </div>
+            )}
 
             {/* Schedule Modal */}
             {scheduleProduct && (

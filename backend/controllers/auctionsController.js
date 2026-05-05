@@ -26,7 +26,7 @@ export const getSellerAuctions = async (req, res) => {
     const nowTs = new Date();
     const { data: overdueAuctions } = await supabase
       .from('Auctions')
-      .select('auction_id, products_id')
+      .select('auction_id, products_id, seller_id, Seller(user_id)')
       .eq('seller_id', final_seller_id)
       .eq('status', 'scheduled')
       .lte('start_time', nowTs.toISOString());
@@ -37,6 +37,37 @@ export const getSellerAuctions = async (req, res) => {
       await supabase.from('Auctions').update({ status: 'ended' }).in('auction_id', overdueIds);
       if (overdueProductIds.length > 0) {
         await supabase.from('Products').update({ status: 'inactive' }).in('products_id', overdueProductIds);
+      }
+
+      // Notify seller for each newly ended auction (deduplicated — cron job may already have sent it)
+      for (const auction of overdueAuctions) {
+        const sellerUserId = auction.Seller?.user_id;
+        if (!sellerUserId) continue;
+        const { data: existing } = await supabase
+          .from('Notifications')
+          .select('notification_id')
+          .eq('user_id', sellerUserId)
+          .eq('type', 'auction_overdue')
+          .eq('reference_id', auction.auction_id)
+          .maybeSingle();
+        if (!existing) {
+          const { data: prod } = await supabase
+            .from('Products').select('name').eq('products_id', auction.products_id).maybeSingle();
+          const productName = prod?.name || 'your item';
+          await supabase.from('Notifications').insert([{
+            user_id: sellerUserId,
+            type: 'auction_overdue',
+            payload: {
+              auction_id: auction.auction_id,
+              title: '⚠️ Auction Ended — Not Streamed',
+              message: `"${productName}" was not streamed live and has been marked as Ended. You can reschedule it from My Auctions.`,
+            },
+            reference_id: auction.auction_id,
+            reference_type: 'auction',
+            created_at: new Date().toISOString(),
+            read_at: '2099-12-31T23:59:59.000Z'
+          }]);
+        }
       }
     }
 
@@ -50,8 +81,11 @@ export const getSellerAuctions = async (req, res) => {
     // Filter by status if provided
     if (status && status !== 'all') {
       if (status === 'completed') {
-        // 'ended' = auction finished (awaiting/processing payment), 'completed' = order done
-        query = query.in('status', ['ended', 'completed']);
+        // 'completed' = successful auctions: had a winner (winner_user_id is set)
+        query = query.in('status', ['ended', 'completed']).not('winner_user_id', 'is', null);
+      } else if (status === 'ended') {
+        // 'ended' = unsuccessful auctions: status=ended and no winner
+        query = query.eq('status', 'ended').is('winner_user_id', null);
       } else {
         query = query.eq('status', status);
       }
@@ -124,9 +158,12 @@ export const getSellerAuctions = async (req, res) => {
             product_image: primaryImage?.image_url || null,
             start_time: auction.start_time,
             end_time: auction.end_time,
-            live_ended_at: auction.live_ended_at,
+            live_started_at: auction.live_started_at || null,
+            live_ended_at: auction.live_ended_at || null,
+            winner_user_id: auction.winner_user_id || null,
             buy_now_price: auction.buy_now_price || 0,
             reserve_price: auction.reserve_price || 0,
+            incremental_bid_step: auction.incremental_bid_step || 0,
             current_price: auction.current_price || auction.reserve_price || 0,
             final_price: auction.final_price || null,
             status: auction.status,
@@ -1542,6 +1579,92 @@ export const checkAuctionPromoted = async (req, res) => {
     return res.json({ promoted: !!data });
   } catch (err) {
     res.status(500).json({ error: err?.message || 'Server error' });
+  }
+};
+
+/**
+ * POST /api/auctions/:id/reschedule
+ * Reschedule a never-went-live ended auction to a new start_time.
+ */
+export const rescheduleAuction = async (req, res) => {
+  try {
+    const { id } = req.params;
+    const { start_time, end_time, bid_increment } = req.body;
+    const user_id = req.user?.user_id;
+
+    if (!start_time) {
+      return res.status(400).json({ error: 'start_time is required.' });
+    }
+    if (new Date(start_time) <= new Date()) {
+      return res.status(400).json({ error: 'New schedule time must be in the future.' });
+    }
+
+    const { data: auction, error: fetchErr } = await supabase
+      .from('Auctions')
+      .select('auction_id, status, live_started_at, winner_user_id, products_id, seller_id, Seller(user_id)')
+      .eq('auction_id', id)
+      .maybeSingle();
+
+    if (fetchErr || !auction) {
+      return res.status(404).json({ error: 'Auction not found.' });
+    }
+
+    // Only allow rescheduling auctions that had no successful winner
+    const isReschedulable = ['ended', 'completed'].includes(auction.status) && !auction.winner_user_id;
+    if (!isReschedulable) {
+      if (!['ended', 'completed'].includes(auction.status)) {
+        return res.status(400).json({ error: `Cannot reschedule an auction with status "${auction.status}".` });
+      }
+      return res.status(400).json({ error: 'This auction had a winner and cannot be rescheduled.' });
+    }
+
+    // Verify seller ownership
+    if (user_id && auction.Seller?.user_id && user_id !== auction.Seller.user_id) {
+      return res.status(403).json({ error: 'You do not have permission to reschedule this auction.' });
+    }
+
+    // Default end_time to end of day of start_time
+    let newEndTime = end_time;
+    if (!newEndTime) {
+      const d = new Date(start_time);
+      d.setHours(23, 59, 59, 0);
+      newEndTime = d.toISOString();
+    }
+
+    const updateData = {
+      status: 'scheduled',
+      start_time,
+      end_time: newEndTime,
+      // Clear winner fields so the auction is treated as fresh
+      winner_user_id: null,
+      winning_bid_id: null,
+      final_price: null,
+      live_started_at: null,
+      live_ended_at: null,
+    };
+    if (bid_increment && parseFloat(bid_increment) > 0) {
+      updateData.incremental_bid_step = parseFloat(bid_increment);
+    }
+
+    const { error: updateErr } = await supabase
+      .from('Auctions')
+      .update(updateData)
+      .eq('auction_id', id);
+
+    if (updateErr) throw updateErr;
+
+    // Reset product status back to scheduled and restore availability
+    if (auction.products_id) {
+      await supabase
+        .from('Products')
+        .update({ status: 'scheduled', availability: 1 })
+        .eq('products_id', auction.products_id);
+    }
+
+    res.json({ success: true, message: 'Auction rescheduled successfully.' });
+  } catch (err) {
+    console.error('rescheduleAuction error:', err);
+    res.status(500).json({ error: err.message });
   }
 };
 

@@ -1,5 +1,5 @@
 import express from 'express';
-import { scheduleAuction, getSellerAuctions, startAuction, endAuction, getAllAuctions, getAuctionById, getLiveComments, postLiveComment, placeBid, getAuctionStats, getAuctionWinner, getAuctionBids, deleteAuction, setAuctionReminder, checkAuctionReminder, getAuctionReminderCount, promoteAuction, checkAuctionPromoted } from '../controllers/auctionsController.js';
+import { scheduleAuction, getSellerAuctions, startAuction, endAuction, getAllAuctions, getAuctionById, getLiveComments, postLiveComment, placeBid, getAuctionStats, getAuctionWinner, getAuctionBids, deleteAuction, setAuctionReminder, checkAuctionReminder, getAuctionReminderCount, promoteAuction, checkAuctionPromoted, rescheduleAuction } from '../controllers/auctionsController.js';
 import { authenticateToken } from '../middleware/authMiddleware.js';
 
 const router = express.Router();
@@ -36,6 +36,7 @@ router.get('/:id/remind', authenticateToken, checkAuctionReminder);
 router.post('/:id/remind', authenticateToken, setAuctionReminder);
 router.get('/:id/promoted', authenticateToken, checkAuctionPromoted);
 router.post('/:id/promote', authenticateToken, promoteAuction);
+router.post('/:id/reschedule', authenticateToken, rescheduleAuction);
 router.get('/:id', getAuctionById);
 
 // Delete auction (only scheduled auctions)

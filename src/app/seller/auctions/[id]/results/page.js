@@ -6,7 +6,8 @@ import { useState, useEffect } from 'react';
 import { useParams, useRouter } from 'next/navigation';
 import {
     ChevronLeft, Trophy, Eye, Heart, Share2, Clock, User, TrendingUp,
-    DollarSign, Package, Truck, CheckCircle2, MessageSquare, AlertCircle, Send
+    DollarSign, Package, Truck, CheckCircle2, MessageSquare, AlertCircle, Send,
+    Calendar, X, RotateCcw
 } from 'lucide-react';
 import { useAuth } from '@/context/AuthContext';
 import styles from './page.module.css';
@@ -25,6 +26,12 @@ export default function AuctionResultsPage() {
     const [allBidders, setAllBidders] = useState([]);
     const [stats, setStats] = useState({ viewers: 0, likes: 0, shares: 0 });
     const [sellerOrder, setSellerOrder] = useState(null);
+
+    // Reschedule state (shown when auction never went live)
+    const [showReschedule, setShowReschedule] = useState(false);
+    const [rescheduleForm, setRescheduleForm] = useState({ startDate: '', startTime: '', bidIncrement: '' });
+    const [rescheduleToast, setRescheduleToast] = useState(null);
+    const [isRescheduling, setIsRescheduling] = useState(false);
 
     // Payment confirmation state
     const [confirming, setConfirming] = useState(false);
@@ -149,6 +156,44 @@ export default function AuctionResultsPage() {
         router.push(`/messages?receiverId=${winner.winner.user_id}`);
     };
 
+    const handleReschedule = async (e) => {
+        e.preventDefault();
+        setIsRescheduling(true);
+        setRescheduleToast(null);
+        try {
+            const token = localStorage.getItem('bidpal_token');
+            const startTimestamp = new Date(`${rescheduleForm.startDate}T${rescheduleForm.startTime}:00`).toISOString();
+            if (isNaN(new Date(startTimestamp).getTime())) {
+                setRescheduleToast({ type: 'error', message: 'Invalid date or time selected.' });
+                return;
+            }
+            const payload = { start_time: startTimestamp };
+            if (rescheduleForm.bidIncrement && parseFloat(rescheduleForm.bidIncrement) > 0) {
+                payload.bid_increment = parseFloat(rescheduleForm.bidIncrement);
+            }
+            const res = await fetch(`${apiUrl}/api/auctions/${auctionId}/reschedule`, {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json', ...(token ? { Authorization: `Bearer ${token}` } : {}) },
+                body: JSON.stringify(payload)
+            });
+
+            let data = {};
+            try { data = await res.json(); } catch { /* non-JSON response */ }
+
+            if (!res.ok) {
+                setRescheduleToast({ type: 'error', message: data.error || `Server error (${res.status})` });
+            } else {
+                setRescheduleToast({ type: 'success', message: 'Auction rescheduled! Redirecting…' });
+                setTimeout(() => router.push('/seller/auctions'), 1500);
+            }
+        } catch (err) {
+            console.error('Reschedule error:', err);
+            setRescheduleToast({ type: 'error', message: err?.message || 'Network error. Please try again.' });
+        } finally {
+            setIsRescheduling(false);
+        }
+    };
+
     const getOrderStatus = () => sellerOrder?.status || winner?.order?.status;
     const getTrackingNumber = () => sellerOrder?.tracking_number || null;
     const getCourier = () => sellerOrder?.courier || null;
@@ -180,6 +225,12 @@ export default function AuctionResultsPage() {
     const { product } = auctionData;
     const orderStatus = getOrderStatus();
     const currentStep = getStatusStep(orderStatus);
+    // True when the auction ended with no winner (never went live OR went live but no bid won)
+    const neverWentLive = auctionData.status === 'ended' && !auctionData.winner_user_id;
+    // Duration is only meaningful when there was an actual live session
+    const liveDurationMinutes = auctionData.live_started_at && auctionData.live_ended_at
+        ? Math.floor((new Date(auctionData.live_ended_at) - new Date(auctionData.live_started_at)) / 60000)
+        : null;
 
     return (
         <div className={styles.container}>
@@ -203,10 +254,19 @@ export default function AuctionResultsPage() {
                     <h2>{product?.name || 'Unknown Product'}</h2>
                     <p className={styles.productDesc}>{product?.description}</p>
                     <div className={styles.auctionMeta}>
-                        <span><Clock size={16} /> Ended: {new Date(auctionData.live_ended_at || auctionData.end_time).toLocaleString()}</span>
-                        <span>Duration: {auctionData.start_time ?
-                            Math.floor((new Date(auctionData.live_ended_at) - new Date(auctionData.start_time)) / 60000) + ' minutes'
-                            : 'N/A'}</span>
+                        {neverWentLive ? (
+                            <span style={{ color: '#b45309', fontWeight: 600 }}>
+                                <Clock size={16} />
+                                {!auctionData.live_started_at
+                                    ? `Scheduled: ${new Date(auctionData.start_time).toLocaleString()} — not streamed`
+                                    : `Streamed: ${new Date(auctionData.live_started_at).toLocaleString()} — no winner`}
+                            </span>
+                        ) : (
+                            <span><Clock size={16} /> Ended: {new Date(auctionData.live_ended_at || auctionData.end_time).toLocaleString()}</span>
+                        )}
+                        {liveDurationMinutes !== null && (
+                            <span>Duration: {liveDurationMinutes} minute{liveDurationMinutes !== 1 ? 's' : ''}</span>
+                        )}
                     </div>
                 </div>
             </div>
@@ -420,8 +480,102 @@ export default function AuctionResultsPage() {
             ) : (
                 <div className={styles.noWinnerSection}>
                     <Trophy size={48} color="#ccc" />
-                    <h3>No Winner</h3>
-                    <p>This auction ended without any bids or the reserve price was not met.</p>
+                    <h3>{neverWentLive ? (auctionData.live_started_at ? 'No Winner' : 'Not Streamed') : 'No Winner'}</h3>
+                    <p>
+                        {neverWentLive
+                            ? (auctionData.live_started_at
+                                ? 'This auction was streamed live but ended without any bids or the reserve price was not met.'
+                                : 'This auction was never streamed live. You can reschedule it with a new date and time.')
+                            : 'This auction ended without any bids or the reserve price was not met.'}
+                    </p>
+                    {neverWentLive && !showReschedule && (
+                        <button
+                            onClick={() => setShowReschedule(true)}
+                            style={{
+                                marginTop: '1rem', display: 'inline-flex', alignItems: 'center', gap: '0.5rem',
+                                background: '#D32F2F', color: 'white', border: 'none', borderRadius: 10,
+                                padding: '0.75rem 1.5rem', fontWeight: 700, fontSize: '0.9rem', cursor: 'pointer'
+                            }}
+                        >
+                            <RotateCcw size={16} />
+                            Reschedule Auction
+                        </button>
+                    )}
+
+                    {neverWentLive && showReschedule && (
+                        <form
+                            onSubmit={handleReschedule}
+                            style={{
+                                marginTop: '1.5rem', background: '#fff', border: '1.5px solid #e2e8f0',
+                                borderRadius: 14, padding: '1.25rem', maxWidth: 420, width: '100%',
+                                textAlign: 'left', boxShadow: '0 4px 16px rgba(0,0,0,0.06)'
+                            }}
+                        >
+                            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '1rem' }}>
+                                <span style={{ fontWeight: 800, fontSize: '0.95rem', color: '#0f172a' }}>Set New Schedule</span>
+                                <button type="button" onClick={() => { setShowReschedule(false); setRescheduleToast(null); }}
+                                    style={{ background: '#f1f5f9', border: 'none', borderRadius: 6, padding: '4px', cursor: 'pointer', display: 'flex' }}>
+                                    <X size={16} color="#64748b" />
+                                </button>
+                            </div>
+
+                            <div style={{ marginBottom: '0.85rem' }}>
+                                <label style={{ fontSize: '0.75rem', fontWeight: 700, color: '#475569', textTransform: 'uppercase', letterSpacing: '0.04em', display: 'block', marginBottom: '0.4rem' }}>Date</label>
+                                <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', border: '1.5px solid #e2e8f0', borderRadius: 9, padding: '0.55rem 0.8rem', background: '#fafafa' }}>
+                                    <Calendar size={14} color="#94a3b8" />
+                                    <input type="date" required value={rescheduleForm.startDate}
+                                        onChange={e => setRescheduleForm(p => ({ ...p, startDate: e.target.value }))}
+                                        style={{ border: 'none', background: 'transparent', fontSize: '0.85rem', outline: 'none', color: '#0f172a', flex: 1 }}
+                                    />
+                                </div>
+                            </div>
+
+                            <div style={{ marginBottom: '0.85rem' }}>
+                                <label style={{ fontSize: '0.75rem', fontWeight: 700, color: '#475569', textTransform: 'uppercase', letterSpacing: '0.04em', display: 'block', marginBottom: '0.4rem' }}>Time</label>
+                                <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', border: '1.5px solid #e2e8f0', borderRadius: 9, padding: '0.55rem 0.8rem', background: '#fafafa' }}>
+                                    <Clock size={14} color="#94a3b8" />
+                                    <input type="time" required value={rescheduleForm.startTime}
+                                        onChange={e => setRescheduleForm(p => ({ ...p, startTime: e.target.value }))}
+                                        style={{ border: 'none', background: 'transparent', fontSize: '0.85rem', outline: 'none', color: '#0f172a', flex: 1 }}
+                                    />
+                                </div>
+                            </div>
+
+                            {auctionData.incremental_bid_step > 0 && (
+                                <div style={{ marginBottom: '0.85rem' }}>
+                                    <label style={{ fontSize: '0.75rem', fontWeight: 700, color: '#475569', textTransform: 'uppercase', letterSpacing: '0.04em', display: 'block', marginBottom: '0.4rem' }}>Bid Increment (optional)</label>
+                                    <div style={{ display: 'flex', alignItems: 'center', gap: '0.4rem', border: '1.5px solid #e2e8f0', borderRadius: 9, padding: '0 0.8rem', background: '#fafafa' }}>
+                                        <span style={{ fontWeight: 700, color: '#475569', fontSize: '0.85rem' }}>₱</span>
+                                        <input type="number" step="1" min="1" placeholder={auctionData.incremental_bid_step}
+                                            value={rescheduleForm.bidIncrement}
+                                            onChange={e => setRescheduleForm(p => ({ ...p, bidIncrement: e.target.value }))}
+                                            style={{ flex: 1, border: 'none', background: 'transparent', padding: '0.65rem 0', fontSize: '0.85rem', outline: 'none', color: '#0f172a' }}
+                                        />
+                                    </div>
+                                </div>
+                            )}
+
+                            {rescheduleToast && (
+                                <div style={{
+                                    padding: '0.65rem 0.9rem', borderRadius: 8, marginBottom: '0.85rem',
+                                    background: rescheduleToast.type === 'success' ? '#f0fdf4' : '#fff1f2',
+                                    border: `1px solid ${rescheduleToast.type === 'success' ? '#bbf7d0' : '#fecdd3'}`,
+                                    color: rescheduleToast.type === 'success' ? '#166534' : '#991b1b',
+                                    fontSize: '0.8rem', fontWeight: 600
+                                }}>
+                                    {rescheduleToast.type === 'success' ? '✓ ' : '✕ '}{rescheduleToast.message}
+                                </div>
+                            )}
+
+                            <button type="submit" disabled={isRescheduling} style={{
+                                width: '100%', background: '#D32F2F', color: 'white', border: 'none',
+                                borderRadius: 10, padding: '0.8rem', fontWeight: 700, fontSize: '0.88rem',
+                                cursor: isRescheduling ? 'not-allowed' : 'pointer', opacity: isRescheduling ? 0.7 : 1
+                            }}>
+                                {isRescheduling ? 'Rescheduling…' : 'Confirm Reschedule'}
+                            </button>
+                        </form>
+                    )}
                 </div>
             )}
 

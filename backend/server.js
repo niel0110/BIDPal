@@ -247,6 +247,7 @@ import disputesRoutes from './routes/disputesRoutes.js'
 import bannerRoutes from './routes/bannerRoutes.js'
 import supportRoutes from './routes/supportRoutes.js'
 import inviteRoutes from './routes/inviteRoutes.js'
+import { startAuctionSchedulerChecker } from './jobs/auctionSchedulerChecker.js'
 
 app.get('/', (req, res) => {
   res.json({ message: 'Backend running' })
@@ -283,4 +284,5 @@ app.use('/api/invites', inviteRoutes)
 httpServer.listen(process.env.PORT, '0.0.0.0', () => {
   console.log(`Server running on port ${process.env.PORT}`)
   console.log(`Network access: http://10.0.19.203:${process.env.PORT}`)
+  startAuctionSchedulerChecker(io)
 })
