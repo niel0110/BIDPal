@@ -95,7 +95,25 @@ const UserManagement = () => {
       return;
     }
 
-    // Fetch Cart Stats (Joy Reserver Metrics)
+    // Extract user IDs for subsequent lookups
+    const ids = userData.map((u: any) => u.user_id);
+
+    // Fetch Violation Records
+    const { data: vrData, error: vrError } = await supabase
+      .from('Violation_Records')
+      .select('*')
+      .in('user_id', ids);
+
+    if (vrError) console.error('Violation_Records fetch error:', vrError);
+
+    const vrMap: Record<string, any> = {};
+    if (vrData) {
+      for (const vr of vrData as any[]) {
+        vrMap[vr.user_id] = vr;
+      }
+    }
+
+    // Fetch Cart Stats
     const { data: cartData, error: cartError } = await supabase
       .from('Cart_items')
       .select('user_id, is_stashed')
