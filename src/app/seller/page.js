@@ -68,6 +68,7 @@ export default function SellerDashboard() {
     const [deletedAt, setDeletedAt] = useState(null);
     const [showCancelConfirm, setShowCancelConfirm] = useState(false);
     const [cancelling, setCancelling] = useState(false);
+    const [showEndConfirmModal, setShowEndConfirmModal] = useState(false);
     const [currentTime, setCurrentTime] = useState(new Date());
     const kycStatusRef = useRef(null);
     const kycLoadedRef = useRef(false);
@@ -764,47 +765,49 @@ export default function SellerDashboard() {
             startSetupPreview();
             return;
         } else {
-            // End Stream
-            const confirmed = confirm('Are you sure you want to end this live auction? This will declare the winner and cannot be undone.');
-            if (!confirmed) return;
+            // Show custom confirm modal instead of browser confirm()
+            setShowEndConfirmModal(true);
+        }
+    };
 
-            try {
-                console.log('🏁 Ending auction:', activeItem.id);
-                const apiUrl = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:5000';
-                const token = localStorage.getItem('bidpal_token');
+    const doEndStream = async () => {
+        setShowEndConfirmModal(false);
+        try {
+            console.log('🏁 Ending auction:', activeItem.id);
+            const apiUrl = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:5000';
+            const token = localStorage.getItem('bidpal_token');
 
-                const res = await fetch(`${apiUrl}/api/auctions/${activeItem.id}/end`, {
-                    method: 'POST',
-                    headers: {
-                        'Content-Type': 'application/json',
-                        ...(token ? { 'Authorization': `Bearer ${token}` } : {})
-                    }
-                });
-
-                const data = await res.json();
-                console.log('End auction response:', data);
-
-                if (res.ok) {
-                    console.log('✅ Auction ended successfully');
-
-                    // Stop stream and refresh
-                    await stopAgoraStream();
-                    await fetchDashboardData();
-
-                    // Show modal with winner info
-                    setAuctionEndModal({
-                        show: true,
-                        hasWinner: data.has_winner,
-                        winner: data.winner
-                    });
-                } else {
-                    console.error('Failed to end auction:', data);
-                    alert(`Failed to end auction: ${data.error || 'Unknown error'}`);
+            const res = await fetch(`${apiUrl}/api/auctions/${activeItem.id}/end`, {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json',
+                    ...(token ? { 'Authorization': `Bearer ${token}` } : {})
                 }
-            } catch (err) {
-                console.error('Error ending auction:', err);
-                alert(`Error ending auction: ${err.message}`);
+            });
+
+            const data = await res.json();
+            console.log('End auction response:', data);
+
+            if (res.ok) {
+                console.log('✅ Auction ended successfully');
+
+                // Stop stream and refresh
+                await stopAgoraStream();
+                await fetchDashboardData();
+
+                // Show modal with winner info
+                setAuctionEndModal({
+                    show: true,
+                    hasWinner: data.has_winner,
+                    winner: data.winner
+                });
+            } else {
+                console.error('Failed to end auction:', data);
+                alert(`Failed to end auction: ${data.error || 'Unknown error'}`);
             }
+        } catch (err) {
+            console.error('Error ending auction:', err);
+            alert(`Error ending auction: ${err.message}`);
         }
     };
 
@@ -1615,6 +1618,36 @@ export default function SellerDashboard() {
                                 disabled={setupPermissions.cam !== 'granted' || setupPermissions.mic !== 'granted'}
                             >
                                 <Play size={14} fill="currentColor" /> Start Live
+                            </button>
+                        </div>
+                    </div>
+                </div>
+            )}
+
+            {/* End Stream Confirm Modal */}
+            {showEndConfirmModal && (
+                <div className={styles.modalOverlay} onClick={() => setShowEndConfirmModal(false)}>
+                    <div className={styles.endConfirmModal} onClick={e => e.stopPropagation()}>
+                        <div className={styles.endConfirmIcon}>
+                            <Square size={28} fill="#D32F2F" color="#D32F2F" />
+                        </div>
+                        <h2 className={styles.endConfirmTitle}>End Live Stream?</h2>
+                        <p className={styles.endConfirmDesc}>
+                            This will declare the highest bidder as the winner and cannot be undone.
+                        </p>
+                        <div className={styles.endConfirmActions}>
+                            <button
+                                className={styles.endConfirmCancel}
+                                onClick={() => setShowEndConfirmModal(false)}
+                            >
+                                Keep Streaming
+                            </button>
+                            <button
+                                className={styles.endConfirmEnd}
+                                onClick={doEndStream}
+                            >
+                                <Square size={14} fill="currentColor" />
+                                End Stream
                             </button>
                         </div>
                     </div>

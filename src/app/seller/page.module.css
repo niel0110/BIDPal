@@ -1473,6 +1473,91 @@
     color: #D32F2F;
 }
 
+/* ---------- End Stream Confirm Modal ---------- */
+.endConfirmModal {
+    background: white;
+    border-radius: 20px;
+    padding: 2rem 1.75rem 1.75rem;
+    max-width: 380px;
+    width: 90%;
+    box-shadow: 0 24px 60px rgba(0, 0, 0, 0.22);
+    text-align: center;
+    animation: slideUp 0.25s ease-out;
+}
+
+.endConfirmIcon {
+    width: 64px;
+    height: 64px;
+    background: #fff1f0;
+    border: 2px solid #fecdd3;
+    border-radius: 50%;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    margin: 0 auto 1.25rem;
+}
+
+.endConfirmTitle {
+    font-size: 1.2rem;
+    font-weight: 800;
+    color: #0f172a;
+    margin: 0 0 0.6rem;
+}
+
+.endConfirmDesc {
+    font-size: 0.875rem;
+    color: #64748b;
+    line-height: 1.6;
+    margin: 0 0 1.75rem;
+}
+
+.endConfirmActions {
+    display: flex;
+    gap: 0.75rem;
+}
+
+.endConfirmCancel {
+    flex: 1;
+    padding: 0.8rem 1rem;
+    border-radius: 12px;
+    border: 1.5px solid #e2e8f0;
+    background: white;
+    color: #475569;
+    font-size: 0.88rem;
+    font-weight: 700;
+    cursor: pointer;
+    transition: all 0.18s;
+}
+
+.endConfirmCancel:hover {
+    background: #f8fafc;
+    border-color: #cbd5e1;
+}
+
+.endConfirmEnd {
+    flex: 1;
+    padding: 0.8rem 1rem;
+    border-radius: 12px;
+    border: none;
+    background: #D32F2F;
+    color: white;
+    font-size: 0.88rem;
+    font-weight: 700;
+    cursor: pointer;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 0.45rem;
+    transition: all 0.18s;
+    box-shadow: 0 4px 14px rgba(211, 47, 47, 0.35);
+}
+
+.endConfirmEnd:hover {
+    background: #b71c1c;
+    box-shadow: 0 6px 20px rgba(211, 47, 47, 0.45);
+    transform: translateY(-1px);
+}
+
 /* ---------- Auction End Modal ---------- */
 .modalOverlay {
     position: fixed;
