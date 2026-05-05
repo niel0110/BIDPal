@@ -609,8 +609,8 @@ export const endAuction = async (req, res) => {
     let reserveMet = false;
 
     if (winningBid) {
-      // Check if winning bid meets reserve price
-      if (winningBid.bid_amount >= (auction.reserve_price || 0)) {
+      // Check if winning bid meets reserve price — use Number() to avoid string comparison bugs
+      if (Number(winningBid.bid_amount) >= (Number(auction.reserve_price) || 0)) {
         productStatus = 'sold';
         reserveMet = true;
       } else {
@@ -774,7 +774,15 @@ export const endAuction = async (req, res) => {
         }
       }
     } else if (winningBid && !reserveMet) {
-      // Notify bidder that reserve wasn't met
+      // Fetch product name for richer notification message
+      const { data: noSaleProduct } = await supabase
+        .from('vw_product_details')
+        .select('name')
+        .eq('products_id', auction.products_id)
+        .maybeSingle();
+      const noSaleProductName = noSaleProduct?.name || 'the auction item';
+
+      // Notify buyer (highest bidder) that reserve wasn't met
       await supabase
         .from('Notifications')
         .insert([{
@@ -788,6 +796,49 @@ export const endAuction = async (req, res) => {
           reference_type: 'auction',
           read_at: '2099-12-31T23:59:59.000Z'
         }]);
+
+      // Notify seller that their auction ended without meeting reserve
+      const sellerUserIdNoSale = currentAuction?.Seller?.user_id;
+      if (sellerUserIdNoSale) {
+        await supabase
+          .from('Notifications')
+          .insert([{
+            user_id: sellerUserIdNoSale,
+            type: 'auction_no_sale',
+            payload: {
+              title: 'Auction ended — Reserve not met',
+              message: `"${noSaleProductName}" ended with a highest bid of ₱${winningBid.bid_amount.toLocaleString('en-PH')} which did not meet your reserve price. You may reschedule or relist the item.`
+            },
+            reference_id: id,
+            reference_type: 'auction',
+            read_at: '2099-12-31T23:59:59.000Z'
+          }]);
+      }
+    } else {
+      // No bids placed — notify seller
+      const { data: noBidsProduct } = await supabase
+        .from('vw_product_details')
+        .select('name')
+        .eq('products_id', auction.products_id)
+        .maybeSingle();
+      const noBidsProductName = noBidsProduct?.name || 'the auction item';
+
+      const sellerUserIdNoBids = currentAuction?.Seller?.user_id;
+      if (sellerUserIdNoBids) {
+        await supabase
+          .from('Notifications')
+          .insert([{
+            user_id: sellerUserIdNoBids,
+            type: 'auction_no_sale',
+            payload: {
+              title: 'Auction ended — No bids placed',
+              message: `"${noBidsProductName}" auction ended with no bids. You may reschedule or relist the item.`
+            },
+            reference_id: id,
+            reference_type: 'auction',
+            read_at: '2099-12-31T23:59:59.000Z'
+          }]);
+      }
     }
 
     // 6. Broadcast auction end via Socket.IO

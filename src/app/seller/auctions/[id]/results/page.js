@@ -29,7 +29,7 @@ export default function AuctionResultsPage() {
 
     // Reschedule state (shown when auction never went live)
     const [showReschedule, setShowReschedule] = useState(false);
-    const [rescheduleForm, setRescheduleForm] = useState({ startDate: '', startTime: '', bidIncrement: '' });
+    const [rescheduleForm, setRescheduleForm] = useState({ startDate: '', startTime: '' });
     const [rescheduleToast, setRescheduleToast] = useState(null);
     const [isRescheduling, setIsRescheduling] = useState(false);
 
@@ -168,9 +168,6 @@ export default function AuctionResultsPage() {
                 return;
             }
             const payload = { start_time: startTimestamp };
-            if (rescheduleForm.bidIncrement && parseFloat(rescheduleForm.bidIncrement) > 0) {
-                payload.bid_increment = parseFloat(rescheduleForm.bidIncrement);
-            }
             const res = await fetch(`${apiUrl}/api/auctions/${auctionId}/reschedule`, {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json', ...(token ? { Authorization: `Bearer ${token}` } : {}) },
@@ -540,20 +537,6 @@ export default function AuctionResultsPage() {
                                     />
                                 </div>
                             </div>
-
-                            {auctionData.incremental_bid_step > 0 && (
-                                <div style={{ marginBottom: '0.85rem' }}>
-                                    <label style={{ fontSize: '0.75rem', fontWeight: 700, color: '#475569', textTransform: 'uppercase', letterSpacing: '0.04em', display: 'block', marginBottom: '0.4rem' }}>Bid Increment (optional)</label>
-                                    <div style={{ display: 'flex', alignItems: 'center', gap: '0.4rem', border: '1.5px solid #e2e8f0', borderRadius: 9, padding: '0 0.8rem', background: '#fafafa' }}>
-                                        <span style={{ fontWeight: 700, color: '#475569', fontSize: '0.85rem' }}>₱</span>
-                                        <input type="number" step="1" min="1" placeholder={auctionData.incremental_bid_step}
-                                            value={rescheduleForm.bidIncrement}
-                                            onChange={e => setRescheduleForm(p => ({ ...p, bidIncrement: e.target.value }))}
-                                            style={{ flex: 1, border: 'none', background: 'transparent', padding: '0.65rem 0', fontSize: '0.85rem', outline: 'none', color: '#0f172a' }}
-                                        />
-                                    </div>
-                                </div>
-                            )}
 
                             {rescheduleToast && (
                                 <div style={{

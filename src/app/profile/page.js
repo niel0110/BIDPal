@@ -55,6 +55,7 @@ import {
     QrCode
 } from 'lucide-react';
 import styles from './page.module.css';
+import BackButton from '@/components/BackButton';
 import { useAuth } from '@/context/AuthContext';
 import { useRouter, useSearchParams } from 'next/navigation';
 import { useGeolocation } from '@/hooks/useGeolocation';
@@ -247,10 +248,7 @@ function AccountContent() {
             {/* Sidebar / Menu */}
             {activeTab !== 'wishlist' && (
                 <aside className={styles.sidebar}>
-                    <button className={styles.globalBack} onClick={() => router.back()}>
-                        <ArrowLeft size={18} />
-                        <span>Back</span>
-                    </button>
+                    <div className={styles.globalBack}><BackButton /></div>
 
                     <div className={styles.userBrief}>
                         {avatarMessage && (
@@ -323,13 +321,13 @@ function AccountContent() {
 
             {/* Main Content Area */}
             <main className={`${styles.content} ${activeTab === 'wishlist' ? styles.fullWidth : ''}`}>
-                {/* Mobile back-to-menu button — hidden when inside address add/edit form */}
-                {!(activeTab === 'address' && addressState === 'add') && (
+                {/* Mobile back-to-menu button — hidden when inside address add/edit form or wishlist */}
+                {!(activeTab === 'address' && addressState === 'add') && activeTab !== 'wishlist' && (
                     <button
                         className={styles.mobileMenuBack}
                         onClick={() => returnTo ? router.replace(returnTo) : setMobileView('menu')}
                     >
-                        <ChevronLeft size={16} />
+                        <span className={styles.mobileBackIcon}><ChevronLeft size={16} /></span>
                         <span>Back</span>
                     </button>
                 )}
@@ -3094,9 +3092,7 @@ function WishlistSection() {
         return (
             <div className={styles.section}>
                 <div className={styles.wishlistBack}>
-                    <button className={styles.backBtn} onClick={() => router.back()}>
-                        <ArrowLeft size={18} /> Back
-                    </button>
+                    <BackButton />
                 </div>
                 <header className={styles.sectionHeader}>
                     <h1>My Wishlist</h1>
@@ -3110,9 +3106,7 @@ function WishlistSection() {
         return (
             <div className={styles.section}>
                 <div className={styles.wishlistBack}>
-                    <button className={styles.backBtn} onClick={() => router.back()}>
-                        <ArrowLeft size={18} /> Back
-                    </button>
+                    <BackButton />
                 </div>
                 <header className={styles.sectionHeader}>
                     <h1>My Wishlist</h1>
@@ -3128,9 +3122,7 @@ function WishlistSection() {
         return (
             <div className={styles.section}>
                 <div className={styles.wishlistBack}>
-                    <button className={styles.backBtn} onClick={() => router.back()}>
-                        <ArrowLeft size={18} /> Back
-                    </button>
+                    <BackButton />
                 </div>
                 <header className={styles.sectionHeader}>
                     <h1>My Wishlist</h1>
@@ -3152,9 +3144,7 @@ function WishlistSection() {
     return (
         <div className={styles.section}>
             <div className={styles.wishlistBack}>
-                <button className={styles.backBtn} onClick={() => router.back()}>
-                    <ArrowLeft size={18} /> Back
-                </button>
+                <BackButton />
             </div>
             <header className={styles.sectionHeader}>
                 <h1>My Wishlist</h1>

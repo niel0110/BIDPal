@@ -164,7 +164,6 @@ export default function ProductCard({ data, compact = false }) {
                             </span>
                         </div>
                         <div className={styles.actionRow}>
-                            <span className={styles.fixedLabel}>Fixed Price</span>
                             <div className={styles.actionButtons}>
                             <button
                                 className={`${styles.cartBtn} ${isAlreadyInCart ? styles.cartBtnAdded : ''}`}
