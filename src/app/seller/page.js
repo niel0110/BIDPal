@@ -58,7 +58,7 @@ export default function SellerDashboard() {
     const [isMuted, setIsMuted] = useState(false);
     const [isVideoOff, setIsVideoOff] = useState(false);
     const [liveDuration, setLiveDuration] = useState({ hours: 0, minutes: 0, seconds: 0 });
-    const [auctionEndModal, setAuctionEndModal] = useState({ show: false, hasWinner: false, winner: null });
+    const [auctionEndModal, setAuctionEndModal] = useState({ show: false, hasWinner: false, hasBids: false, winner: null, highestBidder: null, auctionId: null });
     const [mobileTab, setMobileTab] = useState('live');
     const [showSetupModal, setShowSetupModal] = useState(false);
     const [setupPermissions, setSetupPermissions] = useState({ cam: 'pending', mic: 'pending' });
@@ -799,7 +799,10 @@ export default function SellerDashboard() {
                 setAuctionEndModal({
                     show: true,
                     hasWinner: data.has_winner,
-                    winner: data.winner
+                    hasBids: data.has_bids,
+                    winner: data.winner,
+                    highestBidder: data.highest_bidder,
+                    auctionId: data.auction_id || activeItem.id
                 });
             } else {
                 console.error('Failed to end auction:', data);
@@ -1656,16 +1659,17 @@ export default function SellerDashboard() {
 
             {/* Auction End Modal */}
             {auctionEndModal.show && (
-                <div className={styles.modalOverlay} onClick={() => setAuctionEndModal({ show: false, hasWinner: false, winner: null })}>
+                <div className={styles.modalOverlay} onClick={() => setAuctionEndModal({ show: false, hasWinner: false, hasBids: false, winner: null, highestBidder: null, auctionId: null })}>
                     <div className={styles.modalContent} onClick={(e) => e.stopPropagation()}>
                         {auctionEndModal.hasWinner ? (
+                            /* ── STATE 1: Winner declared (reserve met) ── */
                             <div className={styles.premiumModalContent}>
                                 <div className={styles.congratsIconWrapper}>
                                     <div className={styles.congratsEmoji}>🎉</div>
                                     <div className={styles.confettiOverlay}></div>
                                 </div>
-                                <h2 className={styles.premiumModalTitle}>Auction ended!</h2>
-                                
+                                <h2 className={styles.premiumModalTitle}>Auction Complete!</h2>
+
                                 <div className={styles.winnerCard}>
                                     <div className={styles.winnerHeader}>
                                         <div className={styles.winnerAvatar}>
@@ -1682,7 +1686,6 @@ export default function SellerDashboard() {
                                             </span>
                                         </div>
                                     </div>
-                                    
                                     <div className={styles.priceContainer}>
                                         <div className={styles.priceLabelText}>Final Price</div>
                                         <div className={styles.priceValueText}>
@@ -1692,30 +1695,89 @@ export default function SellerDashboard() {
                                 </div>
 
                                 <p className={styles.notificationText}>
-                                    Both you and <strong>{auctionEndModal.winner?.bidder_name || 'the winner'}</strong> have been notified.
+                                    <strong>{auctionEndModal.winner?.bidder_name || 'The winner'}</strong> has been notified and can proceed to checkout.
                                 </p>
 
-                                <button
-                                    className={styles.premiumModalBtn}
-                                    onClick={() => setAuctionEndModal({ show: false, hasWinner: false, winner: null })}
-                                >
-                                    Done
-                                </button>
+                                <div style={{ display: 'flex', flexDirection: 'column', gap: '0.6rem', width: '100%' }}>
+                                    <Link
+                                        href={`/seller/auctions/${auctionEndModal.auctionId}/results`}
+                                        className={styles.premiumModalBtn}
+                                        onClick={() => setAuctionEndModal({ show: false, hasWinner: false, hasBids: false, winner: null, highestBidder: null, auctionId: null })}
+                                        style={{ textAlign: 'center', textDecoration: 'none' }}
+                                    >
+                                        View Results & Process Order
+                                    </Link>
+                                    <button
+                                        style={{ background: 'none', border: 'none', color: '#94a3b8', fontSize: '0.82rem', cursor: 'pointer', padding: '0.25rem' }}
+                                        onClick={() => setAuctionEndModal({ show: false, hasWinner: false, hasBids: false, winner: null, highestBidder: null, auctionId: null })}
+                                    >
+                                        Close
+                                    </button>
+                                </div>
+                            </div>
+                        ) : auctionEndModal.hasBids ? (
+                            /* ── STATE 2: Bids placed but reserve not met ── */
+                            <div className={styles.premiumModalContent}>
+                                <div className={styles.congratsIconWrapper}>
+                                    <div className={styles.congratsEmoji}>⚠️</div>
+                                </div>
+                                <h2 className={styles.premiumModalTitle} style={{ fontSize: '1.15rem' }}>Reserve Not Met</h2>
+                                <p style={{ fontSize: '0.85rem', color: '#64748b', textAlign: 'center', margin: '0 0 1.25rem', lineHeight: 1.6 }}>
+                                    The auction ended but the highest bid did not reach the reserve price. No order has been created.
+                                </p>
+
+                                <div className={styles.winnerCard} style={{ borderColor: '#fde68a', background: '#fffbeb' }}>
+                                    <div className={styles.winnerHeader}>
+                                        <div className={styles.winnerAvatar} style={{ background: '#fef3c7', border: '1.5px solid #fde68a' }}>
+                                            <User size={24} color="#92400e" />
+                                        </div>
+                                        <div className={styles.winnerIdentity}>
+                                            <span className={styles.winnerLabelText} style={{ color: '#92400e' }}>Highest Bidder</span>
+                                            <span className={styles.winnerNameText}>
+                                                {auctionEndModal.highestBidder?.bidder_name || 'Anonymous'}
+                                            </span>
+                                        </div>
+                                    </div>
+                                    <div className={styles.priceContainer}>
+                                        <div className={styles.priceLabelText}>Highest Bid</div>
+                                        <div className={styles.priceValueText} style={{ color: '#92400e' }}>
+                                            ₱{auctionEndModal.highestBidder?.bid_amount?.toLocaleString('en-PH')}
+                                        </div>
+                                    </div>
+                                </div>
+
+                                <div style={{ display: 'flex', flexDirection: 'column', gap: '0.6rem', width: '100%' }}>
+                                    <Link
+                                        href={`/seller/auctions/${auctionEndModal.auctionId}/results`}
+                                        className={styles.premiumModalBtn}
+                                        onClick={() => setAuctionEndModal({ show: false, hasWinner: false, hasBids: false, winner: null, highestBidder: null, auctionId: null })}
+                                        style={{ textAlign: 'center', textDecoration: 'none' }}
+                                    >
+                                        View Results
+                                    </Link>
+                                    <button
+                                        style={{ background: 'none', border: 'none', color: '#94a3b8', fontSize: '0.82rem', cursor: 'pointer', padding: '0.25rem' }}
+                                        onClick={() => setAuctionEndModal({ show: false, hasWinner: false, hasBids: false, winner: null, highestBidder: null, auctionId: null })}
+                                    >
+                                        Close
+                                    </button>
+                                </div>
                             </div>
                         ) : (
+                            /* ── STATE 3: No bids at all ── */
                             <>
                                 <div className={styles.modalIcon}>
                                     <div className={styles.iconCircle}>📋</div>
                                 </div>
-                                <h2 className={styles.modalTitle}>Auction ended</h2>
+                                <h2 className={styles.modalTitle}>No Bids Placed</h2>
                                 <div className={styles.modalBody}>
                                     <p className={styles.noWinnerText}>
-                                        No bids were placed or reserve price was not met.
+                                        No bids were placed during this live session. You can reschedule this auction from My Auctions.
                                     </p>
                                 </div>
                                 <button
                                     className={styles.modalBtn}
-                                    onClick={() => setAuctionEndModal({ show: false, hasWinner: false, winner: null })}
+                                    onClick={() => setAuctionEndModal({ show: false, hasWinner: false, hasBids: false, winner: null, highestBidder: null, auctionId: null })}
                                 >
                                     OK
                                 </button>

@@ -77,6 +77,9 @@ function LivePageInner() {
         amount: "0"
     });
 
+    // Stream-ended modal for non-winner buyers
+    const [streamEndedModal, setStreamEndedModal] = useState({ show: false, hasWinner: false, winner: null });
+
     // Refs for Agora RTC (video/audio) and RTM (chat)
     const agoraClientRef = useRef(null);
     const localTracksRef = useRef({ audio: null, video: null });
@@ -284,21 +287,24 @@ function LivePageInner() {
             console.log('🏁 Auction ended:', data);
             setStreamEnded(true);
 
-            // Check if current user is the winner
-            if (data.has_winner && data.winner && user) {
-                const userId = user.user_id || user.id;
-                if (data.winner.user_id === userId) {
-                    // Current user won!
-                    setWinnerModal({
-                        show: true,
-                        title: "🎉 Congratulations!",
-                        subtitle: "You won the auction!",
-                        amount: `₱${data.winner.bid_amount?.toLocaleString('en-PH') || '0'}`
-                    });
-                }
+            const userId = user?.user_id || user?.id;
+            const isWinner = data.has_winner && data.winner && userId && data.winner.user_id === userId;
+
+            if (isWinner) {
+                // Current user won — show winner modal
+                setWinnerModal({
+                    show: true,
+                    title: "🎉 Congratulations!",
+                    subtitle: "You won the auction!",
+                    amount: `₱${data.winner.bid_amount?.toLocaleString('en-PH') || '0'}`,
+                    auctionId: auctionId
+                });
+            } else {
+                // Non-winner buyers — show stream-ended info modal
+                setStreamEndedModal({ show: true, hasWinner: data.has_winner, winner: data.winner || null });
             }
 
-            // Show auction ended message to everyone
+            // System chat message
             if (data.has_winner && data.winner) {
                 setComments(prev => [...prev, {
                     id: Date.now(),
@@ -1170,10 +1176,10 @@ function LivePageInner() {
                 </div>
 
                 {/* main content */}
-                <div style={{ maxWidth: 1000, width: '100%', margin: '0 auto', padding: '2rem 1.5rem', display: 'flex', gap: '3rem', alignItems: 'flex-start' }}>
+                <div style={{ maxWidth: 1000, width: '100%', margin: '0 auto', padding: '1.5rem 1rem', display: 'flex', gap: '2rem', alignItems: 'flex-start', flexWrap: 'wrap' }}>
 
                     {/* ── LEFT: image gallery ── */}
-                    <div style={{ width: 340, flexShrink: 0 }}>
+                    <div style={{ width: '100%', maxWidth: 340, flexShrink: 0, flex: '1 1 260px' }}>
                         <img
                             src={mainImg}
                             alt={product?.name}
@@ -1199,7 +1205,7 @@ function LivePageInner() {
                     </div>
 
                     {/* ── RIGHT: product info ── */}
-                    <div style={{ flex: 1, minWidth: 0 }}>
+                    <div style={{ flex: '1 1 260px', minWidth: 0 }}>
                         <h1 style={{ fontSize: '1.5rem', fontWeight: 800, color: '#0f172a', margin: '0 0 0.4rem', lineHeight: 1.25 }}>{product?.name}</h1>
 
                         {product?.description && (
@@ -1209,7 +1215,7 @@ function LivePageInner() {
                         )}
 
                         {/* stats */}
-                        <div style={{ display: 'flex', gap: '1.25rem', marginBottom: '1.75rem', flexWrap: 'wrap' }}>
+                        <div style={{ display: 'flex', gap: '1rem', marginBottom: '1.5rem', flexWrap: 'wrap', rowGap: '0.75rem' }}>
                             <div>
                                 <div style={{ fontSize: '0.62rem', color: '#94a3b8', fontWeight: 700, textTransform: 'uppercase', letterSpacing: '0.07em', marginBottom: 3 }}>Final Price</div>
                                 <div style={{ fontSize: '1.6rem', fontWeight: 800, color: '#D32F2F', lineHeight: 1 }}>₱{finalNum.toLocaleString('en-PH')}</div>
@@ -1250,7 +1256,7 @@ function LivePageInner() {
                     </div>
                 </div>
 
-                {/* Winner modal — reused from live session */}
+                {/* Winner modal — for the auction winner */}
                 {winnerModal.show && (
                     <div className={styles.modalOverlay}>
                         <div className={styles.winnerModalContent}>
@@ -1262,9 +1268,82 @@ function LivePageInner() {
                             <p className={styles.winnerSubTitle}>{winnerModal.subtitle}</p>
                             <div className={styles.winnerAmount}>₱ {winnerModal.amount}</div>
                             <div className={styles.winnerActionRow}>
-                                <button className={styles.payNowBtn} onClick={handleOpenPayment}>Pay Now</button>
-                                <button className={styles.cancelWinnerBtn} onClick={() => setWinnerModal({ ...winnerModal, show: false })}>Cancel</button>
+                                <button className={styles.payNowBtn} onClick={() => router.push(`/checkout?auction_id=${winnerModal.auctionId || auctionId}`)}>Proceed to Checkout</button>
+                                <button className={styles.cancelWinnerBtn} onClick={() => setWinnerModal({ ...winnerModal, show: false })}>Later</button>
                             </div>
+                        </div>
+                    </div>
+                )}
+
+                {/* Stream-ended modal — for non-winner buyers */}
+                {streamEndedModal.show && (
+                    <div className={styles.modalOverlay} onClick={() => setStreamEndedModal({ show: false, hasWinner: false, winner: null })}>
+                        <div style={{
+                            background: 'white', borderRadius: 24, padding: '2rem 1.5rem', width: '92%', maxWidth: 400,
+                            boxShadow: '0 24px 64px rgba(0,0,0,0.22)',
+                            display: 'flex', flexDirection: 'column', alignItems: 'center', textAlign: 'center', gap: '0.75rem'
+                        }} onClick={e => e.stopPropagation()}>
+
+                            {/* Icon */}
+                            <div style={{ width: 64, height: 64, borderRadius: '50%', background: '#f1f5f9', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: '2rem', marginBottom: '0.25rem' }}>
+                                🏁
+                            </div>
+
+                            <h2 style={{ margin: 0, fontSize: '1.2rem', fontWeight: 800, color: '#0f172a' }}>Live Stream Ended</h2>
+                            <p style={{ margin: 0, fontSize: '0.85rem', color: '#64748b', lineHeight: 1.6 }}>
+                                The seller has closed this live auction session.
+                            </p>
+
+                            {/* Winner result */}
+                            {streamEndedModal.hasWinner && streamEndedModal.winner ? (
+                                <div style={{ width: '100%', background: '#f8fafc', border: '1.5px solid #e2e8f0', borderRadius: 14, padding: '1rem', marginTop: '0.25rem' }}>
+                                    <div style={{ fontSize: '0.68rem', fontWeight: 700, color: '#94a3b8', textTransform: 'uppercase', letterSpacing: '0.07em', marginBottom: '0.5rem' }}>Auction Winner</div>
+                                    <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: '0.5rem' }}>
+                                        <div style={{ display: 'flex', alignItems: 'center', gap: '0.6rem' }}>
+                                            <div style={{ width: 36, height: 36, borderRadius: '50%', background: '#e2e8f0', display: 'flex', alignItems: 'center', justifyContent: 'center', fontWeight: 700, fontSize: '0.9rem', color: '#475569', flexShrink: 0 }}>
+                                                {(streamEndedModal.winner.bidder_name || 'B')[0].toUpperCase()}
+                                            </div>
+                                            <span style={{ fontWeight: 700, fontSize: '0.9rem', color: '#0f172a' }}>
+                                                {streamEndedModal.winner.bidder_name || 'Anonymous'}
+                                            </span>
+                                        </div>
+                                        <span style={{ fontWeight: 800, fontSize: '1.1rem', color: '#D32F2F', flexShrink: 0 }}>
+                                            ₱{Number(streamEndedModal.winner.bid_amount || 0).toLocaleString('en-PH')}
+                                        </span>
+                                    </div>
+                                </div>
+                            ) : (
+                                <div style={{ width: '100%', background: '#fef9f0', border: '1.5px solid #fed7aa', borderRadius: 14, padding: '0.875rem 1rem', marginTop: '0.25rem' }}>
+                                    <p style={{ margin: 0, fontSize: '0.85rem', color: '#92400e', fontWeight: 600 }}>
+                                        No winner — reserve price was not met or no bids were placed.
+                                    </p>
+                                </div>
+                            )}
+
+                            {/* Cascade notice */}
+                            <div style={{ width: '100%', background: '#fffbeb', border: '1.5px solid #fde68a', borderRadius: 14, padding: '0.875rem 1rem', textAlign: 'left' }}>
+                                <div style={{ display: 'flex', gap: '0.5rem', alignItems: 'flex-start' }}>
+                                    <span style={{ fontSize: '1rem', flexShrink: 0, marginTop: 1 }}>⚠️</span>
+                                    <div>
+                                        <p style={{ margin: '0 0 0.3rem', fontWeight: 700, fontSize: '0.8rem', color: '#92400e' }}>Order Cascade Notice</p>
+                                        <p style={{ margin: 0, fontSize: '0.76rem', color: '#78350f', lineHeight: 1.55 }}>
+                                            If the winner cancels their order, it will automatically be offered to the <strong>2nd highest bidder</strong>, then the <strong>3rd highest bidder</strong>. Each bidder will receive a notification if selected.
+                                        </p>
+                                    </div>
+                                </div>
+                            </div>
+
+                            {/* Actions */}
+                            <button
+                                onClick={() => setStreamEndedModal({ show: false, hasWinner: false, winner: null })}
+                                style={{
+                                    width: '100%', marginTop: '0.25rem', padding: '0.875rem', borderRadius: 14,
+                                    background: '#0f172a', color: 'white', border: 'none', fontWeight: 700,
+                                    fontSize: '0.92rem', cursor: 'pointer'
+                                }}
+                            >
+                                View Auction Recap
+                            </button>
                         </div>
                     </div>
                 )}
@@ -2404,14 +2483,17 @@ function LivePageInner() {
                         </div>
 
                         <div className={styles.premiumWinnerActions}>
-                            <button className={styles.premiumPayBtn} onClick={handleOpenPayment}>
-                                Secure Checkout
+                            <button
+                                className={styles.premiumPayBtn}
+                                onClick={() => router.push(`/checkout?auction_id=${winnerModal.auctionId || auctionId}`)}
+                            >
+                                Proceed to Checkout
                             </button>
                             <button
                                 className={styles.premiumCancelBtn}
                                 onClick={() => setWinnerModal({ ...winnerModal, show: false })}
                             >
-                                Close
+                                Later
                             </button>
                         </div>
                     </div>

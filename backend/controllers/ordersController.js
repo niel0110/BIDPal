@@ -640,11 +640,12 @@ export const processAuctionPayment = async (req, res) => {
     const paid_at = new Date().toISOString();
 
     // Best-effort: save payment_reference to Orders (column may not exist yet)
-    await supabase
-      .from('Orders')
-      .update({ payment_reference, paid_at })
-      .eq('order_id', orderId)
-      .catch(() => {});
+    try {
+      await supabase
+        .from('Orders')
+        .update({ payment_reference, paid_at })
+        .eq('order_id', orderId);
+    } catch (_) {}
 
     // 5. Send notification to seller
     let sellerNotifUserId = null;
@@ -701,8 +702,7 @@ export const processAuctionPayment = async (req, res) => {
       await supabase
         .from('Payment_Windows')
         .update({ payment_completed: true, payment_completed_at: paid_at, order_id: orderId })
-        .eq('auction_id', auction_id)
-        .catch(() => {});
+        .eq('auction_id', auction_id);
     } catch (_) {}
 
     // 6. Record Platform Earnings for this transaction

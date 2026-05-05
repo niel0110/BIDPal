@@ -808,7 +808,15 @@ export const endAuction = async (req, res) => {
         final_price: winningBid?.bid_amount || 0,
         product_status: productStatus,
         reserve_met: reserveMet,
-        has_winner: winningBid && reserveMet
+        has_winner: !!(winningBid && reserveMet),
+        has_bids: !!winningBid,
+        highest_bidder: winningBid ? {
+          bid_amount: winningBid.bid_amount,
+          bidder_name: winningBid.bidder
+            ? `${winningBid.bidder.Fname || ''} ${winningBid.bidder.Lname || ''}`.trim() ||
+              winningBid.bidder.email?.split('@')[0] || 'Bidder'
+            : 'Bidder'
+        } : null
       });
 
       console.log('📡 Broadcast auction-ended event');
@@ -816,23 +824,32 @@ export const endAuction = async (req, res) => {
 
     console.log(`✅ Auction ${id} ended successfully`);
 
+    const bidderName = winningBid?.bidder
+      ? `${winningBid.bidder.Fname || ''} ${winningBid.bidder.Lname || ''}`.trim() ||
+        winningBid.bidder.email?.split('@')[0] || 'Bidder'
+      : 'Bidder';
+
     res.json({
       success: true,
       message: 'Auction ended successfully',
       data: auction,
+      auction_id: id,
       winner: winningBid && reserveMet ? {
         user_id: winningBid.user_id,
         bid_amount: winningBid.bid_amount,
         bid_id: winningBid.bid_id,
         order_id: orderId,
-        bidder_name: winningBid.bidder ?
-          `${winningBid.bidder.Fname || ''} ${winningBid.bidder.Lname || ''}`.trim() ||
-          winningBid.bidder.email?.split('@')[0] || 'Winner' : 'Winner',
+        bidder_name: bidderName,
         bidder_avatar: winningBid.bidder?.Avatar || null
+      } : null,
+      has_bids: !!winningBid,
+      highest_bidder: winningBid ? {
+        bid_amount: winningBid.bid_amount,
+        bidder_name: bidderName
       } : null,
       product_status: productStatus,
       reserve_met: reserveMet,
-      has_winner: winningBid && reserveMet
+      has_winner: !!(winningBid && reserveMet)
     });
   } catch (err) {
     console.error('❌ End auction error:', err);
