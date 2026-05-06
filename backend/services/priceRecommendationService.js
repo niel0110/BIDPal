@@ -666,6 +666,9 @@ function estimateLocalPHSRP(productInfo, productData) {
     const luxuryAnchor = estimateLuxuryRetailAnchor(brand, text, productInfo, productData);
     if (luxuryAnchor) return luxuryAnchor;
 
+    const applianceAnchor = estimateApplianceRetailAnchor(brand, text, productInfo, productData);
+    if (applianceAnchor) return applianceAnchor;
+
     if (brand !== 'apple' && !text.includes('iphone')) return null;
 
     const storageMatch = text.match(/\b(128|256|512)\s*gb\b|\b(1)\s*tb\b/i);
@@ -722,6 +725,43 @@ function estimateLuxuryRetailAnchor(brand, text, productInfo, productData) {
         srp,
         confidence: 'Medium',
         note: `Local 2026 retail anchor for ${match.label} based on current US luxury price guides`
+    };
+}
+
+function estimateApplianceRetailAnchor(brand, text, productInfo, productData) {
+    const isRefrigerator = /\b(refrigerator|fridge|freezer|ref)\b/i.test(text);
+    if (!isRefrigerator) return null;
+
+    const capacity = Number(productInfo.specs?.capacityCuFt || 0)
+        || Number((text.match(/(\d+(?:\.\d+)?)\s*(?:cu\.?\s*ft|cubic\s*feet|ft3)\b/i) || [])[1] || 0);
+    const hasInstaView = /\binstaview\b/i.test(text);
+    const hasDoorInDoor = /door[-\s]?in[-\s]?door/i.test(text);
+    const hasInverter = /\binverter|linear\s+compressor/i.test(text);
+
+    let srp = 0;
+    let label = 'refrigerator';
+
+    if ((brand === 'lg' || text.includes('lg')) && capacity >= 23 && hasInstaView) {
+        srp = 147000;
+        label = `LG ${capacity || 24} cu ft InstaView refrigerator`;
+    } else if ((brand === 'lg' || text.includes('lg')) && capacity >= 23 && hasDoorInDoor) {
+        srp = 100000;
+        label = `LG ${capacity || 24} cu ft Door-in-Door refrigerator`;
+    } else if (capacity >= 23 && hasInverter) {
+        srp = 85000;
+        label = `${capacity} cu ft inverter refrigerator`;
+    } else if (capacity >= 18) {
+        srp = 65000;
+        label = `${capacity} cu ft refrigerator`;
+    }
+
+    if (!srp) return null;
+
+    console.log(`Local appliance retail anchor: PHP ${srp.toLocaleString()} (${label})`);
+    return {
+        srp,
+        confidence: 'Medium',
+        note: `Local PH appliance retail anchor for ${productData.name || productInfo.name || label}`
     };
 }
 

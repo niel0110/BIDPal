@@ -56,6 +56,9 @@ const GRANULAR_CATEGORY_MAP = {
     smartphone: 'Smartphones', mobile: 'Smartphones', cellphone: 'Smartphones',
     laptop: 'Laptops', notebook: 'Laptops', macbook: 'Laptops',
     television: 'TVs', ' tv': 'TVs', 'smart tv': 'TVs', oled: 'TVs', qled: 'TVs',
+    refrigerator: 'Home & Garden', fridge: 'Home & Garden', freezer: 'Home & Garden',
+    washer: 'Home & Garden', washing: 'Home & Garden', dryer: 'Home & Garden',
+    appliance: 'Home & Garden',
     tablet: 'Tablets', ipad: 'Tablets',
     camera: 'Cameras', dslr: 'Cameras', mirrorless: 'Cameras',
     'gaming console': 'Gaming Consoles', playstation: 'Gaming Consoles',
@@ -190,6 +193,16 @@ function extractSpecs(text) {
         specs.screenSize = parseFloat(screenMatch[1]);
     }
 
+    // Appliance capacity
+    const cuFtMatch = text.match(/(\d+(?:\.\d+)?)\s*(?:cu\.?\s*ft|cubic\s*feet|ft3)\b/i);
+    if (cuFtMatch) {
+        specs.capacityCuFt = parseFloat(cuFtMatch[1]);
+    }
+    const literMatch = text.match(/(\d{2,4})\s*(?:l|liter|litre)s?\b/i);
+    if (literMatch && /(refrigerator|fridge|freezer|washer|washing|dryer|appliance)/i.test(text)) {
+        specs.capacityLiters = parseInt(literMatch[1], 10);
+    }
+
     // Resolution
     if (text.includes('4k') || text.includes('2160p')) {
         specs.resolution = '4K';
@@ -214,7 +227,7 @@ function extractSpecs(text) {
         specs.year = parseInt(yearMatch[1]);
         specs.age = new Date().getFullYear() - specs.year;
     } else {
-        const ageMatch = text.match(/(\d+)\s*(?:year|yr)s?\s*old/i);
+        const ageMatch = text.match(/(\d+)\s*(?:year|yr)s?(?:\s+and\s+\d+\s+months?)?\s*(?:old|used)?/i);
         if (ageMatch) {
             specs.age = parseInt(ageMatch[1]);
         } else if (/bought\s+last\s+year|purchased\s+last\s+year/i.test(text)) {
@@ -240,7 +253,9 @@ function extractKeywords(text, model, specs = {}) {
         'water resistant', 'wireless', 'bluetooth', 'wifi', '5g', 'lte',
         'gaming', 'professional', 'business', 'student', 'portable',
         'tv', 'television', 'smart tv', 'oled', 'qled', 'led', '4k', '8k',
-        'uhd', 'hdr', 'dolby vision', 'soundbar'
+        'uhd', 'hdr', 'dolby vision', 'soundbar', 'refrigerator', 'fridge',
+        'freezer', 'instaview', 'door-in-door', 'inverter', 'linear compressor',
+        'frost-free', 'smart diagnosis', 'stainless steel'
     ];
 
     for (const keyword of importantKeywords) {
