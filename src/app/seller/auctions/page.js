@@ -24,6 +24,7 @@ import {
     Tag
 } from 'lucide-react';
 import Link from 'next/link';
+import { useRouter } from 'next/navigation';
 import { useAuth } from '@/context/AuthContext';
 import styles from './page.module.css';
 import ConfirmationModal from '@/components/ui/ConfirmationModal';
@@ -31,6 +32,7 @@ import { io } from 'socket.io-client';
 
 export default function MyAuctions() {
     const { user } = useAuth();
+    const router = useRouter();
     const [activeTab, setActiveTab] = useState('all');
     const [auctions, setAuctions] = useState([]);
     const [reminderCounts, setReminderCounts] = useState({}); // { auction_id: count }
@@ -225,13 +227,27 @@ export default function MyAuctions() {
             if (!res.ok) {
                 showModal({ title: 'Promote Failed', message: data.error || 'Could not promote auction.', type: 'error', showCancel: false });
             } else if (data.already_promoted) {
-                showModal({ title: 'Already Promoted', message: 'You already promoted this auction. Your followers were notified earlier.', type: 'info', showCancel: false });
+                showModal({
+                    title: 'Already Promoted',
+                    message: 'You already promoted this auction. Your followers were notified earlier. Go to your dashboard to start the live auction.',
+                    type: 'info',
+                    confirmText: 'Go to Dashboard',
+                    showCancel: false,
+                    onConfirm: () => router.push('/seller')
+                });
                 setPromotedAuctions(prev => ({ ...prev, [auctionId]: true }));
             } else {
                 const msg = data.notified === 0
-                    ? 'Auction promoted! You have no followers yet, but the auction is ready to attract buyers.'
-                    : `Auction promoted! ${data.notified} follower${data.notified === 1 ? '' : 's'} have been notified.`;
-                showModal({ title: '🚀 Promotion Sent!', message: msg, type: 'success', showCancel: false });
+                    ? 'Auction promoted! You have no followers yet, but the auction is ready. Head to your dashboard to go live!'
+                    : `Auction promoted! ${data.notified} follower${data.notified === 1 ? '' : 's'} have been notified. Head to your dashboard to go live!`;
+                showModal({
+                    title: 'Promotion Sent!',
+                    message: msg,
+                    type: 'success',
+                    confirmText: 'Go to Dashboard',
+                    showCancel: false,
+                    onConfirm: () => router.push('/seller')
+                });
                 setPromotedAuctions(prev => ({ ...prev, [auctionId]: true }));
             }
         } catch {

@@ -1822,13 +1822,21 @@ export const promoteAuction = async (req, res) => {
       if (bulkErr) throw bulkErr;
     }
 
-    // Record that this auction was promoted (so we can block duplicate promotions)
+    // Record that this auction was promoted AND notify the seller
     const UNREAD_SENTINEL = '2099-12-31T23:59:59.000Z';
+    const notifiedMsg = followerIds.length === 0
+      ? 'Your auction is promoted. Head to your dashboard to go live!'
+      : `${followerIds.length} follower${followerIds.length === 1 ? '' : 's'} have been notified. Head to your dashboard to go live!`;
     await supabase.from('Notifications').insert([{
       user_id,
       type: 'auction_promoted',
       reference_id: id,
-      payload: { auction_id: id, notified_count: followerIds.length },
+      payload: {
+        auction_id: id,
+        notified_count: followerIds.length,
+        title: `Auction Promoted — ${productName}`,
+        message: notifiedMsg,
+      },
       created_at: new Date().toISOString(),
       read_at: UNREAD_SENTINEL
     }]);

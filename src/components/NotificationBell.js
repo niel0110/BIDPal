@@ -2,7 +2,7 @@
 
 import { useState, useEffect, useRef } from 'react';
 import { useRouter } from 'next/navigation';
-import { Bell, MessageCircle, Gavel, Package, X, CheckCheck, Users, ShieldCheck, ShieldX } from 'lucide-react';
+import { Bell, MessageCircle, Gavel, Package, X, CheckCheck, Users, ShieldCheck, ShieldX, Megaphone } from 'lucide-react';
 import { useNotifications, isUnread } from '@/hooks/useNotifications';
 import styles from './NotificationBell.module.css';
 
@@ -33,6 +33,7 @@ function getNotificationIcon(type) {
         case 'auction_reminder': return <Bell size={16} />;
         case 'auction_interest': return <Users size={16} />;
         case 'auction_upcoming': return <Bell size={16} />;
+        case 'auction_promoted': return <Megaphone size={16} />;
         default: return <Bell size={16} />;
     }
 }
@@ -88,6 +89,10 @@ function getNotificationTarget(notification) {
         // Seller notified of a flagged buyer → seller orders
         case 'buyer_violation':
             return '/seller/orders';
+
+        // Seller: auction was promoted → go to dashboard to start live
+        case 'auction_promoted':
+            return '/seller';
 
         // Reminder / upcoming auction → live page
         case 'auction_reminder':
