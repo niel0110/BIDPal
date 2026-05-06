@@ -1,3 +1,4 @@
+import OpenAI from 'openai';
 import { supabase } from '../config/supabase.js';
 import {
     extractProductInfo,
@@ -23,18 +24,19 @@ initModel();
 
 // Mercari dataset: load in background on startup so it's ready by the time users request prices
 let _mercariLoadPromise = null;
-let _geminiCooldownUntil = 0;
+let _aiCooldownUntil = 0;
+let _openaiClient = null;
 
 function getRecommendationMode() {
     return (process.env.PRICE_RECOMMENDATION_AI_MODE || 'hybrid').toLowerCase();
 }
 
-function isGeminiEnabled() {
+function isAIEnabled() {
     return getRecommendationMode() !== 'deterministic';
 }
 
-function isGeminiCoolingDown() {
-    return Date.now() < _geminiCooldownUntil;
+function isAICoolingDown() {
+    return Date.now() < _aiCooldownUntil;
 }
 function ensureMercariLoaded() {
     if (getMercariData()?.length) return;  // already cached
@@ -57,7 +59,7 @@ async function waitForMercariData() {
 }
 
 /**
- * Generate price recommendation using Gemini and Mercari market data
+ * Generate price recommendation using OpenAI and Mercari market data
  * @param {Object} productData - Product information
  * @returns {Object} Price recommendation with insights
  */
@@ -67,7 +69,7 @@ export async function generatePriceRecommendation(productData) {
         const productInfo = extractProductInfo(productData);
         console.log('📊 Extracted product info:', productInfo);
 
-        // ── Step 1: PH SRP from Gemini (primary anchor) ──────────────────────
+        // ── Step 1: PH SRP from OpenAI (primary anchor) ──────────────────────
         const srpResult = await fetchPHSRP(productInfo, productData)
             || estimateLocalPHSRP(productInfo, productData);
 
@@ -134,28 +136,28 @@ export async function generatePriceRecommendation(productData) {
         }
         console.log('💰 Final base price:', basePrice);
 
-        // Build prompt — Gemini frames auction params around the formula-derived price
+        // Build prompt — OpenAI frames auction params around the formula-derived price
         const prompt = buildPricePrompt(productData, historicalData, marketData, productInfo, comparableItems, basePrice, mlPriceEstimate, formulaBreakdown, srpResult);
 
-        if (!isGeminiEnabled()) {
-            console.log('Deterministic recommendation mode enabled; skipping Gemini refinement');
+        if (!isAIEnabled()) {
+            console.log('Deterministic recommendation mode enabled; skipping OpenAI refinement');
             return generateHeuristicRecommendation(
                 productInfo, comparableItems, basePrice,
-                'Gemini disabled by configuration',
+                'OpenAI disabled by configuration',
                 !!formulaBreakdown || comparableItems.length >= 3
             );
         }
 
-        if (isGeminiCoolingDown()) {
-            console.log('Gemini quota cooldown active; using deterministic recommendation');
+        if (isAICoolingDown()) {
+            console.log('OpenAI cooldown active; using deterministic recommendation');
             return generateHeuristicRecommendation(
                 productInfo, comparableItems, basePrice,
-                'Gemini cooldown active',
+                'OpenAI cooldown active',
                 !!formulaBreakdown || comparableItems.length >= 3
             );
         }
 
-        // Call Gemini API
+        // Call OpenAI API
         let response;
         try {
             response = await callAIWithRetry(prompt);
@@ -390,7 +392,7 @@ function clampRecommendationToBase(recommendation, basePrice) {
             },
             marketInsights: [
                 ...(recommendation.marketInsights || []),
-                'Gemini estimate was adjusted to stay aligned with Mercari, Random Forest, and BIDPal sales signals.'
+                'OpenAI estimate was adjusted to stay aligned with Mercari, Random Forest, and BIDPal sales signals.'
             ]
         };
     }
@@ -436,7 +438,7 @@ function generateCategoryBasedFallback(productData) {
 }
 
 /**
- * Generate a data-driven recommendation without AI when Gemini is unavailable.
+ * Generate a data-driven recommendation without AI when OpenAI is unavailable.
  * When strong pricing signals are available (PH SRP anchor, RF, or ML), the
  * result is high quality and shown without a warning banner.
  */
@@ -656,7 +658,7 @@ async function fetchHistoricalData(category, brand) {
 }
 
 /**
- * Offline PH SRP anchors for high-volume products where Gemini outages should not
+ * Offline PH SRP anchors for high-volume products where AI outages should not
  * force the recommendation engine back to old cross-market averages.
  */
 function estimateLocalPHSRP(productInfo, productData) {
@@ -765,12 +767,62 @@ function estimateApplianceRetailAnchor(brand, text, productInfo, productData) {
     };
 }
 
+const PH_SRP_SCHEMA = {
+    type: 'object',
+    additionalProperties: false,
+    required: ['phSRP', 'confidence', 'note'],
+    properties: {
+        phSRP: { type: 'number' },
+        confidence: { type: 'string', enum: ['High', 'Medium', 'Low'] },
+        note: { type: 'string' }
+    }
+};
+
+const PRICE_RECOMMENDATION_SCHEMA = {
+    type: 'object',
+    additionalProperties: false,
+    required: ['reservePrice', 'startingBid', 'bidIncrement', 'priceRange', 'confidence', 'reasoning', 'marketInsights', 'comparableItems'],
+    properties: {
+        reservePrice: { type: 'number' },
+        startingBid: { type: 'number' },
+        bidIncrement: { type: 'number' },
+        priceRange: {
+            type: 'object',
+            additionalProperties: false,
+            required: ['min', 'max'],
+            properties: {
+                min: { type: 'number' },
+                max: { type: 'number' }
+            }
+        },
+        confidence: { type: 'string', enum: ['High', 'Medium', 'Low'] },
+        reasoning: { type: 'string' },
+        marketInsights: {
+            type: 'array',
+            items: { type: 'string' }
+        },
+        comparableItems: {
+            type: 'array',
+            items: {
+                type: 'object',
+                additionalProperties: false,
+                required: ['name', 'price', 'relevance'],
+                properties: {
+                    name: { type: 'string' },
+                    price: { type: 'number' },
+                    relevance: { type: 'string' }
+                }
+            }
+        }
+    }
+};
+
 /**
- * Ask Gemini for the current Philippine SRP (brand-new retail price) of a product.
+ * Ask OpenAI for the current Philippine SRP (brand-new retail price) of a product.
  * Returns the SRP in PHP, or null if unavailable.
  */
 async function fetchPHSRP(productInfo, productData) {
-    if (!isGeminiEnabled() || isGeminiCoolingDown()) return null;
+    if (!isAIEnabled() || isAICoolingDown()) return null;
 
     const specs = Object.entries(productInfo.specs || {})
         .map(([k, v]) => `${k}: ${v}`).join(', ') || 'not specified';
@@ -798,7 +850,11 @@ Respond with JSON only:
 }`;
 
     try {
-        const raw = await callGeminiWithRetry(prompt, { jsonMode: true, thinking: true, timeoutMs: 25000 });
+        const raw = await callOpenAIWithRetry(prompt, {
+            schemaName: 'ph_srp_lookup',
+            schema: PH_SRP_SCHEMA,
+            timeoutMs: 25000
+        });
         const parsed = parseJSONResponse(raw);
         if (parsed.phSRP > 0) {
             console.log(`💡 PH SRP: ₱${parsed.phSRP.toLocaleString()} (${parsed.confidence}) — ${parsed.note}`);
@@ -811,98 +867,91 @@ Respond with JSON only:
 }
 
 async function callAIWithRetry(prompt) {
-    if (isGeminiCoolingDown()) throw new Error('Gemini quota cooldown active');
-    if (!process.env.GEMINI_API_KEY) throw new Error('GEMINI_API_KEY is not set');
-    return callGeminiWithRetry(prompt, { jsonMode: true, timeoutMs: 30000 });
+    if (isAICoolingDown()) throw new Error('OpenAI cooldown active');
+    if (!process.env.OPENAI_API_KEY) throw new Error('OPENAI_API_KEY is not set');
+    return callOpenAIWithRetry(prompt, {
+        schemaName: 'price_recommendation',
+        schema: PRICE_RECOMMENDATION_SCHEMA,
+        timeoutMs: 30000
+    });
 }
 
 /**
- * Call Gemini REST API directly.
- * opts.jsonMode  — request application/json response (structured output, no markdown wrapping)
- * opts.thinking  — enable thinking budget for deeper reasoning (SRP lookups)
- * opts.timeoutMs — per-request timeout in ms (default 20000)
+ * Call OpenAI Responses API with schema-constrained structured output.
  */
-async function callGeminiWithRetry(prompt, opts = {}) {
-    const apiKey = process.env.GEMINI_API_KEY;
-    if (!apiKey) throw new Error('GEMINI_API_KEY is not set');
+async function callOpenAIWithRetry(prompt, opts = {}) {
+    if (!process.env.OPENAI_API_KEY) throw new Error('OPENAI_API_KEY is not set');
 
-    const { jsonMode = false, thinking = false, timeoutMs = 20000 } = opts;
-
-    const configuredModel = process.env.GEMINI_PRICE_MODEL;
-    const candidates = configuredModel ? [[configuredModel, 'v1beta']] : [
-        ['gemini-2.5-flash', 'v1beta'],
-        ['gemini-2.0-flash', 'v1beta'],
-        ['gemini-2.0-flash', 'v1'],
-    ];
+    const { schemaName = 'price_response', schema = null, timeoutMs = 20000 } = opts;
+    const configuredModel = process.env.OPENAI_PRICE_MODEL;
+    const candidates = configuredModel
+        ? [configuredModel]
+        : ['gpt-5.4-mini', 'gpt-5-mini', 'gpt-4.1-mini'];
+    const client = getOpenAIClient();
 
     let lastError;
-    for (const [model, apiVersion] of candidates) {
-        const supportsBetaGenerationOptions = apiVersion === 'v1beta';
-        const generationConfig = {
-            temperature: 0.2,
-            maxOutputTokens: 2048,
-            ...(jsonMode && supportsBetaGenerationOptions && { responseMimeType: 'application/json' }),
-            ...(thinking && supportsBetaGenerationOptions && { thinkingConfig: { thinkingBudget: 1024 } }),
-        };
-        const body = JSON.stringify({
-            contents: [{ role: 'user', parts: [{ text: prompt }] }],
-            generationConfig,
-        });
-        const url = `https://generativelanguage.googleapis.com/${apiVersion}/models/${model}:generateContent?key=${apiKey}`;
-        console.log(`🤖 Trying ${model} (${apiVersion})${jsonMode && supportsBetaGenerationOptions ? ' [JSON mode]' : ''}${thinking && supportsBetaGenerationOptions ? ' [thinking]' : ''}...`);
+    for (const model of candidates) {
+        console.log(`Trying OpenAI ${model} [structured output]...`);
         try {
-            const controller = new AbortController();
-            const timeout = setTimeout(() => controller.abort(), timeoutMs);
-            const res = await fetch(url, {
-                method: 'POST',
-                headers: { 'Content-Type': 'application/json' },
-                body,
-                signal: controller.signal
-            });
-            clearTimeout(timeout);
+            const textFormat = schema ? {
+                type: 'json_schema',
+                name: schemaName,
+                strict: true,
+                schema
+            } : { type: 'json_object' };
 
-            if (res.status === 401 || res.status === 403) throw new Error(`API key invalid (${res.status})`);
-            if (res.status === 404) {
-                console.warn(`⚠️  ${model} not found on ${apiVersion}, skipping`);
-                lastError = new Error(`${model} not available`);
-                continue;
-            }
-            if (res.status === 429) {
-                const errBody = await res.json().catch(() => ({}));
-                console.warn(`⚠️  ${model} quota hit: ${errBody?.error?.message?.slice(0, 80) || '429'}`);
-                _geminiCooldownUntil = Date.now() + (60 * 60 * 1000);
-                lastError = new Error('Quota exceeded');
-                continue;
-            }
-            if (!res.ok) {
-                const err = await res.text().catch(() => res.statusText);
-                console.warn(`⚠️  ${model} ${res.status}: ${err.slice(0, 80)}`);
-                lastError = new Error(err);
-                continue;
-            }
-
-            const json = await res.json();
-            const text = json?.candidates?.[0]?.content?.parts?.[0]?.text;
-            if (!text) throw new Error('Empty response from Gemini');
-            console.log(`✅ Gemini success: ${model} (${apiVersion})`);
+            const response = await withTimeout(client.responses.create({
+                model,
+                input: prompt,
+                store: process.env.OPENAI_STORE_RESPONSES === 'true',
+                max_output_tokens: 2048,
+                text: { format: textFormat },
+                timeout: timeoutMs
+            }), timeoutMs, `OpenAI ${model} timed out`);
+            const text = response.output_text || extractOpenAIOutputText(response);
+            if (!text) throw new Error('Empty response from OpenAI');
+            console.log(`OpenAI success: ${model}`);
             return text;
         } catch (err) {
-            if (err.name === 'AbortError') {
-                console.warn(`⚠️  ${model} timed out after ${timeoutMs}ms`);
-                lastError = new Error('Request timed out');
-                continue;
+            const status = err.status || err.code;
+            if (status === 401 || status === 403 || err.message?.includes('API key')) throw err;
+            if (status === 429) {
+                _aiCooldownUntil = Date.now() + (60 * 60 * 1000);
             }
-            if (err.message?.includes('API key')) throw err;
-            console.warn(`⚠️  ${model}: ${err.message?.slice(0, 80)}`);
+            console.warn(`OpenAI ${model} failed: ${err.message?.slice(0, 120)}`);
             lastError = err;
         }
     }
 
-    throw lastError || new Error('All Gemini models failed');
+    throw lastError || new Error('All OpenAI models failed');
+}
+
+function getOpenAIClient() {
+    if (!_openaiClient) {
+        _openaiClient = new OpenAI({ apiKey: process.env.OPENAI_API_KEY });
+    }
+    return _openaiClient;
+}
+
+function withTimeout(promise, timeoutMs, message) {
+    let timeoutId;
+    const timeout = new Promise((_, reject) => {
+        timeoutId = setTimeout(() => reject(new Error(message)), timeoutMs);
+    });
+
+    return Promise.race([promise, timeout]).finally(() => clearTimeout(timeoutId));
+}
+
+function extractOpenAIOutputText(response) {
+    const parts = response?.output
+        ?.flatMap(item => item.content || [])
+        ?.filter(content => content.type === 'output_text' && content.text)
+        ?.map(content => content.text);
+    return parts?.join('\n') || '';
 }
 
 /**
- * Build comprehensive prompt for Gemini
+ * Build comprehensive prompt for OpenAI
  */
 function buildPricePrompt(productData, historicalData, marketData, productInfo, comparableItems, basePrice, mlPriceEstimate, formulaBreakdown = null, srpResult = null) {
     const { name, description, category, condition, brand, specifications } = productData;
@@ -1063,7 +1112,7 @@ Provide ONLY the JSON response, no additional text.`;
 }
 
 /**
- * Parse Gemini JSON response.
+ * Parse AI JSON response.
  * With JSON mode enabled the response is already clean JSON; the markdown
  * stripping is kept as a safety net for any legacy non-JSON-mode paths.
  */
