@@ -142,7 +142,7 @@ export async function generatePriceRecommendation(productData) {
             return generateHeuristicRecommendation(
                 productInfo, comparableItems, basePrice,
                 'Gemini disabled by configuration',
-                !!formulaBreakdown || !!mlPriceEstimate
+                !!formulaBreakdown || comparableItems.length >= 3
             );
         }
 
@@ -151,7 +151,7 @@ export async function generatePriceRecommendation(productData) {
             return generateHeuristicRecommendation(
                 productInfo, comparableItems, basePrice,
                 'Gemini cooldown active',
-                !!formulaBreakdown || !!mlPriceEstimate
+                !!formulaBreakdown || comparableItems.length >= 3
             );
         }
 
@@ -166,7 +166,7 @@ export async function generatePriceRecommendation(productData) {
                 comparableItems,
                 basePrice,
                 aiError.message,
-                !!mlPriceEstimate
+                !!formulaBreakdown || comparableItems.length >= 3
             );
         }
 
@@ -211,7 +211,7 @@ export async function generatePriceRecommendation(productData) {
 
             let basePrice = calculateDataDrivenBasePrice(productInfo, comparableItems, marketData, mlPriceEstimate);
             console.log('Using deterministic fallback base:', basePrice);
-            return generateHeuristicRecommendation(productInfo, comparableItems, basePrice, error.message, !!mlPriceEstimate);
+            return generateHeuristicRecommendation(productInfo, comparableItems, basePrice, error.message, comparableItems.length >= 3);
         } catch (fallbackError) {
             console.error('Fallback recommendation failed:', fallbackError);
         }
@@ -662,6 +662,10 @@ async function fetchHistoricalData(category, brand) {
 function estimateLocalPHSRP(productInfo, productData) {
     const brand = (productData.brand || productInfo.brand || '').toLowerCase();
     const text = `${productData.name || productInfo.name || ''} ${productData.specifications || ''} ${productInfo.description || ''}`.toLowerCase();
+
+    const luxuryAnchor = estimateLuxuryRetailAnchor(brand, text, productInfo, productData);
+    if (luxuryAnchor) return luxuryAnchor;
+
     if (brand !== 'apple' && !text.includes('iphone')) return null;
 
     const storageMatch = text.match(/\b(128|256|512)\s*gb\b|\b(1)\s*tb\b/i);
@@ -692,6 +696,32 @@ function estimateLocalPHSRP(productInfo, productData) {
         srp,
         confidence: 'Medium',
         note: `Local PH SRP anchor for ${productData.name || productInfo.name || 'Apple iPhone'}`
+    };
+}
+
+function estimateLuxuryRetailAnchor(brand, text, productInfo, productData) {
+    if (brand !== 'chanel' && !text.includes('chanel')) return null;
+
+    const usdToPhp = Number(process.env.LUXURY_USD_TO_PHP || 58.5);
+    const chanelBags = [
+        { pattern: /\bclassic\s+flap\b.*\bmedium\b|\bmedium\b.*\bclassic\s+flap\b|\bm\/l\b.*\bclassic\s+flap\b/, usd: 11700, label: 'Chanel Classic Flap Medium' },
+        { pattern: /\bclassic\s+flap\b.*\bsmall\b|\bsmall\b.*\bclassic\s+flap\b/, usd: 11300, label: 'Chanel Classic Flap Small' },
+        { pattern: /\bclassic\s+flap\b.*\bjumbo\b|\bjumbo\b.*\bclassic\s+flap\b/, usd: 12600, label: 'Chanel Classic Flap Jumbo' },
+        { pattern: /\bclassic\s+flap\b.*\bmaxi\b|\bmaxi\b.*\bclassic\s+flap\b/, usd: 13200, label: 'Chanel Classic Flap Maxi' },
+        { pattern: /\bclassic\s+flap\b.*\bmini\b|\bmini\b.*\bclassic\s+flap\b/, usd: 5600, label: 'Chanel Classic Flap Mini' },
+        { pattern: /\bboy\s+bag\b.*\bmedium\b|\bmedium\b.*\bboy\s+bag\b/, usd: 7400, label: 'Chanel Boy Bag Medium' },
+        { pattern: /\bwallet\s+on\s+chain\b|\bwoc\b/, usd: 3350, label: 'Chanel Wallet on Chain' },
+    ];
+
+    const match = chanelBags.find(entry => entry.pattern.test(text));
+    if (!match) return null;
+
+    const srp = roundToMarketStep(match.usd * usdToPhp);
+    console.log(`Local luxury retail anchor: PHP ${srp.toLocaleString()} (${match.label})`);
+    return {
+        srp,
+        confidence: 'Medium',
+        note: `Local 2026 retail anchor for ${match.label} based on current US luxury price guides`
     };
 }
 
