@@ -2,7 +2,7 @@
 
 import { useState } from 'react';
 import { useRouter } from 'next/navigation';
-import { Info, Grid, Camera, X, Trash2, Upload, ChevronLeft, Package, DollarSign } from 'lucide-react';
+import { Info, Grid, Camera, X, Trash2, Upload, ChevronLeft, Package, DollarSign, AlertTriangle } from 'lucide-react';
 import styles from './page.module.css';
 import { useAuth } from '@/context/AuthContext';
 import PriceRecommendation from '@/components/pricing/PriceRecommendation';
@@ -102,6 +102,7 @@ export default function AddProductPage() {
     const [previewUrls, setPreviewUrls] = useState([]);
     const [fullPreviewUrl, setFullPreviewUrl] = useState(null);
     const [imageErrors, setImageErrors] = useState([]);
+    const [validationModal, setValidationModal] = useState(null); // { title, message }
     const [formData, setFormData] = useState({
         name: '',
         description: '',
@@ -212,22 +213,22 @@ export default function AddProductPage() {
         } else {
             // Product added — proceed to seller dashboard
             if (!user) {
-                alert("You must be logged in to add a product.");
+                setValidationModal({ title: 'Not Logged In', message: 'You must be logged in to add a product.' });
                 return;
             }
             if (!formData.name) {
-                alert("Please enter a product name.");
                 setCurrentStep(0);
+                setValidationModal({ title: 'Missing Field', message: 'Please enter a product name to continue.' });
                 return;
             }
             if (Number(formData.startingPrice) > Number(formData.reservePrice)) {
-                alert("Starting bid cannot exceed the reserve price limit.");
                 setCurrentStep(3);
+                setValidationModal({ title: 'Invalid Price', message: 'The starting bid cannot exceed the reserve price limit.' });
                 return;
             }
             if (!formData.bidIncrement || Number(formData.bidIncrement) <= 0) {
-                alert("Please enter a bid increment.");
                 setCurrentStep(3);
+                setValidationModal({ title: 'Missing Field', message: 'Please enter a bid increment greater than ₱0.' });
                 return;
             }
             
@@ -269,7 +270,7 @@ export default function AddProductPage() {
                 console.log('Product added!', data);
                 router.push('/seller/inventory');
             } catch (error) {
-                alert(error.message);
+                setValidationModal({ title: 'Submission Failed', message: error.message || 'Something went wrong. Please try again.' });
                 console.error(error);
             } finally {
                 setIsSubmitting(false);
@@ -601,6 +602,20 @@ export default function AddProductPage() {
                     </button>
                 </div>
             </div>
+
+            {/* Validation Error Modal */}
+            {validationModal && (
+                <div className={styles.validationOverlay} onClick={() => setValidationModal(null)}>
+                    <div className={styles.validationModal} onClick={e => e.stopPropagation()}>
+                        <div className={styles.validationIcon}>
+                            <AlertTriangle size={26} />
+                        </div>
+                        <h3 className={styles.validationTitle}>{validationModal.title}</h3>
+                        <p className={styles.validationMessage}>{validationModal.message}</p>
+                        <button className={styles.validationBtn} onClick={() => setValidationModal(null)}>OK</button>
+                    </div>
+                </div>
+            )}
         </div>
     );
 }

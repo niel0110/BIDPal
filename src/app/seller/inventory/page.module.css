@@ -138,42 +138,86 @@
 .addCard {
     display: flex;
     flex-direction: column;
-    gap: 0.5rem;
-    background-color: #FFF9F9;
+    gap: 0;
+    background: #fff;
     border-radius: 12px;
     text-decoration: none;
-    transition: transform 0.2s ease, box-shadow 0.2s ease;
-    border: 1.5px dashed #FFCDD2;
+    transition: transform 0.2s ease, box-shadow 0.2s ease, border-color 0.2s;
+    border: 2px dashed #fca5a5;
     overflow: hidden;
 }
 
 .addCard:hover {
     transform: translateY(-3px);
-    box-shadow: 0 8px 20px rgba(211, 47, 47, 0.08);
+    box-shadow: 0 8px 24px rgba(185, 28, 28, 0.12);
+    border-color: #ef4444;
 }
 
 .addCardImage {
     aspect-ratio: 1;
-    background-color: #FFF9F9;
-    border-radius: 12px;
+    background: linear-gradient(145deg, #fff5f5 0%, #fee2e2 100%);
     display: flex;
     align-items: center;
     justify-content: center;
 }
 
+.addCardPlusCircle {
+    width: 56px;
+    height: 56px;
+    border-radius: 50%;
+    background: rgba(255, 255, 255, 0.85);
+    border: 2px solid #fca5a5;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    color: #b91c1c;
+    transition: transform 0.25s ease, background 0.2s, border-color 0.2s;
+}
+
+.addCard:hover .addCardPlusCircle {
+    transform: scale(1.12) rotate(90deg);
+    background: #fff;
+    border-color: #ef4444;
+}
+
+.addCardInfo {
+    padding: 0.45rem 0.5rem 0;
+    display: flex;
+    flex-direction: column;
+    gap: 0.2rem;
+}
+
+.addCardInfo strong {
+    font-size: 0.82rem;
+    color: #b91c1c;
+    font-weight: 700;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+}
+
+.addCardInfo span {
+    font-size: 0.72rem;
+    color: #999;
+}
+
 .addCardBtn {
-    margin-top: 0.35rem;
+    margin: 0.35rem 0.5rem 0.5rem;
     display: block;
-    width: 100%;
     padding: 0.5rem;
-    background-color: #fff;
-    border: 1.5px solid #FFCDD2;
+    background: #b91c1c;
+    border: none;
     border-radius: 8px;
-    color: var(--color-primary);
+    color: #fff;
     font-size: 0.75rem;
     font-weight: 700;
     text-align: center;
     box-sizing: border-box;
+    transition: background 0.15s;
+}
+
+.addCard:hover .addCardBtn {
+    background: #991b1b;
 }
 
 .scheduledBtn {

@@ -225,13 +225,15 @@ export default function InventoryPage() {
 
                     <Link href="/seller/add-product" className={styles.addCard}>
                         <div className={styles.addCardImage}>
-                            <Plus size={36} color="var(--color-primary)" strokeWidth={1.5} />
+                            <div className={styles.addCardPlusCircle}>
+                                <Plus size={26} strokeWidth={2.5} />
+                            </div>
                         </div>
-                        <div className={styles.productInfo}>
-                            <strong style={{ color: '#888' }}>New Product</strong>
+                        <div className={styles.addCardInfo}>
+                            <strong>New Product</strong>
                             <span>Tap to create listing</span>
                         </div>
-                        <span className={styles.addCardBtn}>Add New</span>
+                        <span className={styles.addCardBtn}>+ Add New</span>
                     </Link>
                 </div>
             )}

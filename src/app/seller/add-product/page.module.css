@@ -775,6 +775,92 @@
     gap: 2px;
 }
 
+/* ── Validation Error Modal ── */
+.validationOverlay {
+    position: fixed;
+    inset: 0;
+    background: rgba(0, 0, 0, 0.45);
+    z-index: 2000;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    padding: 1.5rem;
+    backdrop-filter: blur(3px);
+}
+
+.validationModal {
+    background: #fff;
+    border-radius: 20px;
+    padding: 2rem 2rem 1.75rem;
+    max-width: 360px;
+    width: 100%;
+    text-align: center;
+    box-shadow: 0 12px 48px rgba(0, 0, 0, 0.18);
+    animation: valSlideUp 0.22s ease-out;
+}
+
+@keyframes valSlideUp {
+    from { opacity: 0; transform: translateY(18px) scale(0.96); }
+    to   { opacity: 1; transform: translateY(0) scale(1); }
+}
+
+.validationIcon {
+    width: 60px;
+    height: 60px;
+    border-radius: 50%;
+    background: #fff5f5;
+    border: 2px solid #fecaca;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    margin: 0 auto 1.1rem;
+    color: #dc2626;
+}
+
+.validationTitle {
+    font-size: 1.1rem;
+    font-weight: 800;
+    color: #111;
+    margin: 0 0 0.55rem;
+}
+
+.validationMessage {
+    font-size: 0.9rem;
+    color: #555;
+    margin: 0 0 1.5rem;
+    line-height: 1.6;
+}
+
+.validationBtn {
+    background: #b91c1c;
+    color: #fff;
+    border: none;
+    border-radius: 10px;
+    padding: 0.75rem 0;
+    font-size: 0.95rem;
+    font-weight: 700;
+    cursor: pointer;
+    transition: background 0.15s;
+    width: 100%;
+}
+
+.validationBtn:hover {
+    background: #991b1b;
+}
+
+@media (max-width: 480px) {
+    .validationModal {
+        padding: 1.5rem 1.25rem 1.4rem;
+        border-radius: 16px;
+    }
+    .validationIcon {
+        width: 52px;
+        height: 52px;
+    }
+    .validationTitle { font-size: 1rem; }
+    .validationMessage { font-size: 0.85rem; }
+}
+
 .photoInfoDetailed strong {
     font-size: 0.85rem;
     color: var(--color-text);
