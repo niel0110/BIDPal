@@ -10,7 +10,8 @@ const __dirname = path.dirname(__filename);
 const MODEL_PATH = resolveModelPath();
 const MODEL_FEATURE_VERSION = 3;
 
-let rfModel = null;
+let rfModel = null;           // ml-random-forest instance (legacy)
+let sklearnTrees = null;      // sklearn-exported tree array (new)
 let rfFeatureVersion = 1;
 let rfModelMetadata = null;
 let mercariDataCache = null;
@@ -41,14 +42,40 @@ export function initModel() {
         }
 
         const persisted = JSON.parse(fs.readFileSync(MODEL_PATH, 'utf8'));
-        const modelData = persisted.model || persisted;
-        rfModel = RandomForestRegression.load(modelData);
         rfModelMetadata = persisted.metadata || null;
-        rfFeatureVersion = persisted.metadata?.featureVersion || inferFeatureVersion(modelData);
-        console.log(`Random Forest model loaded from disk (feature v${rfFeatureVersion})`);
+        rfFeatureVersion = persisted.metadata?.featureVersion || 1;
+
+        if (persisted.engine === 'sklearn' && Array.isArray(persisted.trees)) {
+            // sklearn-exported model — use built-in tree traversal
+            sklearnTrees = persisted.trees;
+            rfModel = null;
+            console.log(`sklearn RF model loaded (${sklearnTrees.length} trees, feature v${rfFeatureVersion})`);
+        } else {
+            // Legacy ml-random-forest format
+            const modelData = persisted.model || persisted;
+            rfModel = RandomForestRegression.load(modelData);
+            sklearnTrees = null;
+            rfFeatureVersion = persisted.metadata?.featureVersion || inferFeatureVersion(modelData);
+            console.log(`Random Forest model loaded from disk (feature v${rfFeatureVersion})`);
+        }
     } catch (error) {
         console.error('Error loading Random Forest model:', error);
     }
+}
+
+function predictSklearnTree(tree, features) {
+    let node = 0;
+    while (tree.feature[node] !== -2) {
+        node = features[tree.feature[node]] <= tree.threshold[node]
+            ? tree.children_left[node]
+            : tree.children_right[node];
+    }
+    return tree.value[node];
+}
+
+function predictSklearnForest(features) {
+    const sum = sklearnTrees.reduce((acc, tree) => acc + predictSklearnTree(tree, features), 0);
+    return sum / sklearnTrees.length;
 }
 
 export async function trainWithMercariData(samples = 10000) {
@@ -360,19 +387,22 @@ function isAccessory(text) {
 }
 
 export function predictPrice(productInfo) {
-    if (!rfModel) {
+    if (!rfModel && !sklearnTrees) {
         initModel();
     }
 
-    if (!rfModel) {
-        console.log('Random Forest model not available. Falling back to market data average.');
-        return null;
+    const features = encodeFeatures(productInfo, rfFeatureVersion);
+
+    if (sklearnTrees) {
+        return Math.round(predictSklearnForest(features));
     }
 
-    const features = encodeFeatures(productInfo, rfFeatureVersion);
-    const prediction = rfModel.predict([features])[0];
+    if (rfModel) {
+        return Math.round(rfModel.predict([features])[0]);
+    }
 
-    return Math.round(prediction);
+    console.log('Random Forest model not available. Falling back to market data average.');
+    return null;
 }
 
 export function getMercariData() {
