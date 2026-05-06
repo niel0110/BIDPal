@@ -1,6 +1,6 @@
 'use client';
 
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { useRouter } from 'next/navigation';
 import { Info, Grid, Camera, X, Trash2, Upload, ChevronLeft, Package, DollarSign, AlertTriangle } from 'lucide-react';
 import styles from './page.module.css';
@@ -100,6 +100,7 @@ export default function AddProductPage() {
     const [isSubmitting, setIsSubmitting] = useState(false);
     const [images, setImages] = useState([]);
     const [previewUrls, setPreviewUrls] = useState([]);
+    const [imageDataUrls, setImageDataUrls] = useState([]); // base64 copies for sessionStorage persistence
     const [fullPreviewUrl, setFullPreviewUrl] = useState(null);
     const [imageErrors, setImageErrors] = useState([]);
     const [validationModal, setValidationModal] = useState(null); // { title, message }
@@ -117,6 +118,77 @@ export default function AddProductPage() {
         bidIncrement: '',
         categories: []
     });
+
+    // ── Helpers for image persistence ──────────────────────────────────────
+    const readAsDataUrl = (file) => new Promise((resolve) => {
+        const reader = new FileReader();
+        reader.onload = (e) => resolve(e.target.result);
+        reader.readAsDataURL(file);
+    });
+
+    const dataUrlToFile = (dataUrl, filename, mimeType) => {
+        const arr = dataUrl.split(',');
+        const mime = mimeType || arr[0].match(/:(.*?);/)[1];
+        const bstr = atob(arr[1]);
+        let n = bstr.length;
+        const u8arr = new Uint8Array(n);
+        while (n--) u8arr[n] = bstr.charCodeAt(n);
+        return new File([u8arr], filename, { type: mime });
+    };
+
+    const SS_FORM = 'bidpal_ap_form';
+    const SS_STEP = 'bidpal_ap_step';
+    const SS_IMGS = 'bidpal_ap_images';
+
+    const clearDraft = () => {
+        sessionStorage.removeItem(SS_FORM);
+        sessionStorage.removeItem(SS_STEP);
+        sessionStorage.removeItem(SS_IMGS);
+    };
+
+    // ── Restore draft on mount ─────────────────────────────────────────────
+    useEffect(() => {
+        try {
+            const savedForm = sessionStorage.getItem(SS_FORM);
+            if (savedForm) setFormData(JSON.parse(savedForm));
+
+            const savedStep = sessionStorage.getItem(SS_STEP);
+            if (savedStep) setCurrentStep(parseInt(savedStep, 10) || 0);
+
+            const savedImgs = sessionStorage.getItem(SS_IMGS);
+            if (savedImgs) {
+                const parsed = JSON.parse(savedImgs);
+                if (parsed.length > 0) {
+                    const files = parsed.map(img => dataUrlToFile(img.dataUrl, img.name, img.type));
+                    setImages(files);
+                    setPreviewUrls(parsed.map(img => img.dataUrl));
+                    setImageDataUrls(parsed.map(img => img.dataUrl));
+                }
+            }
+        } catch { /* ignore corrupt storage */ }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+    }, []);
+
+    // ── Auto-save draft on every change ───────────────────────────────────
+    useEffect(() => {
+        try { sessionStorage.setItem(SS_FORM, JSON.stringify(formData)); } catch { }
+    }, [formData]);
+
+    useEffect(() => {
+        try { sessionStorage.setItem(SS_STEP, currentStep.toString()); } catch { }
+    }, [currentStep]);
+
+    useEffect(() => {
+        if (imageDataUrls.length === 0) { sessionStorage.removeItem(SS_IMGS); return; }
+        try {
+            const payload = imageDataUrls.map((dataUrl, i) => ({
+                dataUrl,
+                name: images[i]?.name || `image_${i}.jpg`,
+                type: images[i]?.type || 'image/jpeg',
+            }));
+            sessionStorage.setItem(SS_IMGS, JSON.stringify(payload));
+        } catch { /* quota exceeded — skip image caching */ }
+    }, [imageDataUrls, images]);
 
     const isFormComplete = () =>
         formData.name.trim().length > 0 &&
@@ -184,15 +256,21 @@ export default function AddProductPage() {
         if (validFiles.length > 0) {
             setImages(prev => [...prev, ...validFiles]);
             setPreviewUrls(prev => [...prev, ...validPreviews]);
+            // Also read as base64 for sessionStorage persistence
+            const dataUrls = await Promise.all(validFiles.map(f => readAsDataUrl(f)));
+            setImageDataUrls(prev => [...prev, ...dataUrls]);
         }
     };
 
     const removeImage = (e, index) => {
         e.stopPropagation();
         setImages(prev => prev.filter((_, i) => i !== index));
+        setImageDataUrls(prev => prev.filter((_, i) => i !== index));
         setPreviewUrls(prev => {
             const newPreviews = [...prev];
-            URL.revokeObjectURL(newPreviews[index]); // Free memory
+            if (newPreviews[index]?.startsWith('blob:')) {
+                URL.revokeObjectURL(newPreviews[index]); // Free memory (blob URLs only)
+            }
             newPreviews.splice(index, 1);
             return newPreviews;
         });
@@ -268,6 +346,7 @@ export default function AddProductPage() {
                 if (!res.ok) throw new Error(data.error || 'Failed to add product');
                 
                 console.log('Product added!', data);
+                clearDraft(); // wipe sessionStorage so the form starts fresh next time
                 router.push('/seller/inventory');
             } catch (error) {
                 setValidationModal({ title: 'Submission Failed', message: error.message || 'Something went wrong. Please try again.' });
