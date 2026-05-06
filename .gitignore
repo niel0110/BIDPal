@@ -40,9 +40,15 @@ yarn-error.log*
 *.tsbuildinfo
 next-env.d.ts
 backend/node_modules/
-backend/node_modules/
 
 # Large data files
 backend/data/*.json
 backend/data/*.tsv
 !backend/data/mercari_deploy_sample.json
+
+# Model files are committed selectively
+!backend/data/models/price_rf_model.json
+!backend/data/models/mercari_market_index.json
+
+# Scratch/training logs
+backend/scratch/
