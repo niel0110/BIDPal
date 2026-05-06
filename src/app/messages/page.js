@@ -1,6 +1,7 @@
 'use client';
 
 import BackButton from '@/components/BackButton';
+import ConfirmationModal from '@/components/ui/ConfirmationModal';
 import { useState, useEffect, useRef, useCallback, Suspense } from 'react';
 import { createPortal } from 'react-dom';
 import {
@@ -73,6 +74,8 @@ function MessagesPageInner() {
     const [showEmojiPicker, setShowEmojiPicker] = useState(false);
     const [showOptionsMenu, setShowOptionsMenu] = useState(false);
     const [optionsMenuPos, setOptionsMenuPos] = useState({ top: 0, right: 0 });
+    const [confirmModal, setConfirmModal] = useState({ isOpen: false, title: '', message: '', type: 'danger', confirmText: 'Confirm', onConfirm: null });
+    const closeConfirm = () => setConfirmModal(prev => ({ ...prev, isOpen: false }));
     const [pendingAttachment, setPendingAttachment] = useState(null); // { file, previewUrl, type, name, size }
     const optionsTriggerRef = useRef(null);
 
@@ -363,41 +366,57 @@ function MessagesPageInner() {
         }
     };
 
-    const handleDeleteConversation = async () => {
+    const handleDeleteConversation = () => {
         setShowOptionsMenu(false);
-        if (!confirm('Delete this conversation? It will be removed from your inbox.')) return;
-        try {
-            await fetch(`${API_URL}/api/messages/${selectedChat}`, {
-                method: 'DELETE',
-                headers: { 'Authorization': `Bearer ${getToken()}` }
-            });
-            setChats(prev => prev.filter(c => c.id !== selectedChat));
-            setSelectedChat(chats.find(c => c.id !== selectedChat)?.id || null);
-            setMessages([]);
-            setMobileShowChat(false);
-        } catch (err) {
-            console.error('Delete conversation error:', err);
-        }
+        setConfirmModal({
+            isOpen: true,
+            title: 'Delete Conversation',
+            message: 'Delete this conversation? It will be removed from your inbox.',
+            type: 'danger',
+            confirmText: 'Delete',
+            onConfirm: async () => {
+                try {
+                    await fetch(`${API_URL}/api/messages/${selectedChat}`, {
+                        method: 'DELETE',
+                        headers: { 'Authorization': `Bearer ${getToken()}` }
+                    });
+                    setChats(prev => prev.filter(c => c.id !== selectedChat));
+                    setSelectedChat(chats.find(c => c.id !== selectedChat)?.id || null);
+                    setMessages([]);
+                    setMobileShowChat(false);
+                } catch (err) {
+                    console.error('Delete conversation error:', err);
+                }
+            }
+        });
     };
 
-    const handleBlockUser = async () => {
+    const handleBlockUser = () => {
         const targetId = currentChat?.otherUser?.id;
         const targetName = getChatDisplayName(currentChat);
         setShowOptionsMenu(false);
         if (!targetId) return;
-        if (!confirm(`Block ${targetName}? They won't be able to send you new messages.`)) return;
-        try {
-            await fetch(`${API_URL}/api/messages/block`, {
-                method: 'POST',
-                headers: {
-                    'Content-Type': 'application/json',
-                    'Authorization': `Bearer ${getToken()}`
-                },
-                body: JSON.stringify({ targetUserId: targetId })
-            });
-        } catch (err) {
-            console.error('Block error:', err);
-        }
+        setConfirmModal({
+            isOpen: true,
+            title: `Block ${targetName}`,
+            message: `Block ${targetName}? They won't be able to send you new messages.`,
+            type: 'danger',
+            confirmText: 'Block',
+            onConfirm: async () => {
+                try {
+                    await fetch(`${API_URL}/api/messages/block`, {
+                        method: 'POST',
+                        headers: {
+                            'Content-Type': 'application/json',
+                            'Authorization': `Bearer ${getToken()}`
+                        },
+                        body: JSON.stringify({ targetUserId: targetId })
+                    });
+                } catch (err) {
+                    console.error('Block error:', err);
+                }
+            }
+        });
     };
 
     const handleKeyDown = (e) => {
@@ -812,6 +831,18 @@ function MessagesPageInner() {
                     </main>
                 </div>
             </div>
+
+            <ConfirmationModal
+                isOpen={confirmModal.isOpen}
+                onClose={closeConfirm}
+                onConfirm={confirmModal.onConfirm}
+                title={confirmModal.title}
+                message={confirmModal.message}
+                type={confirmModal.type}
+                confirmText={confirmModal.confirmText}
+                cancelText="Cancel"
+                showCancel
+            />
 
             {/* Options menu rendered via portal — escapes ALL ancestor overflow/clip contexts */}
             {showOptionsMenu && !isPendingChat && createPortal(
