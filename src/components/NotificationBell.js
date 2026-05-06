@@ -59,13 +59,27 @@ function getNotificationTarget(notification) {
         case 'auction_no_sale':
             return reference_id ? `/seller/auctions/${reference_id}/results` : '/seller/auctions';
 
-        // order_update / order_cancelled:
-        //   reference_type='auction' → seller notification → seller orders
-        //   reference_type='order'  → buyer notification → buyer orders (unless payload title indicates it's for seller)
-        case 'order_update':
+        // order_cancelled:
+        //   reference_type='auction' → buyer cancelled auction order → seller sees auction results
+        //   reference_type='order'   → COD/fixed-price cancel → seller orders
         case 'order_cancelled':
-            const forSeller = reference_type === 'auction' || notification.payload?.title?.toLowerCase().includes('by buyer');
+            if (reference_type === 'auction') {
+                return reference_id ? `/seller/auctions/${reference_id}/results` : '/seller/auctions';
+            }
+            return '/seller/orders';
+
+        // order_update:
+        //   "New Winner Assigned" (reference_type='auction') → auction results
+        //   seller payment/shipping updates (reference_type='auction') → seller orders
+        //   buyer updates (reference_type='order') → buyer orders
+        case 'order_update': {
+            const title = (notification.payload?.title || '').toLowerCase();
+            if (reference_type === 'auction' && title.includes('winner')) {
+                return reference_id ? `/seller/auctions/${reference_id}/results` : '/seller/auctions';
+            }
+            const forSeller = reference_type === 'auction' || title.includes('by buyer');
             return forSeller ? '/seller/orders' : '/orders';
+        }
 
         // KYC decisions → re-submit or view profile
         case 'kyc_approved':
