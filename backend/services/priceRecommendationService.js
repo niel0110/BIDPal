@@ -2,7 +2,6 @@ import { supabase } from '../config/supabase.js';
 import {
     extractProductInfo,
     calculateFeatureAdjustment,
-    applyPHFormula,
     getPHFormulaBreakdown
 } from './productAnalyzer.js';
 import {
@@ -623,73 +622,6 @@ async function fetchHistoricalData(category, brand) {
 }
 
 /**
- * AI-only fallback when Mercari dataset is unavailable
- */
-async function generateAIOnlyRecommendation(productData, productInfo) {
-    const mlPriceEstimate = predictPrice(productInfo);
-    if (mlPriceEstimate) {
-        console.log('Using local ML recommendation while the Mercari dataset is unavailable');
-        return generateHeuristicRecommendation(productInfo, [], mlPriceEstimate, 'Mercari dataset unavailable', true);
-    }
-
-    if (!isGeminiEnabled() || isGeminiCoolingDown()) {
-        return generateCategoryBasedFallback(productData);
-    }
-
-    const { name, description, category, condition, brand, specifications } = productData;
-    const prompt = `You are an expert auction pricing analyst for a Philippine online auction platform (BIDPal).
-
-PRODUCT DETAILS:
-- Name: ${name}
-- Category: ${category}
-- Condition: ${condition || 'Used'}
-- Brand: ${brand || 'Not specified'}
-- Description: ${description || 'Not provided'}
-- Specifications: ${specifications || 'Not provided'}
-
-Provide a price recommendation in Philippine Peso (₱). Consider:
-- Philippine secondhand market prices
-- Condition scale: Brand New (1.0x) > Like New (0.85x) > Lightly Used (0.70x) > Used (0.55x) > Heavily Used (0.35x) > For Parts (0.15x)
-- Starting bid should be 60-80% of reserve price
-- Bid increment should be 5-10% of starting bid
-
-RESPOND IN THIS EXACT JSON FORMAT (numbers only, no currency symbols):
-{
-  "reservePrice": <number>,
-  "startingBid": <number>,
-  "bidIncrement": <number>,
-  "priceRange": { "min": <number>, "max": <number> },
-  "confidence": "Medium",
-  "reasoning": "<brief explanation>",
-  "marketInsights": ["<insight 1>", "<insight 2>"],
-  "comparableItems": []
-}
-
-Provide ONLY the JSON, no extra text.`;
-
-    try {
-        const response = await callAIWithRetry(prompt);
-        const recommendation = parseAIResponse(response);
-        return {
-            success: true,
-            recommendation: {
-                suggestedReservePrice: recommendation.reservePrice,
-                suggestedStartingBid: recommendation.startingBid,
-                suggestedBidIncrement: recommendation.bidIncrement,
-                priceRange: recommendation.priceRange,
-                confidence: recommendation.confidence,
-                reasoning: recommendation.reasoning,
-                marketInsights: recommendation.marketInsights || [],
-                comparableItems: []
-            }
-        };
-    } catch (err) {
-        console.warn('⚠️ AI-only recommendation failed, using category fallback:', err.message);
-        return generateCategoryBasedFallback(productData);
-    }
-}
-
-/**
  * Ask Gemini for the current Philippine SRP (brand-new retail price) of a product.
  * Returns the SRP in PHP, or null if unavailable.
  */
@@ -701,24 +633,29 @@ async function fetchPHSRP(productInfo, productData) {
 
     const prompt = `You are a Philippine retail price reference database.
 
-Return the current Philippine SRP (Suggested Retail Price) for a BRAND NEW unit of this product.
+Return the current Philippine SRP (Suggested Retail Price) in PHP for a BRAND NEW unit of this exact product.
 
 Product: ${productData.name || productInfo.name}
 Brand: ${productData.brand || productInfo.brand || 'Unknown'}
 Category: ${productData.category || productInfo.category}
 Specs: ${productData.specifications || specs}
 
-RESPOND ONLY IN THIS JSON FORMAT (PHP, no symbols, no markdown):
+Rules:
+- Use the actual current price from authorized PH retailers (Lazada, Shopee, brand stores)
+- If the exact model is unknown, estimate based on brand tier and specs
+- phSRP must be in Philippine Peso (PHP), a positive number
+- confidence: "High" if you know the exact model price, "Medium" if estimated, "Low" if guessed
+
+Respond with JSON only:
 {
   "phSRP": <number>,
   "confidence": "High|Medium|Low",
-  "note": "<model or reference>"
+  "note": "<specific model or reference used>"
 }`;
 
     try {
-        const raw = await callGeminiWithRetry(prompt);
-        const cleaned = raw.trim().replace(/```json\n?/g, '').replace(/```\n?/g, '');
-        const parsed = JSON.parse(cleaned);
+        const raw = await callGeminiWithRetry(prompt, { jsonMode: true, thinking: true, timeoutMs: 25000 });
+        const parsed = JSON.parse(raw);
         if (parsed.phSRP > 0) {
             console.log(`💡 PH SRP: ₱${parsed.phSRP.toLocaleString()} (${parsed.confidence}) — ${parsed.note}`);
             return { srp: parsed.phSRP, confidence: parsed.confidence, note: parsed.note };
@@ -730,43 +667,49 @@ RESPOND ONLY IN THIS JSON FORMAT (PHP, no symbols, no markdown):
 }
 
 async function callAIWithRetry(prompt) {
-    if (process.env.GEMINI_API_KEY && !isGeminiCoolingDown()) {
-        return callGeminiWithRetry(prompt);
-    }
-
-    if (isGeminiCoolingDown()) {
-        throw new Error('Gemini quota cooldown active');
-    }
-
-    throw new Error('GEMINI_API_KEY is not set');
+    if (isGeminiCoolingDown()) throw new Error('Gemini quota cooldown active');
+    if (!process.env.GEMINI_API_KEY) throw new Error('GEMINI_API_KEY is not set');
+    return callGeminiWithRetry(prompt, { jsonMode: true, timeoutMs: 30000 });
 }
 
 /**
  * Call Gemini REST API directly.
+ * opts.jsonMode  — request application/json response (structured output, no markdown wrapping)
+ * opts.thinking  — enable thinking budget for deeper reasoning (SRP lookups)
+ * opts.timeoutMs — per-request timeout in ms (default 20000)
  */
-async function callGeminiWithRetry(prompt) {
+async function callGeminiWithRetry(prompt, opts = {}) {
     const apiKey = process.env.GEMINI_API_KEY;
     if (!apiKey) throw new Error('GEMINI_API_KEY is not set');
 
+    const { jsonMode = false, thinking = false, timeoutMs = 20000 } = opts;
+
     const configuredModel = process.env.GEMINI_PRICE_MODEL;
     const candidates = configuredModel ? [[configuredModel, 'v1beta']] : [
-        ['gemini-2.0-flash-lite', 'v1beta'],
-        ['gemini-2.0-flash',      'v1beta'],
-        ['gemini-2.0-flash',      'v1'],
+        ['gemini-2.5-flash', 'v1beta'],
+        ['gemini-2.0-flash', 'v1beta'],
+        ['gemini-2.0-flash', 'v1'],
     ];
+
+    const generationConfig = {
+        temperature: 0.2,
+        maxOutputTokens: 2048,
+        ...(jsonMode && { responseMimeType: 'application/json' }),
+        ...(thinking && { thinkingConfig: { thinkingBudget: 1024 } }),
+    };
 
     const body = JSON.stringify({
         contents: [{ role: 'user', parts: [{ text: prompt }] }],
-        generationConfig: { temperature: 0.3, maxOutputTokens: 1024 }
+        generationConfig,
     });
 
     let lastError;
     for (const [model, apiVersion] of candidates) {
         const url = `https://generativelanguage.googleapis.com/${apiVersion}/models/${model}:generateContent?key=${apiKey}`;
-        console.log(`🤖 Trying ${model} (${apiVersion})...`);
+        console.log(`🤖 Trying ${model} (${apiVersion})${jsonMode ? ' [JSON mode]' : ''}${thinking ? ' [thinking]' : ''}...`);
         try {
             const controller = new AbortController();
-            const timeout = setTimeout(() => controller.abort(), 15000);
+            const timeout = setTimeout(() => controller.abort(), timeoutMs);
             const res = await fetch(url, {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
@@ -782,8 +725,8 @@ async function callGeminiWithRetry(prompt) {
                 continue;
             }
             if (res.status === 429) {
-                const body = await res.json().catch(() => ({}));
-                console.warn(`⚠️  ${model} quota hit: ${body?.error?.message?.slice(0, 80) || '429'}`);
+                const errBody = await res.json().catch(() => ({}));
+                console.warn(`⚠️  ${model} quota hit: ${errBody?.error?.message?.slice(0, 80) || '429'}`);
                 _geminiCooldownUntil = Date.now() + (60 * 60 * 1000);
                 lastError = new Error('Quota exceeded');
                 continue;
@@ -802,7 +745,7 @@ async function callGeminiWithRetry(prompt) {
             return text;
         } catch (err) {
             if (err.name === 'AbortError') {
-                console.warn(`⚠️  ${model} timed out`);
+                console.warn(`⚠️  ${model} timed out after ${timeoutMs}ms`);
                 lastError = new Error('Request timed out');
                 continue;
             }
@@ -977,21 +920,19 @@ Provide ONLY the JSON response, no additional text.`;
 }
 
 /**
- * Parse Gemini JSON response
+ * Parse Gemini JSON response.
+ * With JSON mode enabled the response is already clean JSON; the markdown
+ * stripping is kept as a safety net for any legacy non-JSON-mode paths.
  */
 function parseAIResponse(response) {
     try {
-        // Remove markdown code blocks if present
-        let cleaned = response.trim();
-        if (cleaned.startsWith('```json')) {
-            cleaned = cleaned.replace(/```json\n?/g, '').replace(/```\n?/g, '');
-        } else if (cleaned.startsWith('```')) {
-            cleaned = cleaned.replace(/```\n?/g, '');
-        }
+        const cleaned = response.trim()
+            .replace(/^```json\s*/i, '')
+            .replace(/^```\s*/,    '')
+            .replace(/\s*```$/,    '');
 
         const parsed = JSON.parse(cleaned);
 
-        // Validate required fields
         if (!parsed.reservePrice || !parsed.startingBid || !parsed.bidIncrement) {
             throw new Error('Missing required price fields');
         }
