@@ -68,7 +68,8 @@ export async function generatePriceRecommendation(productData) {
         console.log('📊 Extracted product info:', productInfo);
 
         // ── Step 1: PH SRP from Gemini (primary anchor) ──────────────────────
-        const srpResult = await fetchPHSRP(productInfo, productData);
+        const srpResult = await fetchPHSRP(productInfo, productData)
+            || estimateLocalPHSRP(productInfo, productData);
 
         // ── Step 2: Apply PH formula to SRP ───────────────────────────────────
         let basePrice;
@@ -76,7 +77,11 @@ export async function generatePriceRecommendation(productData) {
 
         if (srpResult?.srp > 0) {
             formulaBreakdown = getPHFormulaBreakdown(srpResult.srp, productInfo);
-            basePrice = roundToMarketStep(formulaBreakdown.result);
+            basePrice = capBasePriceByRetailAnchor(
+                roundToMarketStep(formulaBreakdown.result),
+                srpResult.srp,
+                productInfo.condition
+            );
             console.log('🇵🇭 PH formula base price:', basePrice, formulaBreakdown);
         }
 
@@ -106,6 +111,9 @@ export async function generatePriceRecommendation(productData) {
         if (!basePrice) {
             const mercariBase = calculateDataDrivenBasePrice(productInfo, comparableItems, marketData, mlPriceEstimate);
             basePrice = roundToMarketStep(calculateFeatureAdjustment(productInfo, mercariBase));
+            if (srpResult?.srp > 0) {
+                basePrice = capBasePriceByRetailAnchor(basePrice, srpResult.srp, productInfo.condition);
+            }
             console.log('📦 Mercari fallback base price:', basePrice);
         } else if (comparableItems.length >= 3) {
             // Sanity-check: blend if formula and Mercari diverge strongly (>2.5x gap)
@@ -121,6 +129,9 @@ export async function generatePriceRecommendation(productData) {
         // ── Step 4: Blend with BIDPal historical sales ────────────────────────
         const historicalData = await fetchHistoricalData(productInfo.category, productInfo.brand);
         basePrice = blendWithHistoricalSales(basePrice, historicalData);
+        if (srpResult?.srp > 0) {
+            basePrice = capBasePriceByRetailAnchor(basePrice, srpResult.srp, productInfo.condition);
+        }
         console.log('💰 Final base price:', basePrice);
 
         // Build prompt — Gemini frames auction params around the formula-derived price
@@ -247,6 +258,25 @@ function roundToMarketStep(value) {
     if (value >= 10000) return Math.round(value / 500) * 500;
     if (value >= 1000) return Math.round(value / 100) * 100;
     return Math.round(value / 50) * 50;
+}
+
+const SECONDHAND_SRP_CAPS = {
+    'Brand New': 0.95,
+    'Like New': 0.82,
+    'Lightly Used': 0.72,
+    'Used': 0.60,
+    'Heavily Used': 0.38,
+    'For Parts': 0.18,
+};
+
+function capBasePriceByRetailAnchor(basePrice, srp, condition) {
+    if (!Number.isFinite(basePrice) || !Number.isFinite(srp) || basePrice <= 0 || srp <= 0) {
+        return basePrice;
+    }
+
+    const maxShare = SECONDHAND_SRP_CAPS[condition] ?? 0.60;
+    const capped = Math.min(basePrice, srp * maxShare);
+    return roundToMarketStep(capped);
 }
 
 function getConditionMultiplier(condition) {
@@ -407,10 +437,10 @@ function generateCategoryBasedFallback(productData) {
 
 /**
  * Generate a data-driven recommendation without AI when Gemini is unavailable.
- * When usedML=true (Random Forest + 1.4M Mercari records) the result is high quality
- * and shown without a warning banner.
+ * When strong pricing signals are available (PH SRP anchor, RF, or ML), the
+ * result is high quality and shown without a warning banner.
  */
-function generateHeuristicRecommendation(productInfo, comparableItems, basePrice, originalError, usedML = false) {
+function generateHeuristicRecommendation(productInfo, comparableItems, basePrice, originalError, hasStrongPricingSignals = false) {
     const reservePrice = roundToMarketStep(basePrice);
     const startingBid = roundToMarketStep(reservePrice * 0.75);
     const bidIncrement = calculateBidIncrement(startingBid);
@@ -423,13 +453,13 @@ function generateHeuristicRecommendation(productInfo, comparableItems, basePrice
             min: Math.round(reservePrice * 0.85),
             max: Math.round(reservePrice * 1.15)
         },
-        confidence: usedML ? 'High' : 'Medium',
-        reasoning: usedML
-            ? `The pricing engine blended Mercari market data, Random Forest signals, product specifications, and BIDPal sales history for "${productInfo.name || productInfo.category}". Recommended reserve price: PHP ${reservePrice.toLocaleString()}. Factors: category demand, brand value, item condition, and detected specs.`
+        confidence: hasStrongPricingSignals ? 'High' : 'Medium',
+        reasoning: hasStrongPricingSignals
+            ? `The pricing engine used strong pricing signals for "${productInfo.name || productInfo.category}", including PH retail anchors when available, product specifications, condition, brand value, and market data. Recommended reserve price: PHP ${reservePrice.toLocaleString()}.`
             : `Market-driven recommendation based on ${comparableItems.length} similar listings in the "${productInfo.category}" category. Average comparable price: ₱${basePrice.toLocaleString()}.`,
         marketInsights: [
-            usedML
-                ? 'Mercari dataset, Random Forest model signals, product specs, and BIDPal sales history were blended.'
+            hasStrongPricingSignals
+                ? 'PH retail anchors, model signals, product specs, and available market history were blended.'
                 : 'Based on comparable sold listings in the same category.',
             comparableItems.length > 0
                 ? `Found ${comparableItems.length} similar listings matching your product's profile.`
@@ -442,11 +472,11 @@ function generateHeuristicRecommendation(productInfo, comparableItems, basePrice
             price: item.price,
             relevance: `${item.relevance}% match`
         })),
-        isML: usedML
+        isML: hasStrongPricingSignals
     };
 
     // Only show a warning for non-ML fallback (quota/unavailable) — not for ML results
-    if (!usedML) {
+    if (!hasStrongPricingSignals) {
         const isQuotaError = originalError?.includes('429') || originalError?.includes('quota');
         result.warning = isQuotaError
             ? 'AI service is at capacity. Recommendation based on Market Data Analysis.'
@@ -460,6 +490,10 @@ function generateHeuristicRecommendation(productInfo, comparableItems, basePrice
  * Fetch historical auction data for similar products
  */
 async function fetchHistoricalData(category, brand) {
+    if (process.env.PRICE_RECOMMENDATION_SKIP_HISTORY === 'true') {
+        return null;
+    }
+
     try {
         const since = new Date(Date.now() - 180 * 24 * 60 * 60 * 1000).toISOString();
 
@@ -622,6 +656,46 @@ async function fetchHistoricalData(category, brand) {
 }
 
 /**
+ * Offline PH SRP anchors for high-volume products where Gemini outages should not
+ * force the recommendation engine back to old cross-market averages.
+ */
+function estimateLocalPHSRP(productInfo, productData) {
+    const brand = (productData.brand || productInfo.brand || '').toLowerCase();
+    const text = `${productData.name || productInfo.name || ''} ${productData.specifications || ''} ${productInfo.description || ''}`.toLowerCase();
+    if (brand !== 'apple' && !text.includes('iphone')) return null;
+
+    const storageMatch = text.match(/\b(128|256|512)\s*gb\b|\b(1)\s*tb\b/i);
+    const storage = storageMatch
+        ? (storageMatch[1] ? `${storageMatch[1]}GB` : '1TB')
+        : (productInfo.specs?.storage || '').toUpperCase();
+
+    const iphoneSrp = [
+        { pattern: /\biphone\s*15\s*pro\s*max\b/, prices: { '256GB': 84990, '512GB': 96990, '1TB': 108990 } },
+        { pattern: /\biphone\s*15\s*pro\b/, prices: { '128GB': 70990, '256GB': 77990, '512GB': 89990, '1TB': 101990 } },
+        { pattern: /\biphone\s*15\s*plus\b/, prices: { '128GB': 63990, '256GB': 70990, '512GB': 82990 } },
+        { pattern: /\biphone\s*15\b/, prices: { '128GB': 56990, '256GB': 63990, '512GB': 75990 } },
+        { pattern: /\biphone\s*14\s*pro\s*max\b/, prices: { '128GB': 77990, '256GB': 84990, '512GB': 96990, '1TB': 108990 } },
+        { pattern: /\biphone\s*14\s*pro\b/, prices: { '128GB': 70990, '256GB': 77990, '512GB': 89990, '1TB': 101990 } },
+        { pattern: /\biphone\s*14\s*plus\b/, prices: { '128GB': 63990, '256GB': 70990, '512GB': 82990 } },
+        { pattern: /\biphone\s*14\b/, prices: { '128GB': 56990, '256GB': 63990, '512GB': 75990 } },
+        { pattern: /\biphone\s*13\s*pro\s*max\b/, prices: { '128GB': 70990, '256GB': 76990, '512GB': 88990, '1TB': 101990 } },
+        { pattern: /\biphone\s*13\s*pro\b/, prices: { '128GB': 63990, '256GB': 70990, '512GB': 82990, '1TB': 95990 } },
+        { pattern: /\biphone\s*13\b/, prices: { '128GB': 50990, '256GB': 57990, '512GB': 69990 } },
+    ];
+
+    const match = iphoneSrp.find(entry => entry.pattern.test(text));
+    const srp = match?.prices?.[storage] || (match ? Object.values(match.prices)[0] : 0);
+    if (!srp) return null;
+
+    console.log(`Local PH SRP anchor: PHP ${srp.toLocaleString()} (${storage || 'base storage'})`);
+    return {
+        srp,
+        confidence: 'Medium',
+        note: `Local PH SRP anchor for ${productData.name || productInfo.name || 'Apple iPhone'}`
+    };
+}
+
+/**
  * Ask Gemini for the current Philippine SRP (brand-new retail price) of a product.
  * Returns the SRP in PHP, or null if unavailable.
  */
@@ -655,7 +729,7 @@ Respond with JSON only:
 
     try {
         const raw = await callGeminiWithRetry(prompt, { jsonMode: true, thinking: true, timeoutMs: 25000 });
-        const parsed = JSON.parse(raw);
+        const parsed = parseJSONResponse(raw);
         if (parsed.phSRP > 0) {
             console.log(`💡 PH SRP: ₱${parsed.phSRP.toLocaleString()} (${parsed.confidence}) — ${parsed.note}`);
             return { srp: parsed.phSRP, confidence: parsed.confidence, note: parsed.note };
@@ -691,22 +765,21 @@ async function callGeminiWithRetry(prompt, opts = {}) {
         ['gemini-2.0-flash', 'v1'],
     ];
 
-    const generationConfig = {
-        temperature: 0.2,
-        maxOutputTokens: 2048,
-        ...(jsonMode && { responseMimeType: 'application/json' }),
-        ...(thinking && { thinkingConfig: { thinkingBudget: 1024 } }),
-    };
-
-    const body = JSON.stringify({
-        contents: [{ role: 'user', parts: [{ text: prompt }] }],
-        generationConfig,
-    });
-
     let lastError;
     for (const [model, apiVersion] of candidates) {
+        const supportsBetaGenerationOptions = apiVersion === 'v1beta';
+        const generationConfig = {
+            temperature: 0.2,
+            maxOutputTokens: 2048,
+            ...(jsonMode && supportsBetaGenerationOptions && { responseMimeType: 'application/json' }),
+            ...(thinking && supportsBetaGenerationOptions && { thinkingConfig: { thinkingBudget: 1024 } }),
+        };
+        const body = JSON.stringify({
+            contents: [{ role: 'user', parts: [{ text: prompt }] }],
+            generationConfig,
+        });
         const url = `https://generativelanguage.googleapis.com/${apiVersion}/models/${model}:generateContent?key=${apiKey}`;
-        console.log(`🤖 Trying ${model} (${apiVersion})${jsonMode ? ' [JSON mode]' : ''}${thinking ? ' [thinking]' : ''}...`);
+        console.log(`🤖 Trying ${model} (${apiVersion})${jsonMode && supportsBetaGenerationOptions ? ' [JSON mode]' : ''}${thinking && supportsBetaGenerationOptions ? ' [thinking]' : ''}...`);
         try {
             const controller = new AbortController();
             const timeout = setTimeout(() => controller.abort(), timeoutMs);
@@ -926,12 +999,7 @@ Provide ONLY the JSON response, no additional text.`;
  */
 function parseAIResponse(response) {
     try {
-        const cleaned = response.trim()
-            .replace(/^```json\s*/i, '')
-            .replace(/^```\s*/,    '')
-            .replace(/\s*```$/,    '');
-
-        const parsed = JSON.parse(cleaned);
+        const parsed = parseJSONResponse(response);
 
         if (!parsed.reservePrice || !parsed.startingBid || !parsed.bidIncrement) {
             throw new Error('Missing required price fields');
@@ -943,6 +1011,15 @@ function parseAIResponse(response) {
         console.log('Raw response:', response);
         throw new Error('Invalid AI response format');
     }
+}
+
+function parseJSONResponse(response) {
+    const cleaned = response.trim()
+        .replace(/^```json\s*/i, '')
+        .replace(/^```\s*/, '')
+        .replace(/\s*```$/, '');
+
+    return JSON.parse(cleaned);
 }
 
 function normalizeAIRecommendation(parsed) {
