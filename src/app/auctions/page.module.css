@@ -81,23 +81,22 @@
   .main { padding-bottom: 1rem; }
 
   .grid {
-    display: flex;
-    flex-direction: row;
-    overflow-x: auto;
-    overflow-y: hidden;
-    gap: 0.75rem;
-    padding: 0 1rem 0.25rem;
-    margin: 0.6rem 0;
-    scrollbar-width: none;
-    -ms-overflow-style: none;
+    display: grid;
+    grid-template-columns: repeat(2, 1fr);
+    gap: 0.65rem;
+    padding: 0.75rem 1rem;
+    margin: 0;
+    overflow: visible;
   }
 
-  .grid::-webkit-scrollbar { display: none; }
-
   .grid > * {
-    flex-shrink: 0;
-    width: 78vw;
-    max-width: 300px;
+    width: 100%;
+    min-width: 0;
+  }
+
+  /* Make the AuctionCard fill its grid cell on mobile */
+  .grid > * > * {
+    width: 100% !important;
   }
 
   .tabs {
@@ -112,8 +111,8 @@
     border-radius: 18px;
     display: flex;
     justify-content: center;
-    min-height: 52px;
-    padding: 0.45rem 0.35rem;
+    min-height: 40px;
+    padding: 0.4rem 0.35rem;
     text-align: center;
     white-space: normal;
   }

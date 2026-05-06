@@ -510,6 +510,27 @@ export const expirePaymentWindow = async (req, res) => {
 
     console.log(`⚠️  Payment window expired for user ${user_id} — order ${actualOrderId} cancelled`);
 
+    // Notify the buyer that their payment window expired and it counts as a cancellation
+    if (auction_id) {
+      const { data: auctionForNotif } = await supabase
+        .from('Auctions')
+        .select('products_id, Products(name)')
+        .eq('auction_id', auction_id)
+        .maybeSingle();
+      const productName = auctionForNotif?.Products?.name || 'the item';
+      await supabase.from('Notifications').insert([{
+        user_id,
+        type: 'order_cancelled',
+        reference_id: actualOrderId || auction_id,
+        reference_type: actualOrderId ? 'order' : 'auction',
+        payload: {
+          title: 'Payment Window Expired',
+          message: `Your 24-hour payment window for "${productName}" has expired. Your order has been automatically cancelled and recorded as a cancellation on your account.`
+        },
+        read_at: '2099-12-31T23:59:59.000Z'
+      }]);
+    }
+
     // Clear this buyer as winner so they stop seeing the "To Pay" fallback
     if (auction_id) {
       await supabase

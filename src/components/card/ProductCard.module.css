@@ -218,13 +218,12 @@
     flex: 0 0 auto;
 }
 
-/* ── Action row (Fixed Price label + cart button) ── */
+/* ── Action row ── */
 .actionRow {
     display: flex;
-    justify-content: space-between;
     align-items: center;
-    gap: 0.5rem;
     min-width: 0;
+    width: 100%;
 }
 
 .fixedLabel {
@@ -241,7 +240,8 @@
     display: flex;
     align-items: center;
     gap: 0.35rem;
-    flex: 0 0 auto;
+    flex: 1;
+    width: 100%;
 }
 
 .cartBtn,
@@ -251,16 +251,17 @@
     color: white;
     font-size: 0.72rem;
     font-weight: 700;
-    padding: 0.3rem 0.75rem;
+    padding: 0.3rem 0.5rem;
     border-radius: 6px;
     display: flex;
     align-items: center;
+    justify-content: center;
     gap: 5px;
     cursor: pointer;
     transition: background 0.2s ease, transform 0.15s;
     font-family: inherit;
     white-space: nowrap;
-    flex: 0 0 auto;
+    flex: 1;
 }
 .buyNowBtn {
     background: rgba(255, 255, 255, 0.92);

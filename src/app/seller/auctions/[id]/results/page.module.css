@@ -424,6 +424,33 @@
     border: 1px solid #f97316;
 }
 
+.cancelledBadge {
+    margin-left: 0.5rem;
+    padding: 0.2rem 0.5rem;
+    border-radius: 4px;
+    font-size: 0.65rem;
+    font-weight: 700;
+    text-transform: uppercase;
+    letter-spacing: 0.3px;
+    background: #fee2e2;
+    color: #991b1b;
+    border: 1px solid #fca5a5;
+}
+
+.cancelledBidder {
+    opacity: 0.55;
+    background: #fafafa;
+}
+
+.rankCancelled {
+    background: linear-gradient(135deg, #e5e7eb, #d1d5db) !important;
+}
+
+.amountCancelled {
+    text-decoration: line-through;
+    color: #9ca3af;
+}
+
 .loading,
 .error {
     text-align: center;
@@ -1338,7 +1365,8 @@
 
     .currentWinner,
     .backupWinner,
-    .thirdPlace {
+    .thirdPlace,
+    .cancelledBadge {
         display: none;
     }
 }

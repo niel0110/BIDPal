@@ -573,30 +573,41 @@ export default function AuctionResultsPage() {
                         Winner priority order. If #1 cancels, #2 becomes the winner, then #3.
                     </p>
                     <div className={styles.biddersList}>
-                        {topBidders.map((bid, index) => (
-                            <div key={bid.bid_id} className={`${styles.bidderCard} ${index < 3 ? styles.topBidder : ''}`}>
-                                <div className={styles.bidderRank}>#{index + 1}</div>
-                                <div className={styles.bidderAvatar}>
-                                    {bid.bidder?.Avatar ? (
-                                        <img src={bid.bidder.Avatar} alt={bid.bidder.Fname} />
-                                    ) : (
-                                        <User size={24} />
-                                    )}
-                                </div>
-                                <div className={styles.bidderInfo}>
-                                    <h5>
-                                        {bid.bidder ? `${bid.bidder.Fname || ''} ${bid.bidder.Lname || ''}`.trim() : 'Anonymous'}
-                                        {index === 0 && <span className={styles.currentWinner}>Current Winner</span>}
-                                        {index === 1 && <span className={styles.backupWinner}>Backup Winner</span>}
-                                        {index === 2 && <span className={styles.thirdPlace}>3rd Place</span>}
-                                    </h5>
-                                    <p>{new Date(bid.placed_at).toLocaleString()}</p>
-                                </div>
-                                <div className={styles.bidderAmount}>
-                                    ₱{bid.bid_amount.toLocaleString('en-PH')}
-                                </div>
-                            </div>
-                        ))}
+                        {(() => {
+                            const currentWinnerIdx = auctionData.winner_user_id
+                                ? topBidders.findIndex(b => b.user_id === auctionData.winner_user_id)
+                                : 0;
+                            return topBidders.map((bid, index) => {
+                                const isCurrentWinner = bid.user_id === auctionData.winner_user_id;
+                                const hasCancelled = auctionData.winner_user_id && index < currentWinnerIdx;
+                                const backupOffset = index - currentWinnerIdx;
+                                return (
+                                    <div key={bid.bid_id} className={`${styles.bidderCard} ${hasCancelled ? styles.cancelledBidder : ''} ${index < 3 ? styles.topBidder : ''}`}>
+                                        <div className={`${styles.bidderRank} ${hasCancelled ? styles.rankCancelled : ''}`}>#{index + 1}</div>
+                                        <div className={styles.bidderAvatar}>
+                                            {bid.bidder?.Avatar ? (
+                                                <img src={bid.bidder.Avatar} alt={bid.bidder.Fname} />
+                                            ) : (
+                                                <User size={24} />
+                                            )}
+                                        </div>
+                                        <div className={styles.bidderInfo}>
+                                            <h5>
+                                                {bid.bidder ? `${bid.bidder.Fname || ''} ${bid.bidder.Lname || ''}`.trim() : 'Anonymous'}
+                                                {isCurrentWinner && <span className={styles.currentWinner}>Current Winner</span>}
+                                                {hasCancelled && <span className={styles.cancelledBadge}>Cancelled</span>}
+                                                {!isCurrentWinner && !hasCancelled && backupOffset === 1 && <span className={styles.backupWinner}>Backup Winner</span>}
+                                                {!isCurrentWinner && !hasCancelled && backupOffset === 2 && <span className={styles.thirdPlace}>3rd Place</span>}
+                                            </h5>
+                                            <p>{new Date(bid.placed_at).toLocaleString()}</p>
+                                        </div>
+                                        <div className={`${styles.bidderAmount} ${hasCancelled ? styles.amountCancelled : ''}`}>
+                                            ₱{bid.bid_amount.toLocaleString('en-PH')}
+                                        </div>
+                                    </div>
+                                );
+                            });
+                        })()}
                     </div>
                 </div>
             )}

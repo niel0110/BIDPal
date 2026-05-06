@@ -138,6 +138,16 @@ export const getSellerReviews = async (req, res) => {
   try {
     const { seller_id } = req.params;
 
+    // Resolve seller's user_id so we can catch reviews stored with either ID
+    const { data: sellerRow } = await supabase
+      .from('Seller')
+      .select('user_id')
+      .eq('seller_id', seller_id)
+      .maybeSingle();
+    const queryIds = sellerRow?.user_id
+      ? [seller_id, sellerRow.user_id]
+      : [seller_id];
+
     // Step 1: fetch reviews with reviewer info
     const { data, error } = await supabase
       .from('Reviews')
@@ -150,7 +160,7 @@ export const getSellerReviews = async (req, res) => {
         order_id,
         User!reviewers_id ( Fname, Lname, Avatar )
       `)
-      .eq('seller_id', seller_id)
+      .in('seller_id', queryIds)
       .order('created_at', { ascending: false });
 
     if (error) return res.status(500).json({ error: error.message });

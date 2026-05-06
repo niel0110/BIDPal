@@ -318,6 +318,15 @@
     border-color: #673AB7;
 }
 
+@media (max-width: 640px) {
+    .cardLink {
+        width: 100%;
+    }
+    .card {
+        width: 100%;
+    }
+}
+
 @media (max-width: 768px) {
     .card {
         width: 230px;
@@ -366,14 +375,19 @@
 }
 
 @media (max-width: 480px) {
+    .cardLink {
+        width: 100%;
+    }
+
     .card {
-        width: 185px;
-        height: 300px;
+        width: 100%;
+        height: auto;
+        min-height: 260px;
     }
 
     .imageWrapper {
-        height: 140px;
-        flex: 0 0 140px;
+        height: 130px;
+        flex: 0 0 130px;
     }
 
     .footer {
