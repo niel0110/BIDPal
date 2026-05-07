@@ -44,19 +44,63 @@ export default function ReactivationRequests() {
   const [adminNotes, setAdminNotes] = useState('');
   const [processing, setProcessing] = useState(false);
   const [actionError, setActionError] = useState('');
+  const [loadError, setLoadError] = useState('');
 
   const token = localStorage.getItem('admin_token');
 
+  const fetchRequestsDirect = async () => {
+    const { data: rows, error } = await supabase
+      .from('Reactivation_Requests')
+      .select('id, email, status, id_document_url, id_document_front_url, id_document_back_url, user_message, admin_notes, created_at, reviewed_at, user_id')
+      .order('created_at', { ascending: false });
+
+    if (error) throw error;
+
+    const userIds = [...new Set((rows || []).map(r => r.user_id).filter(Boolean))];
+    let userMap: Record<string, string> = {};
+
+    if (userIds.length > 0) {
+      const { data: users, error: usersError } = await supabase
+        .from('User')
+        .select('user_id, Fname, Lname')
+        .in('user_id', userIds);
+
+      if (usersError) throw usersError;
+      if (users) users.forEach(u => { userMap[u.user_id] = `${u.Fname} ${u.Lname}`; });
+    }
+
+    return (rows || []).map(r => ({
+      ...r,
+      id_document_front_url: r.id_document_front_url || r.id_document_url,
+      id_document_back_url: r.id_document_back_url || null,
+      user_name: userMap[r.user_id] || r.email,
+    }));
+  };
+
   const fetchRequests = async () => {
     setLoading(true);
+    setLoadError('');
     try {
       const res = await fetch(`${API_URL}/api/admin/reactivation`, {
         headers: { Authorization: `Bearer ${token}` },
       });
-      const data = await res.json();
-      setRequests(Array.isArray(data) ? data : []);
-    } catch {
-      setRequests([]);
+      const data = await res.json().catch(() => ({}));
+      if (!res.ok) {
+        throw new Error(data.error || 'Failed to load reactivation requests');
+      }
+      if (!Array.isArray(data)) {
+        throw new Error('Unexpected reactivation response');
+      }
+      setRequests(data);
+    } catch (err: any) {
+      try {
+        const fallbackRows = await fetchRequestsDirect();
+        setRequests(fallbackRows);
+        setLoadError(token ? 'Admin session expired on the API. Showing live Supabase data instead.' : 'Admin API token is missing. Showing live Supabase data instead.');
+      } catch (fallbackErr: any) {
+        setRequests([]);
+        setLoadError(fallbackErr?.message || err?.message || 'Failed to load reactivation requests');
+      }
     } finally {
       setLoading(false);
     }
@@ -167,6 +211,20 @@ export default function ReactivationRequests() {
         <p style={{ color: '#6b7280', fontSize: '0.875rem', margin: 0 }}>
           Review blacklisted user reactivation requests. Approving will permanently wipe all account data.
         </p>
+        {loadError && (
+          <div style={{
+            marginTop: 12,
+            padding: '10px 12px',
+            borderRadius: 10,
+            background: '#fff7ed',
+            border: '1px solid #fed7aa',
+            color: '#9a3412',
+            fontSize: '0.82rem',
+            fontWeight: 600,
+          }}>
+            {loadError}
+          </div>
+        )}
       </div>
 
       {/* Filter tabs */}
