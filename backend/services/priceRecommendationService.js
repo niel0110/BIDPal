@@ -905,8 +905,7 @@ async function callOpenAIWithRetry(prompt, opts = {}) {
                 input: prompt,
                 store: process.env.OPENAI_STORE_RESPONSES === 'true',
                 max_output_tokens: 2048,
-                text: { format: textFormat },
-                timeout: timeoutMs
+                text: { format: textFormat }
             }), timeoutMs, `OpenAI ${model} timed out`);
             const text = response.output_text || extractOpenAIOutputText(response);
             if (!text) throw new Error('Empty response from OpenAI');
