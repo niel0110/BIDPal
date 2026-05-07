@@ -12,22 +12,27 @@ import CancellationReviews from './pages/CancellationReviews';
 import Login from './pages/Login';
 import RevenueManagement from './pages/RevenueManagement';
 import ReactivationRequests from './pages/ReactivationRequests';
+import { clearAdminSession, hasValidAdminToken } from './lib/auth';
 
 // Protected Route Component
 const ProtectedRoute = ({ children }: { children: React.ReactNode }) => {
-  const token = localStorage.getItem('admin_token');
-  if (!token) return <Navigate to="/login" replace />;
+  if (!hasValidAdminToken()) {
+    clearAdminSession();
+    return <Navigate to="/login" replace />;
+  }
   return <>{children}</>;
 };
 
 
 function App() {
-  const [isAuthenticated, setIsAuthenticated] = React.useState(!!localStorage.getItem('admin_token'));
+  const [isAuthenticated, setIsAuthenticated] = React.useState(hasValidAdminToken());
 
   // Simple listener for storage changes (to handle login/logout across components)
   React.useEffect(() => {
     const handleStorageChange = () => {
-      setIsAuthenticated(!!localStorage.getItem('admin_token'));
+      const valid = hasValidAdminToken();
+      if (!valid) clearAdminSession();
+      setIsAuthenticated(valid);
     };
     window.addEventListener('storage', handleStorageChange);
     // Also check periodically as backup for same-window changes

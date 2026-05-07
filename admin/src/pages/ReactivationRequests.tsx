@@ -1,6 +1,8 @@
 import { useState, useEffect } from 'react';
+import { useNavigate } from 'react-router-dom';
 import { RotateCcw, Clock, CheckCircle, XCircle, ExternalLink, AlertTriangle, FileText } from 'lucide-react';
 import { supabase } from '../lib/supabase';
+import { clearAdminSession, getAdminToken, hasValidAdminToken } from '../lib/auth';
 
 interface ReactivationRequest {
   id: string;
@@ -36,6 +38,7 @@ const STATUS_CONFIG = {
 };
 
 export default function ReactivationRequests() {
+  const navigate = useNavigate();
   const [requests, setRequests] = useState<ReactivationRequest[]>([]);
   const [loading, setLoading] = useState(true);
   const [filter, setFilter] = useState<'all' | 'pending' | 'approved' | 'rejected'>('all');
@@ -46,7 +49,12 @@ export default function ReactivationRequests() {
   const [actionError, setActionError] = useState('');
   const [loadError, setLoadError] = useState('');
 
-  const token = localStorage.getItem('admin_token');
+  const expireSession = (message = 'Your admin session expired. Please sign in again.') => {
+    clearAdminSession();
+    setLoadError(message);
+    setActionError(message);
+    navigate('/login', { replace: true });
+  };
 
   const fetchRequestsDirect = async () => {
     const { data: rows, error } = await supabase
@@ -80,12 +88,19 @@ export default function ReactivationRequests() {
   const fetchRequests = async () => {
     setLoading(true);
     setLoadError('');
+    const token = getAdminToken();
     try {
+      if (!token || !hasValidAdminToken()) {
+        throw new Error('Admin session expired');
+      }
       const res = await fetch(`${API_URL}/api/admin/reactivation`, {
         headers: { Authorization: `Bearer ${token}` },
       });
       const data = await res.json().catch(() => ({}));
       if (!res.ok) {
+        if (res.status === 401 || res.status === 403) {
+          throw new Error('Admin session expired');
+        }
         throw new Error(data.error || 'Failed to load reactivation requests');
       }
       if (!Array.isArray(data)) {
@@ -96,7 +111,7 @@ export default function ReactivationRequests() {
       try {
         const fallbackRows = await fetchRequestsDirect();
         setRequests(fallbackRows);
-        setLoadError(token ? 'Admin session expired on the API. Showing live Supabase data instead.' : 'Admin API token is missing. Showing live Supabase data instead.');
+        setLoadError(token ? 'Admin session expired on the API. Showing live Supabase data instead. Sign in again before approving or rejecting.' : 'Admin API token is missing. Showing live Supabase data instead.');
       } catch (fallbackErr: any) {
         setRequests([]);
         setLoadError(fallbackErr?.message || err?.message || 'Failed to load reactivation requests');
@@ -146,13 +161,21 @@ export default function ReactivationRequests() {
     if (!selectedRequest) return;
     setProcessing(true);
     setActionError('');
+    const token = getAdminToken();
     try {
+      if (!token || !hasValidAdminToken()) {
+        throw new Error('Your admin session expired. Please sign in again.');
+      }
       const res = await fetch(`${API_URL}/api/admin/reactivation/${selectedRequest.id}/approve`, {
         method: 'PATCH',
         headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${token}` },
         body: JSON.stringify({ notes: adminNotes }),
       });
-      const data = await res.json();
+      const data = await res.json().catch(() => ({}));
+      if (res.status === 401 || res.status === 403) {
+        expireSession(data.error || 'Your admin session expired. Please sign in again.');
+        return;
+      }
       if (!res.ok) throw new Error(data.error || 'Failed to approve');
       closeModal();
       fetchRequests();
@@ -170,13 +193,21 @@ export default function ReactivationRequests() {
     }
     setProcessing(true);
     setActionError('');
+    const token = getAdminToken();
     try {
+      if (!token || !hasValidAdminToken()) {
+        throw new Error('Your admin session expired. Please sign in again.');
+      }
       const res = await fetch(`${API_URL}/api/admin/reactivation/${selectedRequest.id}/reject`, {
         method: 'PATCH',
         headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${token}` },
         body: JSON.stringify({ notes: adminNotes }),
       });
-      const data = await res.json();
+      const data = await res.json().catch(() => ({}));
+      if (res.status === 401 || res.status === 403) {
+        expireSession(data.error || 'Your admin session expired. Please sign in again.');
+        return;
+      }
       if (!res.ok) throw new Error(data.error || 'Failed to reject');
       closeModal();
       fetchRequests();
