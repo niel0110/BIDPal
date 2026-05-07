@@ -75,6 +75,49 @@ const standingCounts = (users: User[]) => ({
   Blacklisted:  users.filter(u => getStanding(u) === 'Blacklisted').length,
 });
 
+// ── Generic Confirmation Modal ────────────────────────────────────────────────
+interface ConfirmActionModalProps {
+  title: string;
+  message: string;
+  confirmLabel: string;
+  confirmColor: string;
+  onConfirm: () => void;
+  onClose: () => void;
+}
+
+const ConfirmActionModal = ({ title, message, confirmLabel, confirmColor, onConfirm, onClose }: ConfirmActionModalProps) => (
+  <div
+    style={{ position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.75)', backdropFilter: 'blur(4px)', display: 'flex', alignItems: 'center', justifyContent: 'center', zIndex: 1200 }}
+    onClick={onClose}
+  >
+    <motion.div
+      initial={{ opacity: 0, scale: 0.95, y: 16 }}
+      animate={{ opacity: 1, scale: 1, y: 0 }}
+      exit={{ opacity: 0, scale: 0.95, y: 16 }}
+      style={{ background: 'white', borderRadius: '16px', padding: '28px', width: '100%', maxWidth: '380px', boxShadow: '0 24px 64px rgba(0,0,0,0.3)', borderTop: `5px solid ${confirmColor}` }}
+      onClick={e => e.stopPropagation()}
+    >
+      <h3 style={{ margin: '0 0 10px', fontSize: '18px', fontWeight: 800, color: '#111' }}>{title}</h3>
+      <p style={{ margin: '0 0 24px', color: '#6b7280', fontSize: '14px', lineHeight: 1.5 }}>{message}</p>
+      <div style={{ display: 'flex', gap: '10px' }}>
+        <button
+          onClick={onClose}
+          style={{ flex: 1, padding: '11px', borderRadius: '10px', border: '1.5px solid #e5e7eb', background: 'white', color: '#374151', fontSize: '13px', fontWeight: 600, cursor: 'pointer', fontFamily: 'inherit' }}
+        >
+          Cancel
+        </button>
+        <button
+          onClick={() => { onConfirm(); onClose(); }}
+          style={{ flex: 2, padding: '11px', borderRadius: '10px', border: 'none', background: confirmColor, color: 'white', fontSize: '13px', fontWeight: 700, cursor: 'pointer', fontFamily: 'inherit' }}
+        >
+          {confirmLabel}
+        </button>
+      </div>
+    </motion.div>
+  </div>
+);
+// ─────────────────────────────────────────────────────────────────────────────
+
 // ── Suspend Duration Modal ────────────────────────────────────────────────────
 interface SuspendModalProps {
   user: User;
@@ -201,13 +244,14 @@ const UserManagement = () => {
   const [updating, setUpdating] = useState(false);
   const [standingFilter, setStandingFilter] = useState<string>('all');
   const [showSuspendModal, setShowSuspendModal] = useState(false);
+  const [pendingAction, setPendingAction] = useState<{ title: string; message: string; confirmLabel: string; confirmColor: string; onConfirm: () => void } | null>(null);
 
   const fetchUsers = async () => {
     setLoading(true);
     const { data: userData, error } = await supabase
       .from('User')
       .select('user_id, Fname, Lname, email, role, is_verified, Avatar, kyc_status')
-      .or('role.eq.Buyer,role.eq.buyer')
+      .or('role.eq.Buyer,role.eq.buyer,role.eq.Banned')
       .order('Fname', { ascending: true });
 
     if (error) {
@@ -577,12 +621,24 @@ const UserManagement = () => {
                 <div>
                   <p style={{ fontSize: '11px', fontWeight: 700, color: 'var(--text-secondary)', textTransform: 'uppercase', letterSpacing: '0.5px', marginBottom: '10px' }}>Update Standing</p>
                   <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '8px' }}>
-                    <button disabled={updating} onClick={() => handleUpdateStanding(selectedUser.user_id, 'Active')}
+                    <button disabled={updating} onClick={() => setPendingAction({
+                        title: 'Re-activate Account',
+                        message: `Are you sure you want to re-activate ${selectedUser.Fname} ${selectedUser.Lname}'s account? This will restore full platform access.`,
+                        confirmLabel: 'Re-activate',
+                        confirmColor: '#16a34a',
+                        onConfirm: () => handleUpdateStanding(selectedUser.user_id, 'Active'),
+                      })}
                       className="btn btn-outline"
                       style={{ justifyContent: 'flex-start', gap: '8px', color: '#16a34a', borderColor: '#bbf7d0', background: '#f0fdf4', fontSize: '13px' }}>
                       <Shield size={15} /> Re-activate
                     </button>
-                    <button disabled={updating} onClick={() => handleUpdateStanding(selectedUser.user_id, 'Probationary')}
+                    <button disabled={updating} onClick={() => setPendingAction({
+                        title: 'Set Probationary',
+                        message: `Are you sure you want to place ${selectedUser.Fname} ${selectedUser.Lname} on probation? They will see a persistent warning banner in the app.`,
+                        confirmLabel: 'Set Probationary',
+                        confirmColor: '#d97706',
+                        onConfirm: () => handleUpdateStanding(selectedUser.user_id, 'Probationary'),
+                      })}
                       className="btn btn-outline"
                       style={{ justifyContent: 'flex-start', gap: '8px', color: '#d97706', borderColor: '#fde68a', background: '#fffbeb', fontSize: '13px' }}>
                       <ShieldAlert size={15} /> Probationary
@@ -592,7 +648,13 @@ const UserManagement = () => {
                       style={{ justifyContent: 'flex-start', gap: '8px', color: '#dc2626', borderColor: '#fca5a5', background: '#fef2f2', fontSize: '13px' }}>
                       <ShieldOff size={15} /> Suspend
                     </button>
-                    <button disabled={updating} onClick={() => handleUpdateStanding(selectedUser.user_id, 'Blacklisted')}
+                    <button disabled={updating} onClick={() => setPendingAction({
+                        title: 'Blacklist Account',
+                        message: `Are you sure you want to permanently blacklist ${selectedUser.Fname} ${selectedUser.Lname}? They will be banned from logging in and all access will be revoked.`,
+                        confirmLabel: 'Blacklist',
+                        confirmColor: '#111',
+                        onConfirm: () => handleUpdateStanding(selectedUser.user_id, 'Blacklisted'),
+                      })}
                       className="btn btn-outline"
                       style={{ justifyContent: 'flex-start', gap: '8px', color: 'white', borderColor: '#111', background: '#111', fontSize: '13px' }}>
                       <Ban size={15} /> Blacklist
@@ -612,6 +674,20 @@ const UserManagement = () => {
             user={selectedUser}
             onConfirm={opts => handleUpdateStanding(selectedUser.user_id, 'Suspended', opts)}
             onClose={() => setShowSuspendModal(false)}
+          />
+        )}
+      </AnimatePresence>
+
+      {/* Generic Confirmation Modal */}
+      <AnimatePresence>
+        {pendingAction && (
+          <ConfirmActionModal
+            title={pendingAction.title}
+            message={pendingAction.message}
+            confirmLabel={pendingAction.confirmLabel}
+            confirmColor={pendingAction.confirmColor}
+            onConfirm={pendingAction.onConfirm}
+            onClose={() => setPendingAction(null)}
           />
         )}
       </AnimatePresence>

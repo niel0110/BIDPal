@@ -6,6 +6,11 @@
     min-height: 100vh;
 }
 
+/* ── Back row (above the header card) ── */
+.backRow {
+    margin-bottom: 0.75rem;
+}
+
 /* ── Header ── */
 .pageHeader {
     background: white;
@@ -16,21 +21,6 @@
     box-shadow: 0 1px 4px rgba(0,0,0,0.04);
 }
 
-.backBtn {
-    display: inline-flex;
-    align-items: center;
-    gap: 0.4rem;
-    background: none;
-    border: none;
-    color: #6b7280;
-    font-size: 0.85rem;
-    font-weight: 600;
-    cursor: pointer;
-    padding: 0;
-    margin-bottom: 0.75rem;
-    transition: color 0.15s;
-}
-.backBtn:hover { color: #111; }
 
 .titleRow {
     display: flex;

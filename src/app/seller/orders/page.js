@@ -122,8 +122,10 @@ export default function SellerOrdersPage() {
 
     return (
         <div className={styles.page}>
-            <div className={styles.pageHeader}>
+            <div className={styles.backRow}>
                 <BackButton label="Back" />
+            </div>
+            <div className={styles.pageHeader}>
                 <div className={styles.titleRow}>
                     <h1>Fixed Price Listings</h1>
                     <div className={styles.searchBar}>

@@ -20,7 +20,7 @@
     border-radius: 20px;
     padding: 2.5rem 2rem;
     width: 90%;
-    max-width: 400px;
+    max-width: 440px;
     text-align: center;
     box-shadow: 0 20px 60px rgba(0, 0, 0, 0.4);
     animation: scaleIn 0.3s cubic-bezier(0.34, 1.56, 0.64, 1);
@@ -56,6 +56,64 @@
     font-size: 0.95rem;
     line-height: 1.6;
     margin: 0 0 2rem;
+}
+
+.termsSection {
+    margin-bottom: 1.25rem;
+    border: 1.5px solid #fecdd3;
+    border-radius: 10px;
+    overflow: hidden;
+    text-align: left;
+}
+
+.termsToggle {
+    width: 100%;
+    background: #fef2f2;
+    border: none;
+    padding: 0.7rem 1rem;
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    font-size: 0.82rem;
+    font-weight: 700;
+    color: #991b1b;
+    cursor: pointer;
+    font-family: inherit;
+    gap: 0.5rem;
+}
+
+.termsList {
+    padding: 0.75rem 1rem;
+    background: white;
+    display: flex;
+    flex-direction: column;
+    gap: 0.75rem;
+    max-height: 200px;
+    overflow-y: auto;
+}
+
+.termItem {
+    border-bottom: 1px solid #f3f4f6;
+    padding-bottom: 0.65rem;
+}
+
+.termItem:last-child {
+    border-bottom: none;
+    padding-bottom: 0;
+}
+
+.termTitle {
+    font-size: 0.78rem;
+    font-weight: 700;
+    color: #374151;
+    margin: 0 0 0.2rem;
+}
+
+.termBody {
+    font-size: 0.75rem;
+    color: #6b7280;
+    line-height: 1.5;
+    margin: 0;
 }
 
 .closeBtn {
