@@ -641,10 +641,16 @@ function StoreProfileSection() {
     const [storeHandle, setStoreHandle] = useState('');
     const [storeDescription, setStoreDescription] = useState('');
     const [businessCategory, setBusinessCategory] = useState('');
+    const [logoUrl, setLogoUrl] = useState('');
+    const [bannerUrl, setBannerUrl] = useState('');
     const [loading, setLoading] = useState(true);
     const [saving, setSaving] = useState(false);
+    const [logoUploading, setLogoUploading] = useState(false);
+    const [bannerUploading, setBannerUploading] = useState(false);
     const [message, setMessage] = useState('');
     const initialStoreRef = useRef(null);
+    const logoInputRef = useRef(null);
+    const bannerInputRef = useRef(null);
 
     const apiUrl = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:5000';
     const token = typeof window !== 'undefined' ? localStorage.getItem('bidpal_token') : null;
@@ -669,6 +675,8 @@ function StoreProfileSection() {
                     setStoreHandle(initialStore.storeHandle);
                     setStoreDescription(initialStore.storeDescription);
                     setBusinessCategory(initialStore.businessCategory);
+                    setLogoUrl(data.logo_url || '');
+                    setBannerUrl(data.banner_url || '');
                     initialStoreRef.current = initialStore;
                 }
             })
@@ -710,18 +718,60 @@ function StoreProfileSection() {
             const data = await res.json();
             if (!res.ok) throw new Error(data.error || 'Failed to update store.');
             setSeller(data.data);
-            initialStoreRef.current = {
-                storeName,
-                storeHandle,
-                storeDescription,
-                businessCategory,
-            };
-            setMessage({ type: 'success', text: '✓ Store profile updated successfully!' });
+            initialStoreRef.current = { storeName, storeHandle, storeDescription, businessCategory };
+            setMessage({ type: 'success', text: '✓ Store info updated successfully!' });
             setTimeout(() => setMessage(''), 4000);
         } catch (err) {
             setMessage({ type: 'error', text: err.message });
         } finally {
             setSaving(false);
+        }
+    };
+
+    const handleImageUpload = async (e, type) => {
+        const file = e.target.files?.[0];
+        if (!file || !seller?.seller_id) return;
+        const setUploading = type === 'logo' ? setLogoUploading : setBannerUploading;
+        setUploading(true);
+        try {
+            const formData = new FormData();
+            formData.append(type, file);
+            const endpoint = type === 'logo'
+                ? `/api/sellers/${seller.seller_id}/logo`
+                : `/api/sellers/${seller.seller_id}/banner`;
+            const res = await fetch(`${apiUrl}${endpoint}`, {
+                method: 'POST',
+                headers: { ...(token && { Authorization: `Bearer ${token}` }) },
+                body: formData,
+            });
+            if (!res.ok) throw new Error('Upload failed');
+            const data = await res.json();
+            if (type === 'logo') setLogoUrl(data.logoUrl || '');
+            else setBannerUrl(data.bannerUrl || '');
+        } catch {
+            setMessage({ type: 'error', text: `Failed to upload ${type}. Please try again.` });
+            setTimeout(() => setMessage(''), 4000);
+        } finally {
+            setUploading(false);
+            e.target.value = '';
+        }
+    };
+
+    const handleRemoveImage = async (type) => {
+        if (!seller?.seller_id) return;
+        const payload = type === 'logo' ? { logo_url: null } : { banner_url: null };
+        try {
+            const res = await fetch(`${apiUrl}/api/sellers/${seller.seller_id}`, {
+                method: 'PUT',
+                headers: { 'Content-Type': 'application/json', ...(token && { Authorization: `Bearer ${token}` }) },
+                body: JSON.stringify(payload),
+            });
+            if (!res.ok) throw new Error('Remove failed');
+            if (type === 'logo') setLogoUrl('');
+            else setBannerUrl('');
+        } catch {
+            setMessage({ type: 'error', text: `Failed to remove ${type}.` });
+            setTimeout(() => setMessage(''), 4000);
         }
     };
 
@@ -735,9 +785,16 @@ function StoreProfileSection() {
 
     return (
         <div className={styles.section}>
-            <header className={styles.sectionHeader}>
-                <h1>Store Profile</h1>
-                <p>Public information visible to buyers on your store page.</p>
+            <header className={styles.sectionHeader} style={{ display: 'flex', alignItems: 'flex-start', justifyContent: 'space-between', flexWrap: 'wrap', gap: '0.75rem' }}>
+                <div>
+                    <h1>Store Profile</h1>
+                    <p>Public information visible to buyers on your store page.</p>
+                </div>
+                <Link href="/seller/store" className={styles.viewStoreBtn}>
+                    <Store size={14} />
+                    View My Store
+                    <ArrowUpRight size={14} />
+                </Link>
             </header>
 
             {message && (
@@ -745,6 +802,62 @@ function StoreProfileSection() {
                     {message.text}
                 </div>
             )}
+
+            {/* ── Banner ── */}
+            <div className={styles.formGroup} style={{ marginBottom: '1.25rem' }}>
+                <label className={styles.formLabel}>Store Banner</label>
+                <div className={styles.bannerUploadArea}>
+                    {bannerUrl ? (
+                        <div className={styles.bannerPreviewWrap}>
+                            <img src={bannerUrl} alt="Store banner" className={styles.bannerPreviewImg} />
+                            <div className={styles.bannerOverlay}>
+                                <button onClick={() => bannerInputRef.current?.click()} disabled={bannerUploading} className={styles.bannerActionBtn}>
+                                    <Camera size={14} />
+                                    {bannerUploading ? 'Uploading…' : 'Change Banner'}
+                                </button>
+                                <button onClick={() => handleRemoveImage('banner')} className={`${styles.bannerActionBtn} ${styles.bannerRemoveBtn}`}>
+                                    <X size={14} /> Remove
+                                </button>
+                            </div>
+                        </div>
+                    ) : (
+                        <button onClick={() => bannerInputRef.current?.click()} disabled={bannerUploading} className={styles.bannerUploadPlaceholder}>
+                            <Camera size={22} color="#ccc" />
+                            <span>{bannerUploading ? 'Uploading…' : 'Upload Store Banner'}</span>
+                            <small>Recommended: 1200 × 300 px · JPG or PNG</small>
+                        </button>
+                    )}
+                    <input ref={bannerInputRef} type="file" accept="image/*" style={{ display: 'none' }} onChange={e => handleImageUpload(e, 'banner')} />
+                </div>
+            </div>
+
+            {/* ── Logo ── */}
+            <div className={styles.formGroup} style={{ marginBottom: '1.75rem' }}>
+                <label className={styles.formLabel}>Store Logo</label>
+                <div className={styles.logoUploadRow}>
+                    <div className={styles.logoPreviewCircle}>
+                        {logoUrl
+                            ? <img src={logoUrl} alt="Store logo" className={styles.logoPreviewImg} />
+                            : <Store size={26} color="#ccc" />
+                        }
+                    </div>
+                    <div className={styles.logoUploadActions}>
+                        <button onClick={() => logoInputRef.current?.click()} disabled={logoUploading} className={styles.logoActionBtn}>
+                            <Camera size={14} />
+                            {logoUploading ? 'Uploading…' : logoUrl ? 'Change Logo' : 'Upload Logo'}
+                        </button>
+                        {logoUrl && (
+                            <button onClick={() => handleRemoveImage('logo')} className={`${styles.logoActionBtn} ${styles.logoRemoveBtn}`}>
+                                <X size={14} /> Remove
+                            </button>
+                        )}
+                    </div>
+                    <input ref={logoInputRef} type="file" accept="image/*" style={{ display: 'none' }} onChange={e => handleImageUpload(e, 'logo')} />
+                </div>
+            </div>
+
+            {/* ── Text fields ── */}
+            <div className={styles.storeInfoDivider}>Edit Store Info</div>
 
             <div className={styles.profileForm}>
                 <div className={styles.formGrid2}>
@@ -811,7 +924,7 @@ function StoreProfileSection() {
                     onClick={handleSave}
                     disabled={!canSaveStore}
                 >
-                    {saving ? 'Saving...' : 'Save Store Profile'}
+                    {saving ? 'Saving...' : 'Save Store Info'}
                 </button>
             </div>
         </div>
