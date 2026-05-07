@@ -27,6 +27,7 @@ function timeAgo(dateStr: string): string {
 const TYPE_CONFIG: Record<string, { icon: any; color: string; bg: string; label: string }> = {
   new_user:             { icon: UserPlus,   color: '#2563eb', bg: '#eff6ff', label: 'New User' },
   reactivation_request: { icon: RotateCcw,  color: '#7c3aed', bg: '#f5f3ff', label: 'Reactivation' },
+  blacklisted_reactivation_appeal: { icon: RotateCcw, color: '#7c3aed', bg: '#f5f3ff', label: 'Blacklist Appeal' },
 };
 
 const DEFAULT_CONFIG = { icon: Bell, color: '#6b7280', bg: '#f9fafb', label: 'Alert' };

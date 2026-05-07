@@ -1,5 +1,6 @@
 import { useState, useEffect } from 'react';
 import { RotateCcw, Clock, CheckCircle, XCircle, ExternalLink, AlertTriangle, FileText } from 'lucide-react';
+import { supabase } from '../lib/supabase';
 
 interface ReactivationRequest {
   id: string;
@@ -8,6 +9,8 @@ interface ReactivationRequest {
   user_name: string;
   status: 'pending' | 'approved' | 'rejected';
   id_document_url: string;
+  id_document_front_url?: string | null;
+  id_document_back_url?: string | null;
   user_message: string | null;
   admin_notes: string | null;
   created_at: string;
@@ -60,6 +63,18 @@ export default function ReactivationRequests() {
   };
 
   useEffect(() => { fetchRequests(); }, []);
+  useEffect(() => {
+    const channel = supabase
+      .channel('admin-reactivation-requests-live')
+      .on(
+        'postgres_changes',
+        { event: '*', schema: 'public', table: 'Reactivation_Requests' },
+        () => { fetchRequests(); }
+      )
+      .subscribe();
+
+    return () => { supabase.removeChannel(channel); };
+  }, []);
 
   const openApprove = (req: ReactivationRequest) => {
     setSelectedRequest(req);
@@ -187,7 +202,7 @@ export default function ReactivationRequests() {
           <table style={{ width: '100%', borderCollapse: 'collapse' }}>
             <thead>
               <tr style={{ background: '#f9fafb', borderBottom: '1px solid #f3f4f6' }}>
-                {['User', 'Submitted', 'Status', 'ID Document', 'Message', 'Actions'].map(h => (
+                {['User', 'Submitted', 'Status', 'ID Documents', 'Message', 'Actions'].map(h => (
                   <th key={h} style={{ padding: '12px 16px', textAlign: 'left', fontSize: '0.72rem', fontWeight: 700, color: '#6b7280', textTransform: 'uppercase', letterSpacing: '0.05em' }}>
                     {h}
                   </th>
@@ -228,16 +243,30 @@ export default function ReactivationRequests() {
 
                     {/* ID Document */}
                     <td style={{ padding: '14px 16px' }}>
-                      <a
-                        href={req.id_document_url}
-                        target="_blank"
-                        rel="noopener noreferrer"
-                        style={{ display: 'inline-flex', alignItems: 'center', gap: 4, color: '#2563eb', fontSize: '0.82rem', fontWeight: 600, textDecoration: 'none' }}
-                      >
-                        <FileText size={13} />
-                        View ID
-                        <ExternalLink size={11} />
-                      </a>
+                      <div style={{ display: 'flex', flexDirection: 'column', gap: 6 }}>
+                        <a
+                          href={req.id_document_front_url || req.id_document_url}
+                          target="_blank"
+                          rel="noopener noreferrer"
+                          style={{ display: 'inline-flex', alignItems: 'center', gap: 4, color: '#2563eb', fontSize: '0.82rem', fontWeight: 600, textDecoration: 'none' }}
+                        >
+                          <FileText size={13} />
+                          Front ID
+                          <ExternalLink size={11} />
+                        </a>
+                        {req.id_document_back_url && (
+                          <a
+                            href={req.id_document_back_url}
+                            target="_blank"
+                            rel="noopener noreferrer"
+                            style={{ display: 'inline-flex', alignItems: 'center', gap: 4, color: '#2563eb', fontSize: '0.82rem', fontWeight: 600, textDecoration: 'none' }}
+                          >
+                            <FileText size={13} />
+                            Back ID
+                            <ExternalLink size={11} />
+                          </a>
+                        )}
+                      </div>
                     </td>
 
                     {/* Message */}

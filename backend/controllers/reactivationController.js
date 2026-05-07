@@ -12,23 +12,37 @@ export const uploadMiddleware = multer({
   },
 });
 
+const REACTIVATION_BUCKET = process.env.REACTIVATION_ID_BUCKET || process.env.SUPABASE_REACTIVATION_BUCKET || 'reactivation-id-documents';
+
+function normalizeStorageError(error) {
+  if (!error?.message) return 'File upload failed';
+  if (/bucket.*not found/i.test(error.message)) {
+    return `Reactivation document storage is not configured. Create the Supabase bucket "${REACTIVATION_BUCKET}" or set REACTIVATION_ID_BUCKET to an existing bucket.`;
+  }
+  return error.message;
+}
+
+function buildStoredFilePath(file, side = 'document') {
+  const ext = file.originalname.split('.').pop();
+  const fileName = `${Date.now()}-${side}-${Math.random().toString(36).substring(2, 9)}.${ext}`;
+  return `${side}/${fileName}`;
+}
+
 // POST /api/reactivation/upload-id
 export const uploadIdDocument = async (req, res) => {
   try {
     if (!req.file) return res.status(400).json({ error: 'No file uploaded' });
-
-    const ext = req.file.originalname.split('.').pop();
-    const fileName = `${Date.now()}-${Math.random().toString(36).substring(2, 9)}.${ext}`;
-    const filePath = `id-documents/${fileName}`;
+    const side = ['front', 'back'].includes(req.body?.side) ? req.body.side : 'document';
+    const filePath = buildStoredFilePath(req.file, side);
 
     const { error: uploadError } = await supabase.storage
-      .from('id-documents')
+      .from(REACTIVATION_BUCKET)
       .upload(filePath, req.file.buffer, { contentType: req.file.mimetype, upsert: false });
 
-    if (uploadError) return res.status(500).json({ error: uploadError.message });
+    if (uploadError) return res.status(500).json({ error: normalizeStorageError(uploadError) });
 
-    const { data: urlData } = supabase.storage.from('id-documents').getPublicUrl(filePath);
-    res.json({ url: urlData.publicUrl });
+    const { data: urlData } = supabase.storage.from(REACTIVATION_BUCKET).getPublicUrl(filePath);
+    res.json({ url: urlData.publicUrl, side, bucket: REACTIVATION_BUCKET });
   } catch (err) {
     res.status(500).json({ error: err.message });
   }
@@ -37,9 +51,18 @@ export const uploadIdDocument = async (req, res) => {
 // POST /api/reactivation/request
 export const submitReactivationRequest = async (req, res) => {
   try {
-    const { email, id_document_url, user_message } = req.body;
-    if (!email || !id_document_url) {
-      return res.status(400).json({ error: 'Email and ID document are required' });
+    const {
+      email,
+      id_document_url,
+      id_document_front_url,
+      id_document_back_url,
+      user_message,
+    } = req.body;
+    const frontUrl = id_document_front_url || id_document_url;
+    const backUrl = id_document_back_url || null;
+
+    if (!email || !frontUrl) {
+      return res.status(400).json({ error: 'Email and front ID document are required' });
     }
 
     const { data: user } = await supabase
@@ -63,26 +86,39 @@ export const submitReactivationRequest = async (req, res) => {
       return res.status(409).json({ error: 'A reactivation request is already pending for this account' });
     }
 
-    const { data: request, error: insertErr } = await supabase
+    const basePayload = {
+      user_id: user.user_id,
+      email: email.toLowerCase().trim(),
+      id_document_url: frontUrl,
+      user_message: user_message?.trim() || null,
+      status: 'pending',
+    };
+
+    let request = null;
+    let insertErr = null;
+
+    ({ data: request, error: insertErr } = await supabase
       .from('Reactivation_Requests')
-      .insert([{
-        user_id: user.user_id,
-        email: email.toLowerCase().trim(),
-        id_document_url,
-        user_message: user_message?.trim() || null,
-        status: 'pending',
-      }])
+      .insert([{ ...basePayload, id_document_front_url: frontUrl, id_document_back_url: backUrl }])
       .select()
-      .single();
+      .single());
+
+    if (insertErr && /id_document_(front|back)_url/i.test(insertErr.message || '')) {
+      ({ data: request, error: insertErr } = await supabase
+        .from('Reactivation_Requests')
+        .insert([basePayload])
+        .select()
+        .single());
+    }
 
     if (insertErr) throw insertErr;
 
     // Notify admin (fire-and-forget)
     supabase.from('Admin_Notifications').insert([{
-      type: 'reactivation_request',
-      title: 'New Reactivation Request',
-      message: `${user.Fname} ${user.Lname} (${email}) has submitted an account reactivation request.`,
-      metadata: { user_id: user.user_id, email, request_id: request.id },
+      type: 'blacklisted_reactivation_appeal',
+      title: 'Blacklisted Account Appeal',
+      message: `${user.Fname} ${user.Lname} (${email}) submitted a reactivation appeal.`,
+      metadata: { user_id: user.user_id, email, request_id: request.id, request_type: 'reactivation_appeal' },
     }]).then(() => {}).catch(() => {});
 
     res.status(201).json({ success: true, request_id: request.id });
@@ -134,10 +170,17 @@ export const getReactivationStatus = async (req, res) => {
 
 export const getAdminReactivationRequests = async (req, res) => {
   try {
-    const { data: requests, error } = await supabase
+    let { data: requests, error } = await supabase
       .from('Reactivation_Requests')
-      .select('id, email, status, id_document_url, user_message, admin_notes, created_at, reviewed_at, user_id')
+      .select('id, email, status, id_document_url, id_document_front_url, id_document_back_url, user_message, admin_notes, created_at, reviewed_at, user_id')
       .order('created_at', { ascending: false });
+
+    if (error && /id_document_(front|back)_url/i.test(error.message || '')) {
+      ({ data: requests, error } = await supabase
+        .from('Reactivation_Requests')
+        .select('id, email, status, id_document_url, user_message, admin_notes, created_at, reviewed_at, user_id')
+        .order('created_at', { ascending: false }));
+    }
 
     if (error) return res.status(500).json({ error: error.message });
 
@@ -151,7 +194,12 @@ export const getAdminReactivationRequests = async (req, res) => {
       if (users) users.forEach(u => { userMap[u.user_id] = `${u.Fname} ${u.Lname}`; });
     }
 
-    res.json(requests.map(r => ({ ...r, user_name: userMap[r.user_id] || r.email })));
+    res.json(requests.map(r => ({
+      ...r,
+      id_document_front_url: r.id_document_front_url || r.id_document_url,
+      id_document_back_url: r.id_document_back_url || null,
+      user_name: userMap[r.user_id] || r.email,
+    })));
   } catch (err) {
     res.status(500).json({ error: err.message });
   }

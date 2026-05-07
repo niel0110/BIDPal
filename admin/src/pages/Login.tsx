@@ -21,6 +21,10 @@ const Login = () => {
         password
       });
 
+      if (response.data?.banned || response.data?.error === 'account_banned') {
+        throw new Error(response.data.message || 'This account has been permanently banned.');
+      }
+
       const { user, token } = response.data;
 
       // Check if the user is an admin

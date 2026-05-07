@@ -66,10 +66,10 @@ export function AuthProvider({ children }) {
                 body: JSON.stringify({ email, password }),
             });
             const data = await res.json();
+            if (data?.banned || data?.error === 'account_banned') {
+                return { success: false, banned: true, message: data.message };
+            }
             if (!res.ok) {
-                if (data.error === 'account_banned') {
-                    return { success: false, banned: true, message: data.message };
-                }
                 throw new Error(data.error || 'Login failed');
             }
             const normalizedUser = {

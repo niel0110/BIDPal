@@ -376,7 +376,8 @@ export const login = async (req, res) => {
   // ── Account status gate ──────────────────────────────────────────────────
   // Permanently banned at role level
   if (data.role === 'Banned') {
-    return res.status(403).json({
+    return res.json({
+      banned: true,
       error: 'account_banned',
       message: 'Your account has been permanently banned due to a violation of our terms.'
     });
@@ -391,7 +392,8 @@ export const login = async (req, res) => {
 
   // Permanently banned at violation level
   if (vr?.account_status === 'suspended') {
-    return res.status(403).json({
+    return res.json({
+      banned: true,
       error: 'account_banned',
       message: 'Your account has been permanently banned due to a violation of our terms.'
     });

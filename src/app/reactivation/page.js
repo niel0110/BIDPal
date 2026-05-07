@@ -5,7 +5,7 @@ import { useSearchParams } from 'next/navigation';
 import Link from 'next/link';
 import {
     ShieldX, Clock, CheckCircle, XCircle, Upload, Send,
-    RotateCcw, AlertTriangle, FileText, Image as ImageIcon, Loader
+    RotateCcw, AlertTriangle, FileText, Loader
 } from 'lucide-react';
 import styles from './page.module.css';
 
@@ -14,6 +14,42 @@ const API_URL = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:5000';
 function fmt(dateStr) {
     if (!dateStr) return '';
     return new Date(dateStr).toLocaleDateString('en-US', { year: 'numeric', month: 'long', day: 'numeric' });
+}
+
+function UploadCard({ label, file, preview, inputRef, onChange }) {
+    return (
+        <div className={styles.field}>
+            <label className={styles.label}>{label} <span className={styles.required}>*</span></label>
+            <div
+                className={styles.uploadZone}
+                onClick={() => inputRef.current?.click()}
+                style={file ? { borderColor: '#16a34a', background: '#f0fdf4' } : {}}
+            >
+                {preview ? (
+                    <img src={preview} alt={`${label} preview`} className={styles.idPreview} />
+                ) : file ? (
+                    <>
+                        <FileText size={28} color="#16a34a" />
+                        <span className={styles.uploadLabel} style={{ color: '#16a34a' }}>{file.name}</span>
+                        <span className={styles.uploadSub}>Click to change</span>
+                    </>
+                ) : (
+                    <>
+                        <Upload size={28} color="#9ca3af" />
+                        <span className={styles.uploadLabel}>Click to upload {label.toLowerCase()}</span>
+                        <span className={styles.uploadSub}>JPG, PNG or PDF · max 10 MB</span>
+                    </>
+                )}
+            </div>
+            <input
+                ref={inputRef}
+                type="file"
+                accept="image/jpeg,image/png,image/jpg,application/pdf"
+                style={{ display: 'none' }}
+                onChange={onChange}
+            />
+        </div>
+    );
 }
 
 function ReactivationPageInner() {
@@ -25,15 +61,18 @@ function ReactivationPageInner() {
     const [statusData, setStatusData] = useState(null);
     const [userName, setUserName] = useState('');
 
-    const [idFile, setIdFile] = useState(null);
-    const [idPreview, setIdPreview] = useState(null);
+    const [frontIdFile, setFrontIdFile] = useState(null);
+    const [frontIdPreview, setFrontIdPreview] = useState(null);
+    const [backIdFile, setBackIdFile] = useState(null);
+    const [backIdPreview, setBackIdPreview] = useState(null);
     const [message, setMessage] = useState('');
 
     const [uploading, setUploading] = useState(false);
     const [submitting, setSubmitting] = useState(false);
     const [errorMsg, setErrorMsg] = useState('');
 
-    const fileInputRef = useRef(null);
+    const frontFileInputRef = useRef(null);
+    const backFileInputRef = useRef(null);
 
     const checkStatus = async (emailToCheck) => {
         if (!emailToCheck?.trim()) return;
@@ -55,41 +94,63 @@ function ReactivationPageInner() {
         if (initialEmail) checkStatus(initialEmail);
     }, []); // eslint-disable-line
 
-    const handleFileChange = (e) => {
+    const handleFileChange = (e, side) => {
         const file = e.target.files?.[0];
         if (!file) return;
-        setIdFile(file);
         setErrorMsg('');
-        if (file.type.startsWith('image/')) {
-            setIdPreview(URL.createObjectURL(file));
-        } else {
-            setIdPreview(null);
+        const previewUrl = file.type.startsWith('image/') ? URL.createObjectURL(file) : null;
+
+        if (side === 'front') {
+            setFrontIdFile(file);
+            setFrontIdPreview(previewUrl);
+            return;
         }
+
+        setBackIdFile(file);
+        setBackIdPreview(previewUrl);
     };
 
     const handleSubmit = async () => {
-        if (!idFile) { setErrorMsg('Please upload your government-issued ID document.'); return; }
+        if (!frontIdFile || !backIdFile) {
+            setErrorMsg('Please upload both the front and back of your government-issued ID.');
+            return;
+        }
         setErrorMsg('');
         setUploading(true);
         try {
-            const formData = new FormData();
-            formData.append('idDocument', idFile);
-            const uploadRes = await fetch(`${API_URL}/api/reactivation/upload-id`, { method: 'POST', body: formData });
-            if (!uploadRes.ok) {
-                const err = await uploadRes.json();
-                throw new Error(err.error || 'File upload failed');
-            }
-            const { url } = await uploadRes.json();
+            const uploadDocument = async (file, side) => {
+                const formData = new FormData();
+                formData.append('idDocument', file);
+                formData.append('side', side);
+                const uploadRes = await fetch(`${API_URL}/api/reactivation/upload-id`, { method: 'POST', body: formData });
+                const payload = await uploadRes.json().catch(() => ({}));
+                if (!uploadRes.ok) {
+                    throw new Error(payload.error || `Failed to upload the ${side} of your ID`);
+                }
+                return payload.url;
+            };
+
+            const [frontUrl, backUrl] = await Promise.all([
+                uploadDocument(frontIdFile, 'front'),
+                uploadDocument(backIdFile, 'back'),
+            ]);
             setUploading(false);
             setSubmitting(true);
 
             const submitRes = await fetch(`${API_URL}/api/reactivation/request`, {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify({ email: email.trim(), id_document_url: url, user_message: message }),
+                body: JSON.stringify({
+                    email: email.trim(),
+                    id_document_url: frontUrl,
+                    id_document_front_url: frontUrl,
+                    id_document_back_url: backUrl,
+                    user_message: message,
+                }),
             });
             const submitData = await submitRes.json();
             if (!submitRes.ok) throw new Error(submitData.error || 'Submission failed');
+            setStatusData(prev => ({ ...(prev || {}), created_at: new Date().toISOString() }));
             setStep('pending');
         } catch (err) {
             setErrorMsg(err.message);
@@ -100,8 +161,10 @@ function ReactivationPageInner() {
     };
 
     const handleResubmit = () => {
-        setIdFile(null);
-        setIdPreview(null);
+        setFrontIdFile(null);
+        setFrontIdPreview(null);
+        setBackIdFile(null);
+        setBackIdPreview(null);
         setMessage('');
         setErrorMsg('');
         setStep('form');
@@ -211,38 +274,21 @@ function ReactivationPageInner() {
                             </span>
                         </div>
 
-                        {/* ID Upload */}
-                        <div className={styles.field}>
-                            <label className={styles.label}>Government-Issued ID <span className={styles.required}>*</span></label>
-                            <div
-                                className={styles.uploadZone}
-                                onClick={() => fileInputRef.current?.click()}
-                                style={idFile ? { borderColor: '#16a34a', background: '#f0fdf4' } : {}}
-                            >
-                                {idPreview ? (
-                                    <img src={idPreview} alt="ID preview" className={styles.idPreview} />
-                                ) : idFile ? (
-                                    <>
-                                        <FileText size={28} color="#16a34a" />
-                                        <span className={styles.uploadLabel} style={{ color: '#16a34a' }}>{idFile.name}</span>
-                                        <span className={styles.uploadSub}>Click to change</span>
-                                    </>
-                                ) : (
-                                    <>
-                                        <Upload size={28} color="#9ca3af" />
-                                        <span className={styles.uploadLabel}>Click to upload ID</span>
-                                        <span className={styles.uploadSub}>JPG, PNG or PDF · max 10 MB</span>
-                                    </>
-                                )}
-                            </div>
-                            <input
-                                ref={fileInputRef}
-                                type="file"
-                                accept="image/jpeg,image/png,image/jpg,application/pdf"
-                                style={{ display: 'none' }}
-                                onChange={handleFileChange}
-                            />
-                        </div>
+                        <UploadCard
+                            label="Government-Issued ID Front"
+                            file={frontIdFile}
+                            preview={frontIdPreview}
+                            inputRef={frontFileInputRef}
+                            onChange={(e) => handleFileChange(e, 'front')}
+                        />
+
+                        <UploadCard
+                            label="Government-Issued ID Back"
+                            file={backIdFile}
+                            preview={backIdPreview}
+                            inputRef={backFileInputRef}
+                            onChange={(e) => handleFileChange(e, 'back')}
+                        />
 
                         {/* Optional message */}
                         <div className={styles.field}>

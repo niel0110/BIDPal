@@ -8,6 +8,8 @@ CREATE TABLE IF NOT EXISTS "Reactivation_Requests" (
     status            TEXT        NOT NULL DEFAULT 'pending'
                                   CHECK (status IN ('pending', 'approved', 'rejected')),
     id_document_url   TEXT        NOT NULL,
+    id_document_front_url TEXT,
+    id_document_back_url  TEXT,
     user_message      TEXT,
     admin_notes       TEXT,
     created_at        TIMESTAMPTZ DEFAULT NOW(),
@@ -24,7 +26,7 @@ ALTER PUBLICATION supabase_realtime ADD TABLE "Reactivation_Requests";
 -- ─────────────────────────────────────────────────────────────────────────
 -- Storage bucket for ID documents
 -- Create this manually in Supabase Dashboard → Storage:
---   Bucket name : id-documents
+--   Bucket name : reactivation-id-documents
 --   Public      : true  (so admin can preview via URL)
 --   File size   : 10 MB
 --   Allowed MIME: image/jpeg, image/png, image/jpg, application/pdf
