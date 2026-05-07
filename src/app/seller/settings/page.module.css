@@ -4,11 +4,35 @@
     margin: 0 auto;
 }
 
+/* Back button */
+.backBtn {
+    display: inline-flex;
+    align-items: center;
+    gap: 0.35rem;
+    background: none;
+    border: none;
+    font-size: 0.9rem;
+    font-weight: 600;
+    color: #666;
+    cursor: pointer;
+    padding: 0.4rem 0.6rem;
+    border-radius: 8px;
+    margin-bottom: 1.25rem;
+    transition: background 0.15s, color 0.15s;
+}
+
+.backBtn:hover {
+    background: #f5f5f5;
+    color: #333;
+}
+
 .header {
     display: flex;
     justify-content: space-between;
     align-items: center;
     margin-bottom: 2rem;
+    gap: 1rem;
+    flex-wrap: wrap;
 }
 
 .titleGroup h1 {
@@ -50,9 +74,9 @@
     box-shadow: none;
 }
 
-.statusMsg {
+.errorMsg {
     font-size: 0.85rem;
-    color: #388E3C;
+    color: #ef4444;
     font-weight: 600;
     margin: 0;
 }
@@ -105,6 +129,15 @@
     border-color: #ccc;
 }
 
+.bannerImg {
+    position: absolute;
+    inset: 0;
+    width: 100%;
+    height: 100%;
+    object-fit: cover;
+    display: block;
+}
+
 .bannerPlaceholder {
     height: 100%;
     display: flex;
@@ -120,13 +153,14 @@
 .bannerOverlay {
     position: absolute;
     inset: 0;
-    background: rgba(0, 0, 0, 0.35);
+    background: rgba(0, 0, 0, 0.42);
     display: flex;
     align-items: center;
     justify-content: center;
     gap: 0.75rem;
     opacity: 0;
     transition: opacity 0.2s;
+    z-index: 1;
 }
 
 .bannerUpload:hover .bannerOverlay {
@@ -138,7 +172,7 @@
     display: flex;
     align-items: center;
     gap: 0.4rem;
-    padding: 0.5rem 1rem;
+    padding: 0.5rem 1.1rem;
     border-radius: 8px;
     font-size: 0.85rem;
     font-weight: 700;
@@ -177,6 +211,14 @@
     align-items: center;
     justify-content: center;
     flex-shrink: 0;
+    overflow: hidden;
+}
+
+.logoImg {
+    width: 100%;
+    height: 100%;
+    object-fit: cover;
+    display: block;
 }
 
 .logoBtns {
@@ -260,6 +302,66 @@
     font-size: 0.75rem;
     color: #ccc;
     text-align: right;
+}
+
+/* Success Modal */
+.modalBackdrop {
+    position: fixed;
+    inset: 0;
+    background: rgba(0, 0, 0, 0.45);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    z-index: 1000;
+}
+
+.modalCard {
+    background: white;
+    border-radius: 24px;
+    padding: 2.5rem 2rem;
+    max-width: 360px;
+    width: 90%;
+    text-align: center;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 0.75rem;
+    box-shadow: 0 20px 60px rgba(0, 0, 0, 0.15);
+}
+
+.modalIcon {
+    margin-bottom: 0.5rem;
+}
+
+.modalTitle {
+    font-size: 1.4rem;
+    font-weight: 800;
+    color: #333;
+    margin: 0;
+}
+
+.modalBody {
+    font-size: 0.95rem;
+    color: #666;
+    margin: 0;
+    line-height: 1.5;
+}
+
+.modalBtn {
+    margin-top: 0.75rem;
+    background: #22c55e;
+    color: white;
+    border: none;
+    padding: 0.75rem 2.5rem;
+    border-radius: 12px;
+    font-size: 1rem;
+    font-weight: 700;
+    cursor: pointer;
+    transition: opacity 0.2s;
+}
+
+.modalBtn:hover {
+    opacity: 0.88;
 }
 
 @media (max-width: 600px) {

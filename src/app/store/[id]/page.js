@@ -273,7 +273,14 @@ export default function StorePage() {
         <main className={styles.main}>
             <Header />
 
-            {/* ── Seller Profile Header (no banner) ── */}
+            {/* ── Banner ── */}
+            {store.banner_url && (
+                <div className={styles.bannerSection}>
+                    <img src={store.banner_url} alt="Store banner" className={styles.bannerImage} />
+                </div>
+            )}
+
+            {/* ── Seller Profile Header ── */}
             <section className={styles.profileHeader}>
                 <div className={styles.profileInner}>
 

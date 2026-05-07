@@ -1,12 +1,14 @@
 'use client';
 
 import { useState, useEffect, useRef } from 'react';
+import { useRouter } from 'next/navigation';
 import { useAuth } from '@/context/AuthContext';
-import { Camera, Save, X } from 'lucide-react';
+import { Camera, Save, X, CheckCircle, ChevronLeft } from 'lucide-react';
 import styles from './page.module.css';
 
 export default function SellerSettings() {
     const { user } = useAuth();
+    const router = useRouter();
     const logoInputRef = useRef(null);
     const bannerInputRef = useRef(null);
 
@@ -22,7 +24,8 @@ export default function SellerSettings() {
 
     const [loading, setLoading] = useState(true);
     const [saving, setSaving] = useState(false);
-    const [saveStatus, setSaveStatus] = useState('');
+    const [showSuccessModal, setShowSuccessModal] = useState(false);
+    const [errorMsg, setErrorMsg] = useState('');
 
     useEffect(() => {
         if (!user?.user_id) return;
@@ -59,7 +62,7 @@ export default function SellerSettings() {
     const handleSaveProfile = async () => {
         if (!profile.seller_id || saving) return;
         setSaving(true);
-        setSaveStatus('');
+        setErrorMsg('');
         try {
             const apiUrl = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:5000';
             const token = localStorage.getItem('bidpal_token');
@@ -79,13 +82,12 @@ export default function SellerSettings() {
                 })
             });
             if (res.ok) {
-                setSaveStatus('Changes saved successfully!');
-                setTimeout(() => setSaveStatus(''), 3000);
+                setShowSuccessModal(true);
             } else {
                 throw new Error('Failed to save settings');
             }
         } catch (err) {
-            setSaveStatus('Error: ' + err.message);
+            setErrorMsg(err.message);
         } finally {
             setSaving(false);
         }
@@ -95,7 +97,6 @@ export default function SellerSettings() {
         const file = event.target.files[0];
         if (!file) return;
         setSaving(true);
-        setSaveStatus(`Uploading ${type}...`);
 
         const formData = new FormData();
         formData.append(type, file);
@@ -120,14 +121,12 @@ export default function SellerSettings() {
                 } else {
                     setProfile(prev => ({ ...prev, banner_url: data.bannerUrl }));
                 }
-                setSaveStatus(`${type.charAt(0).toUpperCase() + type.slice(1)} uploaded!`);
-                setTimeout(() => setSaveStatus(''), 3000);
             } else {
                 const errorData = await res.json();
-                throw new Error(errorData.error || `Failed to upload ${type}`);
+                setErrorMsg(errorData.error || `Failed to upload ${type}`);
             }
         } catch (err) {
-            setSaveStatus('Error: ' + err.message);
+            setErrorMsg(err.message);
         } finally {
             setSaving(false);
             event.target.value = '';
@@ -166,13 +165,19 @@ export default function SellerSettings() {
 
     return (
         <div className={styles.container}>
+            {/* Back button */}
+            <button className={styles.backBtn} onClick={() => router.back()}>
+                <ChevronLeft size={18} />
+                Back
+            </button>
+
             <header className={styles.header}>
                 <div className={styles.titleGroup}>
                     <h1>Settings</h1>
                     <p>Manage your store preferences and business account.</p>
                 </div>
                 <div style={{ display: 'flex', alignItems: 'center', gap: '1rem' }}>
-                    {saveStatus && <p className={styles.statusMsg}>{saveStatus}</p>}
+                    {errorMsg && <p className={styles.errorMsg}>{errorMsg}</p>}
                     <button
                         className={styles.saveBtn}
                         onClick={handleSaveProfile}
@@ -196,15 +201,41 @@ export default function SellerSettings() {
 
                 {/* Banner */}
                 <div className={styles.mediaUploads}>
-                    <div
-                        className={styles.bannerUpload}
-                        onClick={() => bannerInputRef.current?.click()}
-                        style={{
-                            backgroundImage: profile.banner_url ? `url(${profile.banner_url})` : 'none',
-                            backgroundSize: 'cover',
-                            backgroundPosition: 'center',
-                        }}
-                    >
+                    <div className={styles.bannerUpload}>
+                        {profile.banner_url && (
+                            <img
+                                src={profile.banner_url}
+                                alt="Store banner"
+                                className={styles.bannerImg}
+                            />
+                        )}
+                        {!profile.banner_url && (
+                            <div
+                                className={styles.bannerPlaceholder}
+                                onClick={() => bannerInputRef.current?.click()}
+                            >
+                                <Camera size={32} color="#ccc" />
+                                <span>Click to upload banner</span>
+                            </div>
+                        )}
+                        {profile.banner_url && (
+                            <div className={styles.bannerOverlay}>
+                                <button
+                                    type="button"
+                                    className={styles.overlayEditBtn}
+                                    onClick={() => bannerInputRef.current?.click()}
+                                >
+                                    <Camera size={16} /> Change
+                                </button>
+                                <button
+                                    type="button"
+                                    className={styles.overlayRemoveBtn}
+                                    onClick={() => handleRemoveImage('banner')}
+                                >
+                                    <X size={16} /> Remove
+                                </button>
+                            </div>
+                        )}
                         <input
                             type="file"
                             ref={bannerInputRef}
@@ -212,42 +243,15 @@ export default function SellerSettings() {
                             accept="image/*"
                             onChange={(e) => handleFileUpload(e, 'banner')}
                         />
-                        {!profile.banner_url ? (
-                            <div className={styles.bannerPlaceholder}>
-                                <Camera size={32} color="#ccc" />
-                                <span>Click to upload banner</span>
-                            </div>
-                        ) : (
-                            <div className={styles.bannerOverlay}>
-                                <button
-                                    type="button"
-                                    className={styles.overlayEditBtn}
-                                    onClick={(e) => { e.stopPropagation(); bannerInputRef.current?.click(); }}
-                                >
-                                    <Camera size={16} /> Change
-                                </button>
-                                <button
-                                    type="button"
-                                    className={styles.overlayRemoveBtn}
-                                    onClick={(e) => { e.stopPropagation(); handleRemoveImage('banner'); }}
-                                >
-                                    <X size={16} /> Remove
-                                </button>
-                            </div>
-                        )}
                     </div>
 
                     {/* Logo */}
                     <div className={styles.logoWrapper}>
-                        <div
-                            className={styles.logoPlaceholder}
-                            style={{
-                                backgroundImage: profile.logo_url ? `url(${profile.logo_url})` : 'none',
-                                backgroundSize: 'cover',
-                                backgroundPosition: 'center'
-                            }}
-                        >
-                            {!profile.logo_url && <Camera size={24} color="#ccc" />}
+                        <div className={styles.logoPlaceholder}>
+                            {profile.logo_url
+                                ? <img src={profile.logo_url} alt="Store logo" className={styles.logoImg} />
+                                : <Camera size={24} color="#ccc" />
+                            }
                         </div>
                         <input
                             type="file"
@@ -313,6 +317,25 @@ export default function SellerSettings() {
                     </div>
                 </div>
             </div>
+
+            {/* Success Modal */}
+            {showSuccessModal && (
+                <div className={styles.modalBackdrop} onClick={() => setShowSuccessModal(false)}>
+                    <div className={styles.modalCard} onClick={e => e.stopPropagation()}>
+                        <div className={styles.modalIcon}>
+                            <CheckCircle size={48} color="#22c55e" />
+                        </div>
+                        <h3 className={styles.modalTitle}>Changes Saved!</h3>
+                        <p className={styles.modalBody}>Your store profile has been updated successfully.</p>
+                        <button
+                            className={styles.modalBtn}
+                            onClick={() => setShowSuccessModal(false)}
+                        >
+                            Done
+                        </button>
+                    </div>
+                </div>
+            )}
         </div>
     );
 }

@@ -3,6 +3,21 @@
     background-color: #f8f9fa;
 }
 
+/* ── Banner ── */
+.bannerSection {
+    width: 100%;
+    height: 200px;
+    overflow: hidden;
+    background: #e5e7eb;
+}
+
+.bannerImage {
+    width: 100%;
+    height: 100%;
+    object-fit: cover;
+    display: block;
+}
+
 /* ── Profile Header ── */
 .profileHeader {
     background: white;
