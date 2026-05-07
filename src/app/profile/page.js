@@ -526,7 +526,7 @@ function MerchantInsightsSection() {
                 let thisMonthItems = 0, prevMonthItems = 0;
 
                 done.forEach(o => {
-                    const amount = o.total || o.total_amount || 0;
+                    const amount = Math.max(0, (o.total_amount || 0) - (o.shipping_fee || 0));
                     const date = new Date(o.placed_at || o.created_at);
                     const daysAgo = Math.floor((now - date) / msPerDay);
                     const monthsAgo = (now.getFullYear() - date.getFullYear()) * 12 + (now.getMonth() - date.getMonth());
@@ -537,7 +537,7 @@ function MerchantInsightsSection() {
                     if (monthsAgo === 1) prevMonthItems++;
                 });
 
-                const totalRevenue = done.reduce((s, o) => s + (o.total || o.total_amount || 0), 0);
+                const totalRevenue = done.reduce((s, o) => s + Math.max(0, (o.total_amount || 0) - (o.shipping_fee || 0)), 0);
 
                 if (!cancelled) {
                     setStats({ revenue: totalRevenue, itemsSold: done.length, followers, revenueByDay, thisWeek, prevWeek, thisMonthItems, prevMonthItems });
@@ -610,7 +610,7 @@ function MerchantInsightsSection() {
                         <div className={styles.barChart}>
                             {stats.revenueByDay.map((amount, i) => (
                                 <div key={i} className={styles.barWrapper} title={`₱${amount.toLocaleString('en-PH', { minimumFractionDigits: 2 })}`}>
-                                    <div className={styles.bar} style={{ height: `${Math.max((amount / maxBar) * 100, amount > 0 ? 8 : 4)}%`, background: amount > 0 ? 'var(--accent-primary, #cc2b41)' : undefined }}></div>
+                                    <div className={styles.bar} style={{ height: `${Math.max((amount / maxBar) * 160, amount > 0 ? 10 : 4)}px`, background: amount > 0 ? 'var(--accent-primary, #cc2b41)' : '#ddd' }}></div>
                                     <span className={styles.barLabel}>{dayLabels[i]}</span>
                                 </div>
                             ))}
