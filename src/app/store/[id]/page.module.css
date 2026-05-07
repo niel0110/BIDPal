@@ -23,16 +23,41 @@
     height: 110px;
     border-radius: 50%;
     border: 3px solid #cc2b41;
-    overflow: hidden;
+    overflow: visible;
     flex-shrink: 0;
     background: #f0f0f0;
+    position: relative;
 }
 
 .avatar {
-    width: 100%;
-    height: 100%;
+    width: 110px;
+    height: 110px;
+    border-radius: 50%;
     object-fit: cover;
+    display: block;
 }
+
+.avatarEditBtn {
+    position: absolute;
+    bottom: -2px;
+    right: -2px;
+    background: #cc2b41;
+    color: white;
+    border: 2px solid white;
+    border-radius: 20px;
+    padding: 3px 8px;
+    font-size: 0.68rem;
+    font-weight: 700;
+    cursor: pointer;
+    display: flex;
+    align-items: center;
+    gap: 3px;
+    font-family: inherit;
+    transition: background 0.15s;
+    white-space: nowrap;
+}
+.avatarEditBtn:hover { background: #a31d30; }
+.avatarEditBtn:disabled { opacity: 0.7; cursor: not-allowed; }
 
 .storeInfo {
     flex: 1;
