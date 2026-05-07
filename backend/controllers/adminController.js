@@ -264,3 +264,46 @@ export const resolveDispute = async (req, res) => {
         res.status(500).json({ error: err.message });
     }
 };
+
+// ── Admin Notifications ──────────────────────────────────────────────────────
+
+export const getAdminNotifications = async (req, res) => {
+    try {
+        const { data, error } = await supabase
+            .from('Admin_Notifications')
+            .select('*')
+            .order('created_at', { ascending: false })
+            .limit(50);
+        if (error) return res.status(500).json({ error: error.message });
+        res.json(data);
+    } catch (err) {
+        res.status(500).json({ error: err.message });
+    }
+};
+
+export const markAdminNotificationRead = async (req, res) => {
+    try {
+        const { id } = req.params;
+        const { error } = await supabase
+            .from('Admin_Notifications')
+            .update({ is_read: true })
+            .eq('id', id);
+        if (error) return res.status(500).json({ error: error.message });
+        res.json({ success: true });
+    } catch (err) {
+        res.status(500).json({ error: err.message });
+    }
+};
+
+export const markAllAdminNotificationsRead = async (req, res) => {
+    try {
+        const { error } = await supabase
+            .from('Admin_Notifications')
+            .update({ is_read: true })
+            .eq('is_read', false);
+        if (error) return res.status(500).json({ error: error.message });
+        res.json({ success: true });
+    } catch (err) {
+        res.status(500).json({ error: err.message });
+    }
+};

@@ -9,7 +9,10 @@ import {
     updateKycStatus,
     resolveDispute,
     moderateListing,
-    getAdminDashboardStats
+    getAdminDashboardStats,
+    getAdminNotifications,
+    markAdminNotificationRead,
+    markAllAdminNotificationsRead,
 } from '../controllers/adminController.js';
 
 const router = express.Router();
@@ -33,5 +36,10 @@ router.post('/listings/:id/moderate', moderateListing);
 // Dispute Resolution
 router.get('/disputes', getDisputes);
 router.post('/disputes/:id/resolve', resolveDispute);
+
+// Admin Notifications
+router.get('/notifications', getAdminNotifications);
+router.patch('/notifications/read-all', markAllAdminNotificationsRead);
+router.patch('/notifications/:id/read', markAdminNotificationRead);
 
 export default router;
