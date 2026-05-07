@@ -2,7 +2,7 @@
 
 import { Suspense, useState, useEffect, useRef } from 'react';
 import Link from 'next/link';
-import { Search, SlidersHorizontal, User, ShoppingCart, Home, Heart, MessageCircle, LogOut, LayoutDashboard, Package, Gavel, BarChart3, ClipboardList, AlignJustify, X } from 'lucide-react';
+import { Search, SlidersHorizontal, User, ShoppingCart, Home, Heart, MessageCircle, LogOut, LayoutDashboard, Package, Gavel, BarChart3, ClipboardList, AlignJustify, X, Store } from 'lucide-react';
 import { useAuth } from '@/context/AuthContext';
 import { useCart } from '@/context/CartContext';
 import { useRouter, usePathname, useSearchParams } from 'next/navigation';
@@ -147,6 +147,12 @@ function HeaderInner() {
                       <LayoutDashboard size={18} />
                     </div>
                     <span>Dashboard</span>
+                  </Link>
+                  <Link href="/seller/store" className={styles.dropdownItem} onClick={() => setIsMenuOpen(false)}>
+                    <div className={`${styles.iconCircle} ${styles.green}`}>
+                      <Store size={18} />
+                    </div>
+                    <span>My Store</span>
                   </Link>
                   <Link href="/seller/auctions" className={styles.dropdownItem} onClick={() => setIsMenuOpen(false)}>
                     <div className={`${styles.iconCircle} ${styles.red}`}>

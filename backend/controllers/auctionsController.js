@@ -1125,20 +1125,10 @@ export const placeBid = async (req, res) => {
     const reserveLimit = parseFloat(auction.reserve_price || 0);
     if (reserveLimit > 0 && bidAmount > reserveLimit) {
       return res.status(400).json({
-        error: `Bid cannot exceed the seller reserve price limit of ₱${reserveLimit.toLocaleString('en-PH')}`,
+        error: `Bid cannot exceed the reserve price limit of ₱${reserveLimit.toLocaleString('en-PH')}`,
         bidLimit: reserveLimit,
         minBid,
         currentPrice
-      });
-    }
-
-    const incrementCount = step > 0 ? (bidAmount - currentPrice) / step : 1;
-    if (step > 0 && Math.abs(incrementCount - Math.round(incrementCount)) > 0.0001) {
-      return res.status(400).json({
-        error: `Bid must follow the seller's ₱${step.toLocaleString('en-PH')} increment`,
-        minBid,
-        currentPrice,
-        bidIncrement: step
       });
     }
 
