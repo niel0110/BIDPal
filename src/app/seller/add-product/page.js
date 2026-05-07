@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, useEffect, useCallback } from 'react';
+import { Suspense, useState, useEffect, useCallback } from 'react';
 import { useRouter, useSearchParams } from 'next/navigation';
 import { Info, Grid, Camera, X, Trash2, Upload, ChevronLeft, Package, DollarSign, AlertTriangle } from 'lucide-react';
 import styles from './page.module.css';
@@ -93,7 +93,7 @@ const categoriesData = [
     },
 ];
 
-export default function AddProductPage() {
+function AddProductPageInner() {
     const router = useRouter();
     const searchParams = useSearchParams();
     const editId = searchParams.get('id'); // present when editing a draft
@@ -781,5 +781,13 @@ export default function AddProductPage() {
                 </div>
             )}
         </div>
+    );
+}
+
+export default function AddProductPage() {
+    return (
+        <Suspense fallback={null}>
+            <AddProductPageInner />
+        </Suspense>
     );
 }
