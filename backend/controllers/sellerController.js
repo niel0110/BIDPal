@@ -140,16 +140,21 @@ export const createSeller = async (req, res) => {
 export const updateSeller = async (req, res) => {
   try {
     const { seller_id } = req.params;
-    const { store_name, business_category, store_handle, store_description } = req.body;
+    const { store_name, business_category, store_handle, store_description, logo_url, banner_url } = req.body;
+
+    const updatePayload = {
+      ...(store_name && { store_name }),
+      ...(business_category !== undefined && { business_category }),
+      ...(store_handle !== undefined && { store_handle }),
+      ...(store_description !== undefined && { store_description }),
+      // null explicitly clears the field; undefined means not sent — skip it
+      ...(logo_url !== undefined && { logo_url }),
+      ...(banner_url !== undefined && { banner_url }),
+    };
 
     const { data, error } = await supabase
       .from('Seller')
-      .update({
-        ...(store_name && { store_name }),
-        ...(business_category !== undefined && { business_category }),
-        ...(store_handle !== undefined && { store_handle }),
-        ...(store_description !== undefined && { store_description }),
-      })
+      .update(updatePayload)
       .eq('seller_id', seller_id)
       .select('*');
 
