@@ -188,6 +188,13 @@ export default function SellerStorePage() {
     return (
         <div className={styles.page}>
 
+            {/* ── Banner ── */}
+            {store.banner_url && (
+                <div className={styles.bannerSection}>
+                    <img src={store.banner_url} alt="Store banner" className={styles.bannerImage} />
+                </div>
+            )}
+
             {/* ── Profile Header ── */}
             <section className={styles.profileHeader}>
                 <div className={styles.profileInner}>

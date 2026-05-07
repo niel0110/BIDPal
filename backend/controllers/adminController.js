@@ -125,6 +125,11 @@ export const updateUserStanding = async (req, res) => {
             updatePayload.suspension_reason = null;
         }
 
+        // Re-activating from any status (Blacklisted, Suspended, Probationary) resets strikes to 0
+        if (standing === 'Active') {
+            updatePayload.strike_count = 0;
+        }
+
         // Upsert violation record
         const { data: existing } = await supabase
             .from('Violation_Records')
