@@ -139,6 +139,15 @@
     display: none;
 }
 
+.mobileSellerTopBar,
+.mobileProductOverlayThumb,
+.mobileProductBidLabel,
+.mobileSellerLiveOverlay,
+.mobileSellerBidArea,
+.mobileQueueModeRow {
+    display: none;
+}
+
 /* ---------- Main Layout ---------- */
 .controlRoom {
     display: flex;
@@ -148,7 +157,8 @@
     background: #f8f8f8;
     flex: 1;
     min-height: 0;
-    overflow: hidden;
+    overflow-x: hidden;
+    overflow-y: auto;
 }
 
 /* Top row: square live board + bids/chat side by side */
@@ -2169,6 +2179,1596 @@
     .videoStatsOverlay { padding: 0.4rem 0.6rem 0.75rem; gap: 0.35rem; }
     .videoStat { font-size: 0.62rem; padding: 0.14rem 0.32rem; }
     .addQueueBtn { padding: 0.32rem 0.6rem; font-size: 0.7rem; }
+}
+
+@media (max-width: 768px) {
+    .mobileLiveFullscreen {
+        background: #050505;
+        height: calc(100svh - 60px);
+        min-height: calc(100svh - 60px);
+        overflow: hidden;
+        position: relative;
+    }
+
+    .mobileLiveFullscreen .header {
+        background: transparent;
+        border-bottom: 0;
+        color: white;
+        left: 0;
+        padding: 0.75rem 0.85rem 0;
+        position: absolute;
+        right: 0;
+        top: 0;
+        z-index: 60;
+    }
+
+    .mobileLiveFullscreen .titleInfo {
+        display: none;
+    }
+
+    .mobileLiveFullscreen .title,
+    .mobileLiveFullscreen .statusBadge {
+        color: white;
+        text-shadow: 0 1px 4px rgba(0,0,0,0.6);
+    }
+
+    .mobileLiveFullscreen .headerActions {
+        margin-left: auto;
+    }
+
+    .mobileLiveFullscreen .liveControlBtn.stop {
+        background: rgba(255,255,255,0.95);
+        box-shadow: 0 8px 24px rgba(0,0,0,0.2);
+    }
+
+    .mobileLiveFullscreen .mobileTabBar {
+        align-items: center;
+        background: rgba(255,255,255,0.96);
+        border-bottom: 1px solid #eee;
+        display: flex;
+        left: 0;
+        position: absolute;
+        right: 0;
+        top: 0;
+        z-index: 75;
+    }
+
+    .mobileLiveFullscreen .mobileTabBarHidden {
+        display: none;
+    }
+
+    .mobileLiveFullscreen .controlRoom {
+        background: #050505;
+        height: 100%;
+        overflow: hidden;
+        padding: 0;
+        width: 100%;
+    }
+
+    .mobileLiveFullscreen .topSection {
+        display: block !important;
+        height: 100%;
+        position: relative;
+    }
+
+    .mobileLiveFullscreen .interactionPanel {
+        display: none !important;
+    }
+
+    .mobileLiveFullscreen .liveWrapper {
+        aspect-ratio: auto;
+        background: #050505;
+        border: 0;
+        border-radius: 0;
+        box-shadow: none;
+        height: 100%;
+        inset: 0;
+        position: absolute;
+        width: 100%;
+        z-index: 1;
+    }
+
+    .mobileLiveFullscreen .videoContainer {
+        background: #050505;
+        height: 100%;
+    }
+
+    .mobileLiveFullscreen .videoPlaceholder {
+        opacity: 0.9;
+    }
+
+    .mobileLiveFullscreen .videoStatsOverlay {
+        background: none;
+        left: 0.75rem;
+        padding: 0;
+        right: auto;
+        top: 5.15rem;
+        z-index: 35;
+    }
+
+    .mobileLiveFullscreen .livePulseBadge {
+        right: 0.85rem;
+        top: 4.85rem;
+        z-index: 35;
+    }
+
+    .mobileLiveFullscreen .videoInfoOverlay {
+        align-items: center;
+        background: rgba(255,255,255,0.94);
+        border: 1px solid rgba(255,255,255,0.72);
+        border-radius: 14px;
+        bottom: 12.6rem;
+        box-shadow: 0 18px 42px rgba(0,0,0,0.24);
+        color: #111;
+        display: grid;
+        gap: 0.2rem;
+        grid-template-columns: 1fr auto;
+        left: 0.75rem;
+        padding: 0.65rem 0.75rem;
+        right: 0.75rem;
+        z-index: 30;
+    }
+
+    .mobileLiveFullscreen .overlayProductName {
+        color: #111;
+        font-size: 0.82rem;
+        font-weight: 850;
+        line-height: 1.25;
+        min-width: 0;
+        overflow: hidden;
+        text-shadow: none;
+        text-overflow: ellipsis;
+        white-space: nowrap;
+    }
+
+    .mobileLiveFullscreen .overlayProductName svg {
+        color: #D32F2F;
+    }
+
+    .mobileLiveFullscreen .overlayStatRow {
+        align-items: flex-end;
+        flex-direction: column;
+        gap: 0.1rem;
+        grid-column: 2;
+        grid-row: 1 / span 2;
+        justify-content: center;
+    }
+
+    .mobileLiveFullscreen .overlayBid {
+        color: #D32F2F;
+        font-size: 1rem;
+        font-weight: 900;
+        line-height: 1;
+        text-shadow: none;
+    }
+
+    .mobileLiveFullscreen .overlayDuration {
+        color: #555;
+        font-size: 0.66rem;
+        font-weight: 800;
+        text-shadow: none;
+    }
+
+    .mobileLiveFullscreen .cameraStartOverlay {
+        align-items: center;
+        background: transparent;
+        backdrop-filter: none;
+        justify-content: center;
+        padding-top: 0;
+    }
+
+    .mobileLiveFullscreen .startCameraBtn {
+        box-shadow: 0 10px 28px rgba(0,0,0,0.28);
+        opacity: 0.94;
+        padding: 0.75rem 1.45rem;
+        transform: translateY(-1.5rem);
+    }
+
+    .mobileLiveFullscreen .cameraControls {
+        bottom: 13.15rem;
+        z-index: 40;
+    }
+
+    .mobileLiveFullscreen .bidsChatCard {
+        background: transparent;
+        border: 0;
+        border-radius: 0;
+        bottom: 0;
+        box-shadow: none;
+        height: 11.95rem;
+        left: 0;
+        max-height: none;
+        min-height: 0;
+        overflow: hidden;
+        padding: 0 0.75rem 0.65rem;
+        position: absolute;
+        right: 0;
+        z-index: 45;
+    }
+
+    .mobileLiveFullscreen .bidsChatCard .cardHeader {
+        display: none;
+    }
+
+    .mobileLiveFullscreen .bidsChatBody {
+        display: flex;
+        flex-direction: column;
+        gap: 0.38rem;
+        height: 100%;
+        min-height: 0;
+        overflow: hidden;
+    }
+
+    .mobileLiveFullscreen .bidsChatLeft,
+    .mobileLiveFullscreen .bidsChatRight {
+        border: 0;
+        display: flex;
+        flex-direction: column;
+        min-height: 0;
+        overflow: hidden;
+    }
+
+    .mobileLiveFullscreen .bidsChatLeft {
+        flex: 0 0 auto;
+    }
+
+    .mobileLiveFullscreen .bidsChatRight {
+        flex: 1;
+    }
+
+    .mobileLiveFullscreen .bidsChatLabel {
+        display: none;
+    }
+
+    .mobileLiveFullscreen .bidsScroll {
+        flex: none;
+        gap: 0.35rem;
+        max-height: 3.25rem;
+        overflow: hidden;
+        padding: 0;
+    }
+
+    .mobileLiveFullscreen .bidRowCompact {
+        align-items: center;
+        align-self: flex-start;
+        background: rgba(234, 88, 12, 0.9);
+        border: 1px solid rgba(255,255,255,0.28);
+        border-radius: 13px;
+        box-shadow: 0 12px 28px rgba(0,0,0,0.24);
+        color: white;
+        display: flex;
+        gap: 0.45rem;
+        max-width: min(100%, 20rem);
+        padding: 0.5rem 0.65rem;
+    }
+
+    .mobileLiveFullscreen .bidRowCompact:not(:first-child) {
+        display: none;
+    }
+
+    .mobileLiveFullscreen .bidderAvatarSm {
+        background: rgba(255,255,255,0.92);
+        color: #ea580c;
+        height: 28px;
+        width: 28px;
+    }
+
+    .mobileLiveFullscreen .bidderNameSm,
+    .mobileLiveFullscreen .bidActionSm,
+    .mobileLiveFullscreen .bidPriceSm {
+        color: white;
+        font-size: 0.82rem;
+        font-weight: 800;
+        min-width: 0;
+        text-shadow: 0 1px 2px rgba(0,0,0,0.22);
+    }
+
+    .mobileLiveFullscreen .bidderNameSm {
+        flex: 0 1 auto;
+    }
+
+    .mobileLiveFullscreen .bidActionSm {
+        flex-shrink: 0;
+        opacity: 0.92;
+    }
+
+    .mobileLiveFullscreen .bidPriceSm {
+        flex-shrink: 0;
+    }
+
+    .mobileLiveFullscreen .chatScroll {
+        flex: 1;
+        gap: 0.35rem;
+        overflow: hidden;
+        padding: 0;
+    }
+
+    .mobileLiveFullscreen .commentCompact {
+        align-self: flex-start;
+        background: rgba(31, 41, 55, 0.62);
+        border-radius: 14px;
+        color: white;
+        max-width: min(88%, 21rem);
+        padding: 0.42rem 0.65rem;
+    }
+
+    .mobileLiveFullscreen .commentCompact:nth-last-child(n+5) {
+        display: none;
+    }
+
+    .mobileLiveFullscreen .commentUserSm {
+        color: #fef3c7;
+        font-size: 0.78rem;
+        text-shadow: 0 1px 2px rgba(0,0,0,0.35);
+    }
+
+    .mobileLiveFullscreen .commentTextSm {
+        color: white;
+        font-size: 0.8rem;
+        text-shadow: 0 1px 2px rgba(0,0,0,0.35);
+    }
+
+    .mobileLiveFullscreen .chatInputCompact {
+        background: transparent;
+        border: 0;
+        gap: 0.45rem;
+        padding: 0.18rem 0 0;
+    }
+
+    .mobileLiveFullscreen .chatInputSm {
+        background: rgba(31,41,55,0.58);
+        border: 0;
+        border-radius: 999px;
+        color: white;
+        font-size: 0.82rem;
+        padding: 0.68rem 1rem;
+    }
+
+    .mobileLiveFullscreen .chatInputSm::placeholder {
+        color: rgba(255,255,255,0.68);
+    }
+
+    .mobileLiveFullscreen .chatSendBtnSm {
+        background: rgba(255,255,255,0.88);
+        border-radius: 50%;
+        color: #D32F2F;
+        height: 40px;
+        width: 40px;
+    }
+
+    .mobileLiveFullscreen .emptyColMsg {
+        align-self: flex-start;
+        background: rgba(31,41,55,0.5);
+        border-radius: 14px;
+        color: white;
+        padding: 0.5rem 0.75rem;
+        text-align: left;
+    }
+}
+
+@media (max-width: 768px) {
+    .mobileLiveFullscreen .mobileSellerTopBar {
+        align-items: center;
+        display: flex;
+        gap: 0.75rem;
+        justify-content: space-between;
+        left: 0.85rem;
+        position: absolute;
+        right: 7.25rem;
+        top: 0.82rem;
+        z-index: 58;
+    }
+
+    .mobileLiveFullscreen .mobileSellerIdentity {
+        align-items: center;
+        display: flex;
+        gap: 0.55rem;
+        min-width: 0;
+    }
+
+    .mobileLiveFullscreen .mobileSellerAvatar {
+        align-items: center;
+        background: rgba(255,255,255,0.18);
+        border: 2px solid rgba(255,255,255,0.86);
+        border-radius: 50%;
+        color: white;
+        display: flex;
+        flex-shrink: 0;
+        font-size: 0.92rem;
+        font-weight: 900;
+        height: 40px;
+        justify-content: center;
+        width: 40px;
+    }
+
+    .mobileLiveFullscreen .mobileSellerText {
+        display: flex;
+        flex-direction: column;
+        min-width: 0;
+    }
+
+    .mobileLiveFullscreen .mobileSellerName {
+        color: white;
+        font-size: 0.9rem;
+        font-weight: 900;
+        line-height: 1.1;
+        overflow: hidden;
+        text-overflow: ellipsis;
+        text-shadow: 0 1px 4px rgba(0,0,0,0.6);
+        white-space: nowrap;
+    }
+
+    .mobileLiveFullscreen .mobileSellerMeta {
+        color: rgba(255,255,255,0.82);
+        font-size: 0.68rem;
+        font-weight: 700;
+        text-shadow: 0 1px 3px rgba(0,0,0,0.55);
+    }
+
+    .mobileLiveFullscreen .mobileSellerStats {
+        align-items: center;
+        color: white;
+        display: inline-flex;
+        flex-shrink: 0;
+        font-size: 0.82rem;
+        font-weight: 800;
+        gap: 0.3rem;
+        text-shadow: 0 1px 4px rgba(0,0,0,0.65);
+    }
+
+    .mobileLiveFullscreen .videoStatsOverlay {
+        display: none;
+    }
+
+    .mobileLiveFullscreen .livePulseBadge {
+        top: 5rem;
+    }
+
+    .mobileLiveFullscreen .videoInfoOverlay {
+        bottom: 4.8rem;
+        grid-template-columns: 52px 1fr auto;
+    }
+
+    .mobileLiveFullscreen .mobileProductOverlayThumb {
+        border: 1px solid #e5e7eb;
+        border-radius: 10px;
+        display: block;
+        grid-column: 1;
+        grid-row: 1 / span 2;
+        height: 52px;
+        object-fit: cover;
+        width: 52px;
+    }
+
+    .mobileLiveFullscreen .overlayProductCopy {
+        display: flex;
+        flex-direction: column;
+        gap: 0.16rem;
+        grid-column: 2;
+        min-width: 0;
+    }
+
+    .mobileLiveFullscreen .mobileProductBidLabel {
+        color: #777;
+        display: block;
+        font-size: 0.72rem;
+        font-weight: 700;
+    }
+
+    .mobileLiveFullscreen .bidsChatCard {
+        bottom: 0;
+        height: 100%;
+        left: 0;
+        overflow: visible;
+        padding: 0;
+        pointer-events: none;
+        right: 0;
+    }
+
+    .mobileLiveFullscreen .bidsChatBody {
+        display: block;
+        height: 100%;
+        overflow: visible;
+    }
+
+    .mobileLiveFullscreen .bidsChatLeft {
+        bottom: 12.2rem;
+        left: 0.85rem;
+        overflow: visible;
+        pointer-events: auto;
+        position: absolute;
+        right: 0.85rem;
+    }
+
+    .mobileLiveFullscreen .bidsChatRight {
+        inset: 0;
+        overflow: visible;
+        pointer-events: none;
+        position: absolute;
+    }
+
+    .mobileLiveFullscreen .chatScroll {
+        bottom: 8.95rem;
+        display: flex;
+        flex-direction: column;
+        justify-content: flex-end;
+        left: 0.85rem;
+        max-height: 7rem;
+        overflow: hidden;
+        pointer-events: auto;
+        position: absolute;
+        right: 0.85rem;
+    }
+
+    .mobileLiveFullscreen .chatInputCompact {
+        bottom: 0.7rem;
+        left: 0.85rem;
+        pointer-events: auto;
+        position: absolute;
+        right: 0.85rem;
+    }
+}
+
+@media (max-width: 768px) {
+    .mobileLiveFullscreen .videoInfoOverlay,
+    .mobileLiveFullscreen .bidsChatCard {
+        display: none;
+    }
+
+    .mobileLiveFullscreen .videoStatsOverlay {
+        display: none;
+    }
+
+    .mobileLiveFullscreen .startCameraBtn {
+        transform: translateY(-0.5rem);
+    }
+
+    .mobileLiveFullscreen .mobileSellerLiveOverlay {
+        display: block;
+        inset: 0;
+        pointer-events: none;
+        position: absolute;
+        z-index: 45;
+    }
+
+    .mobileLiveFullscreen .mobileSellerMessages {
+        bottom: 8.8rem;
+        display: flex;
+        flex-direction: column;
+        gap: 0.4rem;
+        left: 0;
+        padding: 0 0.75rem;
+        position: absolute;
+        right: 0;
+    }
+
+    .mobileSellerBidPill {
+        align-items: center;
+        align-self: flex-start;
+        background: rgba(234, 88, 12, 0.9);
+        border: 1px solid rgba(255,255,255,0.28);
+        border-radius: 14px;
+        box-shadow: 0 12px 28px rgba(0,0,0,0.24);
+        color: white;
+        display: flex;
+        gap: 0.45rem;
+        max-width: min(100%, 21rem);
+        padding: 0.52rem 0.7rem;
+        pointer-events: all;
+    }
+
+    .mobileSellerBidAvatar {
+        align-items: center;
+        background: rgba(255,255,255,0.92);
+        border-radius: 50%;
+        color: #ea580c;
+        display: flex;
+        flex-shrink: 0;
+        font-size: 0.72rem;
+        font-weight: 900;
+        height: 30px;
+        justify-content: center;
+        width: 30px;
+    }
+
+    .mobileSellerBidder,
+    .mobileSellerBidWord,
+    .mobileSellerBidPill strong {
+        color: white;
+        font-size: 0.84rem;
+        font-weight: 850;
+        min-width: 0;
+        text-shadow: 0 1px 2px rgba(0,0,0,0.24);
+    }
+
+    .mobileSellerBidder {
+        overflow: hidden;
+        text-overflow: ellipsis;
+        white-space: nowrap;
+    }
+
+    .mobileSellerBidWord,
+    .mobileSellerBidPill strong {
+        flex-shrink: 0;
+    }
+
+    .mobileSellerChatStack {
+        display: flex;
+        flex-direction: column;
+        gap: 0.35rem;
+        max-height: 6.9rem;
+        overflow: hidden;
+    }
+
+    .mobileSellerComment {
+        align-self: flex-start;
+        background: rgba(31, 41, 55, 0.62);
+        border-radius: 14px;
+        color: white;
+        max-width: min(88%, 21rem);
+        padding: 0.42rem 0.65rem;
+        pointer-events: none;
+    }
+
+    .mobileSellerComment span {
+        color: #fef3c7;
+        display: block;
+        font-size: 0.78rem;
+        font-weight: 850;
+        line-height: 1.1;
+        text-shadow: 0 1px 2px rgba(0,0,0,0.35);
+    }
+
+    .mobileSellerComment p {
+        color: white;
+        font-size: 0.8rem;
+        line-height: 1.3;
+        margin: 0.08rem 0 0;
+        text-shadow: 0 1px 2px rgba(0,0,0,0.35);
+        word-break: break-word;
+    }
+
+    .mobileSellerBottom {
+        background: linear-gradient(to top, rgba(0,0,0,0.74), transparent);
+        bottom: 0;
+        display: flex;
+        flex-direction: column;
+        gap: 0.5rem;
+        left: 0;
+        padding: 1.5rem 0.75rem 0.75rem;
+        pointer-events: all;
+        position: absolute;
+        right: 0;
+    }
+
+    .mobileSellerProductCard {
+        align-items: center;
+        background: rgba(255,255,255,0.96);
+        border: 1px solid rgba(255,255,255,0.72);
+        border-radius: 12px;
+        display: flex;
+        gap: 0.65rem;
+        padding: 0.6rem 0.75rem;
+    }
+
+    .mobileSellerProductThumb {
+        border: 1px solid #eee;
+        border-radius: 8px;
+        flex-shrink: 0;
+        height: 52px;
+        object-fit: cover;
+        width: 52px;
+    }
+
+    .mobileSellerProductInfo {
+        display: flex;
+        flex: 1;
+        flex-direction: column;
+        gap: 0.08rem;
+        min-width: 0;
+    }
+
+    .mobileSellerProductName {
+        color: #111;
+        font-size: 0.8rem;
+        font-weight: 850;
+        overflow: hidden;
+        text-overflow: ellipsis;
+        white-space: nowrap;
+    }
+
+    .mobileSellerProductMeta {
+        color: #777;
+        font-size: 0.65rem;
+        font-weight: 700;
+    }
+
+    .mobileSellerProductPrice {
+        color: #D32F2F;
+        font-size: 0.95rem;
+        font-weight: 900;
+    }
+
+    .mobileSellerTimer {
+        align-items: center;
+        color: #555;
+        display: flex;
+        flex-shrink: 0;
+        font-size: 0.68rem;
+        font-weight: 850;
+        gap: 0.2rem;
+    }
+
+    .mobileSellerChatRow {
+        display: flex;
+        gap: 0.45rem;
+    }
+
+    .mobileSellerChatInput {
+        align-items: center;
+        background: rgba(255,255,255,0.18);
+        backdrop-filter: blur(10px);
+        border-radius: 999px;
+        display: flex;
+        flex: 1;
+        gap: 0.35rem;
+        padding: 0.42rem 0.45rem 0.42rem 0.85rem;
+    }
+
+    .mobileSellerChatInput input {
+        background: none;
+        border: 0;
+        color: white;
+        flex: 1;
+        font-family: inherit;
+        font-size: 0.8rem;
+        min-width: 0;
+        outline: 0;
+    }
+
+    .mobileSellerChatInput input::placeholder {
+        color: rgba(255,255,255,0.58);
+    }
+
+    .mobileSellerChatInput button {
+        align-items: center;
+        background: rgba(255,255,255,0.86);
+        border: 0;
+        border-radius: 50%;
+        color: #D32F2F;
+        cursor: pointer;
+        display: flex;
+        flex-shrink: 0;
+        height: 32px;
+        justify-content: center;
+        width: 32px;
+    }
+
+    .mobileSellerChatInput button:disabled {
+        opacity: 0.48;
+    }
+}
+
+@media (max-width: 768px) {
+    .mobileLiveFullscreen .header {
+        display: flex;
+        pointer-events: none;
+    }
+
+    .mobileLiveFullscreen .headerActions {
+        display: flex;
+        pointer-events: all;
+    }
+
+    .mobileLiveFullscreen .liveControlBtn.stop {
+        align-items: center;
+        background: rgba(255,255,255,0.94);
+        border: 1px solid rgba(211,47,47,0.38);
+        border-radius: 999px;
+        box-shadow: 0 10px 28px rgba(0,0,0,0.18);
+        color: #D32F2F;
+        display: inline-flex;
+        font-size: 0.74rem;
+        font-weight: 900;
+        gap: 0.32rem;
+        min-height: 34px;
+        padding: 0.45rem 0.75rem;
+    }
+
+    .mobileLiveFullscreen .liveControlBtn.stop svg {
+        height: 12px;
+        width: 12px;
+    }
+
+    .mobileLiveFullscreen .mobileSellerTopBar {
+        display: flex;
+        gap: 0.35rem;
+        left: 0.75rem;
+        right: auto;
+        top: 5rem;
+        z-index: 58;
+    }
+
+    .mobileLiveFullscreen .mobileSellerIdentity,
+    .mobileLiveFullscreen .mobileSellerAvatar,
+    .mobileLiveFullscreen .mobileSellerText {
+        display: none;
+    }
+
+    .mobileLiveFullscreen .mobileSellerStats {
+        align-items: center;
+        background: rgba(0,0,0,0.34);
+        backdrop-filter: blur(6px);
+        border: 1px solid rgba(255,255,255,0.14);
+        border-radius: 999px;
+        color: white;
+        display: inline-flex;
+        font-size: 0.72rem;
+        font-weight: 850;
+        gap: 0.25rem;
+        min-height: 26px;
+        padding: 0.22rem 0.48rem;
+        text-shadow: none;
+    }
+
+    .mobileLiveFullscreen .livePulseBadge {
+        min-height: 30px;
+        padding: 0.36rem 0.72rem;
+        right: 0.75rem;
+        top: 4.82rem;
+    }
+
+    .mobileLiveFullscreen .cameraStartOverlay {
+        display: flex;
+        z-index: 24;
+    }
+
+    .mobileLiveFullscreen .startCameraBtn {
+        align-items: center;
+        background: rgba(211,47,47,0.92);
+        border-radius: 999px;
+        box-shadow: 0 12px 30px rgba(0,0,0,0.28);
+        display: inline-flex;
+        font-size: 0.82rem;
+        gap: 0.42rem;
+        min-height: 42px;
+        padding: 0.62rem 1rem;
+        transform: translateY(-4.25rem);
+    }
+
+    .mobileLiveFullscreen .startCameraBtn svg {
+        height: 17px;
+        width: 17px;
+    }
+}
+
+@media (max-width: 768px) {
+    .mobileLiveFullscreen .header {
+        align-items: flex-start;
+        background: linear-gradient(to bottom, rgba(0,0,0,0.42), transparent);
+        padding: 0.7rem 0.75rem 2.25rem;
+    }
+
+    .mobileLiveFullscreen .liveControlBtn.stop {
+        background: rgba(255,255,255,0.9);
+        border: 1px solid rgba(211,47,47,0.32);
+        border-radius: 999px;
+        box-shadow: 0 10px 24px rgba(0,0,0,0.16);
+        color: #D32F2F;
+        font-size: 0.72rem;
+        min-height: 32px;
+        padding: 0.42rem 0.7rem;
+    }
+
+    .mobileLiveFullscreen .mobileSellerTopBar {
+        gap: 0.32rem;
+        left: 0.75rem;
+        right: auto;
+        top: 4.85rem;
+    }
+
+    .mobileLiveFullscreen .mobileSellerStats {
+        background: rgba(20,20,20,0.36);
+        border: 1px solid rgba(255,255,255,0.16);
+        box-shadow: 0 6px 16px rgba(0,0,0,0.12);
+        font-size: 0.7rem;
+        min-height: 25px;
+        padding: 0.2rem 0.46rem;
+    }
+
+    .mobileLiveFullscreen .livePulseBadge {
+        background: rgba(255,255,255,0.92);
+        box-shadow: 0 8px 20px rgba(0,0,0,0.14);
+        right: 0.75rem;
+        top: 4.78rem;
+    }
+
+    .mobileLiveFullscreen .cameraStartOverlay {
+        align-items: flex-start;
+        justify-content: center;
+        padding-top: 9.25rem;
+        pointer-events: none;
+    }
+
+    .mobileLiveFullscreen .startCameraBtn {
+        background: rgba(211,47,47,0.9);
+        border: 1px solid rgba(255,255,255,0.22);
+        border-radius: 999px;
+        box-shadow: 0 12px 28px rgba(0,0,0,0.22);
+        font-size: 0.8rem;
+        min-height: 40px;
+        padding: 0.58rem 0.95rem;
+        pointer-events: all;
+        transform: none;
+    }
+}
+
+@media (max-width: 768px) {
+    .mobileLiveFullscreen .headerActions {
+        align-items: center;
+        display: flex;
+        justify-content: flex-end;
+        width: 100%;
+    }
+
+    .mobileLiveFullscreen .liveControlBtn.stop {
+        min-height: 42px;
+        min-width: 128px;
+        padding: 0 0.95rem;
+        justify-content: center;
+        letter-spacing: 0;
+        touch-action: manipulation;
+    }
+
+    .mobileLiveFullscreen .liveControlBtn.stop:active,
+    .mobileLiveFullscreen .startCameraBtn:active,
+    .mobileSellerChatInput button:active {
+        transform: scale(0.96);
+    }
+
+    .mobileLiveFullscreen .mobileSellerTopBar {
+        top: 5.05rem;
+    }
+
+    .mobileLiveFullscreen .mobileSellerStats {
+        min-height: 30px;
+        min-width: 42px;
+        justify-content: center;
+        padding: 0.25rem 0.55rem;
+    }
+
+    .mobileLiveFullscreen .livePulseBadge {
+        min-height: 34px;
+        padding: 0.42rem 0.82rem;
+        top: 4.95rem;
+    }
+
+    .mobileLiveFullscreen .cameraStartOverlay {
+        padding-top: 10.15rem;
+    }
+
+    .mobileLiveFullscreen .startCameraBtn {
+        min-height: 46px;
+        min-width: 154px;
+        justify-content: center;
+        font-size: 0.86rem;
+        font-weight: 900;
+        touch-action: manipulation;
+    }
+
+    .mobileLiveFullscreen .mobileSellerMessages {
+        bottom: 9.05rem;
+    }
+
+    .mobileSellerBidPill {
+        border-radius: 15px;
+        min-height: 46px;
+        padding: 0.55rem 0.72rem;
+    }
+
+    .mobileSellerBottom {
+        gap: 0.58rem;
+        padding: 1.7rem 0.75rem calc(0.78rem + env(safe-area-inset-bottom));
+    }
+
+    .mobileSellerProductCard {
+        border-radius: 14px;
+        min-height: 76px;
+        padding: 0.68rem 0.78rem;
+    }
+
+    .mobileSellerProductThumb {
+        height: 56px;
+        width: 56px;
+    }
+
+    .mobileSellerProductName {
+        font-size: 0.84rem;
+    }
+
+    .mobileSellerProductPrice {
+        font-size: 1.02rem;
+    }
+
+    .mobileSellerChatInput {
+        min-height: 48px;
+        padding: 0.42rem 0.48rem 0.42rem 0.95rem;
+    }
+
+    .mobileSellerChatInput input {
+        font-size: 0.86rem;
+    }
+
+    .mobileSellerChatInput button {
+        height: 38px;
+        width: 38px;
+        touch-action: manipulation;
+    }
+}
+
+@media (max-width: 768px) {
+    .mobileLiveFullscreen .header {
+        align-items: flex-start;
+        background: linear-gradient(to bottom, rgba(0,0,0,0.48), rgba(0,0,0,0.14) 68%, transparent);
+        min-width: 320px;
+        padding: 0.72rem 0.75rem 2.25rem;
+        z-index: 62;
+    }
+
+    .mobileLiveFullscreen .headerActions {
+        height: 34px;
+        justify-content: flex-end;
+        margin-left: auto;
+        width: auto;
+    }
+
+    .mobileLiveFullscreen .liveControlBtn.stop {
+        background: rgba(255,255,255,0.92);
+        border-color: rgba(211,47,47,0.28);
+        box-shadow: 0 8px 18px rgba(0,0,0,0.14);
+        font-size: 0.7rem;
+        min-height: 34px;
+        min-width: 106px;
+        padding: 0 0.72rem;
+    }
+
+    .mobileLiveFullscreen .liveControlBtn.stop svg {
+        height: 11px;
+        width: 11px;
+    }
+
+    .mobileLiveFullscreen .mobileSellerTopBar {
+        align-items: center;
+        gap: 0.28rem;
+        left: 0.75rem;
+        right: 8.1rem;
+        top: 0.82rem;
+        z-index: 63;
+    }
+
+    .mobileLiveFullscreen .mobileSellerStats {
+        background: rgba(0,0,0,0.32);
+        border: 1px solid rgba(255,255,255,0.18);
+        box-shadow: none;
+        font-size: 0.66rem;
+        min-height: 30px;
+        min-width: 36px;
+        padding: 0.2rem 0.44rem;
+    }
+
+    .mobileLiveFullscreen .mobileSellerStats svg {
+        height: 13px;
+        width: 13px;
+    }
+
+    .mobileLiveFullscreen .livePulseBadge {
+        border: 1px solid rgba(255,255,255,0.72);
+        box-shadow: 0 6px 16px rgba(0,0,0,0.12);
+        font-size: 0.66rem;
+        min-height: 30px;
+        padding: 0.34rem 0.68rem;
+        right: 0.75rem;
+        top: 4.55rem;
+    }
+}
+
+@media (max-width: 768px) {
+    .mobileLiveFullscreen .header {
+        background: linear-gradient(to bottom, rgba(0,0,0,0.42), rgba(0,0,0,0.08) 72%, transparent);
+        padding: 0;
+        pointer-events: none;
+    }
+
+    .mobileLiveFullscreen .headerActions {
+        display: none;
+    }
+
+    .mobileLiveFullscreen .mobileSellerTopBar {
+        display: flex;
+        gap: 0.16rem;
+        justify-content: flex-start;
+        left: 0.82rem;
+        top: 0.92rem;
+        width: auto;
+    }
+
+    .mobileLiveFullscreen .mobileSellerStats {
+        background: transparent;
+        backdrop-filter: none;
+        border: 0;
+        border-radius: 0;
+        color: rgba(255,255,255,0.92);
+        font-size: 0.66rem;
+        font-weight: 850;
+        gap: 0.18rem;
+        min-height: 28px;
+        min-width: 0;
+        padding: 0.18rem 0.22rem;
+        text-shadow: 0 1px 3px rgba(0,0,0,0.74);
+    }
+
+    .mobileLiveFullscreen .mobileSellerStats svg {
+        color: rgba(255,255,255,0.86);
+        height: 13px;
+        width: 13px;
+    }
+
+    .mobileLiveFullscreen .livePulseBadge {
+        background: rgba(255,255,255,0.93);
+        border: 1px solid rgba(255,255,255,0.75);
+        border-radius: 999px;
+        box-shadow: 0 8px 18px rgba(0,0,0,0.13);
+        color: #D32F2F;
+        font-size: 0.68rem;
+        font-weight: 900;
+        min-height: 30px;
+        padding: 0.34rem 0.72rem;
+        right: 0.82rem;
+        top: 0.9rem;
+        z-index: 64;
+    }
+
+    .mobileLiveFullscreen .mobileSellerMessages {
+        bottom: 12.65rem;
+        gap: 0.52rem;
+        padding: 0 0.9rem;
+        pointer-events: none;
+        top: auto;
+    }
+
+    .mobileLiveFullscreen .mobileSellerBidArea {
+        display: flex;
+        left: 0.82rem;
+        pointer-events: none;
+        position: absolute;
+        right: 5.2rem;
+        top: 2.95rem;
+        z-index: 66;
+    }
+
+    .mobileSellerBidPill {
+        background: rgba(255,255,255,0.13);
+        backdrop-filter: blur(8px);
+        border: 0;
+        border-radius: 18px;
+        box-shadow: 0 6px 16px rgba(0,0,0,0.08);
+        margin-bottom: 0;
+        min-height: 32px;
+        padding: 0.28rem 0.48rem;
+        animation: mobileBidFlash 1.8s ease-out;
+    }
+
+    .mobileSellerBidAvatar {
+        background: rgba(255,255,255,0.9);
+        color: #D32F2F;
+        font-size: 0.62rem;
+        height: 24px;
+        width: 24px;
+    }
+
+    .mobileSellerBidder,
+    .mobileSellerBidWord,
+    .mobileSellerBidPill strong {
+        color: rgba(255,255,255,0.92);
+        font-size: 0.7rem;
+        font-weight: 650;
+        text-shadow: 0 1px 2px rgba(0,0,0,0.34);
+    }
+
+    .mobileSellerBidPill strong {
+        font-weight: 700;
+    }
+
+    .mobileSellerChatStack {
+        gap: 0.16rem;
+        max-height: 7.75rem;
+        overflow-x: hidden;
+        overflow-y: auto;
+        overscroll-behavior: contain;
+        padding-right: 0.2rem;
+        pointer-events: auto;
+        scrollbar-width: none;
+        touch-action: pan-y;
+        -webkit-overflow-scrolling: touch;
+    }
+
+    .mobileSellerChatStack::-webkit-scrollbar {
+        display: none;
+    }
+
+    .mobileSellerComment {
+        align-items: baseline;
+        align-self: flex-start;
+        background: transparent;
+        border-radius: 0;
+        display: flex;
+        gap: 0.26rem;
+        max-width: min(92%, 22rem);
+        padding: 0;
+        pointer-events: auto;
+        text-shadow: 0 1px 3px rgba(0,0,0,0.74);
+    }
+
+    .mobileSellerComment span {
+        color: #ffe65c;
+        display: inline;
+        flex-shrink: 0;
+        font-size: 0.74rem;
+        font-weight: 900;
+        line-height: 1.2;
+    }
+
+    .mobileSellerComment p {
+        color: white;
+        display: inline;
+        font-size: 0.74rem;
+        font-weight: 650;
+        line-height: 1.2;
+        margin: 0;
+        text-shadow: inherit;
+    }
+
+    .mobileSellerBottom {
+        gap: 0.44rem;
+        padding-top: 1.35rem;
+    }
+
+    .mobileSellerProductCard {
+        min-height: 66px;
+        padding: 0.5rem 0.62rem;
+    }
+
+    .mobileSellerProductThumb {
+        height: 48px;
+        width: 48px;
+    }
+
+    .mobileSellerProductName {
+        font-size: 0.78rem;
+    }
+
+    .mobileSellerProductPrice {
+        font-size: 0.94rem;
+    }
+
+    .mobileSellerControlRow {
+        align-items: center;
+        display: flex;
+        gap: 0.42rem;
+        pointer-events: all;
+    }
+
+    .mobileSellerControlBtn {
+        align-items: center;
+        background: rgba(255,255,255,0.18);
+        border: 1px solid rgba(255,255,255,0.16);
+        border-radius: 999px;
+        color: white;
+        display: inline-flex;
+        font-family: inherit;
+        font-size: 0.72rem;
+        font-weight: 850;
+        gap: 0.34rem;
+        height: 34px;
+        justify-content: center;
+        min-width: 34px;
+        padding: 0 0.58rem;
+        touch-action: manipulation;
+    }
+
+    .mobileSellerControlBtn:disabled {
+        opacity: 0.48;
+    }
+
+    .mobileSellerControlDanger {
+        background: rgba(211,47,47,0.88);
+        border-color: rgba(255,255,255,0.18);
+    }
+
+    .mobileSellerEndBtn {
+        background: rgba(211,47,47,0.92);
+        border-color: rgba(255,255,255,0.22);
+        margin-left: auto;
+        padding: 0 0.72rem;
+    }
+
+    .mobileLiveFullscreen .cameraControls {
+        display: none !important;
+    }
+
+    .mobileLiveFullscreen .mobileTabBar {
+        display: none;
+    }
+
+    .mobileLiveFullscreen .interactionPanel {
+        display: block !important;
+        inset: 0;
+        opacity: 1;
+        overflow: auto;
+        padding: 0.9rem;
+        pointer-events: auto;
+        position: absolute;
+        transform: none;
+        z-index: 70;
+    }
+
+    .mobileLiveFullscreen .interactionPanel.tabSectionHidden {
+        display: none !important;
+    }
+
+    .mobileLiveFullscreen .interactionPanel:not(.tabSectionHidden) {
+        background: #f7f7f7;
+    }
+
+    .mobileLiveFullscreen .topSection.tabSectionHidden {
+        display: none !important;
+    }
+
+    .mobileSellerControlRow {
+        background: rgba(0,0,0,0.2);
+        border-radius: 999px;
+        gap: 0.28rem;
+        justify-content: space-between;
+        padding: 0.16rem;
+    }
+
+    .mobileSellerModeBtn,
+    .mobileSellerControlBtn {
+        border: 0;
+        box-shadow: none;
+        height: 32px;
+        min-width: 32px;
+    }
+
+    .mobileSellerModeBtn {
+        align-items: center;
+        background: transparent;
+        border-radius: 999px;
+        color: rgba(255,255,255,0.78);
+        display: inline-flex;
+        flex-direction: column;
+        font-family: inherit;
+        font-size: 0.58rem;
+        font-weight: 900;
+        gap: 0.02rem;
+        justify-content: center;
+        padding: 0 0.48rem;
+        touch-action: manipulation;
+    }
+
+    .mobileSellerModeActive {
+        background: rgba(255,255,255,0.92);
+        color: #D32F2F;
+    }
+
+    .mobileSellerControlBtn {
+        background: rgba(255,255,255,0.16);
+        padding: 0;
+    }
+
+    .mobileSellerControlBtn:nth-of-type(3) {
+        margin-left: auto;
+    }
+
+    .mobileSellerControlBtn:nth-of-type(4) {
+        margin-right: auto;
+    }
+
+    .mobileSellerEndBtn {
+        font-size: 0.58rem;
+        gap: 0.18rem;
+        margin-left: 0;
+        min-width: 48px;
+        padding: 0 0.48rem;
+    }
+
+    @keyframes mobileBidFlash {
+        0% {
+            filter: brightness(1.15);
+            opacity: 0.35;
+            transform: translateY(-4px);
+        }
+        18% {
+            opacity: 1;
+            transform: translateY(0);
+        }
+        100% {
+            filter: brightness(1);
+            opacity: 1;
+            transform: translateY(0);
+        }
+    }
+}
+
+@media (max-width: 768px) {
+    .mobileLiveFullscreen .interactionPanel:not(.tabSectionHidden) {
+        background:
+            linear-gradient(180deg, #ffffff 0%, #fbfbfb 42%, #f4f4f5 100%);
+        border-radius: 0;
+        display: flex !important;
+        flex-direction: column;
+        gap: 0.85rem;
+        min-height: 100%;
+        padding: 1.05rem 0.95rem calc(5.6rem + env(safe-area-inset-bottom));
+    }
+
+    .mobileLiveFullscreen .mobileQueueModeRow {
+        align-items: center;
+        align-self: flex-start;
+        background: rgba(17,17,17,0.06);
+        border-radius: 999px;
+        display: flex;
+        gap: 0.18rem;
+        padding: 0.18rem;
+    }
+
+    .mobileLiveFullscreen .mobileQueueModeRow .mobileSellerModeBtn {
+        color: #6b7280;
+    }
+
+    .mobileLiveFullscreen .mobileQueueModeRow .mobileSellerModeActive {
+        background: #111;
+        color: white;
+    }
+
+    .mobileLiveFullscreen .interactionPanel .cardHeader {
+        background: transparent;
+        border: 0;
+        padding: 0.45rem 0.15rem 0.2rem;
+    }
+
+    .mobileLiveFullscreen .interactionPanel .cardHeaderText h2 {
+        color: #111;
+        font-size: 1rem;
+        font-weight: 900;
+        letter-spacing: 0;
+    }
+
+    .mobileLiveFullscreen .interactionPanel .cardHeaderText p {
+        color: #9ca3af;
+        font-size: 0.72rem;
+        font-weight: 700;
+        margin-top: 0.08rem;
+    }
+
+    .mobileLiveFullscreen .interactionPanel .addQueueBtn {
+        background: #111;
+        border-radius: 999px;
+        box-shadow: 0 8px 18px rgba(0,0,0,0.12);
+        font-size: 0.72rem;
+        min-height: 34px;
+        padding: 0 0.72rem;
+    }
+
+    .mobileLiveFullscreen .interactionPanel .queueGrid {
+        background: white;
+        border: 1px solid #eeeeee;
+        border-radius: 18px;
+        box-shadow: 0 14px 34px rgba(15, 23, 42, 0.06);
+        display: flex;
+        flex-direction: column;
+        gap: 0.58rem;
+        min-height: 21rem;
+        overflow-x: hidden;
+        overflow-y: auto;
+        padding: 0.8rem;
+    }
+
+    .mobileLiveFullscreen .interactionPanel .queueGridItem {
+        background: #fafafa;
+        border: 1px solid #eeeeee;
+        border-radius: 14px;
+        box-shadow: none;
+        max-width: none;
+        min-height: 68px;
+        min-width: 0;
+        padding: 0.58rem;
+        width: 100%;
+    }
+
+    .mobileLiveFullscreen .interactionPanel .queueGridItemFirst {
+        background: #fff8f8;
+        border-color: rgba(211,47,47,0.18);
+    }
+
+    .mobileLiveFullscreen .interactionPanel .queueGridItem img {
+        border-radius: 11px;
+        height: 48px;
+        width: 48px;
+    }
+
+    .mobileLiveFullscreen .interactionPanel .queueGridMeta h4 {
+        font-size: 0.82rem;
+        font-weight: 900;
+    }
+
+    .mobileLiveFullscreen .interactionPanel .queueGridMeta span {
+        color: #D32F2F;
+        font-size: 0.76rem;
+        font-weight: 850;
+    }
+
+    .mobileLiveFullscreen .interactionPanel .setNextBtn,
+    .mobileLiveFullscreen .interactionPanel .goLiveQueueBtn,
+    .mobileLiveFullscreen .interactionPanel .upNextBadge {
+        border-radius: 999px;
+        font-size: 0.66rem;
+        min-height: 30px;
+        padding: 0 0.62rem;
+    }
+
+    .mobileLiveFullscreen .interactionPanel .emptyQueue {
+        align-items: center;
+        background:
+            radial-gradient(circle at 50% 12%, rgba(211,47,47,0.08), transparent 34%),
+            #fbfbfb;
+        border: 1px dashed #e5e7eb;
+        border-radius: 16px;
+        color: #9ca3af;
+        display: flex;
+        flex: 1;
+        flex-direction: column;
+        justify-content: center;
+        min-height: 18.5rem;
+        padding: 2.2rem 1rem;
+        text-align: center;
+    }
+
+    .mobileLiveFullscreen .interactionPanel .emptyQueue::before {
+        align-items: center;
+        background: white;
+        border: 1px solid #eeeeee;
+        border-radius: 16px;
+        box-shadow: 0 10px 24px rgba(15,23,42,0.06);
+        color: #D32F2F;
+        content: "+";
+        display: flex;
+        font-size: 1.6rem;
+        font-weight: 900;
+        height: 56px;
+        justify-content: center;
+        margin-bottom: 0.9rem;
+        width: 56px;
+    }
+
+    .mobileLiveFullscreen .interactionPanel .emptyQueue p {
+        color: #6b7280;
+        font-size: 0.86rem;
+        font-weight: 800;
+        margin: 0 0 0.65rem;
+    }
+
+    .mobileLiveFullscreen .interactionPanel .emptyQueue a {
+        background: #D32F2F;
+        border-radius: 999px;
+        color: white;
+        display: inline-flex;
+        font-size: 0.76rem;
+        font-weight: 900;
+        min-height: 34px;
+        padding: 0.5rem 0.9rem;
+        text-decoration: none;
+    }
 }
 
 /* Premium Modal Enhancements */

@@ -82,6 +82,7 @@ export default function SellerDashboard() {
     const setupStreamRef = useRef(null);
     const setupVideoRef = useRef(null);
     const chatScrollRef = useRef(null);
+    const mobileChatScrollRef = useRef(null);
 
     // Fetch fresh kyc_status and poll every 30s to detect admin decisions in real-time
     useEffect(() => {
@@ -403,6 +404,9 @@ export default function SellerDashboard() {
     useEffect(() => {
         if (chatScrollRef.current) {
             chatScrollRef.current.scrollTop = chatScrollRef.current.scrollHeight;
+        }
+        if (mobileChatScrollRef.current) {
+            mobileChatScrollRef.current.scrollTop = mobileChatScrollRef.current.scrollHeight;
         }
     }, [comments]);
 
@@ -1294,6 +1298,7 @@ export default function SellerDashboard() {
 
 
 
+            <div className={`${styles.container} ${isLive ? styles.mobileLiveFullscreen : ''}`}>
             {/* Header */}
             <header className={styles.header}>
                 <div className={styles.titleInfo}>
@@ -1317,7 +1322,7 @@ export default function SellerDashboard() {
             </header>
 
             {/* Mobile Tab Bar — Live | Queue */}
-            <nav className={styles.mobileTabBar}>
+            <nav className={`${styles.mobileTabBar} ${isLive && mobileTab === 'live' ? styles.mobileTabBarHidden : ''}`}>
                 <button
                     className={`${styles.mobileTab} ${mobileTab === 'live' ? styles.mobileTabActive : ''}`}
                     onClick={() => setMobileTab('live')}
@@ -1370,6 +1375,21 @@ export default function SellerDashboard() {
                                 )}
 
                                 {/* Stats overlay — top */}
+                                <div className={styles.mobileSellerTopBar}>
+                                    <div className={styles.mobileSellerStats}>
+                                        <Eye size={14} />
+                                        <span>{dashboardData.stats.viewers}</span>
+                                    </div>
+                                    <div className={styles.mobileSellerStats}>
+                                        <Heart size={14} />
+                                        <span>{dashboardData.stats.likes}</span>
+                                    </div>
+                                    <div className={styles.mobileSellerStats}>
+                                        <Share2 size={14} />
+                                        <span>{dashboardData.stats.shares}</span>
+                                    </div>
+                                </div>
+
                                 <div className={styles.videoStatsOverlay}>
                                     <div className={styles.videoStat}><Eye size={13} /><span>{dashboardData.stats.viewers}</span></div>
                                     <div className={styles.videoStat}><Heart size={13} /><span>{dashboardData.stats.likes}</span></div>
@@ -1378,8 +1398,12 @@ export default function SellerDashboard() {
 
                                 {/* Product info overlay — bottom */}
                                 <div className={styles.videoInfoOverlay}>
-                                    <div className={styles.overlayProductName}>
-                                        <Radio size={11} color="white" /> {activeItem.title}
+                                    <img src={activeItem.image} alt={activeItem.title} className={styles.mobileProductOverlayThumb} />
+                                    <div className={styles.overlayProductCopy}>
+                                        <div className={styles.overlayProductName}>
+                                            <Radio size={11} /> {activeItem.title}
+                                        </div>
+                                        <span className={styles.mobileProductBidLabel}>Current Bid ({recentBids.length} Bid{recentBids.length !== 1 ? 's' : ''})</span>
                                     </div>
                                     <div className={styles.overlayStatRow}>
                                         <span className={styles.overlayBid}>₱{activeItem.currentBid.toLocaleString()}</span>
@@ -1416,6 +1440,118 @@ export default function SellerDashboard() {
                         )}
                     </div>
 
+                    {activeItem && (
+                        <section className={styles.mobileSellerLiveOverlay}>
+                            {recentBids.length > 0 && (
+                                <div className={styles.mobileSellerBidArea}>
+                                    <div className={styles.mobileSellerBidPill}>
+                                        <div className={styles.mobileSellerBidAvatar}>
+                                            {(recentBids[0].bidder_name || 'B').charAt(0).toUpperCase()}
+                                        </div>
+                                        <span className={styles.mobileSellerBidder}>{recentBids[0].bidder_name || 'Anon'}</span>
+                                        <span className={styles.mobileSellerBidWord}>bid</span>
+                                        <strong>₱{Number(recentBids[0].amount).toLocaleString()}</strong>
+                                    </div>
+                                </div>
+                            )}
+                            <div className={styles.mobileSellerMessages}>
+                                <div className={styles.mobileSellerChatStack} ref={mobileChatScrollRef}>
+                                    {comments.length > 0 ? comments.map(msg => (
+                                        <div key={msg.id} className={styles.mobileSellerComment}>
+                                            <span>{msg.user}</span>
+                                            <p>{msg.text || msg.body}</p>
+                                        </div>
+                                    )) : (
+                                        <div className={styles.mobileSellerComment}>
+                                            <span>BIDPal</span>
+                                            <p>{isLive ? 'No comments yet.' : 'Go live to chat.'}</p>
+                                        </div>
+                                    )}
+                                </div>
+                            </div>
+
+                            <div className={styles.mobileSellerBottom}>
+                                <div className={styles.mobileSellerProductCard}>
+                                    <img src={activeItem.image} alt={activeItem.title} className={styles.mobileSellerProductThumb} />
+                                    <div className={styles.mobileSellerProductInfo}>
+                                        <span className={styles.mobileSellerProductName}>{activeItem.title}</span>
+                                        <span className={styles.mobileSellerProductPrice}>₱{activeItem.currentBid.toLocaleString()}</span>
+                                    </div>
+                                </div>
+
+                                <div className={styles.mobileSellerControlRow}>
+                                    <button
+                                        type="button"
+                                        className={`${styles.mobileSellerModeBtn} ${mobileTab === 'live' ? styles.mobileSellerModeActive : ''}`}
+                                        onClick={() => setMobileTab('live')}
+                                    >
+                                        <Radio size={13} />
+                                        <span>Live</span>
+                                    </button>
+                                    <button
+                                        type="button"
+                                        className={`${styles.mobileSellerModeBtn} ${mobileTab === 'queue' ? styles.mobileSellerModeActive : ''}`}
+                                        onClick={() => setMobileTab('queue')}
+                                    >
+                                        <Clock size={13} />
+                                        <span>Queue</span>
+                                    </button>
+                                    <button
+                                        type="button"
+                                        className={`${styles.mobileSellerControlBtn} ${isMuted ? styles.mobileSellerControlDanger : ''}`}
+                                        onClick={toggleMic}
+                                        disabled={!streamReady}
+                                        aria-label={isMuted ? 'Open microphone' : 'Mute microphone'}
+                                    >
+                                        {isMuted ? <MicOff size={16} /> : <Mic size={16} />}
+                                    </button>
+                                    <button
+                                        type="button"
+                                        className={`${styles.mobileSellerControlBtn} ${isVideoOff ? styles.mobileSellerControlDanger : ''}`}
+                                        onClick={toggleVideo}
+                                        disabled={!streamReady}
+                                        aria-label={isVideoOff ? 'Open camera' : 'Turn camera off'}
+                                    >
+                                        {isVideoOff ? <VideoOff size={16} /> : <Video size={16} />}
+                                    </button>
+                                    <button
+                                        type="button"
+                                        className={`${styles.mobileSellerControlBtn} ${styles.mobileSellerEndBtn}`}
+                                        onClick={handleGoLive}
+                                        aria-label="End stream"
+                                    >
+                                        <Square size={14} fill="currentColor" />
+                                        <span>End</span>
+                                    </button>
+                                </div>
+
+                                <div className={styles.mobileSellerChatRow}>
+                                    <div className={styles.mobileSellerChatInput}>
+                                        <input
+                                            type="text"
+                                            placeholder={isLive ? 'Say something...' : 'Go live first'}
+                                            value={messageInput}
+                                            onChange={(e) => setMessageInput(e.target.value)}
+                                            disabled={!isLive}
+                                            onKeyDown={(e) => {
+                                                if (e.key === 'Enter') {
+                                                    e.preventDefault();
+                                                    handleSendComment();
+                                                }
+                                            }}
+                                        />
+                                        <button
+                                            onClick={handleSendComment}
+                                            disabled={!isLive || !messageInput.trim()}
+                                        >
+                                            <Send size={15} />
+                                        </button>
+                                    </div>
+                                </div>
+                            </div>
+                        </section>
+                    )}
+
                     {/* RIGHT: Bids & Chat */}
                     <section className={styles.bidsChatCard}>
                         <div className={styles.cardHeader}>
@@ -1444,6 +1580,7 @@ export default function SellerDashboard() {
                                                 {(bid.bidder_name || 'B').charAt(0).toUpperCase()}
                                             </div>
                                             <span className={styles.bidderNameSm}>{bid.bidder_name || 'Anon'}</span>
+                                            <span className={styles.bidActionSm}>bid</span>
                                             <span className={styles.bidPriceSm}>₱{Number(bid.amount).toLocaleString()}</span>
                                         </div>
                                     )) : (
@@ -1500,6 +1637,24 @@ export default function SellerDashboard() {
 
                 {/* ── BOTTOM: Product Queue (horizontal bar) ── */}
                 <aside className={`${styles.interactionPanel} ${mobileTab !== 'queue' ? styles.tabSectionHidden : ''}`}>
+                    <div className={styles.mobileQueueModeRow}>
+                        <button
+                            type="button"
+                            className={`${styles.mobileSellerModeBtn} ${mobileTab === 'live' ? styles.mobileSellerModeActive : ''}`}
+                            onClick={() => setMobileTab('live')}
+                        >
+                            <Radio size={13} />
+                            <span>Live</span>
+                        </button>
+                        <button
+                            type="button"
+                            className={`${styles.mobileSellerModeBtn} ${mobileTab === 'queue' ? styles.mobileSellerModeActive : ''}`}
+                            onClick={() => setMobileTab('queue')}
+                        >
+                            <Clock size={13} />
+                            <span>Queue</span>
+                        </button>
+                    </div>
                     <div className={styles.cardHeader}>
                         <div className={styles.cardTitleGroup}>
                             <div className={styles.cardHeaderText}>
@@ -1554,6 +1709,7 @@ export default function SellerDashboard() {
                         </div>
                 </aside>
 
+            </div>
             </div>
 
             {/* Pre-Live Setup Modal */}
