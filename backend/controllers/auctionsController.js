@@ -1732,6 +1732,31 @@ export const rescheduleAuction = async (req, res) => {
 
     if (updateErr) throw updateErr;
 
+    // Reset auction activity so a rescheduled stream starts clean with no stale
+    // bids, bidders, live chat, or engagement stats from the previous session.
+    const cleanupTasks = [
+      supabase.from('Bids').delete().eq('auction_id', id),
+      supabase.from('Live_Comments').delete().eq('auction_id', id),
+      supabase.from('Auction_Likes').delete().eq('auction_id', id),
+      supabase.from('Auction_Shares').delete().eq('auction_id', id),
+      supabase.from('Auction_Views').delete().eq('auction_id', id),
+      supabase.from('Auction_winners').delete().eq('auction_id', id),
+      supabase.from('Payment_Windows').delete().eq('auction_id', id),
+      supabase.from('Order_Cancellations').delete().eq('auction_id', id),
+    ];
+
+    const cleanupResults = await Promise.allSettled(cleanupTasks);
+    const cleanupErrors = cleanupResults.flatMap(result => {
+      if (result.status === 'rejected') {
+        return [result.reason?.message || 'Unknown cleanup failure'];
+      }
+      return result.value?.error ? [result.value.error.message] : [];
+    });
+
+    if (cleanupErrors.length > 0) {
+      throw new Error(`Auction was rescheduled but cleanup failed: ${cleanupErrors.join('; ')}`);
+    }
+
     // Reset product status back to scheduled and restore availability
     if (auction.products_id) {
       await supabase

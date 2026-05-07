@@ -2265,12 +2265,12 @@ function LivePageInner() {
                         <div className={styles.modalHeader}>
                             <h2 className={styles.modalTitle}>Place your bid</h2>
                             <button className={styles.closeBtn} onClick={closeBidModal}>
-                                <X size={12} />
+                                <X size={18} />
                             </button>
                         </div>
 
                         {myStanding === 'warned' && (
-                            <div style={{ background: '#fffbeb', border: '1px solid #fde68a', borderRadius: 7, padding: '7px 12px', marginBottom: '0.6rem', fontSize: '0.78rem', color: '#92400e', fontWeight: 600 }}>
+                            <div style={{ background: '#fffbeb', border: '1px solid #fde68a', borderRadius: 12, padding: '10px 14px', marginBottom: '0.9rem', fontSize: '0.92rem', color: '#92400e', fontWeight: 700, lineHeight: 1.45 }}>
                                 ⚠ Strike 1 active — this is your warning. Win and pay to avoid further strikes.
                             </div>
                         )}
@@ -2284,11 +2284,11 @@ function LivePageInner() {
                             <label className={styles.inputLabel}>
                                 Minimum bid: <strong>₱ {nextBidAmount.toLocaleString('en-PH')}</strong>
                             </label>
-                            <div style={{ fontSize: '0.73rem', color: '#999', marginTop: '2px' }}>
+                            <div style={{ fontSize: '0.94rem', color: '#777', marginTop: '0.35rem', lineHeight: 1.45 }}>
                                 Minimum increment: <strong style={{ color: '#666' }}>₱{bidStep.toLocaleString('en-PH')}</strong>
                             </div>
                             {bidLimit > 0 && (
-                                <div style={{ fontSize: '0.73rem', color: '#999', marginTop: '2px' }}>
+                                <div style={{ fontSize: '0.94rem', color: '#777', marginTop: '0.35rem', lineHeight: 1.45 }}>
                                     Bid limit: <strong style={{ color: '#666' }}>₱{bidLimit.toLocaleString('en-PH')}</strong>
                                 </div>
                             )}
