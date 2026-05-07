@@ -357,6 +357,55 @@ export const login = async (req, res) => {
     return res.status(401).json({ error: 'Invalid email or password.' });
   }
 
+  // ── Account status gate ──────────────────────────────────────────────────
+  // Permanently banned at role level
+  if (data.role === 'Banned') {
+    return res.status(403).json({
+      error: 'account_banned',
+      message: 'Your account has been permanently banned due to a violation of our terms.'
+    });
+  }
+
+  // Fetch violation record (select * so missing columns return undefined, not error)
+  const { data: vr } = await supabase
+    .from('Violation_Records')
+    .select('*')
+    .eq('user_id', data.user_id)
+    .maybeSingle();
+
+  // Permanently banned at violation level
+  if (vr?.account_status === 'suspended') {
+    return res.status(403).json({
+      error: 'account_banned',
+      message: 'Your account has been permanently banned due to a violation of our terms.'
+    });
+  }
+
+  let accountStatus = null;
+
+  // Temporarily suspended
+  if (vr?.account_status === 'restricted') {
+    const expiresAt = vr.suspension_expires_at;
+    if (expiresAt && new Date() < new Date(expiresAt)) {
+      const daysRemaining = Math.ceil((new Date(expiresAt) - new Date()) / (1000 * 60 * 60 * 24));
+      accountStatus = { status: 'suspended', daysRemaining, expiresAt, reason: vr.suspension_reason || null };
+    } else if (expiresAt && new Date() >= new Date(expiresAt)) {
+      // Auto-lift expired suspension
+      await supabase.from('Violation_Records')
+        .update({ account_status: 'clean', suspension_expires_at: null, suspension_reason: null })
+        .eq('user_id', data.user_id);
+    } else {
+      // No expiry set — indefinite suspension
+      accountStatus = { status: 'suspended', daysRemaining: null, expiresAt: null, reason: vr.suspension_reason || null };
+    }
+  }
+
+  // Probation
+  if (!accountStatus && vr?.account_status === 'warned') {
+    accountStatus = { status: 'probation' };
+  }
+  // ────────────────────────────────────────────────────────────────────────
+
   // Fetch seller_id if user is a seller
   let seller_id = null;
   if (data.role?.toLowerCase() === 'seller') {
@@ -370,7 +419,12 @@ export const login = async (req, res) => {
 
   // Generate JWT
   const token = jwt.sign({ user_id: data.user_id, email: data.email, role: data.role }, process.env.JWT_SECRET, { expiresIn: '1d' });
-  res.json({ message: 'Login successful', user: { user_id: data.user_id, email: data.email, Fname: data.Fname, Mname: data.Mname, Lname: data.Lname, role: data.role, contact_num: data.contact_num, Avatar: data.Avatar, is_verified: data.is_verified, kyc_status: data.kyc_status, seller_id }, token });
+  res.json({
+    message: 'Login successful',
+    user: { user_id: data.user_id, email: data.email, Fname: data.Fname, Mname: data.Mname, Lname: data.Lname, role: data.role, contact_num: data.contact_num, Avatar: data.Avatar, is_verified: data.is_verified, kyc_status: data.kyc_status, seller_id },
+    token,
+    ...(accountStatus && { accountStatus })
+  });
 };
 
 // Google OAuth login (with token verification)
@@ -451,6 +505,29 @@ export const googleLogin = async (req, res) => {
       user = data;
     }
 
+    // ── Account status gate ──────────────────────────────────────────────
+    if (user.role === 'Banned') {
+      return res.status(403).json({ error: 'account_banned', message: 'Your account has been permanently banned due to a violation of our terms.' });
+    }
+    const { data: gvr } = await supabase.from('Violation_Records').select('*').eq('user_id', user.user_id).maybeSingle();
+    if (gvr?.account_status === 'suspended') {
+      return res.status(403).json({ error: 'account_banned', message: 'Your account has been permanently banned due to a violation of our terms.' });
+    }
+    let gAccountStatus = null;
+    if (gvr?.account_status === 'restricted') {
+      const expiresAt = gvr.suspension_expires_at;
+      if (expiresAt && new Date() < new Date(expiresAt)) {
+        const daysRemaining = Math.ceil((new Date(expiresAt) - new Date()) / (1000 * 60 * 60 * 24));
+        gAccountStatus = { status: 'suspended', daysRemaining, expiresAt, reason: gvr.suspension_reason || null };
+      } else if (expiresAt) {
+        await supabase.from('Violation_Records').update({ account_status: 'clean', suspension_expires_at: null, suspension_reason: null }).eq('user_id', user.user_id);
+      } else {
+        gAccountStatus = { status: 'suspended', daysRemaining: null, expiresAt: null, reason: gvr.suspension_reason || null };
+      }
+    }
+    if (!gAccountStatus && gvr?.account_status === 'warned') gAccountStatus = { status: 'probation' };
+    // ────────────────────────────────────────────────────────────────────
+
     // Fetch seller_id if user is a seller
     let seller_id = null;
     if (user.role?.toLowerCase() === 'seller') {
@@ -464,7 +541,7 @@ export const googleLogin = async (req, res) => {
 
     // Generate JWT
     const token = jwt.sign({ user_id: user.user_id, email: user.email, role: user.role }, process.env.JWT_SECRET, { expiresIn: '1d' });
-    res.json({ message: 'Login successful', user: { ...user, seller_id }, token });
+    res.json({ message: 'Login successful', user: { ...user, seller_id }, token, ...(gAccountStatus && { accountStatus: gAccountStatus }) });
   } catch (err) {
     console.error('Unexpected error in googleLogin controller:', err);
     res.status(500).json({ error: err.message });

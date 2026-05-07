@@ -8,6 +8,7 @@ import { useAuth } from '@/context/AuthContext';
 import Button from '@/components/ui/Button';
 import Input from '@/components/ui/Input';
 import AuthLogo from '@/components/AuthLogo';
+import AccountStatusModal from '@/components/ui/AccountStatusModal';
 import { useSubmitLock } from '@/hooks/useSubmitLock';
 import styles from './page.module.css';
 
@@ -16,6 +17,7 @@ export default function SignIn() {
     const [email, setEmail] = useState('');
     const [password, setPassword] = useState('');
     const [error, setError] = useState('');
+    const [bannedModal, setBannedModal] = useState({ open: false, message: '' });
     const { isSubmitting, runWithLock } = useSubmitLock();
     const { login, loginWithGoogle } = useAuth();
     const router = useRouter();
@@ -29,6 +31,10 @@ export default function SignIn() {
                 return;
             }
             const result = await login({ email, password });
+            if (result.banned) {
+                setBannedModal({ open: true, message: result.message });
+                return;
+            }
             if (!result.success) {
                 setError(result.error);
                 return;
@@ -60,6 +66,11 @@ export default function SignIn() {
 
     return (
         <div className={styles.authContainer}>
+            <AccountStatusModal
+                isOpen={bannedModal.open}
+                message={bannedModal.message}
+                onClose={() => setBannedModal({ open: false, message: '' })}
+            />
             <div className={styles.authLeft}>
                 <div className={styles.authLogo}>
                     <AuthLogo />

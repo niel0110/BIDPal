@@ -66,8 +66,17 @@ export function AuthProvider({ children }) {
                 body: JSON.stringify({ email, password }),
             });
             const data = await res.json();
-            if (!res.ok) throw new Error(data.error || 'Login failed');
-            const normalizedUser = { ...data.user, role: data.user?.role?.toLowerCase() };
+            if (!res.ok) {
+                if (data.error === 'account_banned') {
+                    return { success: false, banned: true, message: data.message };
+                }
+                throw new Error(data.error || 'Login failed');
+            }
+            const normalizedUser = {
+                ...data.user,
+                role: data.user?.role?.toLowerCase(),
+                accountStatus: data.accountStatus || null,
+            };
             setUser(normalizedUser);
             localStorage.setItem('bidpal_user', JSON.stringify(normalizedUser));
             localStorage.setItem('bidpal_token', data.token);

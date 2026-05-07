@@ -1,6 +1,7 @@
 import { Poppins } from "next/font/google";
 import { AuthProvider } from "@/context/AuthContext";
 import { CartProvider } from "@/context/CartContext";
+import GlobalStatusGuard from "@/components/GlobalStatusGuard";
 import "./globals.css";
 
 const poppins = Poppins({
@@ -35,6 +36,7 @@ export default function RootLayout({ children }) {
       <body suppressHydrationWarning>
         <AuthProvider>
           <CartProvider>
+            <GlobalStatusGuard />
             {children}
           </CartProvider>
         </AuthProvider>

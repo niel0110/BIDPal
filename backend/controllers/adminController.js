@@ -90,31 +90,97 @@ export const updateKycStatus = async (req, res) => {
     }
 };
 
+const STANDING_TO_STATUS = {
+    Active:       'clean',
+    Probationary: 'warned',
+    Suspended:    'restricted',
+    Blacklisted:  'suspended',
+};
+
 // 3. User Standing Management
 export const updateUserStanding = async (req, res) => {
     try {
-        const { id } = req.params; // user_id
-        const { standing, reason } = req.body; // Active, Probationary, Suspended, Blacklisted
+        const { id } = req.params;
+        const { standing, reason, suspensionDays, suspensionUntil } = req.body;
 
-        const { data, error } = await supabase
-            .from('Violation_Records')
-            .update({ standing })
-            .eq('user_id', id)
-            .select()
-            .single();
-
-        if (error) throw error;
-
-        // If blacklisted, update user status as well if needed
-        if (standing === 'Blacklisted') {
-            await supabase.from('User').update({ role: 'Banned' }).eq('user_id', id);
+        const account_status = STANDING_TO_STATUS[standing];
+        if (!account_status) {
+            return res.status(400).json({ error: `Invalid standing: ${standing}` });
         }
 
-        // Log the action (planned Audit_Logs)
-        console.log(`Admin ${req.user.user_id} updated user ${id} standing to ${standing}. Reason: ${reason}`);
+        const updatePayload = { account_status };
 
-        res.json({ message: 'User standing updated', record: data });
+        if (standing === 'Suspended') {
+            let expires = null;
+            if (suspensionUntil) {
+                expires = new Date(suspensionUntil);
+            } else if (suspensionDays) {
+                expires = new Date();
+                expires.setDate(expires.getDate() + parseInt(suspensionDays, 10));
+            }
+            updatePayload.suspension_expires_at = expires ? expires.toISOString() : null;
+            updatePayload.suspension_reason = reason || null;
+        } else {
+            updatePayload.suspension_expires_at = null;
+            updatePayload.suspension_reason = null;
+        }
+
+        // Upsert violation record
+        const { data: existing } = await supabase
+            .from('Violation_Records')
+            .select('user_id')
+            .eq('user_id', id)
+            .maybeSingle();
+
+        let record, dbError;
+        if (existing) {
+            ({ data: record, error: dbError } = await supabase
+                .from('Violation_Records')
+                .update(updatePayload)
+                .eq('user_id', id)
+                .select()
+                .single());
+        } else {
+            ({ data: record, error: dbError } = await supabase
+                .from('Violation_Records')
+                .insert([{ user_id: id, strike_count: 0, ...updatePayload }])
+                .select()
+                .single());
+        }
+
+        if (dbError) throw dbError;
+
+        // Sync User.role for blacklist / reinstate
+        if (standing === 'Blacklisted') {
+            await supabase.from('User').update({ role: 'Banned' }).eq('user_id', id);
+        } else {
+            const { data: userData } = await supabase.from('User').select('role').eq('user_id', id).single();
+            if (userData?.role === 'Banned') {
+                await supabase.from('User').update({ role: 'Buyer' }).eq('user_id', id);
+            }
+        }
+
+        // Notify user
+        const daysLabel = updatePayload.suspension_expires_at
+            ? ` for ${suspensionDays ? `${suspensionDays} day(s)` : 'a set period'}`
+            : '';
+        const notifMap = {
+            Active:       { title: 'Account Restored',          message: 'Your account has been restored to Active status. Welcome back!' },
+            Probationary: { title: 'Account Warning: Probation', message: `Your account is now on Probation.${reason ? ` Reason: ${reason}.` : ' Please review our community guidelines to avoid further action.'}` },
+            Suspended:    { title: 'Account Suspended',          message: `Your account has been temporarily suspended${daysLabel}.${reason ? ` Reason: ${reason}.` : ''}` },
+            Blacklisted:  { title: 'Account Permanently Banned', message: 'Your account has been permanently banned due to a violation of our terms of service.' },
+        };
+        await supabase.from('Notifications').insert([{
+            user_id: id,
+            type: 'system',
+            title: notifMap[standing].title,
+            message: notifMap[standing].message,
+        }]);
+
+        console.log(`Admin ${req.user.user_id} set user ${id} to ${standing}. Reason: ${reason || 'none'}`);
+        res.json({ message: 'User standing updated', record });
     } catch (err) {
+        console.error('updateUserStanding error:', err);
         res.status(500).json({ error: err.message });
     }
 };
