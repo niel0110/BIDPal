@@ -54,6 +54,7 @@ import {
     Share2,
     QrCode
 } from 'lucide-react';
+import Link from 'next/link';
 import styles from './page.module.css';
 import BackButton from '@/components/BackButton';
 import { useAuth } from '@/context/AuthContext';
