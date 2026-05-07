@@ -261,6 +261,7 @@ export default function SellerSettings() {
                             onChange={(e) => handleFileUpload(e, 'logo')}
                         />
                         <div className={styles.logoBtns}>
+                            <span className={styles.logoBtnLabel}>Store Logo</span>
                             <button className={styles.changeBtn} onClick={() => logoInputRef.current?.click()}>
                                 Change Logo
                             </button>

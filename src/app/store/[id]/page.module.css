@@ -629,6 +629,14 @@
     margin: 0;
 }
 
+/* ── Responsive: Banner ── */
+@media (max-width: 640px) {
+    .bannerSection { height: 150px; }
+}
+@media (max-width: 480px) {
+    .bannerSection { height: 120px; }
+}
+
 /* ── Responsive: Tablet ── */
 @media (max-width: 992px) {
     .container {
