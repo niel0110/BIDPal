@@ -2285,7 +2285,7 @@ function LivePageInner() {
                                 Minimum bid: <strong>₱ {nextBidAmount.toLocaleString('en-PH')}</strong>
                             </label>
                             <div style={{ fontSize: '0.73rem', color: '#999', marginTop: '2px' }}>
-                                Bid increment: <strong style={{ color: '#666' }}>₱{bidStep.toLocaleString('en-PH')}</strong>
+                                Minimum increment: <strong style={{ color: '#666' }}>₱{bidStep.toLocaleString('en-PH')}</strong>
                             </div>
                             {bidLimit > 0 && (
                                 <div style={{ fontSize: '0.73rem', color: '#999', marginTop: '2px' }}>
@@ -2301,7 +2301,7 @@ function LivePageInner() {
                                     placeholder={nextBidAmount}
                                     min={nextBidAmount}
                                     max={bidLimit || undefined}
-                                    step={bidStep}
+                                    step="1"
                                     onChange={(e) => {
                                         setBidAmount(e.target.value);
                                         if (bidNotice) setBidNotice(null);

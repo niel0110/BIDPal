@@ -32,7 +32,10 @@ export const getDashboardSummary = async (req, res) => {
   try {
     const { data: activeAuction } = await supabase
       .from('Auctions').select('*')
-      .eq('seller_id', final_seller_id).eq('status', 'active').maybeSingle();
+      .eq('seller_id', final_seller_id)
+      .eq('status', 'active')
+      .or('buy_now_price.eq.0,buy_now_price.is.null')
+      .maybeSingle();
 
     if (activeAuction) {
       if (activeAuction.products_id) {
@@ -56,7 +59,9 @@ export const getDashboardSummary = async (req, res) => {
   try {
     const { data: queueAuctions } = await supabase
       .from('Auctions').select('*')
-      .eq('seller_id', final_seller_id).eq('status', 'scheduled')
+      .eq('seller_id', final_seller_id)
+      .eq('status', 'scheduled')
+      .or('buy_now_price.eq.0,buy_now_price.is.null')
       .order('start_time', { ascending: true });
 
     const nowTs = new Date();

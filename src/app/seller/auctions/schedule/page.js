@@ -19,7 +19,6 @@ function ScheduleAuctionPageInner() {
         startDate: '',
         startTime: '',
         fixedPrice: '',
-        bidIncrement: '',
     });
     const { isSubmitting, runWithLock } = useSubmitLock();
     
@@ -82,7 +81,6 @@ function ScheduleAuctionPageInner() {
                     buy_now_price: saleType === 'sale' ? (parseFloat(formData.fixedPrice) || productDetails?.buy_now_price) : null,
                     start_date: formData.startDate,
                     start_time: formData.startTime,
-                    bid_increment: saleType === 'bid' ? parseFloat(formData.bidIncrement) : null,
                 };
                 
                 const apiUrl = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:5000';
@@ -257,7 +255,7 @@ function ScheduleAuctionPageInner() {
                         </label>
 
                         {saleType === 'bid' ? (
-                            <div className={styles.priceDisplayRow} style={{ display: 'flex', gap: '0.75rem' }}>
+                            <div className={styles.priceDisplayRow} style={{ display: 'flex', gap: '0.75rem', flexWrap: 'wrap' }}>
                                 <div className={styles.priceDisplay} style={{ flex: 1 }}>
                                     <div className={styles.priceDisplayIcon}>
                                         <Gavel size={18} />
@@ -282,6 +280,18 @@ function ScheduleAuctionPageInner() {
                                         <div className={styles.priceDisplayNote}>Initial bid amount</div>
                                     </div>
                                 </div>
+                                <div className={styles.priceDisplay} style={{ flex: 1 }}>
+                                    <div className={styles.priceDisplayIcon} style={{ background: '#fff7ed', color: '#c2410c' }}>
+                                        <Gavel size={18} />
+                                    </div>
+                                    <div className={styles.priceDisplayContent}>
+                                        <div className={styles.priceDisplayLabel}>Minimum Increment</div>
+                                        <div className={styles.priceDisplayValue}>
+                                            ₱{productDetails?.bid_increment?.toLocaleString('en-PH', { minimumFractionDigits: 2, maximumFractionDigits: 2 }) || '0.00'}
+                                        </div>
+                                        <div className={styles.priceDisplayNote}>Set when product was added</div>
+                                    </div>
+                                </div>
                             </div>
                         ) : (
                             <div className={styles.field}>
@@ -302,27 +312,6 @@ function ScheduleAuctionPageInner() {
                             </div>
                         )}
                     </div>
-
-                    {saleType === 'bid' && (
-                        <div className={styles.section}>
-                            <label className={styles.sectionLabel}>Bid Increment</label>
-                            <div className={styles.field}>
-                                <div className={styles.inputWithIcon}>
-                                    <span className={styles.pesoIcon}>₱</span>
-                                    <input
-                                        type="number"
-                                        step="1"
-                                        min="1"
-                                        placeholder="50"
-                                        required
-                                        value={formData.bidIncrement}
-                                        onChange={(e) => setFormData({ ...formData, bidIncrement: e.target.value })}
-                                    />
-                                </div>
-                                <small className={styles.fieldNote}>Every new bid must increase by this seller-set amount.</small>
-                            </div>
-                        </div>
-                    )}
 
                     <div className={styles.section}>
                         <label className={styles.sectionLabel}>Date & Time</label>

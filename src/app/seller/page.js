@@ -191,6 +191,9 @@ export default function SellerDashboard() {
                         setRecentBids(bidsData.bids || []);
                         setBidderCount(bidsData.bidderCount || 0);
                     }
+                } else {
+                    setRecentBids([]);
+                    setBidderCount(0);
                 }
             }
         } catch (err) {

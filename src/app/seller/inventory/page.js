@@ -128,7 +128,6 @@ export default function InventoryPage() {
                 start_timestamp: startISO,
                 end_timestamp: endISO,
                 timezone: Intl.DateTimeFormat().resolvedOptions().timeZone,
-                bid_increment: saleType === 'bid' ? (parseFloat(scheduleProduct.bid_increment) || 50) : null,
                 availability: saleType === 'sale' ? 1 : (scheduleForm.availability || 1),
             };
 

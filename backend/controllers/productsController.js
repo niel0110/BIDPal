@@ -152,6 +152,7 @@ export const createProduct = async (req, res) => {
       height_mm,
       starting_price,
       reserve_price,
+      bid_increment,
       condition,
       brand,
       specifications,
@@ -249,6 +250,20 @@ export const createProduct = async (req, res) => {
 
     if (!data.success) {
       return res.status(400).json({ error: data.error || data.message || 'Failed to create product' });
+    }
+
+    if (bid_increment !== undefined && bid_increment !== null && bid_increment !== '') {
+      const productId = data.data?.products_id || data.data?.product_id;
+      if (productId) {
+        const { error: bidIncrementError } = await supabase
+          .from('Products')
+          .update({ bid_increment: parseFloat(bid_increment) })
+          .eq('products_id', productId);
+
+        if (bidIncrementError) {
+          return res.status(400).json({ error: bidIncrementError.message });
+        }
+      }
     }
 
     // --- AUTOMATED MODERATION CHECKS ---
