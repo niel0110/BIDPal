@@ -98,6 +98,7 @@ export default function MyAuctions() {
             images: item.product_image ? [{ image_url: item.product_image }] : [],
             reserve_price: item.reserve_price || item.current_price,
             starting_price: item.starting_price || item.current_price,
+            bid_increment: item.bid_increment || item.incremental_bid_step,
             buy_now_price: item.buy_now_price,
         } : item;
         setScheduleProduct(product);
@@ -129,7 +130,6 @@ export default function MyAuctions() {
                 buy_now_price: saleType === 'sale' ? (parseFloat(scheduleForm.fixedPrice) || scheduleProduct.buy_now_price) : null,
                 start_date: saleType === 'sale' ? now.toISOString().slice(0, 10) : scheduleForm.startDate,
                 start_time: saleType === 'sale' ? now.toTimeString().slice(0, 5) : scheduleForm.startTime,
-                bid_increment: saleType === 'bid' ? (scheduleProduct?.incremental_bid_step || 50) : null,
             };
             const res = await fetch(`${apiUrl}/api/auctions/schedule`, {
                 method: 'POST',

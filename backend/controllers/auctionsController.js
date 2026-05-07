@@ -401,7 +401,7 @@ export const scheduleAuction = async (req, res) => {
     // Verify that the product exists and belongs to this seller
     const { data: productData, error: productError } = await supabase
         .from('Products')
-        .select('products_id, seller_id, status, reserve_price, starting_price')
+        .select('products_id, seller_id, status, reserve_price, starting_price, bid_increment')
         .eq('products_id', product_id)
         .is('deleted_at', null)
         .maybeSingle();
@@ -456,14 +456,16 @@ export const scheduleAuction = async (req, res) => {
     const isBid = sale_type === 'bid';
     const startingBidAmount = parseFloat(starting_bid ?? productData.starting_price ?? 0) || 0;
     const reserveLimit = parseFloat(reserve_price ?? productData.reserve_price ?? startingBidAmount) || 0;
-    const bidStep = parseFloat(bid_increment);
+    const savedBidStep = parseFloat(productData.bid_increment);
+    const requestBidStep = parseFloat(bid_increment);
+    const bidStep = savedBidStep > 0 ? savedBidStep : requestBidStep;
 
     if (isBid && reserveLimit > 0 && startingBidAmount > reserveLimit) {
       return res.status(400).json({ error: 'Starting bid cannot exceed the seller reserve price limit.' });
     }
 
     if (isBid && (!bidStep || bidStep <= 0)) {
-      return res.status(400).json({ error: 'Bid increment is required and must be greater than 0.' });
+      return res.status(400).json({ error: 'Bid increment must be set on the product and must be greater than 0.' });
     }
 
     // Insert into Auctions table
@@ -526,6 +528,24 @@ export const startAuction = async (req, res) => {
   try {
     const { id } = req.params;
 
+    const { data: existingAuction, error: lookupError } = await supabase
+      .from('Auctions')
+      .select('auction_id, products_id, buy_now_price, status')
+      .eq('auction_id', id)
+      .single();
+
+    if (lookupError || !existingAuction) {
+      return res.status(404).json({ error: 'Auction not found' });
+    }
+
+    if (Number(existingAuction.buy_now_price || 0) > 0) {
+      return res.status(400).json({ error: 'Fixed-price items cannot be started as live auctions.' });
+    }
+
+    if (existingAuction.status !== 'scheduled') {
+      return res.status(400).json({ error: `Only scheduled auctions can be started (current status: ${existingAuction.status}).` });
+    }
+
     // 1. Update Auction status to 'active' and record live start time
     const now = new Date().toISOString();
     const { data: auction, error: auctionError } = await supabase
@@ -536,6 +556,7 @@ export const startAuction = async (req, res) => {
         live_started_at: now
       })
       .eq('auction_id', id)
+      .or('buy_now_price.eq.0,buy_now_price.is.null')
       .select()
       .single();
 
