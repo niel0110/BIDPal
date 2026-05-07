@@ -25,6 +25,19 @@ function HeaderInner() {
   const pathname = usePathname();
   const searchParams = useSearchParams();
   const debounceRef = useRef(null);
+  const menuRef = useRef(null);
+
+  // Close hamburger when clicking outside
+  useEffect(() => {
+    if (!isMenuOpen) return;
+    const handleClickOutside = (e) => {
+      if (menuRef.current && !menuRef.current.contains(e.target)) {
+        setIsMenuOpen(false);
+      }
+    };
+    document.addEventListener('mousedown', handleClickOutside);
+    return () => document.removeEventListener('mousedown', handleClickOutside);
+  }, [isMenuOpen]);
 
   useEffect(() => {
     if (pathname !== '/') return;
@@ -94,6 +107,7 @@ function HeaderInner() {
     <div className={styles.headerContainer}>
       <header className={styles.mainHeader}>
         <div className={styles.leftSection}>
+          <div ref={menuRef} style={{ position: 'relative' }}>
           <button
             className={styles.menuBtn}
             onClick={() => setIsMenuOpen(!isMenuOpen)}
@@ -192,8 +206,9 @@ function HeaderInner() {
 
             </div>
           )}
+          </div>
 
-          <Logo />
+          <Logo href={user?.role?.toLowerCase() === 'seller' ? '/seller' : '/'} />
         </div>
 
         {/* Only show search bar on the buyer home page */}

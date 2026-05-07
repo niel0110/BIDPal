@@ -1,45 +1,55 @@
 .backBtn {
     display: inline-flex;
     align-items: center;
-    gap: 0.35rem;
-    background: #f4f4f5;
-    border: 1px solid #e4e4e7;
+    gap: 0.4rem;
+    background: white;
+    border: 1.5px solid #e4e4e7;
     border-radius: 10px;
-    padding: 0.45rem 0.85rem 0.45rem 0.55rem;
+    padding: 0.45rem 0.9rem 0.45rem 0.5rem;
     cursor: pointer;
-    color: #3f3f46;
+    color: #374151;
     font-size: 0.875rem;
     font-weight: 600;
     transition: background 0.15s, border-color 0.15s, transform 0.15s, box-shadow 0.15s;
     line-height: 1;
+    box-shadow: 0 1px 4px rgba(0,0,0,0.06);
 }
 
 .backBtn:hover {
-    background: #e4e4e7;
-    border-color: #d1d1d6;
+    background: #fff5f7;
+    border-color: #cc2b41;
+    color: #cc2b41;
     transform: translateX(-2px);
-    box-shadow: 0 2px 8px rgba(0,0,0,0.07);
+    box-shadow: 0 2px 10px rgba(204,43,65,0.12);
 }
 
 .backBtn:active {
     transform: translateX(-4px);
-    background: #d4d4d8;
+    background: #fef0f2;
 }
 
 .iconWrap {
     display: flex;
     align-items: center;
     justify-content: center;
-    width: 22px;
-    height: 22px;
+    width: 24px;
+    height: 24px;
     border-radius: 6px;
-    background: white;
-    border: 1px solid #e4e4e7;
+    background: #fef2f2;
+    border: 1px solid #fecdd3;
+    color: #cc2b41;
     flex-shrink: 0;
+    transition: background 0.15s, border-color 0.15s;
+}
+
+.backBtn:hover .iconWrap {
+    background: #cc2b41;
+    border-color: #cc2b41;
+    color: white;
 }
 
 .label {
-    color: #3f3f46;
+    color: inherit;
 }
 
 @media (max-width: 768px) {

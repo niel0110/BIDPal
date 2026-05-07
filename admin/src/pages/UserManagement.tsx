@@ -47,6 +47,8 @@ const STANDING_TO_STATUS: Record<string, string> = {
 };
 
 const getStanding = (user: User): string => {
+  // role === 'Banned' is the authoritative blacklist signal
+  if (user.role === 'Banned') return 'Blacklisted';
   const status = user.violation_record?.account_status;
   return STATUS_TO_STANDING[status || 'clean'] || 'Active';
 };

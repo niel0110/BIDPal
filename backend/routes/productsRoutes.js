@@ -30,8 +30,8 @@ router.get('/:products_id', getProductById);
 // Create new product (now supporting image uploads)
 router.post('/', upload.array('images', 10), createProduct);
 
-// Update product details
-router.put('/:products_id', updateProduct);
+// Update product details (with optional new image uploads)
+router.put('/:products_id', upload.array('images', 10), updateProduct);
 
 // Update product status
 router.patch('/:products_id/status', updateProductStatus);

@@ -266,6 +266,22 @@ export const register = async (req, res) => {
     }
 
     console.log('User created successfully, generating token...');
+
+    // Notify admin — fire-and-forget, never blocks registration
+    const newUser = data[0];
+    const fullName = [Fname, Lname].filter(Boolean).join(' ') || 'Unknown';
+    supabase.from('Admin_Notifications').insert([{
+      type: 'new_user',
+      title: 'New User Registered',
+      message: `${fullName} (${email}) just created a ${newUser.role || 'Buyer'} account.`,
+      metadata: {
+        user_id: newUser.user_id,
+        email: newUser.email,
+        name: fullName,
+        role: newUser.role || 'Buyer',
+      },
+    }]).then(() => {}).catch(() => {});
+
     if (referralCode) {
       try {
         const normalizedInvite = String(referralCode).trim().toUpperCase();

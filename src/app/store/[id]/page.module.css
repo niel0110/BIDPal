@@ -3,6 +3,21 @@
     background-color: #f8f9fa;
 }
 
+/* ── Banner ── */
+.bannerSection {
+    width: 100%;
+    height: 200px;
+    overflow: hidden;
+    background: #e5e7eb;
+}
+
+.bannerImage {
+    width: 100%;
+    height: 100%;
+    object-fit: cover;
+    display: block;
+}
+
 /* ── Profile Header ── */
 .profileHeader {
     background: white;
@@ -23,16 +38,41 @@
     height: 110px;
     border-radius: 50%;
     border: 3px solid #cc2b41;
-    overflow: hidden;
+    overflow: visible;
     flex-shrink: 0;
     background: #f0f0f0;
+    position: relative;
 }
 
 .avatar {
-    width: 100%;
-    height: 100%;
+    width: 110px;
+    height: 110px;
+    border-radius: 50%;
     object-fit: cover;
+    display: block;
 }
+
+.avatarEditBtn {
+    position: absolute;
+    bottom: -2px;
+    right: -2px;
+    background: #cc2b41;
+    color: white;
+    border: 2px solid white;
+    border-radius: 20px;
+    padding: 3px 8px;
+    font-size: 0.68rem;
+    font-weight: 700;
+    cursor: pointer;
+    display: flex;
+    align-items: center;
+    gap: 3px;
+    font-family: inherit;
+    transition: background 0.15s;
+    white-space: nowrap;
+}
+.avatarEditBtn:hover { background: #a31d30; }
+.avatarEditBtn:disabled { opacity: 0.7; cursor: not-allowed; }
 
 .storeInfo {
     flex: 1;
@@ -589,6 +629,14 @@
     margin: 0;
 }
 
+/* ── Responsive: Banner ── */
+@media (max-width: 640px) {
+    .bannerSection { height: 150px; }
+}
+@media (max-width: 480px) {
+    .bannerSection { height: 120px; }
+}
+
 /* ── Responsive: Tablet ── */
 @media (max-width: 992px) {
     .container {
@@ -615,6 +663,7 @@
     }
 
     .avatarWrapper { width: 80px; height: 80px; }
+    .avatar { width: 80px; height: 80px; }
     .storeName { font-size: 1.2rem; }
     .handle { font-size: 0.8rem; }
     .statsBar { gap: 0.65rem; }
@@ -648,6 +697,8 @@
         width: 90px;
         height: 90px;
     }
+
+    .avatar { width: 90px; height: 90px; }
 
     .storeInfo {
         display: flex;

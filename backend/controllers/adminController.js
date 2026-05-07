@@ -12,7 +12,8 @@ export const getAdminDashboardStats = async (req, res) => {
             { count: pendingKyc },
             { count: flaggedListings },
             { count: openDisputes },
-            { count: suspendedUsers }
+            { count: suspendedUsers },
+            { count: pendingReactivations }
         ] = await Promise.all([
             supabase
                 .from('User')
@@ -29,14 +30,19 @@ export const getAdminDashboardStats = async (req, res) => {
             supabase
                 .from('Violation_Records')
                 .select('*', { count: 'exact', head: true })
-                .eq('standing', 'Suspended')
+                .eq('standing', 'Suspended'),
+            supabase
+                .from('Reactivation_Requests')
+                .select('*', { count: 'exact', head: true })
+                .eq('status', 'pending'),
         ]);
 
         res.json({
             pendingKyc: pendingKyc || 0,
             flaggedListings: flaggedListings || 0,
             openDisputes: openDisputes || 0,
-            suspendedUsers: suspendedUsers || 0
+            suspendedUsers: suspendedUsers || 0,
+            pendingReactivations: pendingReactivations || 0,
         });
     } catch (err) {
         res.status(500).json({ error: err.message });
@@ -123,6 +129,11 @@ export const updateUserStanding = async (req, res) => {
         } else {
             updatePayload.suspension_expires_at = null;
             updatePayload.suspension_reason = null;
+        }
+
+        // Re-activating from any status (Blacklisted, Suspended, Probationary) resets strikes to 0
+        if (standing === 'Active') {
+            updatePayload.strike_count = 0;
         }
 
         // Upsert violation record
@@ -260,6 +271,49 @@ export const resolveDispute = async (req, res) => {
 
         if (error) throw error;
         res.json({ message: 'Dispute resolved', dispute: data });
+    } catch (err) {
+        res.status(500).json({ error: err.message });
+    }
+};
+
+// ── Admin Notifications ──────────────────────────────────────────────────────
+
+export const getAdminNotifications = async (req, res) => {
+    try {
+        const { data, error } = await supabase
+            .from('Admin_Notifications')
+            .select('*')
+            .order('created_at', { ascending: false })
+            .limit(50);
+        if (error) return res.status(500).json({ error: error.message });
+        res.json(data);
+    } catch (err) {
+        res.status(500).json({ error: err.message });
+    }
+};
+
+export const markAdminNotificationRead = async (req, res) => {
+    try {
+        const { id } = req.params;
+        const { error } = await supabase
+            .from('Admin_Notifications')
+            .update({ is_read: true })
+            .eq('id', id);
+        if (error) return res.status(500).json({ error: error.message });
+        res.json({ success: true });
+    } catch (err) {
+        res.status(500).json({ error: err.message });
+    }
+};
+
+export const markAllAdminNotificationsRead = async (req, res) => {
+    try {
+        const { error } = await supabase
+            .from('Admin_Notifications')
+            .update({ is_read: true })
+            .eq('is_read', false);
+        if (error) return res.status(500).json({ error: error.message });
+        res.json({ success: true });
     } catch (err) {
         res.status(500).json({ error: err.message });
     }

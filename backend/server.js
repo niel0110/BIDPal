@@ -247,6 +247,7 @@ import disputesRoutes from './routes/disputesRoutes.js'
 import bannerRoutes from './routes/bannerRoutes.js'
 import supportRoutes from './routes/supportRoutes.js'
 import inviteRoutes from './routes/inviteRoutes.js'
+import reactivationRoutes from './routes/reactivationRoutes.js'
 import { startAuctionSchedulerChecker } from './jobs/auctionSchedulerChecker.js'
 
 app.get('/', (req, res) => {
@@ -280,6 +281,7 @@ app.use('/api/disputes', disputesRoutes)
 app.use('/api/banner', bannerRoutes)
 app.use('/api/support', supportRoutes)
 app.use('/api/invites', inviteRoutes)
+app.use('/api/reactivation', reactivationRoutes)
 
 httpServer.listen(process.env.PORT, '0.0.0.0', () => {
   console.log(`Server running on port ${process.env.PORT}`)

@@ -3894,3 +3894,198 @@ input:checked+.slider:before {
     .emptyWishlist p { font-size: 0.75rem; }
 }
 
+/* ── Store Profile Section ──────────────────────────────── */
+
+.viewStoreBtn {
+    display: inline-flex;
+    align-items: center;
+    gap: 8px;
+    padding: 0.55rem 1.1rem;
+    background: white;
+    border: 1.5px solid #e5e7eb;
+    border-radius: 10px;
+    color: #374151;
+    font-size: 0.875rem;
+    font-weight: 600;
+    text-decoration: none;
+    cursor: pointer;
+    transition: all 0.18s;
+    margin-bottom: 1.5rem;
+}
+
+.viewStoreBtn:hover {
+    border-color: #cc2b41;
+    color: #cc2b41;
+    background: #fef2f2;
+}
+
+.formLabel {
+    display: block;
+    font-size: 0.8rem;
+    font-weight: 600;
+    color: #374151;
+    margin-bottom: 0.5rem;
+}
+
+/* Banner */
+.bannerUploadArea {
+    width: 100%;
+    border-radius: 12px;
+    overflow: hidden;
+    margin-bottom: 1.25rem;
+    border: 1.5px dashed #e5e7eb;
+}
+
+.bannerPreviewWrap {
+    position: relative;
+    width: 100%;
+    height: 160px;
+}
+
+.bannerPreviewImg {
+    width: 100%;
+    height: 100%;
+    object-fit: cover;
+    display: block;
+}
+
+.bannerOverlay {
+    position: absolute;
+    inset: 0;
+    background: rgba(0, 0, 0, 0.45);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 10px;
+    opacity: 0;
+    transition: opacity 0.2s;
+}
+
+.bannerPreviewWrap:hover .bannerOverlay {
+    opacity: 1;
+}
+
+.bannerActionBtn {
+    display: inline-flex;
+    align-items: center;
+    gap: 6px;
+    padding: 0.4rem 0.85rem;
+    background: white;
+    border: none;
+    border-radius: 8px;
+    font-size: 0.78rem;
+    font-weight: 600;
+    color: #374151;
+    cursor: pointer;
+    transition: background 0.15s;
+}
+
+.bannerActionBtn:hover {
+    background: #f3f4f6;
+}
+
+.bannerRemoveBtn {
+    color: #cc2b41;
+}
+
+.bannerRemoveBtn:hover {
+    background: #fef2f2;
+}
+
+.bannerUploadPlaceholder {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    gap: 8px;
+    width: 100%;
+    height: 140px;
+    background: #f9fafb;
+    border: none;
+    cursor: pointer;
+    color: #9ca3af;
+    font-size: 0.82rem;
+    font-weight: 500;
+    transition: background 0.15s, color 0.15s;
+}
+
+.bannerUploadPlaceholder:hover {
+    background: #f3f4f6;
+    color: #6b7280;
+}
+
+/* Logo */
+.logoUploadRow {
+    display: flex;
+    align-items: center;
+    gap: 1.25rem;
+    margin-bottom: 1.25rem;
+}
+
+.logoPreviewCircle {
+    width: 80px;
+    height: 80px;
+    border-radius: 50%;
+    border: 2px solid #e5e7eb;
+    background: #f3f4f6;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    overflow: hidden;
+    flex-shrink: 0;
+}
+
+.logoPreviewImg {
+    width: 100%;
+    height: 100%;
+    object-fit: cover;
+}
+
+.logoUploadActions {
+    display: flex;
+    flex-direction: column;
+    gap: 8px;
+}
+
+.logoActionBtn {
+    display: inline-flex;
+    align-items: center;
+    gap: 6px;
+    padding: 0.4rem 0.9rem;
+    background: white;
+    border: 1.5px solid #e5e7eb;
+    border-radius: 8px;
+    font-size: 0.78rem;
+    font-weight: 600;
+    color: #374151;
+    cursor: pointer;
+    transition: all 0.15s;
+}
+
+.logoActionBtn:hover {
+    border-color: #d1d5db;
+    background: #f9fafb;
+}
+
+.logoRemoveBtn {
+    color: #cc2b41;
+    border-color: #fecdd3;
+}
+
+.logoRemoveBtn:hover {
+    background: #fef2f2;
+    border-color: #cc2b41;
+}
+
+/* Edit Store Info divider */
+.storeInfoDivider {
+    font-size: 0.8rem;
+    font-weight: 700;
+    color: #9ca3af;
+    text-transform: uppercase;
+    letter-spacing: 0.06em;
+    padding: 0.6rem 0 0.75rem;
+    border-top: 1px solid #f3f4f6;
+    margin-top: 0.5rem;
+}
+

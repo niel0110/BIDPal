@@ -320,10 +320,10 @@
 
 @media (max-width: 640px) {
     .cardLink {
-        width: 100%;
+        width: 220px;
     }
     .card {
-        width: 100%;
+        width: 220px;
     }
 }
 
@@ -376,13 +376,11 @@
 
 @media (max-width: 480px) {
     .cardLink {
-        width: 100%;
+        width: 200px;
     }
 
     .card {
-        width: 100%;
-        height: auto;
-        min-height: 260px;
+        width: 200px;
     }
 
     .imageWrapper {

@@ -1,7 +1,7 @@
 'use client';
 
 import Link from 'next/link';
-import { LayoutDashboard, Package, Gavel, BarChart3, Settings, LogOut } from 'lucide-react';
+import { LayoutDashboard, Package, Gavel, BarChart3, Settings, LogOut, Store } from 'lucide-react';
 import { usePathname } from 'next/navigation';
 import { useAuth } from '@/context/AuthContext';
 import styles from './Sidebar.module.css';
@@ -9,6 +9,7 @@ import styles from './Sidebar.module.css';
 
 const navItems = [
     { name: 'Dashboard', icon: <LayoutDashboard size={20} />, href: '/seller' },
+    { name: 'My Store', icon: <Store size={20} />, href: '/seller/store' },
     { name: 'Inventory', icon: <Package size={20} />, href: '/seller/inventory' },
     { name: 'My Auctions', icon: <Gavel size={20} />, href: '/seller/auctions' },
     { name: 'Analytics', icon: <BarChart3 size={20} />, href: '/seller/analytics' },

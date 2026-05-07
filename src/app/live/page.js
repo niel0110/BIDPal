@@ -750,13 +750,10 @@ function LivePageInner() {
             return;
         }
 
-        const overMinimumBy = numericBidAmount - currentAuctionPrice;
-        const remainder = bidStep > 0 ? overMinimumBy % bidStep : 0;
-        const followsSellerIncrement = Math.abs(remainder) < 0.0001 || Math.abs(remainder - bidStep) < 0.0001;
-        if (numericBidAmount < nextBidAmount || !followsSellerIncrement) {
+        if (numericBidAmount < nextBidAmount) {
             setBidNotice({
-                title: 'Invalid bid amount',
-                message: `Bid must be at least ₱${nextBidAmount.toLocaleString('en-PH')} and follow the seller's ₱${bidStep.toLocaleString('en-PH')} increment.`,
+                title: 'Bid too low',
+                message: `Bid must be at least ₱${nextBidAmount.toLocaleString('en-PH')}.`,
             });
             return;
         }

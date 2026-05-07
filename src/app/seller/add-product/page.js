@@ -1,7 +1,7 @@
 'use client';
 
-import { useState, useEffect } from 'react';
-import { useRouter } from 'next/navigation';
+import { Suspense, useState, useEffect, useCallback } from 'react';
+import { useRouter, useSearchParams } from 'next/navigation';
 import { Info, Grid, Camera, X, Trash2, Upload, ChevronLeft, Package, DollarSign, AlertTriangle } from 'lucide-react';
 import styles from './page.module.css';
 import { useAuth } from '@/context/AuthContext';
@@ -23,6 +23,13 @@ const CONDITION_MAP = {
     'Used': 'fair',
     'Heavily Used': 'poor',
     'For Parts': 'poor'
+};
+const CONDITION_REVERSE_MAP = {
+    'new': 'Brand New',
+    'like_new': 'Like New',
+    'good': 'Lightly Used',
+    'fair': 'Used',
+    'poor': 'Heavily Used',
 };
 
 const categoriesData = [
@@ -86,8 +93,10 @@ const categoriesData = [
     },
 ];
 
-export default function AddProductPage() {
+function AddProductPageInner() {
     const router = useRouter();
+    const searchParams = useSearchParams();
+    const editId = searchParams.get('id'); // present when editing a draft
     const { user } = useAuth();
     const [currentStep, setCurrentStep] = useState(0);
     const [activeCategory, setActiveCategory] = useState(null);
@@ -98,6 +107,8 @@ export default function AddProductPage() {
         setExpandedGroups(prev => ({ ...prev, [key]: !prev[key] }));
     };
     const [isSubmitting, setIsSubmitting] = useState(false);
+    const [editLoading, setEditLoading] = useState(!!editId);
+    const [existingImageUrls, setExistingImageUrls] = useState([]); // for edit mode
     const [images, setImages] = useState([]);
     const [previewUrls, setPreviewUrls] = useState([]);
     const [imageDataUrls, setImageDataUrls] = useState([]); // base64 copies for sessionStorage persistence
@@ -146,8 +157,47 @@ export default function AddProductPage() {
         sessionStorage.removeItem(SS_IMGS);
     };
 
-    // ── Restore draft on mount ─────────────────────────────────────────────
+    // ── Load product for editing ──────────────────────────────────────────
     useEffect(() => {
+        if (!editId) return;
+        const apiUrl = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:5000';
+        clearDraft(); // don't restore old draft when editing a specific product
+        (async () => {
+            try {
+                const res = await fetch(`${apiUrl}/api/products/${editId}`);
+                if (!res.ok) throw new Error('Product not found');
+                const p = await res.json();
+                setFormData({
+                    name: p.name || p.title || '',
+                    description: p.description || '',
+                    condition: CONDITION_REVERSE_MAP[p.condition] || '',
+                    brand: p.brand || '',
+                    size: p.size || '',
+                    specifications: p.specifications || '',
+                    availability: p.availability?.toString() || '1',
+                    price: '',
+                    reservePrice: p.reserve_price?.toString() || '',
+                    startingPrice: p.starting_price?.toString() || '',
+                    bidIncrement: (p.bid_increment || p.incremental_bid_step)?.toString() || '',
+                    categories: Array.isArray(p.categories) ? p.categories : [],
+                });
+                // Load existing images as URL previews
+                const imgs = Array.isArray(p.images)
+                    ? p.images.map(img => (typeof img === 'string' ? img : img.image_url)).filter(Boolean)
+                    : [];
+                setExistingImageUrls(imgs);
+            } catch (err) {
+                console.error('Failed to load product for editing:', err);
+            } finally {
+                setEditLoading(false);
+            }
+        })();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+    }, [editId]);
+
+    // ── Restore draft on mount (new product only) ──────────────────────────
+    useEffect(() => {
+        if (editId) return; // skip for edit mode
         try {
             const savedForm = sessionStorage.getItem(SS_FORM);
             if (savedForm) setFormData(JSON.parse(savedForm));
@@ -326,28 +376,27 @@ export default function AddProductPage() {
                 submitData.append('bid_increment', formData.bidIncrement);
                 if (formData.size) submitData.append('size', formData.size);
                 submitData.append('categories', JSON.stringify(formData.categories));
-                
-                images.forEach(img => {
-                    submitData.append('images', img);
-                });
-                
+                images.forEach(img => submitData.append('images', img));
+
                 const apiUrl = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:5000';
                 const token = localStorage.getItem('bidpal_token');
-                
-                const res = await fetch(`${apiUrl}/api/products`, {
-                    method: 'POST',
-                    headers: {
-                        ...(token ? { 'Authorization': `Bearer ${token}` } : {})
-                    },
-                    body: submitData
+
+                const url = editId
+                    ? `${apiUrl}/api/products/${editId}`
+                    : `${apiUrl}/api/products`;
+                const method = editId ? 'PUT' : 'POST';
+
+                const res = await fetch(url, {
+                    method,
+                    headers: { ...(token ? { 'Authorization': `Bearer ${token}` } : {}) },
+                    body: submitData,
                 });
-                
+
                 const data = await res.json();
-                if (!res.ok) throw new Error(data.error || 'Failed to add product');
-                
-                console.log('Product added!', data);
-                clearDraft(); // wipe sessionStorage so the form starts fresh next time
-                router.push('/seller/inventory');
+                if (!res.ok) throw new Error(data.error || (editId ? 'Failed to update product' : 'Failed to add product'));
+
+                clearDraft();
+                router.push('/seller/auctions');
             } catch (error) {
                 setValidationModal({ title: 'Submission Failed', message: error.message || 'Something went wrong. Please try again.' });
                 console.error(error);
@@ -366,6 +415,12 @@ export default function AddProductPage() {
         }
     };
 
+    if (editLoading) return (
+        <div className={styles.container} style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', minHeight: '60vh' }}>
+            <p style={{ color: '#6b7280', fontSize: '0.95rem' }}>Loading product…</p>
+        </div>
+    );
+
     return (
         <div className={styles.container}>
             {/* Page Title with Back Button */}
@@ -374,7 +429,7 @@ export default function AddProductPage() {
                     <ChevronLeft size={20} />
                     <span>{currentStep > 0 ? 'Previous' : 'Back'}</span>
                 </button>
-                <h1 className={styles.pageTitle}>Add New Product</h1>
+                <h1 className={styles.pageTitle}>{editId ? 'Edit Product' : 'Add New Product'}</h1>
             </div>
 
             {/* Stepper */}
@@ -610,7 +665,9 @@ export default function AddProductPage() {
 
                 {currentStep === 4 && (
                     <div className={styles.stepContent}>
-                        <h2 className={styles.stepTitle}>Add product photos (max 10)</h2>
+                        <h2 className={styles.stepTitle}>
+                            {editId ? 'Product photos' : 'Add product photos (max 10)'}
+                        </h2>
 
                         {imageErrors.length > 0 && (
                             <div className={styles.imageErrorBox}>
@@ -630,7 +687,7 @@ export default function AddProductPage() {
                                 />
                                 <div className={styles.uploadInner}>
                                     <Upload size={24} color="#D32F2F" strokeWidth={1.5} />
-                                    <span>Upload a photo</span>
+                                    <span>{editId ? 'Add more photos' : 'Upload a photo'}</span>
                                 </div>
                                 <div className={styles.uploadMeta}>
                                     <span>Max size - 25Mb.</span>
@@ -638,8 +695,25 @@ export default function AddProductPage() {
                                 </div>
                             </label>
 
+                            {/* Existing images (edit mode) */}
+                            {existingImageUrls.map((url, idx) => (
+                                <div key={`existing-${idx}`} className={styles.photoCard}>
+                                    <div className={styles.photoPreview} onClick={() => setFullPreviewUrl(url)} style={{cursor: 'pointer'}}>
+                                        <img src={url} alt={`existing ${idx + 1}`} />
+                                        <div style={{ position:'absolute', bottom:4, left:4, background:'rgba(0,0,0,0.55)', color:'white', fontSize:'0.6rem', fontWeight:700, padding:'2px 6px', borderRadius:4 }}>
+                                            Existing
+                                        </div>
+                                    </div>
+                                    <div className={styles.photoInfoDetailed}>
+                                        <strong style={{overflow:'hidden',textOverflow:'ellipsis',whiteSpace:'nowrap',maxWidth:'100px',display:'inline-block'}}>Photo {idx + 1}</strong>
+                                        <span>Saved</span>
+                                    </div>
+                                </div>
+                            ))}
+
+                            {/* New images being added */}
                             {previewUrls.map((url, idx) => (
-                              <div key={idx} className={styles.photoCard}>
+                              <div key={`new-${idx}`} className={styles.photoCard}>
                                   <div className={styles.photoPreview} onClick={() => setFullPreviewUrl(url)} style={{cursor: 'pointer'}}>
                                       <img src={url} alt={`preview ${idx}`} />
                                       <div className={styles.deleteCorner} onClick={(e) => removeImage(e, idx)}>
@@ -653,6 +727,12 @@ export default function AddProductPage() {
                               </div>
                             ))}
                         </div>
+
+                        {editId && existingImageUrls.length === 0 && previewUrls.length === 0 && (
+                            <p style={{ fontSize: '0.82rem', color: '#9ca3af', marginTop: '0.75rem' }}>
+                                No photos yet. Upload new ones above.
+                            </p>
+                        )}
                     </div>
                 )}
 
@@ -677,7 +757,12 @@ export default function AddProductPage() {
                         onClick={handleNext}
                         disabled={isSubmitting || (currentStep === steps.length - 1 && !isFormComplete())}
                     >
-                        {isSubmitting ? 'Submitting...' : (currentStep === steps.length - 1 ? 'Add' : 'Next')}
+                        {isSubmitting
+                            ? (editId ? 'Saving...' : 'Submitting...')
+                            : (currentStep === steps.length - 1
+                                ? (editId ? 'Save Changes' : 'Add Product')
+                                : 'Next')
+                        }
                     </button>
                 </div>
             </div>
@@ -696,5 +781,13 @@ export default function AddProductPage() {
                 </div>
             )}
         </div>
+    );
+}
+
+export default function AddProductPage() {
+    return (
+        <Suspense fallback={null}>
+            <AddProductPageInner />
+        </Suspense>
     );
 }

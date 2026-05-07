@@ -1,4 +1,4 @@
-import { LayoutDashboard, ShieldCheck, AlertOctagon, Scale, Users, LogOut, Ban, UserCheck, WalletCards } from 'lucide-react';
+import { LayoutDashboard, ShieldCheck, AlertOctagon, Scale, Users, LogOut, Ban, UserCheck, WalletCards, RotateCcw } from 'lucide-react';
 import { NavLink, useNavigate } from 'react-router-dom';
 
 const navItems = [
@@ -10,6 +10,7 @@ const navItems = [
   { icon: Scale, label: 'Disputes', path: '/disputes' },
   { icon: Users, label: 'Buyer Standing', path: '/users' },
   { icon: WalletCards, label: 'Revenue Management', path: '/revenue' },
+  { icon: RotateCcw, label: 'Reactivation Requests', path: '/reactivation-requests' },
 ];
 
 const Sidebar = () => {

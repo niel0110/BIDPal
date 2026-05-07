@@ -6,7 +6,7 @@ import { useParams, useRouter } from 'next/navigation';
 import Header from '@/components/layout/Header';
 import ProductCard from '@/components/card/ProductCard';
 import { useAuth } from '@/context/AuthContext';
-import { Calendar, Star, MessageCircle, CheckCircle, ShieldCheck, Users, Flag, X, ChevronLeft, ChevronRight } from 'lucide-react';
+import { Calendar, Star, MessageCircle, CheckCircle, ShieldCheck, Users, Flag, X, ChevronLeft, ChevronRight, Camera } from 'lucide-react';
 import styles from './page.module.css';
 
 export default function StorePage() {
@@ -30,6 +30,8 @@ export default function StorePage() {
     const [reportDetails, setReportDetails] = useState('');
     const [reportSubmitting, setReportSubmitting] = useState(false);
     const [reportDone, setReportDone] = useState(false);
+    const [logoUploading, setLogoUploading] = useState(false);
+    const logoInputRef = useRef(null);
     const onSaleScrollRef = useRef(null);
     const soldScrollRef = useRef(null);
     const completedScrollRef = useRef(null);
@@ -166,6 +168,28 @@ export default function StorePage() {
         }
     };
 
+    const handleLogoUpload = async (e) => {
+        const file = e.target.files?.[0];
+        if (!file) return;
+        setLogoUploading(true);
+        try {
+            const token = localStorage.getItem('bidpal_token');
+            const formData = new FormData();
+            formData.append('logo', file);
+            const res = await fetch(`${apiUrl}/api/sellers/${id}/logo`, {
+                method: 'POST',
+                headers: { Authorization: `Bearer ${token}` },
+                body: formData,
+            });
+            if (res.ok) await fetchStore();
+        } catch (err) {
+            console.error('Logo upload error:', err);
+        } finally {
+            setLogoUploading(false);
+            if (logoInputRef.current) logoInputRef.current.value = '';
+        }
+    };
+
     const scrollRow = (ref, direction) => {
         const node = ref.current;
         if (!node) return;
@@ -175,6 +199,8 @@ export default function StorePage() {
 
     if (loading) return <div className={styles.main}><Header /><BIDPalLoader /></div>;
     if (!store) return <div className={styles.main}><Header /><div className={styles.empty}>Store not found.</div></div>;
+
+    const isOwnStore = user?.seller_id === id;
 
     const joinedDate = store.User?.create_at
         ? new Date(store.User.create_at).toLocaleDateString('en-US', { month: 'long', year: 'numeric' })
@@ -247,16 +273,43 @@ export default function StorePage() {
         <main className={styles.main}>
             <Header />
 
-            {/* ── Seller Profile Header (no banner) ── */}
+            {/* ── Banner ── */}
+            {store.banner_url && (
+                <div className={styles.bannerSection}>
+                    <img src={store.banner_url} alt="Store banner" className={styles.bannerImage} />
+                </div>
+            )}
+
+            {/* ── Seller Profile Header ── */}
             <section className={styles.profileHeader}>
                 <div className={styles.profileInner}>
 
                     <div className={styles.avatarWrapper}>
                         <img
-                            src={store.logo_url || 'https://placehold.co/200x200?text=Store'}
+                            src={store.logo_url || store.User?.Avatar || `https://ui-avatars.com/api/?name=${encodeURIComponent(store.store_name || 'Store')}&background=cc2b41&color=fff&size=200`}
                             alt={store.store_name}
                             className={styles.avatar}
                         />
+                        {isOwnStore && (
+                            <>
+                                <button
+                                    className={styles.avatarEditBtn}
+                                    onClick={() => logoInputRef.current?.click()}
+                                    disabled={logoUploading}
+                                    title="Change store photo"
+                                >
+                                    <Camera size={14} />
+                                    <span>{logoUploading ? 'Uploading…' : 'Edit'}</span>
+                                </button>
+                                <input
+                                    ref={logoInputRef}
+                                    type="file"
+                                    accept="image/*"
+                                    style={{ display: 'none' }}
+                                    onChange={handleLogoUpload}
+                                />
+                            </>
+                        )}
                     </div>
 
                     <div className={styles.storeInfo}>

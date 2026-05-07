@@ -1,6 +1,7 @@
 import React from 'react';
 import { BrowserRouter as Router, Routes, Route, Navigate } from 'react-router-dom';
 import Sidebar from './components/Sidebar';
+import AdminNotificationBell from './components/AdminNotificationBell';
 import Dashboard from './pages/Dashboard';
 import SellerVerification from './pages/SellerVerification';
 import BuyerVerification from './pages/BuyerVerification';
@@ -10,6 +11,7 @@ import Disputes from './pages/Disputes';
 import CancellationReviews from './pages/CancellationReviews';
 import Login from './pages/Login';
 import RevenueManagement from './pages/RevenueManagement';
+import ReactivationRequests from './pages/ReactivationRequests';
 
 // Protected Route Component
 const ProtectedRoute = ({ children }: { children: React.ReactNode }) => {
@@ -40,7 +42,26 @@ function App() {
     <Router>
       <div className="admin-layout">
         {isAuthenticated && <Sidebar />}
-        <main className="main-content" style={{ padding: !isAuthenticated ? '0' : '40px' }}>
+        <div style={{ flex: 1, display: 'flex', flexDirection: 'column', minWidth: 0, minHeight: '100vh' }}>
+          {/* Top bar with notification bell */}
+          {isAuthenticated && (
+            <div style={{
+              position: 'sticky',
+              top: 0,
+              zIndex: 100,
+              background: 'white',
+              borderBottom: '1px solid #f3f4f6',
+              padding: '0 40px',
+              height: '60px',
+              display: 'flex',
+              alignItems: 'center',
+              justifyContent: 'flex-end',
+              gap: '12px',
+            }}>
+              <AdminNotificationBell />
+            </div>
+          )}
+          <main className="main-content" style={{ padding: !isAuthenticated ? '0' : '40px', flex: 1 }}>
           <Routes>
             <Route path="/login" element={<Login />} />
             
@@ -53,11 +74,13 @@ function App() {
             <Route path="/users" element={<ProtectedRoute><UserManagement /></ProtectedRoute>} />
             <Route path="/buyer-verification" element={<ProtectedRoute><BuyerVerification /></ProtectedRoute>} />
             <Route path="/revenue" element={<ProtectedRoute><RevenueManagement /></ProtectedRoute>} />
+            <Route path="/reactivation-requests" element={<ProtectedRoute><ReactivationRequests /></ProtectedRoute>} />
             
             {/* Fallback */}
             <Route path="*" element={<Navigate to="/" replace />} />
           </Routes>
-        </main>
+          </main>
+        </div>
       </div>
     </Router>
   );

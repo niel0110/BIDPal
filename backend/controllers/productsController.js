@@ -315,16 +315,26 @@ export const createProduct = async (req, res) => {
 export const updateProduct = async (req, res) => {
   try {
     const { products_id } = req.params;
-    const { title, description, sku, condition, status, reserve_price, starting_price } = req.body;
+    const {
+      name, title, description, sku, condition, status,
+      reserve_price, starting_price, bid_increment,
+      brand, size, specifications, availability, categories,
+    } = req.body;
 
     const updateData = {};
-    if (title !== undefined) updateData.title = title;
+    const nameVal = name || title;
+    if (nameVal !== undefined) updateData.name = nameVal;
     if (description !== undefined) updateData.description = description;
     if (sku !== undefined) updateData.sku = sku;
     if (condition !== undefined) updateData.condition = condition;
     if (status !== undefined) updateData.status = status;
-    if (reserve_price !== undefined) updateData.reserve_price = reserve_price;
-    if (starting_price !== undefined) updateData.starting_price = starting_price;
+    if (reserve_price !== undefined) updateData.reserve_price = parseFloat(reserve_price);
+    if (starting_price !== undefined) updateData.starting_price = parseFloat(starting_price);
+    if (bid_increment !== undefined) updateData.bid_increment = parseFloat(bid_increment);
+    if (brand !== undefined) updateData.brand = brand;
+    if (size !== undefined) updateData.size = size;
+    if (specifications !== undefined) updateData.specifications = specifications;
+    if (availability !== undefined) updateData.availability = availability;
 
     const { data, error } = await supabase
       .from('Products')
@@ -336,6 +346,49 @@ export const updateProduct = async (req, res) => {
     if (error) return res.status(400).json({ error: error.message });
     if (!data || data.length === 0) {
       return res.status(404).json({ error: 'Product not found' });
+    }
+
+    // Update categories if provided
+    if (categories !== undefined) {
+      const catArray = Array.isArray(categories)
+        ? categories
+        : (typeof categories === 'string' ? JSON.parse(categories) : []);
+
+      await supabase.from('Product_Categories').delete().eq('products_id', products_id);
+
+      if (catArray.length > 0) {
+        const { data: catRows } = await supabase
+          .from('Categories')
+          .select('category_id, name')
+          .in('name', catArray);
+
+        if (catRows && catRows.length > 0) {
+          await supabase.from('Product_Categories').insert(
+            catRows.map(c => ({ products_id, category_id: c.category_id }))
+          );
+        }
+      }
+    }
+
+    // Handle new image uploads if provided (multer attaches to req.files)
+    if (req.files && req.files.length > 0) {
+      const cloudinary = (await import('../config/cloudinary.js')).default;
+      const imageInserts = [];
+
+      for (const file of req.files) {
+        const result = await new Promise((resolve, reject) => {
+          const stream = cloudinary.uploader.upload_stream(
+            { folder: 'bidpal/products', resource_type: 'image' },
+            (err, res) => (err ? reject(err) : resolve(res))
+          );
+          stream.end(file.buffer);
+        });
+        imageInserts.push({ products_id, image_url: result.secure_url });
+      }
+
+      if (imageInserts.length > 0) {
+        await supabase.from('Product_Images').insert(imageInserts);
+      }
     }
 
     res.json({ message: 'Product updated successfully', data: data[0] });
