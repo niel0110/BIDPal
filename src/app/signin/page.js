@@ -69,6 +69,7 @@ export default function SignIn() {
             <AccountStatusModal
                 isOpen={bannedModal.open}
                 message={bannedModal.message}
+                email={email}
                 onClose={() => setBannedModal({ open: false, message: '' })}
             />
             <div className={styles.authLeft}>

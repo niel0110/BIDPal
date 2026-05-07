@@ -14,6 +14,11 @@ import {
     markAdminNotificationRead,
     markAllAdminNotificationsRead,
 } from '../controllers/adminController.js';
+import {
+    getAdminReactivationRequests,
+    approveReactivationRequest,
+    rejectReactivationRequest,
+} from '../controllers/reactivationController.js';
 
 const router = express.Router();
 
@@ -41,5 +46,10 @@ router.post('/disputes/:id/resolve', resolveDispute);
 router.get('/notifications', getAdminNotifications);
 router.patch('/notifications/read-all', markAllAdminNotificationsRead);
 router.patch('/notifications/:id/read', markAdminNotificationRead);
+
+// Reactivation Requests
+router.get('/reactivation', getAdminReactivationRequests);
+router.patch('/reactivation/:id/approve', approveReactivationRequest);
+router.patch('/reactivation/:id/reject', rejectReactivationRequest);
 
 export default router;

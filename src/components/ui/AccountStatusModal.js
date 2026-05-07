@@ -1,7 +1,8 @@
 'use client';
 
 import { useState } from 'react';
-import { Ban, ChevronDown, ChevronUp } from 'lucide-react';
+import Link from 'next/link';
+import { Ban, ChevronDown, ChevronUp, RotateCcw } from 'lucide-react';
 import styles from './AccountStatusModal.module.css';
 
 const TERMS = [
@@ -13,7 +14,7 @@ const TERMS = [
     { title: '6. Changes to Terms', body: 'BIDPal may update these terms at any time. Continued use of the platform constitutes acceptance of the revised terms.' },
 ];
 
-export default function AccountStatusModal({ isOpen, message, onClose }) {
+export default function AccountStatusModal({ isOpen, message, onClose, email }) {
     const [termsOpen, setTermsOpen] = useState(false);
 
     if (!isOpen) return null;
@@ -46,6 +47,14 @@ export default function AccountStatusModal({ isOpen, message, onClose }) {
                     )}
                 </div>
 
+                <Link
+                    href={`/reactivation${email ? `?email=${encodeURIComponent(email)}` : ''}`}
+                    className={styles.reactivateBtn}
+                    onClick={onClose}
+                >
+                    <RotateCcw size={15} />
+                    Request Account Reactivation
+                </Link>
                 <button className={styles.closeBtn} onClick={onClose}>
                     I Understand
                 </button>

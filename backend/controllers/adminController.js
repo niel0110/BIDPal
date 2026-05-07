@@ -12,7 +12,8 @@ export const getAdminDashboardStats = async (req, res) => {
             { count: pendingKyc },
             { count: flaggedListings },
             { count: openDisputes },
-            { count: suspendedUsers }
+            { count: suspendedUsers },
+            { count: pendingReactivations }
         ] = await Promise.all([
             supabase
                 .from('User')
@@ -29,14 +30,19 @@ export const getAdminDashboardStats = async (req, res) => {
             supabase
                 .from('Violation_Records')
                 .select('*', { count: 'exact', head: true })
-                .eq('standing', 'Suspended')
+                .eq('standing', 'Suspended'),
+            supabase
+                .from('Reactivation_Requests')
+                .select('*', { count: 'exact', head: true })
+                .eq('status', 'pending'),
         ]);
 
         res.json({
             pendingKyc: pendingKyc || 0,
             flaggedListings: flaggedListings || 0,
             openDisputes: openDisputes || 0,
-            suspendedUsers: suspendedUsers || 0
+            suspendedUsers: suspendedUsers || 0,
+            pendingReactivations: pendingReactivations || 0,
         });
     } catch (err) {
         res.status(500).json({ error: err.message });

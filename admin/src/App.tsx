@@ -11,6 +11,7 @@ import Disputes from './pages/Disputes';
 import CancellationReviews from './pages/CancellationReviews';
 import Login from './pages/Login';
 import RevenueManagement from './pages/RevenueManagement';
+import ReactivationRequests from './pages/ReactivationRequests';
 
 // Protected Route Component
 const ProtectedRoute = ({ children }: { children: React.ReactNode }) => {
@@ -73,6 +74,7 @@ function App() {
             <Route path="/users" element={<ProtectedRoute><UserManagement /></ProtectedRoute>} />
             <Route path="/buyer-verification" element={<ProtectedRoute><BuyerVerification /></ProtectedRoute>} />
             <Route path="/revenue" element={<ProtectedRoute><RevenueManagement /></ProtectedRoute>} />
+            <Route path="/reactivation-requests" element={<ProtectedRoute><ReactivationRequests /></ProtectedRoute>} />
             
             {/* Fallback */}
             <Route path="*" element={<Navigate to="/" replace />} />
