@@ -40,7 +40,7 @@ function getNotificationIcon(type) {
 
 function getNotificationTarget(notification) {
     const { type, reference_id, reference_type } = notification;
-    const isSeller = reference_type === 'auction';
+    const title = (notification.payload?.title || '').toLowerCase();
 
     switch (type) {
         // Buyer won — go pay
@@ -57,13 +57,16 @@ function getNotificationTarget(notification) {
 
         // Seller: auction ended without a sale — go to their auctions list
         case 'auction_no_sale':
-            return reference_id ? `/seller/auctions/${reference_id}/results` : '/seller/auctions';
+            return '/seller/auctions';
 
         // order_cancelled:
         //   reference_type='auction' → buyer cancelled auction order → seller sees auction results
         //   reference_type='order'   → COD/fixed-price cancel → seller orders
         case 'order_cancelled':
             if (reference_type === 'auction') {
+                if (title.includes('no more bidders')) {
+                    return '/seller/auctions';
+                }
                 return reference_id ? `/seller/auctions/${reference_id}/results` : '/seller/auctions';
             }
             return '/seller/orders';
@@ -73,7 +76,6 @@ function getNotificationTarget(notification) {
         //   seller payment/shipping updates (reference_type='auction') → seller orders
         //   buyer updates (reference_type='order') → buyer orders
         case 'order_update': {
-            const title = (notification.payload?.title || '').toLowerCase();
             if (reference_type === 'auction' && title.includes('winner')) {
                 return reference_id ? `/seller/auctions/${reference_id}/results` : '/seller/auctions';
             }
