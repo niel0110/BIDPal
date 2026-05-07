@@ -797,7 +797,7 @@
 /* ── Responsive ── */
 @media (max-width: 768px) {
     .messagesContainer { height: 100svh; }
-    .messagesContent { padding: 0.75rem 12px 0.5rem; }
+    .messagesContent { padding: 1.25rem 12px 0.5rem; }
     .messagesHeader { margin-bottom: 0.75rem; }
     .messagesHeader h1 { font-size: 1.25rem; }
 

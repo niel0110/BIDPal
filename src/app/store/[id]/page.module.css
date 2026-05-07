@@ -663,6 +663,7 @@
     }
 
     .avatarWrapper { width: 80px; height: 80px; }
+    .avatar { width: 80px; height: 80px; }
     .storeName { font-size: 1.2rem; }
     .handle { font-size: 0.8rem; }
     .statsBar { gap: 0.65rem; }
@@ -696,6 +697,8 @@
         width: 90px;
         height: 90px;
     }
+
+    .avatar { width: 90px; height: 90px; }
 
     .storeInfo {
         display: flex;
