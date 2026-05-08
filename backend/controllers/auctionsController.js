@@ -523,6 +523,113 @@ export const scheduleAuction = async (req, res) => {
     res.status(500).json({ error: err.message });
   }
 };
+
+/**
+ * PATCH /api/auctions/:id
+ * Update a scheduled auction without creating a new auction row.
+ */
+export const updateScheduledAuction = async (req, res) => {
+  try {
+    const { id } = req.params;
+    const {
+      start_date,
+      start_time,
+      end_date,
+      end_time,
+      start_timestamp: client_start_timestamp,
+      end_timestamp: client_end_timestamp,
+    } = req.body;
+    const user_id = req.user?.user_id;
+
+    if (!user_id) {
+      return res.status(401).json({ error: 'Not authenticated.' });
+    }
+
+    const { data: auction, error: fetchError } = await supabase
+      .from('Auctions')
+      .select('auction_id, status, products_id, seller_id, Seller(user_id)')
+      .eq('auction_id', id)
+      .maybeSingle();
+
+    if (fetchError || !auction) {
+      return res.status(404).json({ error: 'Auction not found.' });
+    }
+
+    if (auction.Seller?.user_id && auction.Seller.user_id !== user_id) {
+      return res.status(403).json({ error: 'You do not have permission to edit this auction.' });
+    }
+
+    if (auction.status !== 'scheduled') {
+      return res.status(400).json({ error: `Only scheduled auctions can be edited (current status: ${auction.status}).` });
+    }
+
+    let nextStartTime = client_start_timestamp;
+    if (!nextStartTime) {
+      if (!start_date || !start_time) {
+        return res.status(400).json({ error: 'start_date and start_time (or start_timestamp) are required.' });
+      }
+      nextStartTime = new Date(`${start_date}T${start_time}:00`).toISOString();
+    }
+
+    if (Number.isNaN(new Date(nextStartTime).getTime())) {
+      return res.status(400).json({ error: 'Invalid start date or time.' });
+    }
+
+    if (new Date(nextStartTime) <= new Date()) {
+      return res.status(400).json({ error: 'Scheduled time must be in the future.' });
+    }
+
+    let nextEndTime = client_end_timestamp;
+    if (!nextEndTime) {
+      if (end_date && end_time) {
+        nextEndTime = new Date(`${end_date}T${end_time}:00`).toISOString();
+      } else {
+        const d = new Date(nextStartTime);
+        d.setHours(23, 59, 59, 0);
+        nextEndTime = d.toISOString();
+      }
+    }
+
+    if (Number.isNaN(new Date(nextEndTime).getTime())) {
+      return res.status(400).json({ error: 'Invalid end date or time.' });
+    }
+
+    if (new Date(nextEndTime) <= new Date(nextStartTime)) {
+      return res.status(400).json({ error: 'End time must be after the scheduled start time.' });
+    }
+
+    const { data: updatedAuction, error: updateError } = await supabase
+      .from('Auctions')
+      .update({
+        start_time: nextStartTime,
+        end_time: nextEndTime,
+      })
+      .eq('auction_id', id)
+      .eq('status', 'scheduled')
+      .select('auction_id, start_time, end_time, status')
+      .single();
+
+    if (updateError) {
+      throw updateError;
+    }
+
+    if (auction.products_id) {
+      await supabase
+        .from('Products')
+        .update({ status: 'scheduled' })
+        .eq('products_id', auction.products_id);
+    }
+
+    res.json({
+      success: true,
+      message: 'Auction updated successfully.',
+      data: updatedAuction,
+    });
+  } catch (err) {
+    console.error('updateScheduledAuction error:', err);
+    res.status(500).json({ error: err.message });
+  }
+};
 // Start a scheduled auction
 export const startAuction = async (req, res) => {
   try {

@@ -91,8 +91,54 @@ export default function MyAuctions() {
         });
     };
 
+    const getAuctionAction = (auction) => {
+        if (!auction) return null;
+        const hasWinner = !!auction.winner_user_id;
+        if (auction.status === 'scheduled') return 'edit';
+        if (auction.status === 'ended' && !hasWinner) return 'reschedule';
+        if ((auction.status === 'ended' || auction.status === 'completed') && hasWinner) return 'results';
+        return null;
+    };
+
     const openScheduleModal = (item, isAuction = false) => {
+        if (isAuction) {
+            if (item.status !== 'scheduled') {
+                showModal({
+                    title: 'Cannot Edit This Auction',
+                    message: 'Only scheduled auctions can be edited here. Use reschedule for failed auctions, or view results for completed ones.',
+                    type: 'info',
+                    showCancel: false
+                });
+                return;
+            }
+
+            if (!item.product_id) {
+                showModal({
+                    title: 'Product Unavailable',
+                    message: 'This auction is missing its linked product, so it cannot be edited from this page.',
+                    type: 'error',
+                    showCancel: false
+                });
+                return;
+            }
+        }
+
+        const formatLocalDateTime = (value) => {
+            if (!value) return { date: '', time: '' };
+            const parsed = new Date(value);
+            if (Number.isNaN(parsed.getTime())) return { date: '', time: '' };
+            const offsetMs = parsed.getTimezoneOffset() * 60 * 1000;
+            const local = new Date(parsed.getTime() - offsetMs);
+            return {
+                date: local.toISOString().slice(0, 10),
+                time: local.toISOString().slice(11, 16),
+            };
+        };
+
+        const initialDateTime = isAuction ? formatLocalDateTime(item.start_time) : { date: '', time: '' };
+
         const product = isAuction ? {
+            auction_id: item.auction_id,
             products_id: item.product_id,
             name: item.product_name,
             images: item.product_image ? [{ image_url: item.product_image }] : [],
@@ -103,7 +149,11 @@ export default function MyAuctions() {
         } : item;
         setScheduleProduct(product);
         setSaleType('bid');
-        setScheduleForm({ startDate: '', startTime: '', fixedPrice: '' });
+        setScheduleForm({
+            startDate: initialDateTime.date,
+            startTime: initialDateTime.time,
+            fixedPrice: '',
+        });
         setScheduleToast(null);
     };
 
@@ -120,6 +170,13 @@ export default function MyAuctions() {
             const apiUrl = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:5000';
             const token = localStorage.getItem('bidpal_token');
             const now = new Date();
+            const isEditingScheduledAuction = !!scheduleProduct.auction_id;
+
+            if (isEditingScheduledAuction && saleType !== 'bid') {
+                setScheduleToast({ type: 'error', message: 'Scheduled auctions can only be edited as live auctions.' });
+                return;
+            }
+
             const payload = {
                 product_id: scheduleProduct.products_id,
                 user_id: user.user_id || user.id,
@@ -131,17 +188,33 @@ export default function MyAuctions() {
                 start_date: saleType === 'sale' ? now.toISOString().slice(0, 10) : scheduleForm.startDate,
                 start_time: saleType === 'sale' ? now.toTimeString().slice(0, 5) : scheduleForm.startTime,
             };
-            const res = await fetch(`${apiUrl}/api/auctions/schedule`, {
-                method: 'POST',
+            const endpoint = isEditingScheduledAuction
+                ? `${apiUrl}/api/auctions/${scheduleProduct.auction_id}`
+                : `${apiUrl}/api/auctions/schedule`;
+            const method = isEditingScheduledAuction ? 'PATCH' : 'POST';
+            const body = isEditingScheduledAuction
+                ? JSON.stringify({
+                    start_date: scheduleForm.startDate,
+                    start_time: scheduleForm.startTime,
+                })
+                : JSON.stringify(payload);
+
+            const res = await fetch(endpoint, {
+                method,
                 headers: { 'Content-Type': 'application/json', ...(token ? { Authorization: `Bearer ${token}` } : {}) },
-                body: JSON.stringify(payload)
+                body
             });
             const data = await res.json();
             if (!res.ok) {
                 setScheduleToast({ type: 'error', message: data.error || 'Failed to schedule' });
                 return;
             }
-            setScheduleToast({ type: 'success', message: saleType === 'sale' ? 'Item posted successfully!' : 'Auction scheduled successfully!' });
+            setScheduleToast({
+                type: 'success',
+                message: isEditingScheduledAuction
+                    ? 'Auction updated successfully!'
+                    : (saleType === 'sale' ? 'Item posted successfully!' : 'Auction scheduled successfully!')
+            });
             setTimeout(() => {
                 closeScheduleModal();
                 setRefreshKey(k => k + 1);
@@ -1144,17 +1217,51 @@ export default function MyAuctions() {
                                         Edit Details
                                     </Link>
                                 ) : (
-                                    <button
-                                        className={styles.selectAllBtn}
-                                        style={{ background: 'linear-gradient(135deg, #3b82f6 0%, #2563eb 100%)' }}
-                                        onClick={() => {
-                                            const auction = auctions.find(a => a.auction_id === selectedItems[0]);
-                                            if (auction) openScheduleModal(auction, true);
-                                        }}
-                                    >
-                                        <Edit2 size={18} />
-                                        Edit Details
-                                    </button>
+                                    (() => {
+                                        const auction = auctions.find(a => a.auction_id === selectedItems[0]);
+                                        const action = getAuctionAction(auction);
+
+                                        if (action === 'edit') {
+                                            return (
+                                                <button
+                                                    className={styles.selectAllBtn}
+                                                    style={{ background: 'linear-gradient(135deg, #3b82f6 0%, #2563eb 100%)' }}
+                                                    onClick={() => openScheduleModal(auction, true)}
+                                                >
+                                                    <Edit2 size={18} />
+                                                    Edit Details
+                                                </button>
+                                            );
+                                        }
+
+                                        if (action === 'reschedule') {
+                                            return (
+                                                <button
+                                                    className={styles.selectAllBtn}
+                                                    style={{ background: 'linear-gradient(135deg, #f59e0b 0%, #d97706 100%)' }}
+                                                    onClick={() => openRescheduleModal(auction)}
+                                                >
+                                                    <Calendar size={18} />
+                                                    Reschedule
+                                                </button>
+                                            );
+                                        }
+
+                                        if (action === 'results') {
+                                            return (
+                                                <Link
+                                                    href={`/seller/auctions/${selectedItems[0]}/results`}
+                                                    className={styles.selectAllBtn}
+                                                    style={{ background: 'linear-gradient(135deg, #10b981 0%, #059669 100%)' }}
+                                                >
+                                                    <CheckCircle2 size={18} />
+                                                    View Results
+                                                </Link>
+                                            );
+                                        }
+
+                                        return null;
+                                    })()
                                 )
                             )}
                             {selectedItems.length > 0 && (
@@ -1310,6 +1417,9 @@ export default function MyAuctions() {
                     position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.45)', backdropFilter: 'blur(4px)',
                     display: 'flex', alignItems: 'center', justifyContent: 'center', zIndex: 1000, padding: '1rem'
                 }} onClick={closeScheduleModal}>
+                    {(() => {
+                        const isEditingScheduledAuction = !!scheduleProduct.auction_id;
+                        return (
                     <div style={{
                         background: 'white', borderRadius: 20, padding: 'clamp(1.25rem, 5vw, 2rem)', width: '100%', maxWidth: 500,
                         maxHeight: '90vh', overflowY: 'auto', boxShadow: '0 20px 60px rgba(0,0,0,0.18)'
@@ -1317,10 +1427,12 @@ export default function MyAuctions() {
                         <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '1.5rem' }}>
                             <div>
                                 <h2 style={{ margin: 0, fontSize: '1.1rem', fontWeight: 800, color: '#0f172a' }}>
-                                    {saleType === 'sale' ? 'Post Product' : 'Schedule Auction'}
+                                    {isEditingScheduledAuction ? 'Edit Scheduled Auction' : (saleType === 'sale' ? 'Post Product' : 'Schedule Auction')}
                                 </h2>
                                 <p style={{ margin: '2px 0 0', fontSize: '0.78rem', color: '#94a3b8' }}>
-                                    {saleType === 'sale' ? 'Set a price and list this item immediately' : 'Set when this item goes live'}
+                                    {isEditingScheduledAuction
+                                        ? 'Update the scheduled launch time for this auction'
+                                        : (saleType === 'sale' ? 'Set a price and list this item immediately' : 'Set when this item goes live')}
                                 </p>
                             </div>
                             <button onClick={closeScheduleModal} style={{ background: '#f1f5f9', border: 'none', borderRadius: 8, padding: '6px', cursor: 'pointer', display: 'flex' }}>
@@ -1359,18 +1471,22 @@ export default function MyAuctions() {
                                         { id: 'bid', icon: <Gavel size={18} />, label: 'Bid it', sub: 'Live auction' },
                                         { id: 'sale', icon: <Tag size={18} />, label: 'Fixed sale', sub: 'Set price' },
                                     ].map(opt => (
-                                        <button key={opt.id} type="button" onClick={() => setSaleType(opt.id)} style={{
+                                        <button key={opt.id} type="button" onClick={() => !isEditingScheduledAuction && setSaleType(opt.id)} style={{
                                             display: 'flex', alignItems: 'center', gap: '0.65rem',
-                                            padding: '0.75rem 1rem', borderRadius: 12, cursor: 'pointer',
+                                            padding: '0.75rem 1rem', borderRadius: 12,
                                             border: `2px solid ${saleType === opt.id ? '#D32F2F' : '#e2e8f0'}`,
                                             background: saleType === opt.id ? '#fff1f2' : 'white',
                                             color: saleType === opt.id ? '#D32F2F' : '#475569',
-                                            fontWeight: 600, fontSize: '0.85rem', textAlign: 'left'
+                                            fontWeight: 600, fontSize: '0.85rem', textAlign: 'left',
+                                            opacity: isEditingScheduledAuction && opt.id === 'sale' ? 0.45 : 1,
+                                            cursor: isEditingScheduledAuction && opt.id === 'sale' ? 'not-allowed' : 'pointer'
                                         }}>
                                             {opt.icon}
                                             <div>
                                                 <div style={{ fontWeight: 700 }}>{opt.label}</div>
-                                                <div style={{ fontSize: '0.7rem', fontWeight: 400, opacity: 0.7 }}>{opt.sub}</div>
+                                                <div style={{ fontSize: '0.7rem', fontWeight: 400, opacity: 0.7 }}>
+                                                    {isEditingScheduledAuction && opt.id === 'sale' ? 'Unavailable while editing' : opt.sub}
+                                                </div>
                                             </div>
                                         </button>
                                     ))}
@@ -1437,10 +1553,14 @@ export default function MyAuctions() {
                                 cursor: isScheduling ? 'not-allowed' : 'pointer', opacity: isScheduling ? 0.7 : 1,
                                 transition: 'opacity 0.15s'
                             }}>
-                                {isScheduling ? (saleType === 'sale' ? 'Posting...' : 'Scheduling...') : (saleType === 'sale' ? 'Post Item' : 'Confirm Schedule')}
+                                {isScheduling
+                                    ? (isEditingScheduledAuction ? 'Saving...' : (saleType === 'sale' ? 'Posting...' : 'Scheduling...'))
+                                    : (isEditingScheduledAuction ? 'Save Schedule Changes' : (saleType === 'sale' ? 'Post Item' : 'Confirm Schedule'))}
                             </button>
                         </form>
                     </div>
+                        );
+                    })()}
                 </div>
             )}
         </div>
