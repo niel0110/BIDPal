@@ -19,6 +19,11 @@
 }
 
 .messagesHeader {
+    display: flex;
+    flex-direction: column;
+    align-items: flex-start;
+    gap: 0.9rem;
+    padding-top: 0.35rem;
     margin-bottom: 1.25rem;
 }
 
@@ -798,7 +803,11 @@
 @media (max-width: 768px) {
     .messagesContainer { height: 100svh; }
     .messagesContent { padding: 1.25rem 12px 0.5rem; }
-    .messagesHeader { margin-bottom: 0.75rem; }
+    .messagesHeader {
+        gap: 0.7rem;
+        padding-top: 0.15rem;
+        margin-bottom: 0.75rem;
+    }
     .messagesHeader h1 { font-size: 1.25rem; }
 
     .chatWrapper {
