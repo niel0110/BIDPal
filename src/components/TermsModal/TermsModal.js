@@ -1,118 +1,108 @@
 'use client';
 
-import { useState, useRef } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import { BUYER_TERMS, SELLER_TERMS } from './termsContent';
 import styles from './TermsModal.module.css';
 
 export default function TermsModal({ role, onAgree, onClose }) {
     const terms = role === 'Seller' ? SELLER_TERMS : BUYER_TERMS;
-    const [scrolledToBottom, setScrolledToBottom] = useState(false);
-    const [agreed, setAgreed] = useState(false);
     const bodyRef = useRef(null);
+    const [scrolledToBottom, setScrolledToBottom] = useState(false);
+
+    useEffect(() => {
+        const previousOverflow = document.body.style.overflow;
+        document.body.style.overflow = 'hidden';
+
+        return () => {
+            document.body.style.overflow = previousOverflow;
+        };
+    }, []);
+
+    useEffect(() => {
+        const checkScrollPosition = () => {
+            const el = bodyRef.current;
+            if (!el) return;
+
+            const reachedBottom = el.scrollTop + el.clientHeight >= el.scrollHeight - 16;
+            const contentFits = el.scrollHeight <= el.clientHeight + 16;
+            if (reachedBottom || contentFits) {
+                setScrolledToBottom(true);
+            }
+        };
+
+        checkScrollPosition();
+        window.addEventListener('resize', checkScrollPosition);
+
+        return () => {
+            window.removeEventListener('resize', checkScrollPosition);
+        };
+    }, [terms]);
 
     const handleScroll = () => {
         const el = bodyRef.current;
         if (!el) return;
-        if (el.scrollTop + el.clientHeight >= el.scrollHeight - 32) {
+
+        if (el.scrollTop + el.clientHeight >= el.scrollHeight - 16) {
             setScrolledToBottom(true);
         }
     };
 
-    const canAgree = scrolledToBottom && agreed;
-
     return (
-        <div className={styles.page}>
-            {/* Top bar */}
-            <div className={styles.topBar}>
-                <div className={styles.brand}>BID<span>Pal</span></div>
-                <span className={styles.stepLabel}>
-                    {role === 'Seller' ? '🏪 Seller' : '🛒 Buyer'} Account Setup
-                </span>
-            </div>
-
-            <div className={styles.wrapper}>
-                {/* Page heading */}
-                <div className={styles.heading}>
-                    <h1 className={styles.title}>Terms &amp; Conditions</h1>
-                    <p className={styles.subtitle}>
-                        Read the full agreement below before creating your {role.toLowerCase()} account.
-                        Scroll to the bottom to unlock the agreement checkbox.
-                    </p>
+        <div className={styles.backdrop} onClick={onClose} role="dialog" aria-modal="true" aria-labelledby="terms-modal-title">
+            <div className={styles.modal} onClick={(event) => event.stopPropagation()}>
+                <div className={styles.header}>
+                    <div>
+                        <p className={styles.eyebrow}>{role} Account</p>
+                        <h2 id="terms-modal-title" className={styles.title}>Terms &amp; Conditions</h2>
+                        <p className={styles.subtitle}>
+                            Read the full agreement. The accept button stays locked until you reach the bottom.
+                        </p>
+                    </div>
+                    <button type="button" className={styles.closeButton} onClick={onClose} aria-label="Close terms and conditions">
+                        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.25" strokeLinecap="round">
+                            <line x1="18" y1="6" x2="6" y2="18" />
+                            <line x1="6" y1="6" x2="18" y2="18" />
+                        </svg>
+                    </button>
                 </div>
 
-                {/* Terms content card */}
-                <div className={styles.card}>
-                    <div className={styles.cardHeader}>
-                        <span className={styles.cardRole}>
-                            {role === 'Seller' ? '🏪 Seller' : '🛒 Buyer'} Account Agreement
-                        </span>
-                        {!scrolledToBottom && (
-                            <span className={styles.scrollHint}>↓ Scroll to read all</span>
-                        )}
-                        {scrolledToBottom && (
-                            <span className={styles.scrollDone}>✓ Fully read</span>
-                        )}
-                    </div>
+                <div className={styles.statusRow}>
+                    <span className={styles.roleBadge}>{role} terms</span>
+                    <span className={scrolledToBottom ? styles.statusDone : styles.statusPending}>
+                        {scrolledToBottom ? 'Ready to accept' : 'Scroll to the bottom to unlock acceptance'}
+                    </span>
+                </div>
 
-                    <div className={styles.body} ref={bodyRef} onScroll={handleScroll}>
-                        {terms.map((section, si) => (
-                            <div key={section.id} className={styles.section}>
-                                <div className={styles.sectionHeading}>
-                                    <span className={styles.sectionNum}>{si + 1}</span>
-                                    <h3 className={styles.sectionTitle}>
-                                        {section.icon} {section.title}
-                                    </h3>
-                                </div>
-                                {section.content.map((item, i) => (
-                                    <div key={i} className={styles.clause}>
-                                        <h4 className={styles.clauseHead}>{item.heading}</h4>
-                                        <p className={styles.clauseBody}>{item.body}</p>
-                                    </div>
-                                ))}
+                <div ref={bodyRef} className={styles.body} onScroll={handleScroll}>
+                    {terms.map((section, sectionIndex) => (
+                        <section key={section.id} className={styles.section}>
+                            <div className={styles.sectionHeader}>
+                                <span className={styles.sectionNumber}>{sectionIndex + 1}</span>
+                                <h3 className={styles.sectionTitle}>
+                                    {section.icon} {section.title}
+                                </h3>
                             </div>
-                        ))}
-                    </div>
+                            {section.content.map((item, itemIndex) => (
+                                <div key={itemIndex} className={styles.clause}>
+                                    <p className={styles.clauseHeading}>{item.heading}</p>
+                                    <p className={styles.clauseBody}>{item.body}</p>
+                                </div>
+                            ))}
+                        </section>
+                    ))}
                 </div>
 
-                {/* Agreement row */}
-                <div className={styles.agreementRow}>
-                    <label
-                        className={`${styles.checkLabel} ${!scrolledToBottom ? styles.checkLabelDisabled : ''}`}
-                        onClick={() => scrolledToBottom && setAgreed(a => !a)}
-                    >
-                        <div className={`${styles.circle} ${agreed ? styles.circleChecked : ''} ${!scrolledToBottom ? styles.circleDisabled : ''}`}>
-                            {agreed && (
-                                <svg width="12" height="12" viewBox="0 0 12 12" fill="none">
-                                    <path d="M2 6l3 3 5-5" stroke="#fff" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"/>
-                                </svg>
-                            )}
-                        </div>
-                        <span className={styles.checkText}>
-                            I have read and understood the Terms &amp; Conditions and agree to be bound by them.
-                        </span>
-                    </label>
-
-                    {!scrolledToBottom && (
-                        <p className={styles.checkHint}>Scroll through all terms above to enable this checkbox.</p>
-                    )}
-                </div>
-
-                {/* Action buttons */}
-                <div className={styles.actions}>
-                    <button className={styles.declineBtn} onClick={onClose}>
-                        Decline
+                <div className={styles.footer}>
+                    <button type="button" className={styles.secondaryButton} onClick={onClose}>
+                        Close
                     </button>
                     <button
-                        className={`${styles.agreeBtn} ${canAgree ? styles.agreeBtnOn : ''}`}
-                        disabled={!canAgree}
-                        onClick={canAgree ? onAgree : undefined}
+                        type="button"
+                        className={`${styles.primaryButton} ${scrolledToBottom ? styles.primaryButtonEnabled : ''}`}
+                        disabled={!scrolledToBottom}
+                        onClick={scrolledToBottom ? onAgree : undefined}
                     >
-                        I Agree &amp; Continue
-                        {canAgree && (
-                            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
-                                <path d="M5 12h14M12 5l7 7-7 7"/>
-                            </svg>
-                        )}
+                        Accept
                     </button>
                 </div>
             </div>
