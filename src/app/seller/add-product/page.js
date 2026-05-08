@@ -93,6 +93,56 @@ const categoriesData = [
     },
 ];
 
+const defaultFormData = {
+    name: '',
+    description: '',
+    condition: '',
+    brand: '',
+    size: '',
+    specifications: '',
+    availability: '1',
+    price: '',
+    reservePrice: '',
+    startingPrice: '',
+    bidIncrement: '',
+    categories: []
+};
+
+const normalizeCategoryValue = (category) => {
+    if (typeof category === 'string') return category;
+    if (category && typeof category === 'object') {
+        return category.category_name || category.name || category.category || '';
+    }
+    return '';
+};
+
+const normalizeCategoryList = (categories) => (
+    Array.isArray(categories)
+        ? categories.map(normalizeCategoryValue).filter(Boolean)
+        : []
+);
+
+const normalizeFormData = (raw) => {
+    const safe = raw && typeof raw === 'object' ? raw : {};
+
+    return {
+        ...defaultFormData,
+        ...safe,
+        name: typeof safe.name === 'string' ? safe.name : '',
+        description: typeof safe.description === 'string' ? safe.description : '',
+        condition: typeof safe.condition === 'string' ? safe.condition : '',
+        brand: typeof safe.brand === 'string' ? safe.brand : '',
+        size: typeof safe.size === 'string' ? safe.size : '',
+        specifications: typeof safe.specifications === 'string' ? safe.specifications : '',
+        availability: safe.availability != null ? String(safe.availability) : '1',
+        price: safe.price != null ? String(safe.price) : '',
+        reservePrice: safe.reservePrice != null ? String(safe.reservePrice) : '',
+        startingPrice: safe.startingPrice != null ? String(safe.startingPrice) : '',
+        bidIncrement: safe.bidIncrement != null ? String(safe.bidIncrement) : '',
+        categories: normalizeCategoryList(safe.categories),
+    };
+};
+
 function AddProductPageInner() {
     const router = useRouter();
     const searchParams = useSearchParams();
@@ -115,20 +165,7 @@ function AddProductPageInner() {
     const [fullPreviewUrl, setFullPreviewUrl] = useState(null);
     const [imageErrors, setImageErrors] = useState([]);
     const [validationModal, setValidationModal] = useState(null); // { title, message }
-    const [formData, setFormData] = useState({
-        name: '',
-        description: '',
-        condition: '',
-        brand: '',
-        size: '',
-        specifications: '',
-        availability: '1',
-        price: '',
-        reservePrice: '',
-        startingPrice: '',
-        bidIncrement: '',
-        categories: []
-    });
+    const [formData, setFormData] = useState(defaultFormData);
 
     // ── Helpers for image persistence ──────────────────────────────────────
     const readAsDataUrl = (file) => new Promise((resolve) => {
@@ -138,8 +175,11 @@ function AddProductPageInner() {
     });
 
     const dataUrlToFile = (dataUrl, filename, mimeType) => {
+        if (typeof dataUrl !== 'string' || !dataUrl.includes(',')) return null;
         const arr = dataUrl.split(',');
-        const mime = mimeType || arr[0].match(/:(.*?);/)[1];
+        const mimeMatch = arr[0]?.match(/:(.*?);/);
+        const mime = mimeType || mimeMatch?.[1];
+        if (!mime || !arr[1]) return null;
         const bstr = atob(arr[1]);
         let n = bstr.length;
         const u8arr = new Uint8Array(n);
@@ -167,7 +207,7 @@ function AddProductPageInner() {
                 const res = await fetch(`${apiUrl}/api/products/${editId}`);
                 if (!res.ok) throw new Error('Product not found');
                 const p = await res.json();
-                setFormData({
+                setFormData(normalizeFormData({
                     name: p.name || p.title || '',
                     description: p.description || '',
                     condition: CONDITION_REVERSE_MAP[p.condition] || '',
@@ -179,8 +219,8 @@ function AddProductPageInner() {
                     reservePrice: p.reserve_price?.toString() || '',
                     startingPrice: p.starting_price?.toString() || '',
                     bidIncrement: (p.bid_increment || p.incremental_bid_step)?.toString() || '',
-                    categories: Array.isArray(p.categories) ? p.categories : [],
-                });
+                    categories: p.categories,
+                }));
                 // Load existing images as URL previews
                 const imgs = Array.isArray(p.images)
                     ? p.images.map(img => (typeof img === 'string' ? img : img.image_url)).filter(Boolean)
@@ -192,7 +232,6 @@ function AddProductPageInner() {
                 setEditLoading(false);
             }
         })();
-    // eslint-disable-next-line react-hooks/exhaustive-deps
     }, [editId]);
 
     // ── Restore draft on mount (new product only) ──────────────────────────
@@ -200,7 +239,7 @@ function AddProductPageInner() {
         if (editId) return; // skip for edit mode
         try {
             const savedForm = sessionStorage.getItem(SS_FORM);
-            if (savedForm) setFormData(JSON.parse(savedForm));
+            if (savedForm) setFormData(normalizeFormData(JSON.parse(savedForm)));
 
             const savedStep = sessionStorage.getItem(SS_STEP);
             if (savedStep) setCurrentStep(parseInt(savedStep, 10) || 0);
@@ -208,11 +247,24 @@ function AddProductPageInner() {
             const savedImgs = sessionStorage.getItem(SS_IMGS);
             if (savedImgs) {
                 const parsed = JSON.parse(savedImgs);
-                if (parsed.length > 0) {
-                    const files = parsed.map(img => dataUrlToFile(img.dataUrl, img.name, img.type));
-                    setImages(files);
-                    setPreviewUrls(parsed.map(img => img.dataUrl));
-                    setImageDataUrls(parsed.map(img => img.dataUrl));
+                if (Array.isArray(parsed) && parsed.length > 0) {
+                    const normalizedImages = parsed
+                        .filter(img => img && typeof img === 'object')
+                        .map(img => ({
+                            dataUrl: typeof img.dataUrl === 'string' ? img.dataUrl : '',
+                            name: typeof img.name === 'string' ? img.name : 'image.jpg',
+                            type: typeof img.type === 'string' ? img.type : 'image/jpeg',
+                        }))
+                        .filter(img => img.dataUrl);
+                    const restoredImages = normalizedImages
+                        .map(img => {
+                            const file = dataUrlToFile(img.dataUrl, img.name, img.type);
+                            return file ? { ...img, file } : null;
+                        })
+                        .filter(Boolean);
+                    setImages(restoredImages.map(img => img.file));
+                    setPreviewUrls(restoredImages.map(img => img.dataUrl));
+                    setImageDataUrls(restoredImages.map(img => img.dataUrl));
                 }
             }
         } catch { /* ignore corrupt storage */ }
@@ -250,13 +302,16 @@ function AddProductPageInner() {
         formData.bidIncrement.toString().trim().length > 0;
 
     const toggleCategory = (catName) => {
+        const normalizedCategory = normalizeCategoryValue(catName);
+        if (!normalizedCategory) return;
+
         setFormData(prev => {
-            const exists = prev.categories.includes(catName);
+            const exists = prev.categories.includes(normalizedCategory);
             if (exists) {
-                return { ...prev, categories: prev.categories.filter(c => c !== catName) };
+                return { ...prev, categories: prev.categories.filter(c => c !== normalizedCategory) };
             }
             if (prev.categories.length >= 3) return prev;
-            return { ...prev, categories: [...prev.categories, catName] };
+            return { ...prev, categories: [...prev.categories, normalizedCategory] };
         });
     };
 
@@ -611,7 +666,7 @@ function AddProductPageInner() {
                             <strong>Selected categories:</strong>
                             {formData.categories.map(cat => (
                                 <span key={cat} className={styles.catBadge}>
-                                    {cat.split(':').pop()} <X size={12} onClick={() => toggleCategory(cat)} style={{ cursor: 'pointer' }} />
+                                    {(typeof cat === 'string' ? cat : normalizeCategoryValue(cat)).split(':').pop()} <X size={12} onClick={() => toggleCategory(cat)} style={{ cursor: 'pointer' }} />
                                 </span>
                             ))}
                         </div>
@@ -626,7 +681,7 @@ function AddProductPageInner() {
                             productData={{
                                 name: formData.name,
                                 description: formData.description,
-                                category: formData.categories[0] || 'General',
+                                category: normalizeCategoryValue(formData.categories[0]) || 'General',
                                 condition: formData.condition,
                                 brand: formData.brand,
                                 specifications: formData.specifications

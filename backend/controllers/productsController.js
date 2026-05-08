@@ -2,6 +2,36 @@ import { supabase } from '../config/supabase.js';
 import { generatePriceRecommendation } from '../services/priceRecommendationService.js';
 import { createModerationCase } from '../services/violationService.js';
 
+function normalizeCategoryValue(category) {
+  if (typeof category === 'string') return category;
+  if (category && typeof category === 'object') {
+    return category.category_name || category.name || category.category || '';
+  }
+  return '';
+}
+
+function normalizeCategoryList(categories) {
+  if (!Array.isArray(categories)) return [];
+  return categories.map(normalizeCategoryValue).filter(Boolean);
+}
+
+function normalizeImageValue(image) {
+  if (typeof image === 'string') return { image_url: image };
+  if (image && typeof image === 'object' && typeof image.image_url === 'string' && image.image_url) {
+    return image;
+  }
+  return null;
+}
+
+function normalizeViewProduct(product) {
+  if (!product || typeof product !== 'object') return product;
+  return {
+    ...product,
+    categories: normalizeCategoryList(product.categories),
+    images: Array.isArray(product.images) ? product.images.map(normalizeImageValue).filter(Boolean) : [],
+  };
+}
+
 async function enrichWithSellerInfo(products) {
   const sellerIds = [...new Set(products.map(p => p.seller_id).filter(Boolean))];
   if (!sellerIds.length) return products;
@@ -74,7 +104,7 @@ export const getAllProducts = async (req, res) => {
     const { data, error, count } = await query;
     if (error) return res.status(500).json({ error: error.message });
 
-    const enriched = await enrichWithSellerInfo(data || []);
+    const enriched = await enrichWithSellerInfo((data || []).map(normalizeViewProduct));
     res.json({ count, data: enriched });
   } catch (err) {
     res.status(500).json({ error: err.message });
@@ -92,7 +122,7 @@ export const getProductById = async (req, res) => {
       .single();
 
     if (error) return res.status(404).json({ error: 'Product not found' });
-    res.json(data);
+    res.json(normalizeViewProduct(data));
   } catch (err) {
     res.status(500).json({ error: err.message });
   }
@@ -129,7 +159,7 @@ export const getProductsBySeller = async (req, res) => {
     const { data, error, count } = await query;
     if (error) return res.status(500).json({ error: error.message });
 
-    const enriched = await enrichWithSellerInfo(data || []);
+    const enriched = await enrichWithSellerInfo((data || []).map(normalizeViewProduct));
     res.json({ count, data: enriched });
   } catch (err) {
     res.status(500).json({ error: err.message });
