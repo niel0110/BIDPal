@@ -28,6 +28,7 @@ interface SuspendOptions {
   suspensionDays?: number;
   suspensionUntil?: string;
   reason?: string;
+  
 }
 
 // DB account_status → display standing
