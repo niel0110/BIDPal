@@ -3,10 +3,12 @@
 import { useState } from 'react';
 import { useRouter } from 'next/navigation';
 import { Eye, EyeOff } from 'lucide-react';
+import PasswordChecklist from '@/components/auth/PasswordChecklist';
 import TermsModal from '@/components/TermsModal/TermsModal';
 import AuthLogo from '@/components/AuthLogo';
 import { useAuth } from '@/context/AuthContext';
 import { useSubmitLock } from '@/hooks/useSubmitLock';
+import { PASSWORD_POLICY_MESSAGE, getPasswordValidation } from '@/lib/passwordPolicy';
 import styles from './page.module.css';
 
 export default function SignUp() {
@@ -39,6 +41,8 @@ export default function SignUp() {
 
         return localStorage.getItem('bidpal_referral_code') || '';
     });
+    const passwordValidation = getPasswordValidation(password);
+    const canSubmitDetails = agreed && passwordValidation.isValid && !isSubmitting;
 
     const readApiResponse = async (res, fallbackMessage) => {
         const contentType = res.headers.get('content-type') || '';
@@ -112,6 +116,10 @@ export default function SignUp() {
             }
             if (password !== confirm) {
                 setError('Passwords do not match.');
+                return;
+            }
+            if (!passwordValidation.isValid) {
+                setError(PASSWORD_POLICY_MESSAGE);
                 return;
             }
             if (!agreed) {
@@ -237,6 +245,7 @@ export default function SignUp() {
                                     {showPassword ? <Eye size={18} /> : <EyeOff size={18} />}
                                 </button>
                             </div>
+                            <PasswordChecklist password={password} />
                             <div className={`${styles.inputGroup} ${styles.passwordWrap}`}>
                                 <input
                                     type={showConfirm ? 'text' : 'password'}
@@ -278,8 +287,8 @@ export default function SignUp() {
 
                             <button
                                 type="submit"
-                                disabled={!agreed || isSubmitting}
-                                className={`${styles.submitBtn} ${agreed && !isSubmitting ? styles.submitBtnOn : ''}`}
+                                disabled={!canSubmitDetails}
+                                className={`${styles.submitBtn} ${canSubmitDetails ? styles.submitBtnOn : ''}`}
                             >
                                 {isSubmitting
                                     ? (verificationStep === 'details' ? 'Sending code...' : 'Creating account...')

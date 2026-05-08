@@ -2,10 +2,12 @@
 
 import { useState } from 'react';
 import Link from 'next/link';
+import PasswordChecklist from '@/components/auth/PasswordChecklist';
 import Button from '@/components/ui/Button';
 import Input from '@/components/ui/Input';
 import AuthLogo from '@/components/AuthLogo';
 import { useSubmitLock } from '@/hooks/useSubmitLock';
+import { PASSWORD_POLICY_MESSAGE, getPasswordValidation } from '@/lib/passwordPolicy';
 import styles from './page.module.css';
 
 export default function ForgotPassword() {
@@ -18,6 +20,7 @@ export default function ForgotPassword() {
     const [confirmPassword, setConfirmPassword] = useState('');
     const [message, setMessage] = useState('');
     const [error, setError] = useState('');
+    const passwordValidation = getPasswordValidation(password);
 
     const apiUrl = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:5000';
 
@@ -112,6 +115,10 @@ export default function ForgotPassword() {
                     setError('Passwords do not match.');
                     return;
                 }
+                if (!passwordValidation.isValid) {
+                    setError(PASSWORD_POLICY_MESSAGE);
+                    return;
+                }
                 await resetPassword();
                 setStep('done');
                 setMessage('Password reset successfully. You can now log in.');
@@ -179,6 +186,7 @@ export default function ForgotPassword() {
                                                 onChange={(e) => setPassword(e.target.value)}
                                             />
                                         </div>
+                                        <PasswordChecklist password={password} />
                                         <div className={styles.formGroup}>
                                             <Input
                                                 type="password"
@@ -190,7 +198,11 @@ export default function ForgotPassword() {
                                     </>
                                 )}
 
-                                <Button type="submit" variant="primary" disabled={isSubmitting}>
+                                <Button
+                                    type="submit"
+                                    variant="primary"
+                                    disabled={isSubmitting || (step === 'password' && !passwordValidation.isValid)}
+                                >
                                     {isSubmitting
                                         ? 'Please wait...'
                                         : step === 'email'

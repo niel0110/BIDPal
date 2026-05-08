@@ -5,6 +5,7 @@ import jwt from 'jsonwebtoken';
 import crypto from 'crypto';
 import { OAuth2Client } from 'google-auth-library';
 import { getEmailServiceStatus, isEmailConfigured, sendEmail, sendVerificationCodeEmail } from '../services/emailService.js';
+import { isPasswordPolicyValid, PASSWORD_POLICY_MESSAGE } from '../utils/passwordPolicy.js';
 
 const CODE_TTL_MS = 10 * 60 * 1000;
 const TOKEN_TTL_MS = 15 * 60 * 1000;
@@ -225,6 +226,10 @@ export const register = async (req, res) => {
     return res.status(400).json({ error: 'Email and password are required.' });
   }
 
+  if (!isPasswordPolicyValid(password)) {
+    return res.status(400).json({ error: PASSWORD_POLICY_MESSAGE });
+  }
+
   if (!consumeVerifiedToken('register', email, emailVerificationToken)) {
     return res.status(400).json({ error: 'Please verify your email before creating an account.' });
   }
@@ -323,8 +328,8 @@ export const resetPassword = async (req, res) => {
     return res.status(400).json({ error: 'Email, reset token, and new password are required.' });
   }
 
-  if (String(newPassword).length < 6) {
-    return res.status(400).json({ error: 'Password must be at least 6 characters.' });
+  if (!isPasswordPolicyValid(newPassword)) {
+    return res.status(400).json({ error: PASSWORD_POLICY_MESSAGE });
   }
 
   if (!consumeVerifiedToken('forgot-password', email, resetToken)) {
