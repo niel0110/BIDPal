@@ -900,8 +900,8 @@ export const endAuction = async (req, res) => {
           user_id: winningBid.user_id,
           type: 'auction_won',
           payload: {
-            title: `Auction Ended: Congratulations! You are the highest bidder with a bid of ₱${winningBid.bid_amount.toLocaleString('en-PH')}.`,
-            message: `Auction Ended: Congratulations! You are the highest bidder with a bid of ₱${winningBid.bid_amount.toLocaleString('en-PH')}. Please proceed to Orders to process your payment.`,
+            title: `Auction Ended: Congratulations! You won "${productData?.name || 'the item'}" for ₱${Number(winningBid.bid_amount).toLocaleString('en-PH')}. Click here to pay.`,
+            message: `You are the highest bidder. Please proceed to checkout to complete your purchase within 24 hours.`,
             order_id: winnerOrderId,
             auction_id: id,
             product_id: auction.products_id,
@@ -931,8 +931,8 @@ export const endAuction = async (req, res) => {
           user_id: userId,
           type: 'auction_ended',
           payload: {
-            title: `Auction Ended: Better luck next time! The winning price was ₱${winningBid.bid_amount.toLocaleString('en-PH')}.`,
-            message: `Auction Ended: Better luck next time! The winning price was ₱${winningBid.bid_amount.toLocaleString('en-PH')}.`,
+            title: `Auction Ended: ₱${Number(winningBid.bid_amount).toLocaleString('en-PH')} was the final price. Better luck next time!`,
+            message: `The auction for "${productData?.name || 'the item'}" has ended. The winning bid was ₱${Number(winningBid.bid_amount).toLocaleString('en-PH')}.`,
             auction_id: id,
             product_id: auction.products_id,
             product_name: productData?.name,
