@@ -14,7 +14,7 @@ const TERMS = [
     { title: '6. Changes to Terms', body: 'BIDPal may update these terms at any time. Continued use of the platform constitutes acceptance of the revised terms.' },
 ];
 
-export default function AccountStatusModal({ isOpen, message, onClose, email }) {
+export default function AccountStatusModal({ isOpen, message, onClose, email, status = 'banned' }) {
     const [termsOpen, setTermsOpen] = useState(false);
 
     if (!isOpen) return null;
@@ -24,7 +24,7 @@ export default function AccountStatusModal({ isOpen, message, onClose, email }) 
                 <div className={styles.iconWrap}>
                     <Ban size={44} />
                 </div>
-                <h2>Account Permanently Banned</h2>
+                <h2>{status === 'suspended' ? 'Account Suspended' : 'Account Permanently Banned'}</h2>
                 <p className={styles.message}>
                     {message || 'Your account has been permanently banned due to a violation of our terms.'}
                 </p>
@@ -47,14 +47,16 @@ export default function AccountStatusModal({ isOpen, message, onClose, email }) 
                     )}
                 </div>
 
-                <Link
-                    href={`/reactivation${email ? `?email=${encodeURIComponent(email)}` : ''}`}
-                    className={styles.reactivateBtn}
-                    onClick={onClose}
-                >
-                    <RotateCcw size={15} />
-                    Request Account Reactivation
-                </Link>
+                {status !== 'suspended' && (
+                    <Link
+                        href={`/reactivation${email ? `?email=${encodeURIComponent(email)}` : ''}`}
+                        className={styles.reactivateBtn}
+                        onClick={onClose}
+                    >
+                        <RotateCcw size={15} />
+                        Request Account Reactivation
+                    </Link>
+                )}
                 <button className={styles.closeBtn} onClick={onClose}>
                     I Understand
                 </button>

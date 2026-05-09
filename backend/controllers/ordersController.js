@@ -3,6 +3,7 @@ import {
   calculateSellerCommission,
   recordPlatformEarning
 } from '../services/revenueService.js';
+import { assertCanCheckout } from '../services/accountStatusService.js';
 
 const generatePaymentReference = () => {
   const d = new Date();
@@ -412,6 +413,8 @@ export const createOrder = async (req, res) => {
       return res.status(400).json({ error: 'Missing required fields' });
     }
 
+    await assertCanCheckout(user_id);
+
     const itemSubtotal = items.reduce((sum, item) => {
       const quantity = Number(item.quantity || 1);
       return sum + Number(item.price || 0) * quantity;
@@ -509,7 +512,11 @@ export const createOrder = async (req, res) => {
         }
     });
   } catch (err) {
-    res.status(500).json({ error: err.message });
+    res.status(err.statusCode || 500).json({
+      error: err.message,
+      code: err.code,
+      accountStatus: err.accountStatus,
+    });
   }
 };
 
@@ -539,6 +546,12 @@ export const processAuctionPayment = async (req, res) => {
     const { user_id, payment_method, shipping_address_id, shipping_fee, total_amount } = req.body;
 
     console.log(`💳 Processing payment for auction: ${auction_id}`);
+
+    if (!user_id) {
+      return res.status(400).json({ error: 'Missing user_id' });
+    }
+
+    await assertCanCheckout(user_id);
 
     // 1. Verify the user is the winner
     const { data: auction, error: auctionError } = await supabase
@@ -735,7 +748,11 @@ export const processAuctionPayment = async (req, res) => {
 
   } catch (err) {
     console.error('Error processing payment:', err);
-    res.status(500).json({ error: err.message });
+    res.status(err.statusCode || 500).json({
+      error: err.message,
+      code: err.code,
+      accountStatus: err.accountStatus,
+    });
   }
 };
 

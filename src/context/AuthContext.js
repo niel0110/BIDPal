@@ -22,6 +22,12 @@ export function AuthProvider({ children }) {
             if (!res.ok) return; // expired token or server error — keep cached data
             const fresh = await res.json();
             if (fresh?.error) return;
+            if (fresh?.accountStatus?.status === 'suspended' || fresh?.accountStatus?.status === 'banned') {
+                setUser(null);
+                localStorage.removeItem('bidpal_user');
+                localStorage.removeItem('bidpal_token');
+                return;
+            }
             setUser(prev => {
                 const updated = {
                     ...prev,
@@ -68,6 +74,9 @@ export function AuthProvider({ children }) {
             const data = await res.json();
             if (data?.banned || data?.error === 'account_banned') {
                 return { success: false, banned: true, message: data.message };
+            }
+            if (data?.suspended || data?.error === 'account_suspended') {
+                return { success: false, suspended: true, message: data.message };
             }
             if (!res.ok) {
                 throw new Error(data.error || 'Login failed');

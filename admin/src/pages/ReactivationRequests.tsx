@@ -1,6 +1,6 @@
 import { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { RotateCcw, Clock, CheckCircle, XCircle, ExternalLink, AlertTriangle, FileText } from 'lucide-react';
+import { RotateCcw, Clock, CheckCircle, XCircle, ExternalLink, AlertTriangle, FileText, Eye, X } from 'lucide-react';
 import { supabase } from '../lib/supabase';
 import { clearAdminSession, getAdminToken, hasValidAdminToken } from '../lib/auth';
 
@@ -43,7 +43,7 @@ export default function ReactivationRequests() {
   const [loading, setLoading] = useState(true);
   const [filter, setFilter] = useState<'all' | 'pending' | 'approved' | 'rejected'>('all');
   const [selectedRequest, setSelectedRequest] = useState<ReactivationRequest | null>(null);
-  const [modalType, setModalType] = useState<'approve' | 'reject' | null>(null);
+  const [modalType, setModalType] = useState<'detail' | 'approve' | 'reject' | null>(null);
   const [adminNotes, setAdminNotes] = useState('');
   const [processing, setProcessing] = useState(false);
   const [actionError, setActionError] = useState('');
@@ -140,6 +140,13 @@ export default function ReactivationRequests() {
     setAdminNotes('Your account has been reactivated. You may now log in and start fresh with a clean slate.');
     setActionError('');
     setModalType('approve');
+  };
+
+  const openDetail = (req: ReactivationRequest) => {
+    setSelectedRequest(req);
+    setAdminNotes('');
+    setActionError('');
+    setModalType('detail');
   };
 
   const openReject = (req: ReactivationRequest) => {
@@ -303,7 +310,7 @@ export default function ReactivationRequests() {
                 const cfg = STATUS_CONFIG[req.status];
                 const StatusIcon = cfg.Icon;
                 return (
-                  <tr key={req.id} style={{ borderBottom: i < filtered.length - 1 ? '1px solid #f9fafb' : 'none', transition: 'background 0.1s' }}
+                  <tr key={req.id} onClick={() => openDetail(req)} style={{ borderBottom: i < filtered.length - 1 ? '1px solid #f9fafb' : 'none', transition: 'background 0.1s', cursor: 'pointer' }}
                     onMouseEnter={e => (e.currentTarget.style.background = '#fafafa')}
                     onMouseLeave={e => (e.currentTarget.style.background = 'transparent')}>
 
@@ -337,6 +344,7 @@ export default function ReactivationRequests() {
                           href={req.id_document_front_url || req.id_document_url}
                           target="_blank"
                           rel="noopener noreferrer"
+                          onClick={e => e.stopPropagation()}
                           style={{ display: 'inline-flex', alignItems: 'center', gap: 4, color: '#2563eb', fontSize: '0.82rem', fontWeight: 600, textDecoration: 'none' }}
                         >
                           <FileText size={13} />
@@ -348,6 +356,7 @@ export default function ReactivationRequests() {
                             href={req.id_document_back_url}
                             target="_blank"
                             rel="noopener noreferrer"
+                            onClick={e => e.stopPropagation()}
                             style={{ display: 'inline-flex', alignItems: 'center', gap: 4, color: '#2563eb', fontSize: '0.82rem', fontWeight: 600, textDecoration: 'none' }}
                           >
                             <FileText size={13} />
@@ -374,7 +383,19 @@ export default function ReactivationRequests() {
                       {req.status === 'pending' ? (
                         <div style={{ display: 'flex', gap: 6 }}>
                           <button
-                            onClick={() => openApprove(req)}
+                            onClick={e => { e.stopPropagation(); openDetail(req); }}
+                            style={{
+                              padding: '5px 10px', borderRadius: 7, border: '1.5px solid #e5e7eb',
+                              background: 'white', color: '#374151',
+                              fontSize: '0.75rem', fontWeight: 700, cursor: 'pointer', fontFamily: 'inherit',
+                              display: 'inline-flex', alignItems: 'center', gap: 4,
+                            }}
+                          >
+                            <Eye size={13} />
+                            View
+                          </button>
+                          <button
+                            onClick={e => { e.stopPropagation(); openApprove(req); }}
                             style={{
                               padding: '5px 12px', borderRadius: 7, border: 'none',
                               background: '#16a34a', color: 'white',
@@ -384,7 +405,7 @@ export default function ReactivationRequests() {
                             Approve
                           </button>
                           <button
-                            onClick={() => openReject(req)}
+                            onClick={e => { e.stopPropagation(); openReject(req); }}
                             style={{
                               padding: '5px 12px', borderRadius: 7, border: '1.5px solid #fecdd3',
                               background: 'white', color: '#cc2b41',
@@ -396,6 +417,19 @@ export default function ReactivationRequests() {
                         </div>
                       ) : (
                         <div>
+                          <button
+                            onClick={e => { e.stopPropagation(); openDetail(req); }}
+                            style={{
+                              marginBottom: 5,
+                              padding: '5px 10px', borderRadius: 7, border: '1.5px solid #e5e7eb',
+                              background: 'white', color: '#374151',
+                              fontSize: '0.75rem', fontWeight: 700, cursor: 'pointer', fontFamily: 'inherit',
+                              display: 'inline-flex', alignItems: 'center', gap: 4,
+                            }}
+                          >
+                            <Eye size={13} />
+                            View
+                          </button>
                           <div style={{ fontSize: '0.72rem', color: '#9ca3af' }}>
                             {req.reviewed_at ? timeAgo(req.reviewed_at) : '—'}
                           </div>
@@ -416,6 +450,102 @@ export default function ReactivationRequests() {
       </div>
 
       {/* ── Approve Modal ── */}
+      {modalType === 'detail' && selectedRequest && (() => {
+        const cfg = STATUS_CONFIG[selectedRequest.status];
+        const StatusIcon = cfg.Icon;
+        return (
+          <div
+            style={{ position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.55)', backdropFilter: 'blur(4px)', display: 'flex', alignItems: 'center', justifyContent: 'center', zIndex: 1000, padding: 20 }}
+            onClick={closeModal}
+          >
+            <div
+              style={{ background: 'white', borderRadius: 20, width: '100%', maxWidth: 720, maxHeight: '88vh', overflow: 'auto', boxShadow: '0 24px 64px rgba(0,0,0,0.22)' }}
+              onClick={e => e.stopPropagation()}
+            >
+              <div style={{ padding: '22px 24px', borderBottom: '1px solid #f3f4f6', display: 'flex', alignItems: 'flex-start', justifyContent: 'space-between', gap: 16 }}>
+                <div>
+                  <div style={{ display: 'flex', alignItems: 'center', gap: 10, marginBottom: 8 }}>
+                    <h2 style={{ margin: 0, fontSize: '1.15rem', color: '#111', fontWeight: 800 }}>Reactivation Request</h2>
+                    <span style={{ display: 'inline-flex', alignItems: 'center', gap: 5, background: cfg.bg, color: cfg.color, border: `1px solid ${cfg.border}`, fontSize: '0.72rem', fontWeight: 700, padding: '3px 10px', borderRadius: 20 }}>
+                      <StatusIcon size={11} />
+                      {cfg.label}
+                    </span>
+                  </div>
+                  <p style={{ margin: 0, fontSize: '0.82rem', color: '#6b7280' }}>
+                    {selectedRequest.user_name} - {selectedRequest.email}
+                  </p>
+                </div>
+                <button onClick={closeModal} style={{ border: '1px solid #e5e7eb', background: 'white', borderRadius: 9, width: 34, height: 34, display: 'grid', placeItems: 'center', cursor: 'pointer', color: '#6b7280' }}>
+                  <X size={17} />
+                </button>
+              </div>
+
+              <div style={{ padding: 24, display: 'grid', gap: 18 }}>
+                <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3, minmax(0, 1fr))', gap: 12 }}>
+                  {[
+                    { label: 'Submitted', value: new Date(selectedRequest.created_at).toLocaleString('en-PH', { dateStyle: 'medium', timeStyle: 'short' }) },
+                    { label: 'Reviewed', value: selectedRequest.reviewed_at ? new Date(selectedRequest.reviewed_at).toLocaleString('en-PH', { dateStyle: 'medium', timeStyle: 'short' }) : 'Not reviewed' },
+                    { label: 'Request ID', value: selectedRequest.id.slice(0, 8).toUpperCase() },
+                  ].map(item => (
+                    <div key={item.label} style={{ background: '#f9fafb', border: '1px solid #f3f4f6', borderRadius: 12, padding: 12 }}>
+                      <div style={{ fontSize: '0.68rem', fontWeight: 800, color: '#9ca3af', textTransform: 'uppercase', letterSpacing: '0.05em', marginBottom: 5 }}>{item.label}</div>
+                      <div style={{ fontSize: '0.82rem', fontWeight: 700, color: '#111', overflowWrap: 'anywhere' }}>{item.value}</div>
+                    </div>
+                  ))}
+                </div>
+
+                <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 12 }}>
+                  <a href={selectedRequest.id_document_front_url || selectedRequest.id_document_url} target="_blank" rel="noopener noreferrer" style={{ border: '1px solid #dbeafe', background: '#eff6ff', color: '#1d4ed8', borderRadius: 12, padding: 14, fontSize: '0.85rem', fontWeight: 800, textDecoration: 'none', display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 10 }}>
+                    <span style={{ display: 'inline-flex', alignItems: 'center', gap: 8 }}><FileText size={16} /> View Front ID</span>
+                    <ExternalLink size={14} />
+                  </a>
+                  {selectedRequest.id_document_back_url ? (
+                    <a href={selectedRequest.id_document_back_url} target="_blank" rel="noopener noreferrer" style={{ border: '1px solid #dbeafe', background: '#eff6ff', color: '#1d4ed8', borderRadius: 12, padding: 14, fontSize: '0.85rem', fontWeight: 800, textDecoration: 'none', display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 10 }}>
+                      <span style={{ display: 'inline-flex', alignItems: 'center', gap: 8 }}><FileText size={16} /> View Back ID</span>
+                      <ExternalLink size={14} />
+                    </a>
+                  ) : (
+                    <div style={{ border: '1px solid #f3f4f6', background: '#fafafa', color: '#9ca3af', borderRadius: 12, padding: 14, fontSize: '0.85rem', fontWeight: 700 }}>
+                      No back ID uploaded
+                    </div>
+                  )}
+                </div>
+
+                <div>
+                  <div style={{ fontSize: '0.72rem', fontWeight: 800, color: '#6b7280', textTransform: 'uppercase', letterSpacing: '0.05em', marginBottom: 8 }}>User Message</div>
+                  <div style={{ border: '1px solid #f3f4f6', background: '#f9fafb', borderRadius: 12, padding: 14, color: '#374151', fontSize: '0.9rem', lineHeight: 1.6, whiteSpace: 'pre-wrap', minHeight: 64 }}>
+                    {selectedRequest.user_message || 'No message was included.'}
+                  </div>
+                </div>
+
+                <div>
+                  <div style={{ fontSize: '0.72rem', fontWeight: 800, color: '#6b7280', textTransform: 'uppercase', letterSpacing: '0.05em', marginBottom: 8 }}>Admin Notes</div>
+                  <div style={{ border: '1px solid #f3f4f6', background: '#fff', borderRadius: 12, padding: 14, color: '#374151', fontSize: '0.9rem', lineHeight: 1.6, whiteSpace: 'pre-wrap', minHeight: 52 }}>
+                    {selectedRequest.admin_notes || 'No admin notes yet.'}
+                  </div>
+                </div>
+              </div>
+
+              <div style={{ padding: '0 24px 24px', display: 'flex', justifyContent: 'flex-end', gap: 10 }}>
+                <button onClick={closeModal} style={{ padding: '0.7rem 1rem', border: '1.5px solid #e5e7eb', borderRadius: 10, background: 'white', color: '#374151', fontWeight: 700, fontSize: '0.85rem', cursor: 'pointer', fontFamily: 'inherit' }}>
+                  Close
+                </button>
+                {selectedRequest.status === 'pending' && (
+                  <>
+                    <button onClick={() => openReject(selectedRequest)} style={{ padding: '0.7rem 1rem', border: '1.5px solid #fecdd3', borderRadius: 10, background: 'white', color: '#cc2b41', fontWeight: 800, fontSize: '0.85rem', cursor: 'pointer', fontFamily: 'inherit' }}>
+                      Reject
+                    </button>
+                    <button onClick={() => openApprove(selectedRequest)} style={{ padding: '0.7rem 1rem', border: 'none', borderRadius: 10, background: '#16a34a', color: 'white', fontWeight: 800, fontSize: '0.85rem', cursor: 'pointer', fontFamily: 'inherit' }}>
+                      Approve
+                    </button>
+                  </>
+                )}
+              </div>
+            </div>
+          </div>
+        );
+      })()}
+
       {modalType === 'approve' && selectedRequest && (
         <div style={{ position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.5)', backdropFilter: 'blur(4px)', display: 'flex', alignItems: 'center', justifyContent: 'center', zIndex: 1000, padding: 20 }}>
           <div style={{ background: 'white', borderRadius: 20, width: '100%', maxWidth: 480, boxShadow: '0 24px 64px rgba(0,0,0,0.18)', overflow: 'hidden' }}>
