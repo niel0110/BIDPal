@@ -177,6 +177,11 @@ function CheckoutPageInner() {
     }, [selectedAddressId, addresses]);
 
     const handlePlaceOrder = () => {
+        if (user?.accountStatus?.status === 'suspended' || user?.accountStatus?.status === 'banned') {
+            setModalError('Your account is currently restricted. Checkout and payment are disabled until your account is reactivated.');
+            setShowErrorModal(true);
+            return;
+        }
         if (!selectedAddressId) {
             setModalError('Please select a shipping address before placing your order.');
             setShowErrorModal(true);
@@ -336,6 +341,25 @@ function CheckoutPageInner() {
                     <button className={styles.goOrdersBtn} onClick={() => router.push('/orders')}>
                         View My Orders
                     </button>
+                </div>
+            </div>
+        );
+    }
+
+    if (user?.accountStatus?.status === 'suspended' || user?.accountStatus?.status === 'banned') {
+        const status = user.accountStatus;
+        return (
+            <div className={styles.checkoutContainer}>
+                <div className={styles.errorState}>
+                    <div className={styles.errorStateIcon}><AlertCircle size={40} /></div>
+                    <h2>Checkout Disabled</h2>
+                    <p>
+                        {status.status === 'banned'
+                            ? 'This account is blacklisted and cannot place orders.'
+                            : `This account is suspended${status.expiresAt ? ` until ${new Date(status.expiresAt).toLocaleDateString([], { month: 'long', day: 'numeric', year: 'numeric' })}` : ''}. Checkout and payment are disabled during suspension.`}
+                    </p>
+                    {status.reason && <p>{status.reason}</p>}
+                    <BackButton label="Go Back" />
                 </div>
             </div>
         );

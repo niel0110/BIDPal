@@ -1,4 +1,5 @@
 import { supabase } from '../config/supabase.js';
+import { getUserAccountStatus } from '../services/accountStatusService.js';
 
 // Fetch all users
 export const getAllUsers = async (req, res) => {
@@ -12,7 +13,13 @@ export const getUserById = async (req, res) => {
   const { user_id } = req.params;
   const { data, error } = await supabase.from('User').select('*').eq('user_id', user_id).single();
   if (error) return res.status(404).json({ error: error.message });
-  res.json(data);
+  try {
+    const { accountStatus } = await getUserAccountStatus(user_id);
+    res.json({ ...data, accountStatus });
+  } catch (statusError) {
+    console.error('Account status lookup failed:', statusError);
+    res.json(data);
+  }
 };
 
 // Create new user

@@ -102,6 +102,12 @@ export default function CartPage() {
 
     const handleCheckout = () => {
         if (!user || selectedItems.length === 0) return;
+
+        if (user?.accountStatus?.status === 'suspended' || user?.accountStatus?.status === 'banned') {
+            setModalError('Your account is currently restricted. Checkout and payment are disabled until your account is reactivated.');
+            setShowErrorModal(true);
+            return;
+        }
         
         if (!selectedAddressId) {
             setModalError('Please select a shipping address before checking out.');

@@ -17,7 +17,7 @@ export default function SignIn() {
     const [email, setEmail] = useState('');
     const [password, setPassword] = useState('');
     const [error, setError] = useState('');
-    const [bannedModal, setBannedModal] = useState({ open: false, message: '' });
+    const [accountStatusModal, setAccountStatusModal] = useState({ open: false, message: '', status: 'banned' });
     const { isSubmitting, runWithLock } = useSubmitLock();
     const { login, loginWithGoogle } = useAuth();
     const router = useRouter();
@@ -32,7 +32,11 @@ export default function SignIn() {
             }
             const result = await login({ email, password });
             if (result.banned) {
-                setBannedModal({ open: true, message: result.message });
+                setAccountStatusModal({ open: true, message: result.message, status: 'banned' });
+                return;
+            }
+            if (result.suspended) {
+                setAccountStatusModal({ open: true, message: result.message, status: 'suspended' });
                 return;
             }
             if (!result.success) {
@@ -67,10 +71,11 @@ export default function SignIn() {
     return (
         <div className={styles.authContainer}>
             <AccountStatusModal
-                isOpen={bannedModal.open}
-                message={bannedModal.message}
+                isOpen={accountStatusModal.open}
+                message={accountStatusModal.message}
+                status={accountStatusModal.status}
                 email={email}
-                onClose={() => setBannedModal({ open: false, message: '' })}
+                onClose={() => setAccountStatusModal({ open: false, message: '', status: 'banned' })}
             />
             <div className={styles.authLeft}>
                 <div className={styles.authLogo}>

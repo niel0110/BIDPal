@@ -429,6 +429,17 @@ export const login = async (req, res) => {
   }
   // ────────────────────────────────────────────────────────────────────────
 
+  if (accountStatus?.status === 'suspended') {
+    return res.status(403).json({
+      suspended: true,
+      error: 'account_suspended',
+      message: accountStatus.expiresAt
+        ? `Your account is suspended until ${new Date(accountStatus.expiresAt).toLocaleDateString('en-PH', { year: 'numeric', month: 'long', day: 'numeric' })}. You cannot access BIDPal during the suspension period.`
+        : 'Your account is suspended. You cannot access BIDPal until your account is reactivated.',
+      accountStatus,
+    });
+  }
+
   // Fetch seller_id if user is a seller
   let seller_id = null;
   if (data.role?.toLowerCase() === 'seller') {
@@ -550,6 +561,17 @@ export const googleLogin = async (req, res) => {
     }
     if (!gAccountStatus && gvr?.account_status === 'warned') gAccountStatus = { status: 'probation' };
     // ────────────────────────────────────────────────────────────────────
+
+    if (gAccountStatus?.status === 'suspended') {
+      return res.status(403).json({
+        suspended: true,
+        error: 'account_suspended',
+        message: gAccountStatus.expiresAt
+          ? `Your account is suspended until ${new Date(gAccountStatus.expiresAt).toLocaleDateString('en-PH', { year: 'numeric', month: 'long', day: 'numeric' })}. You cannot access BIDPal during the suspension period.`
+          : 'Your account is suspended. You cannot access BIDPal until your account is reactivated.',
+        accountStatus: gAccountStatus,
+      });
+    }
 
     // Fetch seller_id if user is a seller
     let seller_id = null;

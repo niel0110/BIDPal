@@ -1,9 +1,6 @@
 .probationBanner {
-    position: fixed;
-    top: 0;
-    left: 0;
-    right: 0;
-    z-index: 9000;
+    position: relative;
+    z-index: 1;
     background: linear-gradient(135deg, #d97706, #b45309);
     color: white;
     padding: 0.55rem 1.25rem;

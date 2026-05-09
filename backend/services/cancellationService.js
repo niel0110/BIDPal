@@ -184,6 +184,7 @@ export const processCancellation = async (cancellationData) => {
     }
 
     let resolvedOrder = null;
+    let isFixedPrice = false;
     if (resolvedOrderId) {
       const { data: orderRow, error: orderFetchError } = await supabase
         .from('Orders')
@@ -203,7 +204,7 @@ export const processCancellation = async (cancellationData) => {
 
       const paymentMethod = String(orderRow.payment_method || '').toLowerCase();
       const isCod = ['cash_on_delivery', 'cod', 'cash'].includes(paymentMethod);
-      const isFixedPrice = orderRow.order_type === 'regular' || !orderRow.auction_id;
+      isFixedPrice = orderRow.order_type === 'regular' || !orderRow.auction_id;
       const canCancelPending = orderRow.status === 'pending_payment';
       const canCancelCodFixed =
         isFixedPrice &&
