@@ -20,6 +20,7 @@ function getNotificationIcon(type) {
         case 'new_message': return <MessageCircle size={16} />;
         case 'new_bid': return <Gavel size={16} />;
         case 'auction_won': return <Gavel size={16} />;
+        case 'auction_ended': return <Gavel size={16} />;
         case 'auction_sold': return <Package size={16} />;
         case 'auction_reserve_not_met': return <Gavel size={16} />;
         case 'auction_no_sale': return <Package size={16} />;
@@ -41,23 +42,29 @@ function getNotificationIcon(type) {
 function getNotificationTarget(notification) {
     const { type, reference_id, reference_type } = notification;
     const title = (notification.payload?.title || '').toLowerCase();
+    const payloadAuctionId = notification.payload?.auction_id || reference_id;
+    const payloadOrderId = notification.payload?.order_id || null;
 
     switch (type) {
         // Buyer won — go pay
         case 'auction_won':
-            return reference_id ? `/checkout?auction_id=${reference_id}` : '/orders';
+            return payloadAuctionId ? `/checkout?auction_id=${payloadAuctionId}${payloadOrderId ? `&order_id=${payloadOrderId}` : ''}` : '/orders';
+
+        // Buyer lost but can still view the recap
+        case 'auction_ended':
+            return payloadAuctionId ? `/live?id=${payloadAuctionId}` : '/';
 
         // Seller's item sold — see full results
         case 'auction_sold':
-            return reference_id ? `/seller/auctions/${reference_id}/results` : '/seller';
+            return payloadAuctionId ? `/seller/auctions/${payloadAuctionId}/results` : '/seller';
 
         // Reserve not met — show the auction recap live page (no order was created)
         case 'auction_reserve_not_met':
-            return reference_id ? `/live?id=${reference_id}` : '/';
+            return payloadAuctionId ? `/live?id=${payloadAuctionId}` : '/';
 
         // Seller: auction ended without a sale — go to auction results/recap
         case 'auction_no_sale':
-            return reference_id ? `/seller/auctions/${reference_id}/results` : '/seller/auctions';
+            return payloadAuctionId ? `/seller/auctions/${payloadAuctionId}/results` : '/seller/auctions';
 
         // order_cancelled:
         //   reference_type='auction' → buyer cancelled auction order → seller sees auction results
@@ -76,8 +83,8 @@ function getNotificationTarget(notification) {
         //   seller payment/shipping updates (reference_type='auction') → seller orders
         //   buyer updates (reference_type='order') → buyer orders
         case 'order_update': {
-            if (reference_type === 'auction' && title.includes('winner')) {
-                return reference_id ? `/seller/auctions/${reference_id}/results` : '/seller/auctions';
+            if (reference_type === 'auction') {
+                return payloadAuctionId ? `/seller/auctions/${payloadAuctionId}/results` : '/seller/auctions';
             }
             const forSeller = reference_type === 'auction' || title.includes('by buyer');
             return forSeller ? '/seller/orders' : '/orders';
@@ -211,7 +218,7 @@ export default function NotificationBell() {
                                             {n.type === 'new_bid' && (
                                                 <>New bid on <strong>{n.payload?.itemName}</strong></>
                                             )}
-                                            {(n.type === 'auction_won' || n.type === 'auction_sold' || n.type === 'auction_reserve_not_met' || n.type === 'auction_no_sale') && (
+                                            {(n.type === 'auction_won' || n.type === 'auction_ended' || n.type === 'auction_sold' || n.type === 'auction_reserve_not_met' || n.type === 'auction_no_sale') && (
                                                 <><strong>{n.payload?.title}</strong>{n.payload?.message && <><br />{n.payload.message}</>}</>
                                             )}
                                             {(n.type === 'kyc_approved' || n.type === 'kyc_rejected' || n.type === 'system') && (
@@ -223,7 +230,7 @@ export default function NotificationBell() {
                                             {n.type === 'order_update' && !n.payload?.title && (
                                                 <>Your order has been updated</>
                                             )}
-                                            {!['new_bid', 'order_update', 'order_cancelled', 'auction_won', 'auction_sold', 'auction_reserve_not_met', 'auction_no_sale', 'account_violation', 'warning', 'kyc_approved', 'kyc_rejected', 'system'].includes(n.type) && (
+                                            {!['new_bid', 'order_update', 'order_cancelled', 'auction_won', 'auction_ended', 'auction_sold', 'auction_reserve_not_met', 'auction_no_sale', 'account_violation', 'warning', 'kyc_approved', 'kyc_rejected', 'system'].includes(n.type) && (
                                                 <>{n.payload?.title ? <><strong>{n.payload.title}</strong>{n.payload.message && <><br />{n.payload.message}</>}</> : n.payload?.message || 'You have a new notification'}</>
                                             )}
                                         </p>

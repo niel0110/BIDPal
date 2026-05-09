@@ -195,6 +195,7 @@
 .iconWrap.new_message { background: #eff6ff; color: #3b82f6; }
 .iconWrap.new_bid { background: #f0fdf4; color: #22c55e; }
 .iconWrap.auction_won { background: #fef3c7; color: #f59e0b; }
+.iconWrap.auction_ended { background: #eff6ff; color: #2563eb; }
 .iconWrap.auction_sold { background: #dcfce7; color: #16a34a; }
 .iconWrap.auction_reserve_not_met { background: #fee2e2; color: #dc2626; }
 .iconWrap.auction_no_sale { background: #fff7ed; color: #f97316; }

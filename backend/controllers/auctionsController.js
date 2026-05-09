@@ -888,9 +888,11 @@ export const endAuction = async (req, res) => {
           user_id: winningBid.user_id,
           type: 'auction_won',
           payload: {
-            title: `You won the auction for ${productData?.name || 'this item'}!`,
-            message: `You won the auction for ${productData?.name || 'this item'}! Click here to view your order.`,
+            title: `Auction Ended: Congratulations! You are the highest bidder with a bid of ₱${winningBid.bid_amount.toLocaleString('en-PH')}.`,
+            message: `Auction Ended: Congratulations! You are the highest bidder with a bid of ₱${winningBid.bid_amount.toLocaleString('en-PH')}. Please proceed to Orders to process your payment.`,
             order_id: orderId,
+            auction_id: id,
+            product_id: auction.products_id,
             product_name: productData?.name
           },
           reference_id: id,
@@ -903,6 +905,40 @@ export const endAuction = async (req, res) => {
         console.error('❌ Failed to create winner notification:', winnerNotifError);
       } else {
         console.log(`🔔 Winner notification sent to user ${winningBid.user_id}`, winnerNotif);
+      }
+
+      const { data: otherBidders } = await supabase
+        .from('Bids')
+        .select('user_id')
+        .eq('auction_id', id)
+        .neq('user_id', winningBid.user_id);
+
+      const loserIds = [...new Set((otherBidders || []).map(bid => bid.user_id).filter(Boolean))];
+      if (loserIds.length > 0) {
+        const loserNotifs = loserIds.map(userId => ({
+          user_id: userId,
+          type: 'auction_ended',
+          payload: {
+            title: `Auction Ended: Better luck next time! The winning price was ₱${winningBid.bid_amount.toLocaleString('en-PH')}.`,
+            message: `Auction Ended: Better luck next time! The winning price was ₱${winningBid.bid_amount.toLocaleString('en-PH')}.`,
+            auction_id: id,
+            product_id: auction.products_id,
+            product_name: productData?.name,
+            winning_amount: winningBid.bid_amount,
+            order_id: orderId
+          },
+          reference_id: id,
+          reference_type: 'auction',
+          read_at: '2099-12-31T23:59:59.000Z'
+        }));
+
+        const { error: loserNotifError } = await supabase
+          .from('Notifications')
+          .insert(loserNotifs);
+
+        if (loserNotifError) {
+          console.error('❌ Failed to create non-winner notifications:', loserNotifError);
+        }
       }
 
       // Get seller info and notify seller about the sale
@@ -918,6 +954,8 @@ export const endAuction = async (req, res) => {
             title: `Auction Ended: ${winnerName} won with a bid of ₱${winningBid.bid_amount.toLocaleString('en-PH')}`,
             message: `"${productData?.name}" has a winner. Review the auction results and continue order processing.`,
             order_id: orderId,
+            auction_id: id,
+            product_id: auction.products_id,
             winner_user_id: winningBid.user_id
           },
             reference_id: id,
@@ -949,7 +987,10 @@ export const endAuction = async (req, res) => {
           type: 'auction_reserve_not_met',
           payload: {
             title: 'Auction ended — Reserve not met',
-            message: `The auction ended but the reserve price was not met. Your highest bid was ₱${winningBid.bid_amount.toLocaleString('en-PH')}.`
+            message: `The auction ended but the reserve price was not met. Your highest bid was ₱${winningBid.bid_amount.toLocaleString('en-PH')}.`,
+            auction_id: id,
+            product_id: auction.products_id,
+            product_name: noSaleProductName
           },
           reference_id: id,
           reference_type: 'auction',
@@ -966,7 +1007,10 @@ export const endAuction = async (req, res) => {
             type: 'auction_no_sale',
             payload: {
               title: 'Auction ended — Reserve not met',
-              message: `"${noSaleProductName}" ended with a highest bid of ₱${winningBid.bid_amount.toLocaleString('en-PH')} which did not meet your reserve price. You may reschedule or relist the item.`
+              message: `"${noSaleProductName}" ended with a highest bid of ₱${winningBid.bid_amount.toLocaleString('en-PH')} which did not meet your reserve price. You may reschedule or relist the item.`,
+              auction_id: id,
+              product_id: auction.products_id,
+              product_name: noSaleProductName
             },
             reference_id: id,
             reference_type: 'auction',
@@ -991,7 +1035,10 @@ export const endAuction = async (req, res) => {
             type: 'auction_no_sale',
             payload: {
               title: 'Auction ended — No bids placed',
-              message: `"${noBidsProductName}" auction ended with no bids. You may reschedule or relist the item.`
+              message: `"${noBidsProductName}" auction ended with no bids. You may reschedule or relist the item.`,
+              auction_id: id,
+              product_id: auction.products_id,
+              product_name: noBidsProductName
             },
             reference_id: id,
             reference_type: 'auction',

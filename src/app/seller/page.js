@@ -1827,7 +1827,7 @@ export default function SellerDashboard() {
                                     <div className={styles.congratsEmoji}>🎉</div>
                                     <div className={styles.confettiOverlay}></div>
                                 </div>
-                                <h2 className={styles.premiumModalTitle}>Auction Complete!</h2>
+                                <h2 className={styles.premiumModalTitle}>Congratulations! There is a winner for this auction.</h2>
 
                                 <div className={styles.winnerCard}>
                                     <div className={styles.winnerHeader}>
@@ -1855,6 +1855,9 @@ export default function SellerDashboard() {
 
                                 <p className={styles.notificationText}>
                                     <strong>{auctionEndModal.winner?.bidder_name || 'The winner'}</strong> has been notified and can proceed to checkout.
+                                </p>
+                                <p style={{ fontSize: '0.84rem', color: '#64748b', textAlign: 'center', margin: '0 0 0.6rem', lineHeight: 1.7 }}>
+                                    Please wait for the buyer to place their order and settle the payment. You will be notified once the transaction is reflected in your account.
                                 </p>
 
                                 <div style={{ display: 'flex', flexDirection: 'column', gap: '0.6rem', width: '100%' }}>

@@ -687,7 +687,10 @@ export const processAuctionPayment = async (req, res) => {
             title: '💰 Payment Received — Prepare to Ship',
             message: `Buyer has paid for "${auction.Products.name}". Ref: ${payment_reference}. Please confirm payment and prepare the item for shipping.`,
             payment_reference,
-            order_id: orderId
+            order_id: orderId,
+            auction_id,
+            product_id: auction.Products.products_id,
+            product_name: auction.Products.name
           },
           reference_id: auction_id,
           reference_type: 'auction',
@@ -1202,7 +1205,10 @@ export const confirmPayment = async (req, res) => {
         type: 'order_update',
         payload: {
           title: '✅ Payment Confirmed',
-          message: `The seller has confirmed your payment for "${productName}". Your item is being prepared for shipping.`
+          message: `The seller has confirmed your payment for "${productName}". Your item is being prepared for shipping.`,
+          order_id,
+          auction_id: order.auction_id || null,
+          product_name: productName
         },
         reference_id: order_id,
         reference_type: 'order',
@@ -1289,7 +1295,10 @@ export const shipOrder = async (req, res) => {
         type: 'order_update',
         payload: {
           title: '🚚 Your order has been shipped!',
-          message: `"${productName}" is on its way. Courier: ${courier} · Tracking #: ${tracking_number}`
+          message: `"${productName}" is on its way. Courier: ${courier} · Tracking #: ${tracking_number}`,
+          order_id,
+          auction_id: order.auction_id || null,
+          product_name: productName
         },
         reference_id: order_id,
         reference_type: 'order',
@@ -1354,7 +1363,10 @@ export const confirmDelivery = async (req, res) => {
             type: 'order_update',
             payload: {
               title: '✅ Order Completed',
-              message: `Buyer confirmed receipt of "${productName}". The transaction is complete.`
+              message: `Buyer confirmed receipt of "${productName}". The transaction is complete.`,
+              order_id,
+              auction_id: order.auction_id,
+              product_name: productName
             },
             reference_id: order.auction_id,
             reference_type: 'auction',
