@@ -255,6 +255,10 @@ export const createProduct = async (req, res) => {
       return res.status(400).json({ error: 'Starting bid cannot exceed the reserve price limit.' });
     }
 
+    if (bid_increment !== undefined && bid_increment !== null && bid_increment !== '' && parseFloat(bid_increment) <= 0) {
+      return res.status(400).json({ error: 'Bid increment must be greater than 0.' });
+    }
+
     let final_image_urls = image_urls ? (Array.isArray(image_urls) ? image_urls : [image_urls]) : [];
 
     // Process file uploads from multer
@@ -403,6 +407,10 @@ export const updateProduct = async (req, res) => {
     if (size !== undefined) updateData.size = size;
     if (specifications !== undefined) updateData.specifications = specifications;
     if (availability !== undefined) updateData.availability = availability;
+
+    if (bid_increment !== undefined && bid_increment !== null && bid_increment !== '' && parseFloat(bid_increment) <= 0) {
+      return res.status(400).json({ error: 'Bid increment must be greater than 0.' });
+    }
 
     const { data, error } = await supabase
       .from('Products')

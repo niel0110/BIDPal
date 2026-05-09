@@ -290,9 +290,9 @@ function ScheduleAuctionPageInner() {
                                     <span className={styles.pesoIcon}>₱</span>
                                     <input
                                         type="number"
-                                        step="1"
-                                        min="1"
-                                        placeholder="50"
+                                        step="0.01"
+                                        min="0.01"
+                                        placeholder="50.00"
                                         required={saleType === 'bid'}
                                         value={formData.bidIncrement}
                                         onChange={(e) => setFormData({ ...formData, bidIncrement: e.target.value })}

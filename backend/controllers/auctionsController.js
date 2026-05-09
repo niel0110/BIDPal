@@ -1293,6 +1293,24 @@ export const placeBid = async (req, res) => {
     const emailName = userData?.email ? userData.email.split('@')[0] : 'User';
     const fullName = (fName || lName) ? `${fName || ''} ${lName || ''}`.trim() : emailName;
 
+    const bidEventPayload = {
+      bid_id: bid.bid_id,
+      user_id,
+      bidder_name: fullName,
+      bidder_avatar: userData?.Avatar || null,
+      amount: bid.bid_amount,
+      placed_at: bid.placed_at,
+      timestamp: bid.placed_at,
+      timeAgo: 'Just now',
+      currentHighestBid: bidAmount,
+      minNextBid,
+      bidIncrement: step,
+    };
+
+    if (req.app.locals.io) {
+      req.app.locals.io.to(`auction:${id}`).emit('bid-update', bidEventPayload);
+    }
+
     // Return formatted bid data with user information and next minimum bid
     res.status(201).json({
       success: true,
@@ -1302,7 +1320,9 @@ export const placeBid = async (req, res) => {
       placed_at: bid.placed_at,
       bidder_name: fullName,
       bidder_avatar: userData?.Avatar || null,
+      bidIncrement: step,
       minNextBid,
+      currentHighestBid: bidAmount,
       currentPrice: bidAmount,
       message: 'Bid placed successfully'
     });

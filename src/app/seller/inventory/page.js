@@ -350,10 +350,10 @@ export default function InventoryPage() {
                                             <span style={{ fontWeight: 700, color: '#475569', fontSize: '0.9rem' }}>₱</span>
                                             <input
                                                 type="number"
-                                                step="1"
-                                                min="1"
+                                                step="0.01"
+                                                min="0.01"
                                                 required
-                                                placeholder="50"
+                                                placeholder="50.00"
                                                 value={scheduleForm.bidIncrement}
                                                 onChange={e => setScheduleForm(p => ({ ...p, bidIncrement: e.target.value }))}
                                                 style={{ flex: 1, border: 'none', background: 'transparent', padding: '0.75rem 0', fontSize: '0.9rem', outline: 'none', color: '#0f172a' }}

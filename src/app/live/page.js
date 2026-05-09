@@ -32,6 +32,7 @@ function LivePageInner() {
     const [shippingOption, setShippingOption] = useState('standard');
     const [bidAmount, setBidAmount] = useState('');
     const [bidNotice, setBidNotice] = useState(null);
+    const [liveBidAlert, setLiveBidAlert] = useState(null);
     const [viewerCount, setViewerCount] = useState(0);
     const [streamReady, setStreamReady] = useState(false);
     const [isMuted, setIsMuted] = useState(false);
@@ -97,6 +98,7 @@ function LivePageInner() {
         (bids[0]?.amount ?? auction?.current_price ?? auction?.reserve_price ?? 0).toString().replace(/,/g, '')
     );
     const nextBidAmount = Math.max(Number(minBid || 0), currentAuctionPrice + bidStep);
+    const currentUserId = user?.user_id || user?.id;
 
     useEffect(() => {
         const query = '(max-width: 768px), (pointer: coarse)';
@@ -126,6 +128,12 @@ function LivePageInner() {
 
         setViewerSessionKey(`guest:${sessionId}`);
     }, []);
+
+    useEffect(() => {
+        if (!liveBidAlert) return;
+        const timeoutId = setTimeout(() => setLiveBidAlert(null), 3200);
+        return () => clearTimeout(timeoutId);
+    }, [liveBidAlert]);
 
     useEffect(() => {
         if (auctionId) return;
@@ -214,7 +222,21 @@ function LivePageInner() {
         });
 
         socket.on('bid-update', (bid) => {
-            if (bid.amount) setCurrentBidAmount(prev => Math.max(prev, Number(bid.amount)));
+            const highestBid = Number(bid.currentHighestBid ?? bid.amount ?? 0);
+            const minNext = Number(bid.minNextBid ?? 0);
+            if (highestBid) setCurrentBidAmount(prev => Math.max(prev, highestBid));
+            if (minNext) {
+                setMinBid(prev => Math.max(Number(prev || 0), minNext));
+                if (showModal) {
+                    setBidAmount(prev => {
+                        const numericPrev = Number(prev);
+                        if (!prev || Number.isNaN(numericPrev) || numericPrev < minNext) {
+                            return String(minNext);
+                        }
+                        return prev;
+                    });
+                }
+            }
             setBids(prev => {
                 // Check if bid already exists to prevent duplicates
                 const bidExists = prev.some(b => b.id === (bid.id || bid.bid_id) || (b.user === bid.user && b.amount === bid.amount && b.time === bid.time));
@@ -245,6 +267,29 @@ function LivePageInner() {
 
                 return [formattedBid, ...prev];
             });
+
+            if (!isHost && highestBid > 0) {
+                const bidderName = (bid.bidder_name && bid.bidder_name.trim() !== 'null null') ? bid.bidder_name : 'A bidder';
+                const isOwnBid = bid.user_id && String(bid.user_id) === String(currentUserId);
+                const minMessage = minNext > 0
+                    ? `Minimum bid is now ₱${minNext.toLocaleString('en-PH')}.`
+                    : '';
+
+                setLiveBidAlert({
+                    id: `${bid.bid_id || Date.now()}`,
+                    title: isOwnBid ? 'Your bid is now highest' : 'New highest bid',
+                    message: isOwnBid
+                        ? `You lead at ₱${highestBid.toLocaleString('en-PH')}. ${minMessage}`.trim()
+                        : `${bidderName} bid ₱${highestBid.toLocaleString('en-PH')}. ${minMessage}`.trim(),
+                });
+
+                if (showModal && minMessage) {
+                    setBidNotice({
+                        title: isOwnBid ? 'Bid accepted' : 'Bid updated',
+                        message: `Highest bid is now ₱${highestBid.toLocaleString('en-PH')}. ${minMessage}`,
+                    });
+                }
+            }
         });
 
         socket.on('new-comment', (comment) => {
@@ -326,7 +371,7 @@ function LivePageInner() {
             socket.emit('leave-auction', auctionId);
             socket.disconnect();
         };
-    }, [auctionId, apiUrl, auction, currentViewerKey, isHost, user]);
+    }, [auctionId, apiUrl, auction, currentUserId, currentViewerKey, isHost, showModal, user]);
 
     // ── Auto-scroll chat to the latest message ───────────────────────────────
     useEffect(() => {
@@ -806,35 +851,8 @@ function LivePageInner() {
 
             console.log('✅ Bid placed successfully:', data);
 
-            // Update minBid for the next attempt
             if (data.minNextBid) setMinBid(data.minNextBid);
-
-            // Create bid object for local display
-            const newBid = {
-                id: data.bid_id || Date.now(),
-                user_id: user?.user_id || user?.id,
-                user: user?.Fname ? `${user.Fname} ${user.Lname?.[0] || ''}.` : (user?.email ? user.email.split('@')[0] : 'Anonymous'),
-                amount: Number(bidAmount).toLocaleString(),
-                time: 'Just now'
-            };
-
-            // Create bid object for Socket.IO broadcast (with full bidder info)
-            const broadcastBid = {
-                bid_id: data.bid_id,
-                user_id: user?.user_id || user?.id,
-                bidder_name: data.bidder_name || 'Anonymous',
-                bidder_avatar: data.bidder_avatar,
-                amount: Number(bidAmount),
-                timeAgo: 'Just now',
-                timestamp: data.placed_at
-            };
-
-            // Emit to all viewers in the room via socket
-            if (socketRef.current) {
-                socketRef.current.emit('new-bid', { auctionId, bid: broadcastBid });
-            }
-            setCurrentBidAmount(Number(bidAmount));
-            setBids(prev => [newBid, ...prev]);
+            if (data.currentHighestBid) setCurrentBidAmount(Number(data.currentHighestBid));
 
             // Close modal and reset only on success
             setShowModal(false);
@@ -2301,7 +2319,7 @@ function LivePageInner() {
                                     placeholder={nextBidAmount}
                                     min={nextBidAmount}
                                     max={bidLimit || undefined}
-                                    step="1"
+                                    step="0.01"
                                     onChange={(e) => {
                                         setBidAmount(e.target.value);
                                         if (bidNotice) setBidNotice(null);
@@ -2325,6 +2343,13 @@ function LivePageInner() {
                             Place bid
                         </button>
                     </div>
+                </div>
+            )}
+
+            {liveBidAlert && !isHost && (
+                <div className={styles.liveBidToast} role="status" aria-live="polite">
+                    <div className={styles.liveBidToastTitle}>{liveBidAlert.title}</div>
+                    <div className={styles.liveBidToastMessage}>{liveBidAlert.message}</div>
                 </div>
             )}
 

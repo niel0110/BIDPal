@@ -1518,9 +1518,9 @@ export default function MyAuctions() {
                                                 <span style={{ fontWeight: 700, color: '#475569', fontSize: '0.9rem' }}>â‚±</span>
                                                 <input
                                                     type="number"
-                                                    step="1"
-                                                    min="1"
-                                                    placeholder="50"
+                                                    step="0.01"
+                                                    min="0.01"
+                                                    placeholder="50.00"
                                                     required={saleType === 'bid'}
                                                     value={scheduleForm.bidIncrement}
                                                     onChange={e => setScheduleForm(p => ({ ...p, bidIncrement: e.target.value }))}

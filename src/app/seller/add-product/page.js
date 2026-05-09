@@ -711,7 +711,7 @@ function AddProductPageInner() {
                             <label>Bid Increment *</label>
                             <div style={{display: 'flex', alignItems: 'center', gap: '6px'}}>
                                 <span className={styles.pesoSign}>₱</span>
-                                <input type="number" step="1" min="1" placeholder="50" value={formData.bidIncrement} onChange={(e) => setFormData({ ...formData, bidIncrement: e.target.value })} required style={{flex: 1}} />
+                                <input type="number" step="0.01" min="0.01" placeholder="50.00" value={formData.bidIncrement} onChange={(e) => setFormData({ ...formData, bidIncrement: e.target.value })} required style={{flex: 1}} />
                             </div>
                             <small className={styles.fieldHint}>Minimum amount each new bid must exceed the current one.</small>
                         </div>
