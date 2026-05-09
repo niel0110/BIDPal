@@ -45,7 +45,7 @@ function getNotificationTarget(notification) {
     switch (type) {
         // Buyer won — go pay
         case 'auction_won':
-            return '/orders';
+            return reference_id ? `/checkout?auction_id=${reference_id}` : '/orders';
 
         // Seller's item sold — see full results
         case 'auction_sold':
@@ -55,9 +55,9 @@ function getNotificationTarget(notification) {
         case 'auction_reserve_not_met':
             return reference_id ? `/live?id=${reference_id}` : '/';
 
-        // Seller: auction ended without a sale — go to their auctions list
+        // Seller: auction ended without a sale — go to auction results/recap
         case 'auction_no_sale':
-            return '/seller/auctions';
+            return reference_id ? `/seller/auctions/${reference_id}/results` : '/seller/auctions';
 
         // order_cancelled:
         //   reference_type='auction' → buyer cancelled auction order → seller sees auction results

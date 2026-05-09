@@ -13,8 +13,8 @@ router.get('/seller/:seller_id', getSellerAuctions);
 // Schedule a new live auction
 router.post('/schedule', scheduleAuction);
 router.patch('/:id', authenticateToken, updateScheduledAuction);
-router.post('/:id/start', startAuction);
-router.post('/:id/end', endAuction);
+router.post('/:id/start', authenticateToken, startAuction);
+router.post('/:id/end', authenticateToken, endAuction);
 
 // Live comments
 router.get('/:id/comments', getLiveComments);
@@ -30,7 +30,7 @@ router.post('/:id/bids', authenticateToken, placeBid);
 router.get('/:id/stats', getAuctionStats);
 
 // Get auction winner details
-router.get('/:id/winner', getAuctionWinner);
+router.get('/:id/winner', authenticateToken, getAuctionWinner);
 
 router.get('/:id/reminder-count', getAuctionReminderCount);
 router.get('/:id/remind', authenticateToken, checkAuctionReminder);

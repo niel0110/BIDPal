@@ -79,12 +79,13 @@ function LivePageInner() {
     });
 
     // Stream-ended modal for non-winner buyers
-    const [streamEndedModal, setStreamEndedModal] = useState({ show: false, hasWinner: false, winner: null });
+    const [streamEndedModal, setStreamEndedModal] = useState({ show: false, hasWinner: false, hasBids: false, winner: null, didParticipate: false });
 
     // Refs for Agora RTC (video/audio) and RTM (chat)
     const agoraClientRef = useRef(null);
     const localTracksRef = useRef({ audio: null, video: null });
     const socketRef = useRef(null);
+    const bidsRef = useRef([]);
     const commentsEndRef = useRef(null);
     const mobileChatScrollRef = useRef(null);
     const desktopChatScrollRef = useRef(null);
@@ -99,6 +100,12 @@ function LivePageInner() {
     );
     const nextBidAmount = Math.max(Number(minBid || 0), currentAuctionPrice + bidStep);
     const currentUserId = user?.user_id || user?.id;
+    const leadingBidderUserId = bids[0]?.user_id || null;
+    const isLeadingBidder = Boolean(currentUserId && leadingBidderUserId && String(currentUserId) === String(leadingBidderUserId));
+
+    useEffect(() => {
+        bidsRef.current = bids;
+    }, [bids]);
 
     useEffect(() => {
         const query = '(max-width: 768px), (pointer: coarse)';
@@ -334,6 +341,7 @@ function LivePageInner() {
 
             const userId = user?.user_id || user?.id;
             const isWinner = data.has_winner && data.winner && userId && data.winner.user_id === userId;
+            const didParticipate = Boolean(userId && bidsRef.current.some(bid => String(bid.user_id) === String(userId)));
 
             if (isWinner) {
                 // Current user won — show winner modal
@@ -346,7 +354,13 @@ function LivePageInner() {
                 });
             } else {
                 // Non-winner buyers — show stream-ended info modal
-                setStreamEndedModal({ show: true, hasWinner: data.has_winner, winner: data.winner || null });
+                setStreamEndedModal({
+                    show: true,
+                    hasWinner: data.has_winner,
+                    hasBids: data.has_bids,
+                    winner: data.winner || null,
+                    didParticipate,
+                });
             }
 
             // System chat message
@@ -361,7 +375,9 @@ function LivePageInner() {
                 setComments(prev => [...prev, {
                     id: Date.now(),
                     user: 'System',
-                    text: '🏁 Auction ended. No bids were placed.',
+                    text: data.has_bids
+                        ? '🏁 Auction ended. The reserve price was not met.'
+                        : '🏁 Auction ended. No bids were placed.',
                     time: 'Just now'
                 }]);
             }
@@ -1170,6 +1186,10 @@ function LivePageInner() {
 
         const mainImg = activeModalImg || product?.images?.[0]?.image_url || 'https://placehold.co/600x600';
         const thumbs = product?.images || [];
+        const hasWinningBuyer = Boolean(auction?.winner_user_id);
+        const finalWinnerAmount = hasWinningBuyer
+            ? Number(auction?.final_price || finalNum || 0)
+            : 0;
 
         return (
             <main style={{ background: '#f8f9fb', minHeight: '100vh', display: 'flex', flexDirection: 'column' }}>
@@ -1250,6 +1270,44 @@ function LivePageInner() {
                         {/* divider */}
                         <div style={{ height: 1, background: '#f1f5f9', marginBottom: '1.25rem' }} />
 
+                        <div style={{ marginBottom: '1.25rem', padding: '1rem', borderRadius: 16, border: '1px solid #e2e8f0', background: '#fff' }}>
+                            <div style={{ fontSize: '0.68rem', color: '#94a3b8', fontWeight: 700, textTransform: 'uppercase', letterSpacing: '0.07em', marginBottom: '0.5rem' }}>
+                                Bid History
+                            </div>
+                            {bids.length > 0 ? (
+                                <div style={{ display: 'flex', flexDirection: 'column', gap: '0.5rem' }}>
+                                    {bids.map((bid, index) => {
+                                        const amountValue = typeof bid.amount === 'string'
+                                            ? Number(bid.amount.replace(/,/g, ''))
+                                            : Number(bid.amount || bid.bid_amount || 0);
+                                        return (
+                                            <div key={bid.id || bid.bid_id || index} style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', padding: '0.7rem 0.85rem', borderRadius: 12, background: index === 0 ? '#f8fafc' : '#fcfcfd' }}>
+                                                <span style={{ fontSize: '0.82rem', color: '#64748b', fontWeight: 600 }}>
+                                                    {index === 0 && hasWinningBuyer ? 'Winning Bid' : `Bid #${bids.length - index}`}
+                                                </span>
+                                                <span style={{ fontSize: '0.92rem', color: '#0f172a', fontWeight: 800 }}>
+                                                    ₱{amountValue.toLocaleString('en-PH')}
+                                                </span>
+                                            </div>
+                                        );
+                                    })}
+                                    {hasWinningBuyer && (
+                                        <div style={{ marginTop: '0.25rem', paddingTop: '0.75rem', borderTop: '1px solid #e2e8f0', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                                            <span style={{ fontSize: '0.82rem', color: '#64748b', fontWeight: 700 }}>Final Winning Price</span>
+                                            <span style={{ fontSize: '1rem', color: '#D32F2F', fontWeight: 900 }}>
+                                                ₱{finalWinnerAmount.toLocaleString('en-PH')}
+                                            </span>
+                                        </div>
+                                    )}
+                                </div>
+                            ) : (
+                                <p style={{ margin: 0, fontSize: '0.84rem', color: '#64748b' }}>No bids were placed for this auction.</p>
+                            )}
+                            <p style={{ margin: '0.75rem 0 0', fontSize: '0.74rem', color: '#94a3b8', lineHeight: 1.5 }}>
+                                Bidder identities are hidden to protect buyer privacy.
+                            </p>
+                        </div>
+
                         {/* seller row */}
                         <div style={{ display: 'flex', alignItems: 'center', gap: '0.8rem' }}>
                             <div style={{
@@ -1304,7 +1362,11 @@ function LivePageInner() {
                                 🏁
                             </div>
 
-                            <h2 style={{ margin: 0, fontSize: '1.2rem', fontWeight: 800, color: '#0f172a' }}>Live Stream Ended</h2>
+                            <h2 style={{ margin: 0, fontSize: '1.2rem', fontWeight: 800, color: '#0f172a' }}>
+                                {streamEndedModal.didParticipate && streamEndedModal.hasWinner
+                                    ? 'Auction Ended'
+                                    : 'Live Stream Ended'}
+                            </h2>
                             <p style={{ margin: 0, fontSize: '0.85rem', color: '#64748b', lineHeight: 1.6 }}>
                                 The seller has closed this live auction session.
                             </p>
@@ -1312,16 +1374,16 @@ function LivePageInner() {
                             {/* Winner result */}
                             {streamEndedModal.hasWinner && streamEndedModal.winner ? (
                                 <div style={{ width: '100%', background: '#f8fafc', border: '1.5px solid #e2e8f0', borderRadius: 14, padding: '1rem', marginTop: '0.25rem' }}>
-                                    <div style={{ fontSize: '0.68rem', fontWeight: 700, color: '#94a3b8', textTransform: 'uppercase', letterSpacing: '0.07em', marginBottom: '0.5rem' }}>Auction Winner</div>
+                                    <div style={{ fontSize: '0.68rem', fontWeight: 700, color: '#94a3b8', textTransform: 'uppercase', letterSpacing: '0.07em', marginBottom: '0.5rem' }}>
+                                        {streamEndedModal.didParticipate ? 'Auction Result' : 'Winning Bid'}
+                                    </div>
+                                    <p style={{ margin: '0 0 0.65rem', fontSize: '0.9rem', color: '#0f172a', fontWeight: 700 }}>
+                                        {streamEndedModal.didParticipate
+                                            ? 'Auction Ended. Better luck next time!'
+                                            : 'Another buyer won this auction.'}
+                                    </p>
                                     <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: '0.5rem' }}>
-                                        <div style={{ display: 'flex', alignItems: 'center', gap: '0.6rem' }}>
-                                            <div style={{ width: 36, height: 36, borderRadius: '50%', background: '#e2e8f0', display: 'flex', alignItems: 'center', justifyContent: 'center', fontWeight: 700, fontSize: '0.9rem', color: '#475569', flexShrink: 0 }}>
-                                                {(streamEndedModal.winner.bidder_name || 'B')[0].toUpperCase()}
-                                            </div>
-                                            <span style={{ fontWeight: 700, fontSize: '0.9rem', color: '#0f172a' }}>
-                                                {streamEndedModal.winner.bidder_name || 'Anonymous'}
-                                            </span>
-                                        </div>
+                                        <span style={{ fontSize: '0.84rem', color: '#64748b', fontWeight: 600 }}>Final winning bid</span>
                                         <span style={{ fontWeight: 800, fontSize: '1.1rem', color: '#D32F2F', flexShrink: 0 }}>
                                             ₱{Number(streamEndedModal.winner.bid_amount || 0).toLocaleString('en-PH')}
                                         </span>
@@ -1330,7 +1392,11 @@ function LivePageInner() {
                             ) : (
                                 <div style={{ width: '100%', background: '#fef9f0', border: '1.5px solid #fed7aa', borderRadius: 14, padding: '0.875rem 1rem', marginTop: '0.25rem' }}>
                                     <p style={{ margin: 0, fontSize: '0.85rem', color: '#92400e', fontWeight: 600 }}>
-                                        No winner — reserve price was not met or no bids were placed.
+                                        {streamEndedModal.didParticipate
+                                            ? 'Auction Ended. Better luck next time!'
+                                            : (streamEndedModal.hasBids
+                                                ? 'No winner — the reserve price was not met.'
+                                                : 'No winner — no bids were placed.')}
                                     </p>
                                 </div>
                             )}
@@ -1481,6 +1547,11 @@ function LivePageInner() {
                                 <div className={styles.mobileProductInfo}>
                                     <span className={styles.mobileProductName}>{product?.name}</span>
                                     <span className={styles.mobileProductBidLabel}>Current Bid ({bids.length} Bid{bids.length !== 1 ? 's' : ''})</span>
+                                    <span style={{ fontSize: '0.72rem', color: isLeadingBidder ? '#dcfce7' : '#dbeafe', fontWeight: 700 }}>
+                                        {isLeadingBidder
+                                            ? 'You are currently the highest bidder'
+                                            : (bids.length > 0 ? 'Another bidder currently leads' : 'No bids yet')}
+                                    </span>
                                     <div className={styles.mobileProductPriceRow}>
                                         <span className={styles.mobileProductPrice}>₱{currentBidAmount.toLocaleString('en-PH')}</span>
                                     </div>
@@ -2134,6 +2205,11 @@ function LivePageInner() {
                                     {product?.name}
                                 </h3>
                                 <div className={styles.currentBidLabel}>Current Bid ({bids.length} Bids)</div>
+                                <div style={{ fontSize: '0.76rem', fontWeight: 700, color: isLeadingBidder ? '#15803d' : '#64748b', marginTop: '0.2rem' }}>
+                                    {isLeadingBidder
+                                        ? 'You are currently the highest bidder'
+                                        : (bids.length > 0 ? 'Current highest bidder is active' : 'Waiting for the first bid')}
+                                </div>
                                 <div className={styles.bidInfo}>
                                     <div>
                                         <div className={styles.countDown}>

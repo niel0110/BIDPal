@@ -633,15 +633,30 @@ export const updateScheduledAuction = async (req, res) => {
 export const startAuction = async (req, res) => {
   try {
     const { id } = req.params;
+    const requesterUserId = req.user?.user_id || req.user?.id;
+
+    if (!requesterUserId) {
+      return res.status(401).json({ error: 'Authentication required.' });
+    }
 
     const { data: existingAuction, error: lookupError } = await supabase
       .from('Auctions')
-      .select('auction_id, products_id, buy_now_price, status')
+      .select('auction_id, products_id, buy_now_price, status, seller_id')
       .eq('auction_id', id)
       .single();
 
     if (lookupError || !existingAuction) {
       return res.status(404).json({ error: 'Auction not found' });
+    }
+
+    const { data: sellerRow } = await supabase
+      .from('Seller')
+      .select('seller_id')
+      .eq('user_id', requesterUserId)
+      .maybeSingle();
+
+    if (!sellerRow?.seller_id || String(sellerRow.seller_id) !== String(existingAuction.seller_id)) {
+      return res.status(403).json({ error: 'You do not have permission to start this auction.' });
     }
 
     if (Number(existingAuction.buy_now_price || 0) > 0) {
@@ -684,6 +699,11 @@ export const startAuction = async (req, res) => {
 export const endAuction = async (req, res) => {
   try {
     const { id } = req.params;
+    const requesterUserId = req.user?.user_id || req.user?.id;
+
+    if (!requesterUserId) {
+      return res.status(401).json({ error: 'Authentication required.' });
+    }
 
     console.log(`🏁 Ending auction ${id}...`);
 
@@ -708,6 +728,14 @@ export const endAuction = async (req, res) => {
       .select('*, Seller(seller_id, user_id, store_name)')
       .eq('auction_id', id)
       .single();
+
+    if (!currentAuction) {
+      return res.status(404).json({ error: 'Auction not found.' });
+    }
+
+    if (String(currentAuction.Seller?.user_id) !== String(requesterUserId)) {
+      return res.status(403).json({ error: 'You do not have permission to end this auction.' });
+    }
 
     // 3. Update Auction status to 'ended' and record live end time and winner
     const updateData = {
@@ -734,15 +762,18 @@ export const endAuction = async (req, res) => {
     // 4. Determine product status based on whether there's a winner
     let productStatus = 'inactive'; // Default if no bids
     let reserveMet = false;
+    const normalizedReservePrice = Number(currentAuction?.reserve_price ?? auction.reserve_price ?? 0) || 0;
 
     if (winningBid) {
-      // Check if winning bid meets reserve price — use Number() to avoid string comparison bugs
-      if (Number(winningBid.bid_amount) >= (Number(auction.reserve_price) || 0)) {
+      const winningBidAmount = Number(winningBid.bid_amount || 0);
+
+      // No reserve (0/null) means the highest valid bid wins automatically.
+      if (normalizedReservePrice <= 0 || winningBidAmount >= normalizedReservePrice) {
         productStatus = 'sold';
         reserveMet = true;
       } else {
         productStatus = 'inactive'; // Reserve not met
-        console.log(`⚠️ Reserve price not met. Winning bid: ${winningBid.bid_amount}, Reserve: ${auction.reserve_price}`);
+        console.log(`⚠️ Reserve price not met. Winning bid: ${winningBid.bid_amount}, Reserve: ${normalizedReservePrice}`);
       }
     }
 
@@ -808,6 +839,7 @@ export const endAuction = async (req, res) => {
           order_type: 'auction',
           auction_id: id
         });
+        throw new Error(orderError.message || 'Failed to create winner order.');
       } else {
         orderId = orderData.order_id;
         console.log(`✅ Order created successfully: ${orderId}`);
@@ -856,8 +888,8 @@ export const endAuction = async (req, res) => {
           user_id: winningBid.user_id,
           type: 'auction_won',
           payload: {
-            title: '🎉 Congratulations! You won the auction',
-            message: `You won "${productData?.name}" with a bid of ₱${winningBid.bid_amount.toLocaleString('en-PH')}. Please proceed to payment within 24 hours.`,
+            title: `You won the auction for ${productData?.name || 'this item'}!`,
+            message: `You won the auction for ${productData?.name || 'this item'}! Click here to view your order.`,
             order_id: orderId,
             product_name: productData?.name
           },
@@ -878,16 +910,16 @@ export const endAuction = async (req, res) => {
 
       if (sellerUserId) {
         const { data: sellerNotif, error: sellerNotifError } = await supabase
-          .from('Notifications')
-          .insert([{
-            user_id: sellerUserId,
-            type: 'auction_sold',
-            payload: {
-              title: '🏆 Auction Sold — Awaiting Payment',
-              message: `"${productData?.name}" sold to ${winnerName} for ₱${winningBid.bid_amount.toLocaleString('en-PH')}. The buyer has 24 hours to complete payment.`,
-              order_id: orderId,
-              winner_user_id: winningBid.user_id
-            },
+        .from('Notifications')
+        .insert([{
+          user_id: sellerUserId,
+          type: 'auction_sold',
+          payload: {
+            title: `Auction Ended: ${winnerName} won with a bid of ₱${winningBid.bid_amount.toLocaleString('en-PH')}`,
+            message: `"${productData?.name}" has a winner. Review the auction results and continue order processing.`,
+            order_id: orderId,
+            winner_user_id: winningBid.user_id
+          },
             reference_id: id,
             reference_type: 'auction',
             read_at: '2099-12-31T23:59:59.000Z'
@@ -917,7 +949,7 @@ export const endAuction = async (req, res) => {
           type: 'auction_reserve_not_met',
           payload: {
             title: 'Auction ended — Reserve not met',
-            message: `The auction ended but the reserve price was not met. Your bid of ₱${winningBid.bid_amount.toLocaleString('en-PH')} was the highest.`
+            message: `The auction ended but the reserve price was not met. Your highest bid was ₱${winningBid.bid_amount.toLocaleString('en-PH')}.`
           },
           reference_id: id,
           reference_type: 'auction',
@@ -988,7 +1020,9 @@ export const endAuction = async (req, res) => {
         reserve_met: reserveMet,
         has_winner: !!(winningBid && reserveMet),
         has_bids: !!winningBid,
+        reserve_price: normalizedReservePrice,
         highest_bidder: winningBid ? {
+          user_id: winningBid.user_id,
           bid_amount: winningBid.bid_amount,
           bidder_name: winningBid.bidder
             ? `${winningBid.bidder.Fname || ''} ${winningBid.bidder.Lname || ''}`.trim() ||
@@ -1022,9 +1056,11 @@ export const endAuction = async (req, res) => {
       } : null,
       has_bids: !!winningBid,
       highest_bidder: winningBid ? {
+        user_id: winningBid.user_id,
         bid_amount: winningBid.bid_amount,
         bidder_name: bidderName
       } : null,
+      reserve_price: normalizedReservePrice,
       product_status: productStatus,
       reserve_met: reserveMet,
       has_winner: !!(winningBid && reserveMet)
@@ -1387,15 +1423,33 @@ export const getAuctionStats = async (req, res) => {
 export const getAuctionWinner = async (req, res) => {
   try {
     const { id } = req.params;
+    const requesterUserId = req.user?.user_id || req.user?.id;
 
     // Get auction with winner info
     const { data: auction, error: auctionError } = await supabase
       .from('Auctions')
-      .select('auction_id, status, winner_user_id, winning_bid_id, final_price, reserve_price, products_id')
+      .select('auction_id, status, winner_user_id, winning_bid_id, final_price, reserve_price, products_id, seller_id')
       .eq('auction_id', id)
       .single();
 
     if (auctionError) throw auctionError;
+
+    if (!requesterUserId) {
+      return res.status(401).json({ error: 'Authentication required' });
+    }
+
+    const { data: sellerRow } = await supabase
+      .from('Seller')
+      .select('seller_id')
+      .eq('user_id', requesterUserId)
+      .maybeSingle();
+
+    const isSellerOwner = Boolean(sellerRow?.seller_id && String(sellerRow.seller_id) === String(auction.seller_id));
+    const isAuctionWinner = Boolean(auction.winner_user_id && String(auction.winner_user_id) === String(requesterUserId));
+
+    if (!isSellerOwner && !isAuctionWinner) {
+      return res.status(403).json({ error: 'Forbidden' });
+    }
 
     if (!['ended', 'completed'].includes(auction.status)) {
       return res.status(400).json({

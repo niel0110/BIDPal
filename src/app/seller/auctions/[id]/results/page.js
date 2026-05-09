@@ -17,6 +17,7 @@ const COURIERS = ['LBC', 'J&T Express', 'Ninja Van', 'GoGo Xpress', 'Flash Expre
 export default function AuctionResultsPage() {
     const params = useParams();
     const router = useRouter();
+    const { user, loading: authLoading } = useAuth();
     const auctionId = params.id;
 
     const [loading, setLoading] = useState(true);
@@ -46,14 +47,21 @@ export default function AuctionResultsPage() {
     const apiUrl = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:5000';
 
     const fetchAll = async () => {
-        if (!auctionId) return;
+        if (!auctionId || !user) return;
         try {
+            const token = localStorage.getItem('bidpal_token');
+            const headers = token ? { Authorization: `Bearer ${token}` } : {};
             const [auctionRes, winnerRes, statsRes, bidsRes] = await Promise.all([
-                fetch(`${apiUrl}/api/auctions/${auctionId}`),
-                fetch(`${apiUrl}/api/auctions/${auctionId}/winner`),
-                fetch(`${apiUrl}/api/auctions/${auctionId}/stats`),
-                fetch(`${apiUrl}/api/auctions/${auctionId}/bids`),
+                fetch(`${apiUrl}/api/auctions/${auctionId}`, { headers }),
+                fetch(`${apiUrl}/api/auctions/${auctionId}/winner`, { headers }),
+                fetch(`${apiUrl}/api/auctions/${auctionId}/stats`, { headers }),
+                fetch(`${apiUrl}/api/auctions/${auctionId}/bids`, { headers }),
             ]);
+
+            if ([auctionRes, winnerRes, statsRes, bidsRes].some(res => res.status === 401 || res.status === 403)) {
+                router.replace('/seller/auctions');
+                return;
+            }
 
             const auction = await auctionRes.json();
             setAuctionData(auction);
@@ -93,8 +101,13 @@ export default function AuctionResultsPage() {
     };
 
     useEffect(() => {
+        if (authLoading) return;
+        if (!user) {
+            router.replace('/signin');
+            return;
+        }
         fetchAll();
-    }, [auctionId]);
+    }, [auctionId, authLoading, user]);
 
     const handleConfirmPayment = async () => {
         const orderId = sellerOrder?.order_id || winner?.order?.order_id;
@@ -105,7 +118,11 @@ export default function AuctionResultsPage() {
         setConfirming(true);
         setConfirmError('');
         try {
-            const res = await fetch(`${apiUrl}/api/orders/${orderId}/confirm-payment`, { method: 'PUT' });
+            const token = localStorage.getItem('bidpal_token');
+            const res = await fetch(`${apiUrl}/api/orders/${orderId}/confirm-payment`, {
+                method: 'PUT',
+                headers: { ...(token ? { Authorization: `Bearer ${token}` } : {}) }
+            });
             const data = await res.json();
             if (res.ok) {
                 await fetchAll();
@@ -130,9 +147,10 @@ export default function AuctionResultsPage() {
         setShipping(true);
         try {
             const orderId = sellerOrder?.order_id || winner?.order?.order_id;
+            const token = localStorage.getItem('bidpal_token');
             const res = await fetch(`${apiUrl}/api/orders/${orderId}/ship`, {
                 method: 'PUT',
-                headers: { 'Content-Type': 'application/json' },
+                headers: { 'Content-Type': 'application/json', ...(token ? { Authorization: `Bearer ${token}` } : {}) },
                 body: JSON.stringify({ courier: shipForm.courier, tracking_number: shipForm.tracking_number.trim() })
             });
 
@@ -211,7 +229,7 @@ export default function AuctionResultsPage() {
         return steps[status] || 0;
     };
 
-    if (loading) return <BIDPalLoader />;
+    if (loading || authLoading) return <BIDPalLoader />;
 
     if (!auctionData) return (
         <div className={styles.container}>
