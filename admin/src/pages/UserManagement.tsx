@@ -2,6 +2,7 @@ import { useState, useEffect } from 'react';
 import { Search, Shield, ShieldAlert, ShieldOff, UserCheck, X, Ban, Clock } from 'lucide-react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { supabase } from '../lib/supabase';
+import api from '../api/axios';
 
 interface ViolationRecord {
   account_status: string;
@@ -319,62 +320,38 @@ const UserManagement = () => {
   }, []);
 
   const handleUpdateStanding = async (userId: string, standing: string, opts?: SuspendOptions) => {
-    const account_status = STANDING_TO_STATUS[standing] || 'clean';
     setUpdating(true);
     try {
-      const { data: existing } = await supabase
-        .from('Violation_Records')
-        .select('user_id')
-        .eq('user_id', userId)
-        .maybeSingle();
+      const response = await api.patch(`/users/${userId}/standing`, {
+        standing,
+        reason: opts?.reason,
+        suspensionDays: opts?.suspensionDays,
+        suspensionUntil: opts?.suspensionUntil,
+      });
 
-      const updatePayload: any = { account_status };
-
-      if (standing === 'Suspended') {
-        let expires: Date | null = null;
-        if (opts?.suspensionUntil) {
-          expires = new Date(opts.suspensionUntil);
-        } else if (opts?.suspensionDays) {
-          expires = new Date();
-          expires.setDate(expires.getDate() + opts.suspensionDays);
-        }
-        updatePayload.suspension_expires_at = expires ? expires.toISOString() : null;
-        updatePayload.suspension_reason = opts?.reason || null;
-      } else {
-        updatePayload.suspension_expires_at = null;
-        updatePayload.suspension_reason = null;
-      }
-
-      if (existing) {
-        await supabase.from('Violation_Records').update(updatePayload).eq('user_id', userId);
-      } else {
-        await supabase.from('Violation_Records').insert([{ user_id: userId, strike_count: 0, ...updatePayload }]);
-      }
-
-      if (standing === 'Blacklisted') {
-        await supabase.from('User').update({ role: 'Banned' }).eq('user_id', userId);
-      } else {
-        const { data: uRow } = await supabase.from('User').select('role').eq('user_id', userId).single();
-        if (uRow?.role === 'Banned') {
-          await supabase.from('User').update({ role: 'Buyer' }).eq('user_id', userId);
-        }
-      }
+      const updatedRecord = response.data?.record;
+      const updatedUser = response.data?.user;
 
       setSelectedUser(prev => prev ? {
         ...prev,
+        role: updatedUser?.role || prev.role,
         violation_record: {
-          account_status,
-          strike_count: prev.violation_record?.strike_count || 0,
-          suspension_expires_at: updatePayload.suspension_expires_at,
-          suspension_reason: updatePayload.suspension_reason,
+          account_status: updatedRecord?.account_status || STANDING_TO_STATUS[standing] || 'clean',
+          strike_count: updatedRecord?.strike_count ?? prev.violation_record?.strike_count ?? 0,
+          suspension_expires_at: updatedRecord?.suspension_expires_at || null,
+          suspension_reason: updatedRecord?.suspension_reason || null,
         }
       } : null);
 
+      if (response.data?.emailDelivery?.attempted && !response.data.emailDelivery.sent) {
+        alert('Standing updated, but the email could not be sent. Check the backend email configuration.');
+      }
+
       setShowSuspendModal(false);
       await fetchUsers();
-    } catch (err) {
+    } catch (err: any) {
       console.error('Error updating standing:', err);
-      alert('Failed to update standing.');
+      alert(err.response?.data?.error || 'Failed to update standing.');
     } finally {
       setUpdating(false);
     }

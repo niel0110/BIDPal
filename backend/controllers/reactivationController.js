@@ -1,5 +1,6 @@
 import { supabase } from '../config/supabase.js';
 import multer from 'multer';
+import { sendAccountStandingEmail } from '../services/emailService.js';
 
 export const uploadMiddleware = multer({
   storage: multer.memoryStorage(),
@@ -293,6 +294,17 @@ export const approveReactivationRequest = async (req, res) => {
       reviewed_at: new Date().toISOString(),
     }).eq('id', id);
 
+    try {
+      await sendAccountStandingEmail({
+        email: request.email,
+        userName: request.email,
+        standing: 'Active',
+        adminNotes: notes?.trim() || 'Your reactivation request was approved. Your account has been reactivated and reset so you can start fresh.',
+      });
+    } catch (mailError) {
+      console.error('Reactivation approval email failed:', mailError);
+    }
+
     console.log(`[Reactivation] Approved user ${request.user_id} (${request.email}). Full data wipe complete.`);
     res.json({ success: true, message: 'Account reactivated and data wiped' });
   } catch (err) {
@@ -308,7 +320,7 @@ export const rejectReactivationRequest = async (req, res) => {
 
     const { data: request, error: fetchErr } = await supabase
       .from('Reactivation_Requests')
-      .select('id, status')
+      .select('id, status, email, user_id')
       .eq('id', id)
       .single();
 
@@ -320,6 +332,17 @@ export const rejectReactivationRequest = async (req, res) => {
       admin_notes: notes?.trim() || 'Your reactivation request has been denied.',
       reviewed_at: new Date().toISOString(),
     }).eq('id', id);
+
+    try {
+      await sendAccountStandingEmail({
+        email: request.email,
+        userName: request.email,
+        standing: 'ReactivationRejected',
+        adminNotes: notes?.trim() || 'Your reactivation request has been denied.',
+      });
+    } catch (mailError) {
+      console.error('Reactivation rejection email failed:', mailError);
+    }
 
     res.json({ success: true, message: 'Request rejected' });
   } catch (err) {

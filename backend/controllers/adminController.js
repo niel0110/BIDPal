@@ -1,4 +1,5 @@
 import { supabase } from '../config/supabase.js';
+import { sendAccountStandingEmail } from '../services/emailService.js';
 
 /**
  * Admin Controller
@@ -136,6 +137,16 @@ export const updateUserStanding = async (req, res) => {
             updatePayload.strike_count = 0;
         }
 
+        const { data: targetUser, error: userFetchError } = await supabase
+            .from('User')
+            .select('user_id, Fname, Lname, email, role')
+            .eq('user_id', id)
+            .single();
+
+        if (userFetchError || !targetUser) {
+            return res.status(404).json({ error: 'User not found' });
+        }
+
         // Upsert violation record
         const { data: existing } = await supabase
             .from('Violation_Records')
@@ -165,8 +176,7 @@ export const updateUserStanding = async (req, res) => {
         if (standing === 'Blacklisted') {
             await supabase.from('User').update({ role: 'Banned' }).eq('user_id', id);
         } else {
-            const { data: userData } = await supabase.from('User').select('role').eq('user_id', id).single();
-            if (userData?.role === 'Banned') {
+            if (targetUser.role === 'Banned') {
                 await supabase.from('User').update({ role: 'Buyer' }).eq('user_id', id);
             }
         }
@@ -188,8 +198,38 @@ export const updateUserStanding = async (req, res) => {
             message: notifMap[standing].message,
         }]);
 
+        let emailDelivery = { attempted: false, sent: false };
+        if (targetUser.email) {
+            try {
+                await sendAccountStandingEmail({
+                    email: targetUser.email,
+                    userName: `${targetUser.Fname || ''} ${targetUser.Lname || ''}`.trim() || targetUser.email,
+                    standing,
+                    reason,
+                    suspensionExpiresAt: updatePayload.suspension_expires_at,
+                });
+                emailDelivery = { attempted: true, sent: true };
+            } catch (mailError) {
+                console.error('Account standing email failed:', mailError);
+                emailDelivery = {
+                    attempted: true,
+                    sent: false,
+                    error: mailError.code || 'EMAIL_SEND_FAILED',
+                    message: mailError.message,
+                };
+            }
+        }
+
         console.log(`Admin ${req.user.user_id} set user ${id} to ${standing}. Reason: ${reason || 'none'}`);
-        res.json({ message: 'User standing updated', record });
+        res.json({
+            message: 'User standing updated',
+            record,
+            user: {
+                ...targetUser,
+                role: standing === 'Blacklisted' ? 'Banned' : (targetUser.role === 'Banned' ? 'Buyer' : targetUser.role),
+            },
+            emailDelivery,
+        });
     } catch (err) {
         console.error('updateUserStanding error:', err);
         res.status(500).json({ error: err.message });
