@@ -55,7 +55,7 @@ export default function MyAuctions() {
     // Schedule modal state
     const [scheduleProduct, setScheduleProduct] = useState(null);
     const [saleType, setSaleType] = useState('bid');
-    const [scheduleForm, setScheduleForm] = useState({ startDate: '', startTime: '', fixedPrice: '' });
+    const [scheduleForm, setScheduleForm] = useState({ startDate: '', startTime: '', fixedPrice: '', bidIncrement: '' });
     const [scheduleToast, setScheduleToast] = useState(null);
     const [isScheduling, setIsScheduling] = useState(false);
 
@@ -153,6 +153,7 @@ export default function MyAuctions() {
             startDate: initialDateTime.date,
             startTime: initialDateTime.time,
             fixedPrice: '',
+            bidIncrement: product?.bid_increment ? String(product.bid_increment) : '',
         });
         setScheduleToast(null);
     };
@@ -184,6 +185,7 @@ export default function MyAuctions() {
                 sale_type: saleType,
                 starting_bid: saleType === 'bid' ? scheduleProduct.starting_price : null,
                 reserve_price: saleType === 'bid' ? scheduleProduct.reserve_price : null,
+                bid_increment: saleType === 'bid' ? scheduleForm.bidIncrement : null,
                 buy_now_price: saleType === 'sale' ? (parseFloat(scheduleForm.fixedPrice) || scheduleProduct.buy_now_price) : null,
                 start_date: saleType === 'sale' ? now.toISOString().slice(0, 10) : scheduleForm.startDate,
                 start_time: saleType === 'sale' ? now.toTimeString().slice(0, 5) : scheduleForm.startTime,
@@ -1509,6 +1511,27 @@ export default function MyAuctions() {
 
                             {saleType !== 'sale' && (
                                 <div style={{ marginBottom: '1.25rem' }}>
+                                    {!isEditingScheduledAuction && (
+                                        <div style={{ marginBottom: '1rem' }}>
+                                            <label style={{ fontSize: '0.78rem', fontWeight: 700, color: '#475569', textTransform: 'uppercase', letterSpacing: '0.05em', display: 'block', marginBottom: '0.5rem' }}>Bid Increment</label>
+                                            <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', border: '1.5px solid #e2e8f0', borderRadius: 10, padding: '0 0.85rem', background: '#fafafa' }}>
+                                                <span style={{ fontWeight: 700, color: '#475569', fontSize: '0.9rem' }}>â‚±</span>
+                                                <input
+                                                    type="number"
+                                                    step="1"
+                                                    min="1"
+                                                    placeholder="50"
+                                                    required={saleType === 'bid'}
+                                                    value={scheduleForm.bidIncrement}
+                                                    onChange={e => setScheduleForm(p => ({ ...p, bidIncrement: e.target.value }))}
+                                                    style={{ flex: 1, border: 'none', background: 'transparent', padding: '0.75rem 0', fontSize: '0.9rem', outline: 'none', color: '#0f172a' }}
+                                                />
+                                            </div>
+                                            <p style={{ fontSize: '0.72rem', color: '#94a3b8', marginTop: '0.4rem', marginBottom: 0 }}>
+                                                Minimum amount each new bid must exceed the current bid.
+                                            </p>
+                                        </div>
+                                    )}
                                     <label style={{ fontSize: '0.78rem', fontWeight: 700, color: '#475569', textTransform: 'uppercase', letterSpacing: '0.05em', display: 'block', marginBottom: '0.5rem' }}>Date & Time</label>
                                     <div style={{ display: 'flex', flexDirection: 'column', gap: '0.6rem' }}>
                                         <div style={{ border: '1.5px solid #e2e8f0', borderRadius: 10, padding: '0.6rem 0.85rem', display: 'flex', alignItems: 'center', gap: '0.5rem', background: '#fafafa' }}>

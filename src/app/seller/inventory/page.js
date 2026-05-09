@@ -17,7 +17,7 @@ export default function InventoryPage() {
     // Schedule modal state
     const [scheduleProduct, setScheduleProduct] = useState(null); // { products_id, name, images, reserve_price, starting_price }
     const [saleType, setSaleType] = useState('bid');
-    const [scheduleForm, setScheduleForm] = useState({ startDate: '', startTime: '', fixedPrice: '' });
+    const [scheduleForm, setScheduleForm] = useState({ startDate: '', startTime: '', fixedPrice: '', bidIncrement: '' });
     const [isScheduling, setIsScheduling] = useState(false);
     const [scheduleToast, setScheduleToast] = useState(null);
 
@@ -83,7 +83,7 @@ export default function InventoryPage() {
     const openScheduleModal = (product) => {
         setScheduleProduct(product);
         setSaleType('bid');
-        setScheduleForm({ startDate: '', startTime: '', fixedPrice: '' });
+        setScheduleForm({ startDate: '', startTime: '', fixedPrice: '', bidIncrement: product?.bid_increment ? String(product.bid_increment) : '' });
         setScheduleToast(null);
     };
 
@@ -124,6 +124,7 @@ export default function InventoryPage() {
                 sale_type: saleType,
                 starting_bid: saleType === 'bid' ? scheduleProduct.starting_price : null,
                 reserve_price: saleType === 'bid' ? scheduleProduct.reserve_price : null,
+                bid_increment: saleType === 'bid' ? scheduleForm.bidIncrement : null,
                 buy_now_price: saleType === 'sale' ? (parseFloat(scheduleForm.fixedPrice) || scheduleProduct.buy_now_price) : null,
                 start_timestamp: startISO,
                 end_timestamp: endISO,
@@ -343,6 +344,23 @@ export default function InventoryPage() {
                             {/* Date & time (auction only) */}
                             {saleType !== 'sale' && (
                                 <div style={{ marginBottom: '1.25rem' }}>
+                                    <div style={{ marginBottom: '1rem' }}>
+                                        <label style={{ fontSize: '0.78rem', fontWeight: 700, color: '#475569', textTransform: 'uppercase', letterSpacing: '0.05em', display: 'block', marginBottom: '0.5rem' }}>Bid Increment</label>
+                                        <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', border: '1.5px solid #e2e8f0', borderRadius: 10, padding: '0 0.85rem', background: '#fafafa' }}>
+                                            <span style={{ fontWeight: 700, color: '#475569', fontSize: '0.9rem' }}>₱</span>
+                                            <input
+                                                type="number"
+                                                step="1"
+                                                min="1"
+                                                required
+                                                placeholder="50"
+                                                value={scheduleForm.bidIncrement}
+                                                onChange={e => setScheduleForm(p => ({ ...p, bidIncrement: e.target.value }))}
+                                                style={{ flex: 1, border: 'none', background: 'transparent', padding: '0.75rem 0', fontSize: '0.9rem', outline: 'none', color: '#0f172a' }}
+                                            />
+                                        </div>
+                                        <p style={{ margin: '0.45rem 0 0', fontSize: '0.73rem', color: '#94a3b8' }}>Minimum amount each new bid must exceed the current bid.</p>
+                                    </div>
                                     <label style={{ fontSize: '0.78rem', fontWeight: 700, color: '#475569', textTransform: 'uppercase', letterSpacing: '0.05em', display: 'block', marginBottom: '0.5rem' }}>Date & Time</label>
                                     <div className={styles.modalGrid}>
                                         <div style={{ border: '1.5px solid #e2e8f0', borderRadius: 10, padding: '0.6rem 0.85rem', display: 'flex', alignItems: 'center', gap: '0.5rem', background: '#fafafa' }}>

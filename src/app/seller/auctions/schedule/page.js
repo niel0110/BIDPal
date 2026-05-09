@@ -19,6 +19,7 @@ function ScheduleAuctionPageInner() {
         startDate: '',
         startTime: '',
         fixedPrice: '',
+        bidIncrement: '',
     });
     const { isSubmitting, runWithLock } = useSubmitLock();
     
@@ -78,6 +79,7 @@ function ScheduleAuctionPageInner() {
                     sale_type: saleType,
                     starting_bid: saleType === 'bid' ? productDetails?.starting_price : null,
                     reserve_price: saleType === 'bid' ? productDetails?.reserve_price : null,
+                    bid_increment: saleType === 'bid' ? formData.bidIncrement : null,
                     buy_now_price: saleType === 'sale' ? (parseFloat(formData.fixedPrice) || productDetails?.buy_now_price) : null,
                     start_date: formData.startDate,
                     start_time: formData.startTime,
@@ -255,6 +257,7 @@ function ScheduleAuctionPageInner() {
                         </label>
 
                         {saleType === 'bid' ? (
+                            <>
                             <div className={styles.priceDisplayRow} style={{ display: 'flex', gap: '0.75rem', flexWrap: 'wrap' }}>
                                 <div className={styles.priceDisplay} style={{ flex: 1 }}>
                                     <div className={styles.priceDisplayIcon}>
@@ -280,19 +283,24 @@ function ScheduleAuctionPageInner() {
                                         <div className={styles.priceDisplayNote}>Initial bid amount</div>
                                     </div>
                                 </div>
-                                <div className={styles.priceDisplay} style={{ flex: 1 }}>
-                                    <div className={styles.priceDisplayIcon} style={{ background: '#fff7ed', color: '#c2410c' }}>
-                                        <Gavel size={18} />
-                                    </div>
-                                    <div className={styles.priceDisplayContent}>
-                                        <div className={styles.priceDisplayLabel}>Minimum Increment</div>
-                                        <div className={styles.priceDisplayValue}>
-                                            ₱{productDetails?.bid_increment?.toLocaleString('en-PH', { minimumFractionDigits: 2, maximumFractionDigits: 2 }) || '0.00'}
-                                        </div>
-                                        <div className={styles.priceDisplayNote}>Set when product was added</div>
-                                    </div>
-                                </div>
                             </div>
+                            <div className={styles.field} style={{ marginTop: '1rem' }}>
+                                <label>Bid Increment *</label>
+                                <div className={styles.inputWithIcon}>
+                                    <span className={styles.pesoIcon}>₱</span>
+                                    <input
+                                        type="number"
+                                        step="1"
+                                        min="1"
+                                        placeholder="50"
+                                        required={saleType === 'bid'}
+                                        value={formData.bidIncrement}
+                                        onChange={(e) => setFormData({ ...formData, bidIncrement: e.target.value })}
+                                    />
+                                </div>
+                                <small className={styles.fieldNote}>Minimum amount each new bid must exceed the current bid.</small>
+                            </div>
+                            </>
                         ) : (
                             <div className={styles.field}>
                                 <label>Buy Now Price *</label>

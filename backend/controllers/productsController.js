@@ -32,6 +32,36 @@ function normalizeViewProduct(product) {
   };
 }
 
+async function persistProductBidIncrement(productId, bidIncrement) {
+  if (!productId || bidIncrement === undefined || bidIncrement === null || bidIncrement === '') {
+    return { skipped: true };
+  }
+
+  const parsedBidIncrement = parseFloat(bidIncrement);
+  if (!Number.isFinite(parsedBidIncrement) || parsedBidIncrement <= 0) {
+    return { skipped: true };
+  }
+
+  const { error } = await supabase
+    .from('Products')
+    .update({ bid_increment: parsedBidIncrement })
+    .eq('products_id', productId);
+
+  if (!error) {
+    return { saved: true };
+  }
+
+  // Some deployed databases do not have a product-level bid_increment column.
+  // In that case we keep product creation/editing non-fatal and rely on auction-level
+  // bid step handling instead of crashing the whole submission flow.
+  if (error.message?.includes('column Products.bid_increment does not exist')) {
+    console.warn('Products.bid_increment is not available in this database; skipping persistence.');
+    return { skipped: true, missingColumn: true };
+  }
+
+  return { error };
+}
+
 async function enrichWithSellerInfo(products) {
   const sellerIds = [...new Set(products.map(p => p.seller_id).filter(Boolean))];
   if (!sellerIds.length) return products;
@@ -284,15 +314,9 @@ export const createProduct = async (req, res) => {
 
     if (bid_increment !== undefined && bid_increment !== null && bid_increment !== '') {
       const productId = data.data?.products_id || data.data?.product_id;
-      if (productId) {
-        const { error: bidIncrementError } = await supabase
-          .from('Products')
-          .update({ bid_increment: parseFloat(bid_increment) })
-          .eq('products_id', productId);
-
-        if (bidIncrementError) {
-          return res.status(400).json({ error: bidIncrementError.message });
-        }
+      const bidIncrementResult = await persistProductBidIncrement(productId, bid_increment);
+      if (bidIncrementResult?.error) {
+        return res.status(400).json({ error: bidIncrementResult.error.message });
       }
     }
 
@@ -375,7 +399,6 @@ export const updateProduct = async (req, res) => {
     if (status !== undefined) updateData.status = status;
     if (reserve_price !== undefined) updateData.reserve_price = parseFloat(reserve_price);
     if (starting_price !== undefined) updateData.starting_price = parseFloat(starting_price);
-    if (bid_increment !== undefined) updateData.bid_increment = parseFloat(bid_increment);
     if (brand !== undefined) updateData.brand = brand;
     if (size !== undefined) updateData.size = size;
     if (specifications !== undefined) updateData.specifications = specifications;
@@ -391,6 +414,13 @@ export const updateProduct = async (req, res) => {
     if (error) return res.status(400).json({ error: error.message });
     if (!data || data.length === 0) {
       return res.status(404).json({ error: 'Product not found' });
+    }
+
+    if (bid_increment !== undefined) {
+      const bidIncrementResult = await persistProductBidIncrement(products_id, bid_increment);
+      if (bidIncrementResult?.error) {
+        return res.status(400).json({ error: bidIncrementResult.error.message });
+      }
     }
 
     // Update categories if provided

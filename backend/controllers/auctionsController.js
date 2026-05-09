@@ -401,7 +401,7 @@ export const scheduleAuction = async (req, res) => {
     // Verify that the product exists and belongs to this seller
     const { data: productData, error: productError } = await supabase
         .from('Products')
-        .select('products_id, seller_id, status, reserve_price, starting_price, bid_increment')
+        .select('products_id, seller_id, status, reserve_price, starting_price')
         .eq('products_id', product_id)
         .is('deleted_at', null)
         .maybeSingle();
@@ -456,16 +456,15 @@ export const scheduleAuction = async (req, res) => {
     const isBid = sale_type === 'bid';
     const startingBidAmount = parseFloat(starting_bid ?? productData.starting_price ?? 0) || 0;
     const reserveLimit = parseFloat(reserve_price ?? productData.reserve_price ?? startingBidAmount) || 0;
-    const savedBidStep = parseFloat(productData.bid_increment);
     const requestBidStep = parseFloat(bid_increment);
-    const bidStep = savedBidStep > 0 ? savedBidStep : requestBidStep;
+    const bidStep = Number.isFinite(requestBidStep) && requestBidStep > 0 ? requestBidStep : 0;
 
     if (isBid && reserveLimit > 0 && startingBidAmount > reserveLimit) {
       return res.status(400).json({ error: 'Starting bid cannot exceed the seller reserve price limit.' });
     }
 
     if (isBid && (!bidStep || bidStep <= 0)) {
-      return res.status(400).json({ error: 'Bid increment must be set on the product and must be greater than 0.' });
+      return res.status(400).json({ error: 'Bid increment is required and must be greater than 0.' });
     }
 
     // Insert into Auctions table
