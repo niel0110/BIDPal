@@ -100,8 +100,23 @@ function LivePageInner() {
     );
     const nextBidAmount = Math.max(Number(minBid || 0), currentAuctionPrice + bidStep);
     const currentUserId = user?.user_id || user?.id;
+    const normalizeBidAmount = (value) => {
+        if (value == null) return 0;
+        if (typeof value === 'number') return Number.isFinite(value) ? value : 0;
+        const normalized = Number(String(value).replace(/[^\d.-]/g, ''));
+        return Number.isFinite(normalized) ? normalized : 0;
+    };
+    const formatBidAmount = (value) => normalizeBidAmount(value).toLocaleString('en-PH');
     const leadingBidderUserId = bids[0]?.user_id || null;
     const isLeadingBidder = Boolean(currentUserId && leadingBidderUserId && String(currentUserId) === String(leadingBidderUserId));
+    const topBidAmount = bids.length > 0
+        ? normalizeBidAmount(bids[0]?.amount ?? bids[0]?.bid_amount)
+        : normalizeBidAmount(auction?.current_price ?? auction?.reserve_price ?? 0);
+    const displayedBidAmount = Math.max(
+        normalizeBidAmount(currentBidAmount),
+        topBidAmount,
+        normalizeBidAmount(auction?.current_price ?? auction?.reserve_price ?? 0)
+    );
 
     useEffect(() => {
         bidsRef.current = bids;
@@ -246,7 +261,8 @@ function LivePageInner() {
             }
             setBids(prev => {
                 // Check if bid already exists to prevent duplicates
-                const bidExists = prev.some(b => b.id === (bid.id || bid.bid_id) || (b.user === bid.user && b.amount === bid.amount && b.time === bid.time));
+                const normalizedIncomingAmount = normalizeBidAmount(bid.amount ?? bid.bid_amount);
+                const bidExists = prev.some(b => b.id === (bid.id || bid.bid_id) || (b.user === bid.user && normalizeBidAmount(b.amount) === normalizedIncomingAmount && b.time === bid.time));
                 if (bidExists) return prev;
 
                 // Format the bid to match the expected structure
@@ -254,7 +270,7 @@ function LivePageInner() {
                     id: bid.id || bid.bid_id || Date.now(),
                     user_id: bid.user_id,
                     user: (bid.user && bid.user.trim() !== 'null null' ? bid.user : null) || (bid.bidder_name && bid.bidder_name.trim() !== 'null null' ? bid.bidder_name : 'Anonymous'),
-                    amount: bid.amount?.toLocaleString ? bid.amount.toLocaleString() : bid.amount,
+                    amount: normalizedIncomingAmount,
                     time: bid.time || bid.timeAgo || new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })
                 };
 
@@ -349,7 +365,7 @@ function LivePageInner() {
                     show: true,
                     title: "🎉 Congratulations!",
                     subtitle: "You won the auction!",
-                    amount: `₱${data.winner.bid_amount?.toLocaleString('en-PH') || '0'}`,
+                    amount: normalizeBidAmount(data.winner.bid_amount),
                     auctionId: auctionId
                 });
             } else {
@@ -421,14 +437,14 @@ function LivePageInner() {
                             id: bid.bid_id,
                             user_id: bid.user_id,
                             user: resolvedUser,
-                            amount: (bid.amount || bid.bid_amount).toLocaleString(),
+                            amount: normalizeBidAmount(bid.amount || bid.bid_amount),
                             time: bid.timeAgo || new Date(bid.placed_at || bid.timestamp).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })
                         };
                     }) : [];
                     setBids(formattedBids);
                     if (formattedBids.length > 0) {
                         const raw = data.bids?.[0]?.bid_amount || data.bids?.[0]?.amount;
-                        if (raw) setCurrentBidAmount(Number(raw));
+                        setCurrentBidAmount(normalizeBidAmount(raw));
                     }
                 }
             } catch (err) {
@@ -1180,9 +1196,7 @@ function LivePageInner() {
     if (isAuctionEnded) {
         const finalBid = bids[0];
         const rawFinal = finalBid?.amount ?? auction.current_price ?? auction.reserve_price;
-        const finalNum = typeof rawFinal === 'string'
-            ? Number(rawFinal.replace(/,/g, ''))
-            : Number(rawFinal || 0);
+        const finalNum = normalizeBidAmount(rawFinal);
 
         const mainImg = activeModalImg || product?.images?.[0]?.image_url || 'https://placehold.co/600x600';
         const thumbs = product?.images || [];
@@ -1277,9 +1291,7 @@ function LivePageInner() {
                             {bids.length > 0 ? (
                                 <div style={{ display: 'flex', flexDirection: 'column', gap: '0.5rem' }}>
                                     {bids.map((bid, index) => {
-                                        const amountValue = typeof bid.amount === 'string'
-                                            ? Number(bid.amount.replace(/,/g, ''))
-                                            : Number(bid.amount || bid.bid_amount || 0);
+                                        const amountValue = normalizeBidAmount(bid.amount || bid.bid_amount);
                                         return (
                                             <div key={bid.id || bid.bid_id || index} style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', padding: '0.7rem 0.85rem', borderRadius: 12, background: index === 0 ? '#f8fafc' : '#fcfcfd' }}>
                                                 <span style={{ fontSize: '0.82rem', color: '#64748b', fontWeight: 600 }}>
@@ -1339,7 +1351,7 @@ function LivePageInner() {
                             <h2 className={styles.winnerTitle}>{winnerModal.title}</h2>
                             <div className={styles.winnerDivider} />
                             <p className={styles.winnerSubTitle}>{winnerModal.subtitle}</p>
-                            <div className={styles.winnerAmount}>₱ {winnerModal.amount}</div>
+                            <div className={styles.winnerAmount}>₱ {formatBidAmount(winnerModal.amount)}</div>
                             <div className={styles.winnerActionRow}>
                                 <button className={styles.payNowBtn} onClick={() => router.push(`/checkout?auction_id=${winnerModal.auctionId || auctionId}`)}>Proceed to Checkout</button>
                                 <button className={styles.cancelWinnerBtn} onClick={() => setWinnerModal({ ...winnerModal, show: false })}>Later</button>
@@ -1553,7 +1565,7 @@ function LivePageInner() {
                                             : (bids.length > 0 ? 'Another bidder currently leads' : 'No bids yet')}
                                     </span>
                                     <div className={styles.mobileProductPriceRow}>
-                                        <span className={styles.mobileProductPrice}>₱{currentBidAmount.toLocaleString('en-PH')}</span>
+                                        <span className={styles.mobileProductPrice}>₱{displayedBidAmount.toLocaleString('en-PH')}</span>
                                     </div>
                                 </div>
                                 <button
@@ -2005,7 +2017,7 @@ function LivePageInner() {
                                     <span className={styles.mobileProductName}>{product?.name}</span>
                                     <span className={styles.mobileProductBidLabel}>Current Bid ({bids.length} Bid{bids.length !== 1 ? 's' : ''})</span>
                                     <div className={styles.mobileProductPriceRow}>
-                                        <span className={styles.mobileProductPrice}>₱{currentBidAmount.toLocaleString('en-PH')}</span>
+                                        <span className={styles.mobileProductPrice}>₱{displayedBidAmount.toLocaleString('en-PH')}</span>
                                     </div>
                                     {countdown && (
                                         <span className={styles.mobileCountdown}>
@@ -2218,7 +2230,7 @@ function LivePageInner() {
                                     </div>
                                     <div style={{ textAlign: 'right' }}>
                                         <div style={{ textDecoration: 'line-through', color: '#999', fontSize: '0.9rem' }}>₱ {auction.reserve_price}</div>
-                                        <div className={styles.price}>₱ {bids[0]?.amount || auction.current_price || auction.reserve_price}</div>
+                                        <div className={styles.price}>₱ {formatBidAmount(displayedBidAmount)}</div>
                                     </div>
                                 </div>
                             </div>
@@ -2267,7 +2279,7 @@ function LivePageInner() {
                                         </div>
                                         <div style={{ display: 'flex', gap: '1rem', alignItems: 'center' }}>
                                             <span className={styles.bidTime}>{bid.time}</span>
-                                            <span className={styles.bidAmount}>₱ {bid.amount}</span>
+                                            <span className={styles.bidAmount}>₱ {formatBidAmount(bid.amount)}</span>
                                             {isHost && bid.user_id && String(bid.user_id) !== String(user?.user_id || user?.id) && !blockedUserIds.has(String(bid.user_id)) && (
                                                 <button
                                                     onClick={() => handleBlockBuyer(bid.user_id, bid.user)}
@@ -2371,7 +2383,7 @@ function LivePageInner() {
 
                         <div className={styles.bidInfoRow}>
                             <span className={styles.bidLabel}>Current Bid ({bids.length} Bids)</span>
-                            <span className={styles.bidValue}>₱ {bids[0]?.amount || auction.current_price || auction.reserve_price}</span>
+                            <span className={styles.bidValue}>₱ {formatBidAmount(displayedBidAmount)}</span>
                         </div>
 
                         <div className={styles.inputGroup}>
@@ -2480,13 +2492,13 @@ function LivePageInner() {
                                     )}
                                 </div>
                                 <div style={{ marginTop: '0.6rem', display: 'flex', alignItems: 'baseline', gap: '0.5rem' }}>
-                                    {bids.length > 0 && bids[0]?.amount > auction.reserve_price && (
+                                    {bids.length > 0 && displayedBidAmount > normalizeBidAmount(auction.reserve_price) && (
                                         <span style={{ fontSize: '0.85rem', color: '#bbb', textDecoration: 'line-through' }}>
                                             ₱{Number(auction.reserve_price).toLocaleString('en-PH')}
                                         </span>
                                     )}
                                     <span style={{ fontSize: '1.5rem', fontWeight: 800, color: '#D32F2F' }}>
-                                        ₱{Number(bids[0]?.amount || auction.current_price || auction.reserve_price).toLocaleString('en-PH')}
+                                        ₱{displayedBidAmount.toLocaleString('en-PH')}
                                     </span>
                                     <span style={{ fontSize: '0.75rem', color: '#999' }}>
                                         {auction.status === 'scheduled' ? 'starting bid' : 'current bid'}
@@ -2577,7 +2589,7 @@ function LivePageInner() {
                         
                         <div className={styles.winnerPricingCard}>
                             <span className={styles.winnerPricingLabel}>Winning Bid</span>
-                            <span className={styles.winnerPricingValue}>{winnerModal.amount}</span>
+                            <span className={styles.winnerPricingValue}>₱{formatBidAmount(winnerModal.amount)}</span>
                         </div>
 
                         <div className={styles.premiumWinnerActions}>
@@ -2628,7 +2640,7 @@ function LivePageInner() {
                                         </div>
                                         <div className={styles.summaryPrice}>
                                             <span className={styles.priceLabel}>Winning Amount</span>
-                                            <span className={styles.priceValue}>₱{bids[0]?.amount || auction.current_price || auction.reserve_price}</span>
+                                            <span className={styles.priceValue}>₱{formatBidAmount(displayedBidAmount)}</span>
                                         </div>
                                     </div>
 
@@ -2690,7 +2702,7 @@ function LivePageInner() {
                                     <div className={styles.totalBreakdown}>
                                         <div className={styles.breakdownRow}>
                                             <span>Subtotal</span>
-                                            <span>₱{bids[0]?.amount || auction.current_price || auction.reserve_price}</span>
+                                            <span>₱{formatBidAmount(displayedBidAmount)}</span>
                                         </div>
                                         <div className={styles.breakdownRow}>
                                             <span>Shipping</span>
@@ -2698,7 +2710,7 @@ function LivePageInner() {
                                         </div>
                                         <div className={`${styles.breakdownRow} ${styles.finalTotalRow}`}>
                                             <span>Order Total</span>
-                                            <span>₱{(Number((bids[0]?.amount || auction.current_price || auction.reserve_price).toString().replace(/,/g, '')) + (shippingOption === 'express' ? 125 : 0)).toLocaleString()}</span>
+                                            <span>₱{(displayedBidAmount + (shippingOption === 'express' ? 125 : 0)).toLocaleString('en-PH')}</span>
                                         </div>
                                     </div>
                                     <button className={styles.premiumFinalPayBtn} onClick={handlePayNow}>
@@ -2733,7 +2745,7 @@ function LivePageInner() {
                                     </div>
                                     <div className={styles.successRow}>
                                         <span>Amount Paid</span>
-                                        <strong>₱{(Number((bids[0]?.amount || auction.current_price || auction.reserve_price).toString().replace(/,/g, '')) + (shippingOption === 'express' ? 125 : 0)).toLocaleString()}</strong>
+                                        <strong>₱{(displayedBidAmount + (shippingOption === 'express' ? 125 : 0)).toLocaleString('en-PH')}</strong>
                                     </div>
                                 </div>
                                 <div className={styles.successRedirect}>Redirecting to your orders...</div>
