@@ -737,9 +737,26 @@ export const endAuction = async (req, res) => {
       return res.status(403).json({ error: 'You do not have permission to end this auction.' });
     }
 
-    // 3. Update Auction status to 'ended' and record live end time and winner
+    // 3. Determine winner and reserve status BEFORE updating DB
+    let productStatus = 'inactive'; // Default if no bids
+    let reserveMet = false;
+    const normalizedReservePrice = Number(currentAuction?.reserve_price ?? 0) || 0;
+
+    if (winningBid) {
+      const winningBidAmount = Number(winningBid.bid_amount || 0);
+      // No reserve (0/null) means the highest valid bid wins automatically.
+      if (normalizedReservePrice <= 0 || winningBidAmount >= normalizedReservePrice) {
+        productStatus = 'sold';
+        reserveMet = true;
+      } else {
+        productStatus = 'inactive'; // Reserve not met
+        console.log(`⚠️ Reserve price not met. Winning bid: ${winningBid.bid_amount}, Reserve: ${normalizedReservePrice}`);
+      }
+    }
+
+    // 4. Update Auction status — 'success' when reserve met & winner exists, 'ended' otherwise
     const updateData = {
-      status: 'ended',
+      status: reserveMet ? 'success' : 'ended',
       live_ended_at: new Date().toISOString()
     };
 
@@ -759,23 +776,7 @@ export const endAuction = async (req, res) => {
 
     if (auctionError) throw auctionError;
 
-    // 4. Determine product status based on whether there's a winner
-    let productStatus = 'inactive'; // Default if no bids
-    let reserveMet = false;
-    const normalizedReservePrice = Number(currentAuction?.reserve_price ?? auction.reserve_price ?? 0) || 0;
-
-    if (winningBid) {
-      const winningBidAmount = Number(winningBid.bid_amount || 0);
-
-      // No reserve (0/null) means the highest valid bid wins automatically.
-      if (normalizedReservePrice <= 0 || winningBidAmount >= normalizedReservePrice) {
-        productStatus = 'sold';
-        reserveMet = true;
-      } else {
-        productStatus = 'inactive'; // Reserve not met
-        console.log(`⚠️ Reserve price not met. Winning bid: ${winningBid.bid_amount}, Reserve: ${normalizedReservePrice}`);
-      }
-    }
+    console.log(`📋 Auction ${id} status set to '${updateData.status}' (reserveMet=${reserveMet})`);
 
     // Update Product status and availability
     await supabase

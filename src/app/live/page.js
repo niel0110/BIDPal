@@ -81,6 +81,9 @@ function LivePageInner() {
     // Stream-ended modal for non-winner buyers
     const [streamEndedModal, setStreamEndedModal] = useState({ show: false, hasWinner: false, hasBids: false, winner: null, didParticipate: false });
 
+    // Result from the endAuction API call (for the seller's ended overlay)
+    const [endAuctionResult, setEndAuctionResult] = useState(null);
+
     // Refs for Agora RTC (video/audio) and RTM (chat)
     const agoraClientRef = useRef(null);
     const localTracksRef = useRef({ audio: null, video: null });
@@ -946,10 +949,14 @@ function LivePageInner() {
 
         const authToken = localStorage.getItem('bidpal_token');
         try {
-            await fetch(`${apiUrl}/api/auctions/${auctionId}/end`, {
+            const res = await fetch(`${apiUrl}/api/auctions/${auctionId}/end`, {
                 method: 'POST',
                 headers: { Authorization: `Bearer ${authToken}` }
             });
+            if (res.ok) {
+                const data = await res.json();
+                setEndAuctionResult(data);
+            }
         } catch (e) {
             console.error('Failed to end auction on backend:', e);
         }
@@ -1187,6 +1194,7 @@ function LivePageInner() {
     const isScheduledBuyer = auction.status === 'scheduled' && !isHost;
     const isAuctionEnded =
         auction.status === 'ended' ||
+        auction.status === 'success' ||
         auction.status === 'completed' ||
         streamEnded ||
         (auction.status === 'active' && auction?.end_time && new Date(auction.end_time) <= new Date());
@@ -1890,14 +1898,42 @@ function LivePageInner() {
                                 flexDirection: 'column',
                                 alignItems: 'center',
                                 justifyContent: 'center',
-                                background: 'rgba(0,0,0,0.8)',
-                                zIndex: 10
+                                background: 'rgba(0,0,0,0.85)',
+                                zIndex: 10,
+                                padding: '1.5rem',
+                                textAlign: 'center',
+                                gap: '0.75rem'
                             }}>
-                                <h2 style={{ color: 'white', marginBottom: '0.5rem' }}>Stream Ended</h2>
-                                <p style={{ color: '#aaa', marginBottom: '1.5rem' }}>Your live auction has been closed.</p>
+                                {endAuctionResult?.has_winner ? (
+                                    <>
+                                        <div style={{ fontSize: '2.5rem', marginBottom: '0.25rem' }}>🏆</div>
+                                        <h2 style={{ color: 'white', margin: 0, fontSize: '1.2rem', fontWeight: 800 }}>Auction Ended — Winner Found!</h2>
+                                        <p style={{ color: '#86efac', margin: 0, fontSize: '0.88rem', fontWeight: 600, lineHeight: 1.5, maxWidth: 300 }}>
+                                            Congratulations! There is a winner for this auction. Waiting for buyer to settle payment.
+                                        </p>
+                                        {endAuctionResult.winner && (
+                                            <div style={{ background: 'rgba(255,255,255,0.1)', borderRadius: 12, padding: '0.75rem 1.25rem', marginTop: '0.25rem' }}>
+                                                <div style={{ color: '#94a3b8', fontSize: '0.68rem', fontWeight: 700, textTransform: 'uppercase', letterSpacing: '0.07em', marginBottom: 4 }}>Winning Bid</div>
+                                                <div style={{ color: 'white', fontSize: '1.4rem', fontWeight: 900 }}>₱{Number(endAuctionResult.winner.bid_amount || 0).toLocaleString('en-PH')}</div>
+                                                <div style={{ color: '#94a3b8', fontSize: '0.78rem', marginTop: 2 }}>{endAuctionResult.winner.bidder_name || 'Winner'}</div>
+                                            </div>
+                                        )}
+                                    </>
+                                ) : (
+                                    <>
+                                        <div style={{ fontSize: '2.5rem', marginBottom: '0.25rem' }}>🏁</div>
+                                        <h2 style={{ color: 'white', margin: 0, fontSize: '1.2rem', fontWeight: 800 }}>Stream Ended</h2>
+                                        <p style={{ color: '#fca5a5', margin: 0, fontSize: '0.88rem', fontWeight: 600, lineHeight: 1.5, maxWidth: 300 }}>
+                                            {endAuctionResult?.has_bids
+                                                ? 'No Order Created — Reserve price was not met.'
+                                                : 'No Order Created — No bids were placed.'}
+                                        </p>
+                                    </>
+                                )}
                                 <button
                                     onClick={() => window.location.href = '/seller/auctions'}
                                     style={{
+                                        marginTop: '0.5rem',
                                         padding: '12px 28px',
                                         borderRadius: '8px',
                                         background: '#D32F2F',
