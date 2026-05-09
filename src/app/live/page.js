@@ -787,6 +787,17 @@ function LivePageInner() {
             setShowPreAuthModal(true);
             return;
         }
+        
+        // Prevent opening modal if user is already the highest bidder
+        if (bids.length > 0 && String(bids[0].user_id) === String(user?.user_id || user?.id)) {
+            setLiveBidAlert({
+                title: 'Your bid is now highest',
+                message: `You lead at ₱${formatBidAmount(displayedBidAmount)}. Minimum bid is now ₱${nextBidAmount.toLocaleString('en-PH')}.`
+            });
+            setTimeout(() => setLiveBidAlert(null), 4000);
+            return;
+        }
+
         setBidAmount(nextBidAmount);
         setBidNotice(null);
         setShowModal(true);
@@ -2422,11 +2433,12 @@ function LivePageInner() {
                             <span className={styles.bidValue}>₱ {formatBidAmount(displayedBidAmount)}</span>
                         </div>
 
+                        {/* The Highest Bidder state is now handled by a toast before opening the modal.
+                           This branch is kept as a fallback, but we simplify it to avoid dark-on-dark nesting. */}
                         {bids.length > 0 && String(bids[0].user_id) === String(user?.user_id || user?.id) ? (
-                            <div style={{ textAlign: 'center', padding: '2rem 1rem' }}>
-                                <div style={{ fontSize: '3rem', marginBottom: '1rem' }}>🏆</div>
-                                <h3 style={{ color: '#D32F2F', marginBottom: '0.5rem', fontWeight: 800 }}>You are the highest bidder!</h3>
-                                <p style={{ color: '#666', fontSize: '0.95rem' }}>You currently hold the highest bid. Please wait for someone else to bid.</p>
+                            <div style={{ textAlign: 'center', padding: '1rem' }}>
+                                <h3 style={{ fontSize: '1.1rem', fontWeight: 800, color: '#111', marginBottom: '0.5rem' }}>Your bid is now highest</h3>
+                                <p style={{ color: '#666', fontSize: '0.92rem', margin: 0 }}>You lead at ₱{formatBidAmount(displayedBidAmount)}.</p>
                             </div>
                         ) : (
                             <>
