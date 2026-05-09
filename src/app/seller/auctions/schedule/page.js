@@ -79,7 +79,6 @@ function ScheduleAuctionPageInner() {
                     sale_type: saleType,
                     starting_bid: saleType === 'bid' ? productDetails?.starting_price : null,
                     reserve_price: saleType === 'bid' ? productDetails?.reserve_price : null,
-                    bid_increment: saleType === 'bid' ? formData.bidIncrement : null,
                     buy_now_price: saleType === 'sale' ? (parseFloat(formData.fixedPrice) || productDetails?.buy_now_price) : null,
                     start_date: formData.startDate,
                     start_time: formData.startTime,
@@ -283,22 +282,6 @@ function ScheduleAuctionPageInner() {
                                         <div className={styles.priceDisplayNote}>Initial bid amount</div>
                                     </div>
                                 </div>
-                            </div>
-                            <div className={styles.field} style={{ marginTop: '1rem' }}>
-                                <label>Bid Increment *</label>
-                                <div className={styles.inputWithIcon}>
-                                    <span className={styles.pesoIcon}>₱</span>
-                                    <input
-                                        type="number"
-                                        step="0.01"
-                                        min="0.01"
-                                        placeholder="50.00"
-                                        required={saleType === 'bid'}
-                                        value={formData.bidIncrement}
-                                        onChange={(e) => setFormData({ ...formData, bidIncrement: e.target.value })}
-                                    />
-                                </div>
-                                <small className={styles.fieldNote}>Minimum amount each new bid must exceed the current bid.</small>
                             </div>
                             </>
                         ) : (

@@ -402,7 +402,7 @@ export const scheduleAuction = async (req, res) => {
     // Verify that the product exists and belongs to this seller
     const { data: productData, error: productError } = await supabase
         .from('Products')
-        .select('products_id, seller_id, status, reserve_price, starting_price')
+        .select('products_id, seller_id, status, reserve_price, starting_price, bid_increment')
         .eq('products_id', product_id)
         .is('deleted_at', null)
         .maybeSingle();
@@ -457,7 +457,9 @@ export const scheduleAuction = async (req, res) => {
     const isBid = sale_type === 'bid';
     const startingBidAmount = parseFloat(starting_bid ?? productData.starting_price ?? 0) || 0;
     const reserveLimit = parseFloat(reserve_price ?? productData.reserve_price ?? startingBidAmount) || 0;
-    const requestBidStep = parseFloat(bid_increment);
+    
+    // Use frontend bid_increment if provided (backward compatibility), else fallback to product's bid_increment
+    const requestBidStep = bid_increment !== undefined ? parseFloat(bid_increment) : parseFloat(productData.bid_increment);
     const bidStep = Number.isFinite(requestBidStep) && requestBidStep > 0 ? requestBidStep : 0;
 
     if (isBid && reserveLimit > 0 && startingBidAmount > reserveLimit) {
@@ -465,7 +467,7 @@ export const scheduleAuction = async (req, res) => {
     }
 
     if (isBid && (!bidStep || bidStep <= 0)) {
-      return res.status(400).json({ error: 'Bid increment is required and must be greater than 0.' });
+      return res.status(400).json({ error: 'Bid increment is required and must be greater than 0. Please set it in the product.' });
     }
 
     // Insert into Auctions table
@@ -1332,6 +1334,21 @@ export const placeBid = async (req, res) => {
     // Use current_price from Auctions table (kept up-to-date by DB trigger)
     const currentPrice = parseFloat(auction.current_price ?? startingPriceFallback ?? 0);
     const step = parseFloat(auction.incremental_bid_step || 100);
+
+    // Ensure the bidder is not already the highest bidder
+    const { data: highestBid } = await supabase
+      .from('Bids')
+      .select('user_id')
+      .eq('auction_id', id)
+      .order('bid_amount', { ascending: false })
+      .limit(1)
+      .maybeSingle();
+
+    if (highestBid && String(highestBid.user_id) === String(user_id)) {
+      return res.status(400).json({
+        error: 'You are already the highest bidder. Please wait for someone else to bid.',
+      });
+    }
 
     // Validate bid amount — must exceed current price by at least one step
     const minBid = currentPrice + step;

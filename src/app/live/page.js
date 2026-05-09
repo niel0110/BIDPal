@@ -2422,50 +2422,60 @@ function LivePageInner() {
                             <span className={styles.bidValue}>₱ {formatBidAmount(displayedBidAmount)}</span>
                         </div>
 
-                        <div className={styles.inputGroup}>
-                            <label className={styles.inputLabel}>
-                                Minimum bid: <strong>₱ {nextBidAmount.toLocaleString('en-PH')}</strong>
-                            </label>
-                            <div style={{ fontSize: '0.94rem', color: '#777', marginTop: '0.35rem', lineHeight: 1.45 }}>
-                                Minimum increment: <strong style={{ color: '#666' }}>₱{bidStep.toLocaleString('en-PH')}</strong>
+                        {bids.length > 0 && String(bids[0].user_id) === String(user?.user_id || user?.id) ? (
+                            <div style={{ textAlign: 'center', padding: '2rem 1rem' }}>
+                                <div style={{ fontSize: '3rem', marginBottom: '1rem' }}>🏆</div>
+                                <h3 style={{ color: '#D32F2F', marginBottom: '0.5rem', fontWeight: 800 }}>You are the highest bidder!</h3>
+                                <p style={{ color: '#666', fontSize: '0.95rem' }}>You currently hold the highest bid. Please wait for someone else to bid.</p>
                             </div>
-                            {bidLimit > 0 && (
-                                <div style={{ fontSize: '0.94rem', color: '#777', marginTop: '0.35rem', lineHeight: 1.45 }}>
-                                    Bid limit: <strong style={{ color: '#666' }}>₱{bidLimit.toLocaleString('en-PH')}</strong>
+                        ) : (
+                            <>
+                                <div className={styles.inputGroup}>
+                                    <label className={styles.inputLabel}>
+                                        Minimum bid: <strong>₱ {nextBidAmount.toLocaleString('en-PH')}</strong>
+                                    </label>
+                                    <div style={{ fontSize: '0.94rem', color: '#777', marginTop: '0.35rem', lineHeight: 1.45 }}>
+                                        Minimum increment: <strong style={{ color: '#666' }}>₱{bidStep.toLocaleString('en-PH')}</strong>
+                                    </div>
+                                    {bidLimit > 0 && (
+                                        <div style={{ fontSize: '0.94rem', color: '#777', marginTop: '0.35rem', lineHeight: 1.45 }}>
+                                            Bid limit: <strong style={{ color: '#666' }}>₱{bidLimit.toLocaleString('en-PH')}</strong>
+                                        </div>
+                                    )}
+                                    <div className={styles.currencyInputWrapper}>
+                                        <span className={styles.currencySymbol}>₱</span>
+                                        <input
+                                            type="number"
+                                            className={styles.bidInput}
+                                            value={bidAmount}
+                                            placeholder={nextBidAmount}
+                                            min={nextBidAmount}
+                                            max={bidLimit || undefined}
+                                            step="0.01"
+                                            onChange={(e) => {
+                                                setBidAmount(e.target.value);
+                                                if (bidNotice) setBidNotice(null);
+                                            }}
+                                            autoFocus
+                                        />
+                                    </div>
                                 </div>
-                            )}
-                            <div className={styles.currencyInputWrapper}>
-                                <span className={styles.currencySymbol}>₱</span>
-                                <input
-                                    type="number"
-                                    className={styles.bidInput}
-                                    value={bidAmount}
-                                    placeholder={nextBidAmount}
-                                    min={nextBidAmount}
-                                    max={bidLimit || undefined}
-                                    step="0.01"
-                                    onChange={(e) => {
-                                        setBidAmount(e.target.value);
-                                        if (bidNotice) setBidNotice(null);
-                                    }}
-                                    autoFocus
-                                />
-                            </div>
-                        </div>
 
-                        {bidNotice && (
-                            <div className={styles.bidNotice} role="alert" aria-live="polite">
-                                <div className={styles.bidNoticeIcon}>!</div>
-                                <div className={styles.bidNoticeText}>
-                                    <strong>{bidNotice.title}</strong>
-                                    <span>{bidNotice.message}</span>
-                                </div>
-                            </div>
+                                {bidNotice && (
+                                    <div className={styles.bidNotice} role="alert" aria-live="polite">
+                                        <div className={styles.bidNoticeIcon}>!</div>
+                                        <div className={styles.bidNoticeText}>
+                                            <strong>{bidNotice.title}</strong>
+                                            <span>{bidNotice.message}</span>
+                                        </div>
+                                    </div>
+                                )}
+
+                                <button className={styles.placeBidBtn} onClick={handlePlaceBid}>
+                                    Place bid
+                                </button>
+                            </>
                         )}
-
-                        <button className={styles.placeBidBtn} onClick={handlePlaceBid}>
-                            Place bid
-                        </button>
                     </div>
                 </div>
             )}

@@ -51,15 +51,15 @@
 }
 
 .titleArea h1 {
-    font-size: 2.5rem;
+    font-size: 1.75rem;
     font-weight: 850;
     color: #111;
-    margin-bottom: 0.5rem;
+    margin-bottom: 0.25rem;
 }
 
 .titleArea p {
     color: #999;
-    font-size: 1.1rem;
+    font-size: 0.9rem;
     font-weight: 500;
 }
 
@@ -188,14 +188,14 @@
 
 .productGrid {
     display: grid;
-    grid-template-columns: repeat(auto-fill, minmax(260px, 1fr));
-    gap: 2.5rem;
+    grid-template-columns: repeat(auto-fill, minmax(180px, 1fr));
+    gap: 1.5rem;
 }
 
 .productCard {
     background: #fff;
-    border-radius: 24px;
-    padding: 1.25rem;
+    border-radius: 16px;
+    padding: 1rem;
     border: 1px solid #f8f8f8;
     transition: all 0.3s;
     display: flex;
@@ -210,10 +210,10 @@
 
 .imageWrapper {
     aspect-ratio: 1;
-    border-radius: 18px;
+    border-radius: 12px;
     overflow: hidden;
     background: #fdfdfd;
-    margin-bottom: 1.25rem;
+    margin-bottom: 1rem;
 }
 
 .imageWrapper img {
@@ -223,19 +223,19 @@
 }
 
 .productInfo {
-    margin-bottom: 1.5rem;
+    margin-bottom: 1rem;
 }
 
 .productInfo strong {
     display: block;
-    font-size: 1.15rem;
+    font-size: 0.95rem;
     font-weight: 800;
-    margin-bottom: 0.25rem;
+    margin-bottom: 0.2rem;
 }
 
 .productInfo span {
     color: #999;
-    font-size: 0.9rem;
+    font-size: 0.75rem;
     font-weight: 600;
 }
 
@@ -243,12 +243,12 @@
     margin-top: auto;
     display: block;
     width: 100%;
-    padding: 1rem;
+    padding: 0.75rem;
     background: #fff;
     border: 2px solid #f5f5f5;
-    border-radius: 14px;
+    border-radius: 10px;
     color: #111;
-    font-size: 0.9rem;
+    font-size: 0.8rem;
     font-weight: 800;
     text-align: center;
     text-decoration: none;
@@ -266,13 +266,14 @@
     flex-direction: column;
     align-items: center;
     justify-content: center;
-    gap: 1.25rem;
+    gap: 1rem;
     background: #FFF9F9;
     border: 2px dashed #FFE0E0;
-    border-radius: 24px;
+    border-radius: 16px;
     text-decoration: none;
     color: var(--color-primary);
     font-weight: 800;
+    font-size: 0.9rem;
     transition: all 0.3s;
 }
 
@@ -282,8 +283,8 @@
 }
 
 .plusCircle {
-    width: 64px;
-    height: 64px;
+    width: 48px;
+    height: 48px;
     background: #fff;
     border-radius: 50%;
     display: flex;
