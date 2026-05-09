@@ -93,7 +93,7 @@ const Login = () => {
               <input 
                 type="email" 
                 required
-                placeholder="admin@bidpal.com"
+                placeholder="bidpal.support@gmail.com"
                 value={email}
                 onChange={(e) => setEmail(e.target.value)}
                 style={{ background: 'none', border: 'none', color: 'var(--text-primary)', padding: '12px 0', width: '100%', outline: 'none' }}

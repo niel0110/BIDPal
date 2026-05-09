@@ -15,8 +15,8 @@ const supabaseKey = process.env.SUPABASE_SERVICE_ROLE_KEY;
 const supabase = createClient(supabaseUrl, supabaseKey);
 
 async function resetAdminPassword() {
-    const email = 'adminBidpal@gmail.com';
-    const newPassword = 'admin123';
+    const email = 'bidpal.support@gmail.com';
+    const newPassword = 'bidpal2026';
     
     console.log(`Resetting password for ${email} to "${newPassword}"...`);
     

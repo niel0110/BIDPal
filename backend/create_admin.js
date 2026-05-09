@@ -20,8 +20,10 @@ if (!supabaseUrl || !supabaseKey) {
 const supabase = createClient(supabaseUrl, supabaseKey);
 
 async function createAdmin() {
-    const email = 'adminBidpal@gmail.com';
-    const password = 'admin123';
+    const email = 'bidpal.support@gmail.com';
+    const typoEmail = 'bidpal.suppor@gmail.com';
+    const previousEmail = 'adminBidpal@gmail.com';
+    const password = 'bidpal2026';
     
     console.log(`Creating admin user: ${email}...`);
     
@@ -31,9 +33,21 @@ async function createAdmin() {
     // Check if user already exists
     const { data: existingUser } = await supabase
         .from('User')
-        .select('id')
-        .eq('email', email)
-        .single();
+        .select('user_id')
+        .ilike('email', email)
+        .maybeSingle();
+
+    const { data: typoAdmin } = await supabase
+        .from('User')
+        .select('user_id')
+        .ilike('email', typoEmail)
+        .maybeSingle();
+
+    const { data: previousAdmin } = await supabase
+        .from('User')
+        .select('user_id')
+        .ilike('email', previousEmail)
+        .maybeSingle();
         
     if (existingUser) {
         console.log('User already exists, updating role and password...');
@@ -43,12 +57,30 @@ async function createAdmin() {
                 role: 'Admin',
                 password: hashedPassword
             })
-            .eq('id', existingUser.id);
+            .eq('user_id', existingUser.user_id);
             
         if (updateError) {
             console.error('Error updating user:', updateError);
         } else {
             console.log('✅ User updated successfully!');
+        }
+    } else if (typoAdmin || previousAdmin) {
+        console.log('Previous admin found, updating email, role, and password...');
+        const { error: updateError } = await supabase
+            .from('User')
+            .update({
+                email,
+                role: 'Admin',
+                password: hashedPassword,
+                Fname: 'BIDPal',
+                Lname: 'Support'
+            })
+            .eq('user_id', (typoAdmin || previousAdmin).user_id);
+
+        if (updateError) {
+            console.error('Error updating previous admin:', updateError);
+        } else {
+            console.log('Admin account updated successfully!');
         }
     } else {
         console.log('User does not exist, inserting...');
@@ -58,8 +90,8 @@ async function createAdmin() {
                 email,
                 password: hashedPassword,
                 role: 'Admin',
-                Fname: 'Platform',
-                Lname: 'Admin'
+                Fname: 'BIDPal',
+                Lname: 'Support'
             }]);
             
         if (insertError) {
