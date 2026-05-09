@@ -82,7 +82,8 @@ export const getSellerAuctions = async (req, res) => {
     if (status && status !== 'all') {
       if (status === 'completed') {
         // 'completed' = successful auctions: had a winner (winner_user_id is set)
-        query = query.in('status', ['ended', 'completed']).not('winner_user_id', 'is', null);
+        // Includes 'success' (reserve met, awaiting payment) and 'completed' (fulfilled)
+        query = query.in('status', ['success', 'ended', 'completed']).not('winner_user_id', 'is', null);
       } else if (status === 'ended') {
         // 'ended' = unsuccessful auctions: status=ended and no winner
         query = query.eq('status', 'ended').is('winner_user_id', null);
@@ -1510,7 +1511,7 @@ export const getAuctionWinner = async (req, res) => {
       return res.status(403).json({ error: 'Forbidden' });
     }
 
-    if (!['ended', 'completed'].includes(auction.status)) {
+    if (!['success', 'ended', 'completed'].includes(auction.status)) {
       return res.status(400).json({
         error: 'Auction has not ended yet',
         status: auction.status
@@ -1938,9 +1939,9 @@ export const rescheduleAuction = async (req, res) => {
     }
 
     // Only allow rescheduling auctions that had no successful winner
-    const isReschedulable = ['ended', 'completed'].includes(auction.status) && !auction.winner_user_id;
+    const isReschedulable = ['success', 'ended', 'completed'].includes(auction.status) && !auction.winner_user_id;
     if (!isReschedulable) {
-      if (!['ended', 'completed'].includes(auction.status)) {
+      if (!['success', 'ended', 'completed'].includes(auction.status)) {
         return res.status(400).json({ error: `Cannot reschedule an auction with status "${auction.status}".` });
       }
       return res.status(400).json({ error: 'This auction had a winner and cannot be rescheduled.' });

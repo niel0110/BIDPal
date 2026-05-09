@@ -35,7 +35,7 @@ export const getAuctionWinsByUser = async (req, res) => {
         )
       `)
       .eq('winner_user_id', user_id)
-      .in('status', ['ended', 'completed'])
+      .in('status', ['success', 'ended', 'completed'])
       .order('live_ended_at', { ascending: false });
 
     if (error) {
@@ -92,7 +92,7 @@ export const getOrdersByUser = async (req, res) => {
         )
       `)
       .eq('winner_user_id', user_id)
-      .in('status', ['ended', 'completed']);
+      .in('status', ['success', 'ended', 'completed']);
 
     // ── Step 2: find which wins already have an order ────────────────────────
     // ── Step 4: fetch all actual orders from DB ──────────────────────────────
@@ -1084,7 +1084,7 @@ export const getSellerOrders = async (req, res) => {
     // ── Also surface auctions that have a winner but no Order row yet (pending payment) ──
     const orderedAuctionIds = new Set(data.map(o => o.auction_id));
     const pendingAuctions = (sellerAuctions || []).filter(
-      a => a.winner_user_id && !orderedAuctionIds.has(a.auction_id) && a.status === 'ended'
+      a => a.winner_user_id && !orderedAuctionIds.has(a.auction_id) && ['success', 'ended'].includes(a.status)
     );
 
     const pendingOrders = [];
