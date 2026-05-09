@@ -218,7 +218,16 @@ export default function NotificationBell() {
                                             {n.type === 'new_bid' && (
                                                 <>New bid on <strong>{n.payload?.itemName}</strong></>
                                             )}
-                                            {(n.type === 'auction_won' || n.type === 'auction_ended' || n.type === 'auction_sold' || n.type === 'auction_reserve_not_met' || n.type === 'auction_no_sale') && (
+                                            {n.type === 'auction_won' && (
+                                                <>
+                                                    <strong>{n.payload?.title}</strong>
+                                                    {n.payload?.message && <><br /><span style={{ color: '#64748b', fontSize: '0.82em' }}>{n.payload.message}</span></>}
+                                                    {isUnread(n) && (
+                                                        <><br /><span style={{ color: '#D32F2F', fontWeight: 700, fontSize: '0.82em' }}>Pay Now →</span></>
+                                                    )}
+                                                </>
+                                            )}
+                                            {(n.type === 'auction_ended' || n.type === 'auction_sold' || n.type === 'auction_reserve_not_met' || n.type === 'auction_no_sale') && (
                                                 <><strong>{n.payload?.title}</strong>{n.payload?.message && <><br />{n.payload.message}</>}</>
                                             )}
                                             {(n.type === 'kyc_approved' || n.type === 'kyc_rejected' || n.type === 'system') && (
