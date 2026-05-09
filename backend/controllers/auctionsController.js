@@ -788,6 +788,7 @@ export const endAuction = async (req, res) => {
 
     // 5. Create notifications and order if there's a winner and reserve is met
     let orderId = null;
+    let winnerOrderId = null;
 
     if (winningBid && reserveMet) {
       console.log('✅ Creating order for winner...');
@@ -839,9 +840,19 @@ export const endAuction = async (req, res) => {
           order_type: 'auction',
           auction_id: id
         });
-        throw new Error(orderError.message || 'Failed to create winner order.');
+        const isMissingAddressConstraint =
+          /shipping_address_id/i.test(orderError.message || '') ||
+          /Orders_shipping_address_id_fkey/i.test(orderError.message || '');
+
+        if (!isMissingAddressConstraint) {
+          throw new Error(orderError.message || 'Failed to create winner order.');
+        }
+
+        console.warn(`⚠️ Skipping immediate Orders row for auction ${id}; winner must complete checkout first.`);
+        winnerOrderId = `pending_${id}`;
       } else {
         orderId = orderData.order_id;
+        winnerOrderId = orderId;
         console.log(`✅ Order created successfully: ${orderId}`);
 
         // Create order item (only if none exists yet)
@@ -890,7 +901,7 @@ export const endAuction = async (req, res) => {
           payload: {
             title: `Auction Ended: Congratulations! You are the highest bidder with a bid of ₱${winningBid.bid_amount.toLocaleString('en-PH')}.`,
             message: `Auction Ended: Congratulations! You are the highest bidder with a bid of ₱${winningBid.bid_amount.toLocaleString('en-PH')}. Please proceed to Orders to process your payment.`,
-            order_id: orderId,
+            order_id: winnerOrderId,
             auction_id: id,
             product_id: auction.products_id,
             product_name: productData?.name
@@ -925,7 +936,7 @@ export const endAuction = async (req, res) => {
             product_id: auction.products_id,
             product_name: productData?.name,
             winning_amount: winningBid.bid_amount,
-            order_id: orderId
+            order_id: winnerOrderId
           },
           reference_id: id,
           reference_type: 'auction',
@@ -953,7 +964,7 @@ export const endAuction = async (req, res) => {
           payload: {
             title: `Auction Ended: ${winnerName} won with a bid of ₱${winningBid.bid_amount.toLocaleString('en-PH')}`,
             message: `"${productData?.name}" has a winner. Review the auction results and continue order processing.`,
-            order_id: orderId,
+            order_id: winnerOrderId,
             auction_id: id,
             product_id: auction.products_id,
             winner_user_id: winningBid.user_id
@@ -1056,7 +1067,7 @@ export const endAuction = async (req, res) => {
           `${winningBid.bidder.Fname || ''} ${winningBid.bidder.Lname || ''}`.trim() ||
           winningBid.bidder.email?.split('@')[0] || 'Winner' : 'Winner',
         bidder_avatar: winningBid.bidder?.Avatar || null,
-        order_id: orderId
+        order_id: winnerOrderId
       } : null;
 
       req.app.locals.io.to(`auction:${id}`).emit('auction-ended', {
@@ -1097,7 +1108,7 @@ export const endAuction = async (req, res) => {
         user_id: winningBid.user_id,
         bid_amount: winningBid.bid_amount,
         bid_id: winningBid.bid_id,
-        order_id: orderId,
+        order_id: winnerOrderId,
         bidder_name: bidderName,
         bidder_avatar: winningBid.bidder?.Avatar || null
       } : null,
@@ -1536,6 +1547,16 @@ export const getAuctionWinner = async (req, res) => {
       .eq('auction_id', id)
       .maybeSingle();
     if (orderFetchError) console.error('Order fetch error in getAuctionWinner:', orderFetchError.message);
+    const resolvedOrderData = orderData || {
+      order_id: `pending_${id}`,
+      status: 'pending_payment',
+      total_amount: auction.final_price,
+      placed_at: null,
+      tracking_number: null,
+      courier: null,
+      payment_confirmed: false,
+      payment_confirmed_at: null,
+    };
 
     const winnerName = winningBid.bidder ?
       `${winningBid.bidder.Fname || ''} ${winningBid.bidder.Lname || ''}`.trim() ||
@@ -1560,16 +1581,16 @@ export const getAuctionWinner = async (req, res) => {
         name: productData?.name || 'Unknown Product',
         images: productData?.images || []
       },
-      order: orderData ? {
-        order_id:             orderData.order_id,
-        status:               orderData.status,
-        total_amount:         orderData.total_amount,
-        placed_at:            orderData.placed_at,
-        tracking_number:      orderData.tracking_number   || null,
-        courier:              orderData.courier            || null,
-        payment_confirmed:    orderData.payment_confirmed  ?? false,
-        payment_confirmed_at: orderData.payment_confirmed_at || null,
-      } : null,
+      order: {
+        order_id:             resolvedOrderData.order_id,
+        status:               resolvedOrderData.status,
+        total_amount:         resolvedOrderData.total_amount,
+        placed_at:            resolvedOrderData.placed_at,
+        tracking_number:      resolvedOrderData.tracking_number   || null,
+        courier:              resolvedOrderData.courier            || null,
+        payment_confirmed:    resolvedOrderData.payment_confirmed  ?? false,
+        payment_confirmed_at: resolvedOrderData.payment_confirmed_at || null,
+      },
       reserve_met: auction.final_price >= (auction.reserve_price || 0)
     });
   } catch (err) {
