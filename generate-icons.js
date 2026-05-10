@@ -4,7 +4,7 @@ const sharp = require('sharp');
 const fs = require('fs');
 const path = require('path');
 
-const LOGO_PATH = path.join(__dirname, 'public/BIDPaL Logo V2.png');
+const LOGO_PATH = path.join(__dirname, 'public/file.png');
 
 async function generateIcons() {
   console.log('Generating favicon and PWA icons...');
