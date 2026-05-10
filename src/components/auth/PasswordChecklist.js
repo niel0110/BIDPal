@@ -1,22 +1,26 @@
 'use client';
 
-import { CheckCircle2, XCircle } from 'lucide-react';
+import { XCircle } from 'lucide-react';
 import { getPasswordValidation } from '@/lib/passwordPolicy';
 import styles from './PasswordChecklist.module.css';
 
 export default function PasswordChecklist({ password, className = '' }) {
+    if (!password) return null;
+
     const { checks } = getPasswordValidation(password);
+    const missingChecks = checks.filter((check) => !check.passed);
+
+    if (missingChecks.length === 0) return null;
 
     return (
-        <div className={`${styles.card} ${className}`.trim()}>
-            <p className={styles.title}>Password requirements</p>
+        <div className={`${styles.errorContainer} ${className}`.trim()}>
             <ul className={styles.list}>
-                {checks.map((check) => (
+                {missingChecks.map((check) => (
                     <li
                         key={check.id}
-                        className={`${styles.item} ${check.passed ? styles.itemPassed : styles.itemPending}`}
+                        className={styles.item}
                     >
-                        {check.passed ? <CheckCircle2 size={16} /> : <XCircle size={16} />}
+                        <XCircle size={14} />
                         <span>{check.label}</span>
                     </li>
                 ))}
@@ -24,3 +28,4 @@ export default function PasswordChecklist({ password, className = '' }) {
         </div>
     );
 }
+
