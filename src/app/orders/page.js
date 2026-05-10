@@ -76,6 +76,8 @@ export default function OrdersPage() {
         }
     }, [user, fetchOrders]);
 
+    // -- Utilities (Defined early to avoid ReferenceErrors) --
+    const isCodPayment = (order) => ['cash_on_delivery', 'cod', 'cash'].includes(String(order?.payment_method || '').toLowerCase());
     const isFixedPriceOrder = (order) => order.order_type !== 'auction';
     const matchesSearch = (order) => {
         if (!searchQuery) return true;
@@ -84,11 +86,13 @@ export default function OrdersPage() {
         const itemMatch = order.items?.some(item => item.name.toLowerCase().includes(query));
         return idMatch || itemMatch;
     };
-
     const filteredOrders = orders.filter(order => {
         // Map new status format to tab filter
         let tabStatus = order.status;
         if (order.status === 'pending_payment') tabStatus = 'pay';
+        if (order.status === 'processing' && !isCodPayment(order)) tabStatus = 'ship'; // GCash goes to 'To Ship' immediately after payment
+        if (order.status === 'processing' && isCodPayment(order)) tabStatus = 'ship';
+        if (order.status === 'shipped') tabStatus = 'receive';
         if (order.status === 'processing') tabStatus = 'ship';
         if (order.status === 'shipped') tabStatus = 'receive';
 
@@ -110,13 +114,22 @@ export default function OrdersPage() {
         }
     };
 
-    const isCodPayment = (order) => ['cash_on_delivery', 'cod', 'cash'].includes(String(order?.payment_method || '').toLowerCase());
-    const canCancelFixedPriceOrder = (order) => (
-        isFixedPriceOrder(order) &&
-        isCodPayment(order) &&
-        ['pending_payment', 'processing'].includes(order.status) &&
-        !order.tracking_number
-    );
+    const canCancelOrder = (order) => {
+        // If it's already cancelled, shipped, or completed, cannot cancel.
+        if (['cancelled', 'shipped', 'completed'].includes(order.status)) return false;
+
+        // If it's still at 'To Pay' stage, cancellation is allowed.
+        if (order.status === 'pending_payment') return true;
+
+        // If it's at 'To Ship' stage (processing):
+        // ONLY allow cancellation for Cash on Delivery orders that haven't been shipped yet.
+        // Orders paid via GCash/E-wallet will have isCodPayment(order) === false.
+        if (order.status === 'processing') {
+            return isCodPayment(order) && !order.tracking_number;
+        }
+
+        return false;
+    };
 
     // Fetch cancellation limit + violation record together
     useEffect(() => {
@@ -717,7 +730,7 @@ export default function OrdersPage() {
                                                             Pay Now
                                                         </button>
                                                     )}
-                                                    {!expiredWindows.has(order.id) && (
+                                                    {!expiredWindows.has(order.id) && canCancelOrder(order) && (
                                                         <button
                                                             className={styles.cancelBtn}
                                                             onClick={() => handleCancelOrder(order)}
@@ -736,7 +749,7 @@ export default function OrdersPage() {
                                                     <button className={styles.payNowBtn} onClick={() => handlePayNow(order)}>
                                                         Pay Now
                                                     </button>
-                                                    {canCancelFixedPriceOrder(order) && (
+                                                    {canCancelOrder(order) && (
                                                         <button
                                                             className={styles.cancelBtn}
                                                             onClick={() => handleCancelOrder(order)}
@@ -778,13 +791,13 @@ export default function OrdersPage() {
                                                 View Receipt
                                             </button>
                                         </>
-                                    ) : order.status === 'cancelled' ? null : order.status === 'processing' ? (
+                                    ) : order.status === 'processing' ? (
                                         <>
                                             <button className={styles.receiptBtn} onClick={() => openReceiptModal(order.id)}>
                                                 <Receipt size={14} />
                                                 View Receipt
                                             </button>
-                                            {canCancelFixedPriceOrder(order) && (
+                                            {canCancelOrder(order) ? (
                                                 <button
                                                     className={styles.cancelBtn}
                                                     onClick={() => handleCancelOrder(order)}
@@ -796,6 +809,8 @@ export default function OrdersPage() {
                                                         <><Ban size={16} /><span>Cancel Order</span></>
                                                     )}
                                                 </button>
+                                            ) : !isCodPayment(order) && (
+                                                 null
                                             )}
                                         </>
                                     ) : null}
@@ -807,19 +822,18 @@ export default function OrdersPage() {
                                     )}
                                 </div>
                             </div>
-                                ))
-                            ) : (
-                                <div className={styles.emptyState}>
-                                    <Package size={64} color="#ddd" strokeWidth={1} />
-                                    <h2>No orders found</h2>
-                                    <p>Try switching tabs or searching for something else.</p>
-                                </div>
-                            )}
+                        ))
+                    ) : (
+                        <div className={styles.emptyState}>
+                            <Package size={64} color="#ddd" strokeWidth={1} />
+                            <h2>No orders found</h2>
+                            <p>Try switching tabs or searching for something else.</p>
+                        </div>
+                    )}
                         </div>
                     </>
                 )}
             </div>
-
             {/* View Review Popup */}
             {viewReviewTarget && (
                 <div className={styles.modalOverlay} onClick={() => setViewReviewTarget(null)}>

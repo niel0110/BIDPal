@@ -415,6 +415,25 @@ export const createOrder = async (req, res) => {
 
     await assertCanCheckout(user_id);
 
+    // 0. Check product availability for fixed-price orders
+    const productIdsToCheck = [...new Set(items.map(item => item.products_id || item.id).filter(Boolean))];
+    if (productIdsToCheck.length > 0) {
+      const { data: currentProducts, error: checkError } = await supabase
+        .from('Products')
+        .select('products_id, status, availability, name')
+        .in('products_id', productIdsToCheck);
+
+      if (checkError) return res.status(500).json({ error: 'Failed to verify item availability' });
+
+      for (const product of currentProducts) {
+        if (product.status === 'sold' || product.availability <= 0) {
+          return res.status(400).json({ 
+            error: `Sorry, "${product.name}" has already been sold or is no longer available.` 
+          });
+        }
+      }
+    }
+
     const itemSubtotal = items.reduce((sum, item) => {
       const quantity = Number(item.quantity || 1);
       return sum + Number(item.price || 0) * quantity;

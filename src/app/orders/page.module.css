@@ -444,6 +444,21 @@
     color: #757575;
 }
 
+.nonCancellableBadge {
+    display: inline-flex;
+    align-items: center;
+    padding: 0.4rem 0.8rem;
+    background: #fff8f1;
+    color: #c2410c;
+    border: 1px solid #ffedd5;
+    border-radius: 8px;
+    font-size: 0.72rem;
+    font-weight: 800;
+    text-transform: uppercase;
+    letter-spacing: 0.03em;
+    cursor: help;
+}
+
 .orderItem {
     display: flex;
     gap: 1.5rem;
