@@ -16,22 +16,14 @@ async function generateIcons() {
       process.exit(1);
     }
 
-    // Generate 192x192 icon with smaller logo (60% of canvas size)
+    // Generate 192x192 icon with larger logo (80% of canvas size)
     const icon192Path = path.join(__dirname, 'public/icon-192.png');
     await sharp(LOGO_PATH)
-      .resize(115, 115, {
+      .resize(154, 154, {
         fit: 'inside',
         withoutEnlargement: true
       })
       .png()
-      .composite([
-        {
-          input: Buffer.from([255, 255, 255, 255]),
-          tile: true,
-          blend: 'dest-out',
-          raw: { width: 1, height: 1, channels: 4 }
-        }
-      ])
       .toBuffer()
       .then(buffer => {
         return sharp({
@@ -48,22 +40,14 @@ async function generateIcons() {
       });
     console.log('✅ Generated icon-192.png');
 
-    // Generate 512x512 icon with smaller logo (60% of canvas size)
+    // Generate 512x512 icon with larger logo (80% of canvas size)
     const icon512Path = path.join(__dirname, 'public/icon-512.png');
     await sharp(LOGO_PATH)
-      .resize(307, 307, {
+      .resize(410, 410, {
         fit: 'inside',
         withoutEnlargement: true
       })
       .png()
-      .composite([
-        {
-          input: Buffer.from([255, 255, 255, 255]),
-          tile: true,
-          blend: 'dest-out',
-          raw: { width: 1, height: 1, channels: 4 }
-        }
-      ])
       .toBuffer()
       .then(buffer => {
         return sharp({
@@ -98,7 +82,7 @@ async function generateIcons() {
     if (fs.existsSync(adminPublicPath)) {
       const adminIcon192Path = path.join(adminPublicPath, 'icon-192.png');
       await sharp(LOGO_PATH)
-        .resize(115, 115, {
+        .resize(154, 154, {
           fit: 'inside',
           withoutEnlargement: true
         })
@@ -121,7 +105,7 @@ async function generateIcons() {
 
       const adminIcon512Path = path.join(adminPublicPath, 'icon-512.png');
       await sharp(LOGO_PATH)
-        .resize(307, 307, {
+        .resize(410, 410, {
           fit: 'inside',
           withoutEnlargement: true
         })
