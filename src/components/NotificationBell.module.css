@@ -59,16 +59,18 @@
 
 .dropdown {
     position: absolute;
-    top: calc(100% + 8px);
+    top: calc(100% + 12px);
     right: 0;
     width: 420px;
     background: white;
-    border-radius: 16px;
-    border: 1px solid #f0f0f0;
-    box-shadow: 0 8px 32px rgba(0, 0, 0, 0.12);
+    border-radius: 20px;
+    border: 1px solid rgba(0, 0, 0, 0.08);
+    box-shadow: 
+        0 10px 40px -10px rgba(0, 0, 0, 0.15),
+        0 0 1px 0 rgba(0, 0, 0, 0.1);
     z-index: 1000;
     overflow: hidden;
-    animation: slideDown 0.15s ease;
+    animation: slideDown 0.2s cubic-bezier(0.16, 1, 0.3, 1);
 }
 
 @keyframes slideDown {
@@ -172,12 +174,12 @@
 }
 
 .item.unread {
-    background: #eff6ff;
-    border-left: 3px solid #3b82f6;
+    background: #f0f9ff;
+    border-left: 3.5px solid #3b82f6;
 }
 
 .item.unread:hover {
-    background: #dbeafe;
+    background: #e0f2fe;
 }
 
 .iconWrap {
@@ -192,22 +194,22 @@
     color: #555;
 }
 
-.iconWrap.new_message { background: #eff6ff; color: #3b82f6; }
-.iconWrap.new_bid { background: #f0fdf4; color: #22c55e; }
-.iconWrap.auction_won { background: #fef3c7; color: #f59e0b; }
-.iconWrap.auction_ended { background: #eff6ff; color: #2563eb; }
-.iconWrap.auction_sold { background: #dcfce7; color: #16a34a; }
-.iconWrap.auction_reserve_not_met { background: #fee2e2; color: #dc2626; }
-.iconWrap.auction_no_sale { background: #fff7ed; color: #f97316; }
-.iconWrap.auction_promoted { background: #fef9c3; color: #ca8a04; }
-.iconWrap.order_update { background: #fdf4ff; color: #a855f7; }
-.iconWrap.order_cancelled { background: #fee2e2; color: #dc2626; }
-.iconWrap.account_violation { background: #fef2f2; color: #dc2626; }
-.iconWrap.warning { background: #fffbeb; color: #d97706; }
-.iconWrap.buyer_violation { background: #fff7ed; color: #ea580c; }
-.iconWrap.auction_upcoming { background: #fff7ed; color: #f97316; }
-.iconWrap.kyc_approved { background: #dcfce7; color: #16a34a; }
-.iconWrap.kyc_rejected { background: #fee2e2; color: #dc2626; }
+.iconWrap.new_message { background: #dbeafe; color: #2563eb; }
+.iconWrap.new_bid { background: #dcfce7; color: #16a34a; }
+.iconWrap.auction_won { background: #fef3c7; color: #d97706; }
+.iconWrap.auction_ended { background: #dbeafe; color: #1d4ed8; }
+.iconWrap.auction_sold { background: #bbf7d0; color: #15803d; }
+.iconWrap.auction_reserve_not_met { background: #fee2e2; color: #b91c1c; }
+.iconWrap.auction_no_sale { background: #ffedd5; color: #c2410c; }
+.iconWrap.auction_promoted { background: #fef9c3; color: #a16207; }
+.iconWrap.order_update { background: #f5f3ff; color: #7c3aed; }
+.iconWrap.order_cancelled { background: #fee2e2; color: #b91c1c; }
+.iconWrap.account_violation { background: #fef2f2; color: #b91c1c; }
+.iconWrap.warning { background: #fffbeb; color: #b45309; }
+.iconWrap.buyer_violation { background: #ffedd5; color: #c2410c; }
+.iconWrap.auction_upcoming { background: #ffedd5; color: #ea580c; }
+.iconWrap.kyc_approved { background: #bbf7d0; color: #15803d; }
+.iconWrap.kyc_rejected { background: #fee2e2; color: #b91c1c; }
 
 /* Violation/warning items get a stronger unread highlight */
 .item.unread.account_violation,
@@ -250,22 +252,49 @@
 }
 
 .itemText {
-    margin: 0 0 0.2rem;
-    font-size: 0.85rem;
-    line-height: 1.4;
-    color: #333;
-    font-weight: 450;
+    margin: 0 0 0.25rem;
+    font-size: 0.9rem;
+    line-height: 1.45;
+    color: #1e293b;
+    font-weight: 500;
 }
 
-.itemText strong {
+.itemTitle {
     font-weight: 700;
-    color: #111;
+    color: #0f172a;
+    font-size: 0.92rem;
+    display: inline-block;
+    margin-bottom: 2px;
+}
+
+.itemMessage {
+    color: #475569;
+    font-size: 0.85rem;
+    font-weight: 400;
+    line-height: 1.4;
+}
+
+.payNow {
+    display: inline-block;
+    margin-top: 6px;
+    color: #2563eb;
+    font-weight: 700;
+    font-size: 0.82rem;
+    padding: 2px 8px;
+    background: rgba(37, 99, 235, 0.08);
+    border-radius: 4px;
+    transition: all 0.2s;
+}
+
+.payNow:hover {
+    background: rgba(37, 99, 235, 0.15);
+    transform: translateX(2px);
 }
 
 .itemTime {
     font-size: 0.75rem;
-    color: #aaa;
-    font-weight: 500;
+    color: #94a3b8;
+    font-weight: 600;
 }
 
 .unreadDot {

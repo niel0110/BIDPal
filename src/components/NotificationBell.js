@@ -220,27 +220,27 @@ export default function NotificationBell() {
                                             )}
                                             {n.type === 'auction_won' && (
                                                 <>
-                                                    <strong>{n.payload?.title}</strong>
-                                                    {n.payload?.message && <><br /><span style={{ color: '#64748b', fontSize: '0.82em' }}>{n.payload.message}</span></>}
+                                                    <strong className={styles.itemTitle}>{n.payload?.title}</strong>
+                                                    {n.payload?.message && <><br /><span className={styles.itemMessage}>{n.payload.message}</span></>}
                                                     {isUnread(n) && (
-                                                        <><br /><span style={{ color: '#D32F2F', fontWeight: 700, fontSize: '0.82em' }}>Pay Now →</span></>
+                                                        <><br /><span className={styles.payNow}>Pay Now →</span></>
                                                     )}
                                                 </>
                                             )}
                                             {(n.type === 'auction_ended' || n.type === 'auction_sold' || n.type === 'auction_reserve_not_met' || n.type === 'auction_no_sale') && (
-                                                <><strong>{n.payload?.title}</strong>{n.payload?.message && <><br />{n.payload.message}</>}</>
+                                                <><strong className={styles.itemTitle}>{n.payload?.title}</strong>{n.payload?.message && <><br /><span className={styles.itemMessage}>{n.payload.message}</span></>}</>
                                             )}
                                             {(n.type === 'kyc_approved' || n.type === 'kyc_rejected' || n.type === 'system') && (
-                                                <><strong>{n.payload?.title}</strong>{n.payload?.message && <><br />{n.payload.message}</>}</>
+                                                <><strong className={styles.itemTitle}>{n.payload?.title}</strong>{n.payload?.message && <><br /><span className={styles.itemMessage}>{n.payload.message}</span></>}</>
                                             )}
                                             {(n.type === 'order_cancelled' || n.type === 'account_violation' || n.type === 'warning' || (n.type === 'order_update' && n.payload?.title)) && (
-                                                <><strong>{n.payload?.title}</strong>{n.payload?.message && <><br />{n.payload.message}</>}</>
+                                                <><strong className={styles.itemTitle}>{n.payload?.title}</strong>{n.payload?.message && <><br /><span className={styles.itemMessage}>{n.payload.message}</span></>}</>
                                             )}
                                             {n.type === 'order_update' && !n.payload?.title && (
                                                 <>Your order has been updated</>
                                             )}
                                             {!['new_bid', 'order_update', 'order_cancelled', 'auction_won', 'auction_ended', 'auction_sold', 'auction_reserve_not_met', 'auction_no_sale', 'account_violation', 'warning', 'kyc_approved', 'kyc_rejected', 'system'].includes(n.type) && (
-                                                <>{n.payload?.title ? <><strong>{n.payload.title}</strong>{n.payload.message && <><br />{n.payload.message}</>}</> : n.payload?.message || 'You have a new notification'}</>
+                                                <>{n.payload?.title ? <><strong className={styles.itemTitle}>{n.payload.title}</strong>{n.payload.message && <><br /><span className={styles.itemMessage}>{n.payload.message}</span></>}</> : <span className={styles.itemMessage}>{n.payload?.message || 'You have a new notification'}</span>}</>
                                             )}
                                         </p>
                                         <span className={styles.itemTime}>{timeAgo(n.created_at)}</span>

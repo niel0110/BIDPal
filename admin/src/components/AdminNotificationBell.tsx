@@ -144,13 +144,13 @@ const AdminNotificationBell = () => {
             transition={{ duration: 0.15 }}
             style={{
               position: 'absolute',
-              top: 'calc(100% + 10px)',
+              top: 'calc(100% + 12px)',
               right: 0,
-              width: '380px',
+              width: '400px',
               background: 'white',
-              border: '1px solid #e5e7eb',
-              borderRadius: '16px',
-              boxShadow: '0 16px 48px rgba(0,0,0,0.12)',
+              border: '1px solid rgba(0, 0, 0, 0.08)',
+              borderRadius: '20px',
+              boxShadow: '0 20px 50px -12px rgba(0, 0, 0, 0.15), 0 0 1px 0 rgba(0, 0, 0, 0.1)',
               zIndex: 2000,
               overflow: 'hidden',
             }}
@@ -165,7 +165,7 @@ const AdminNotificationBell = () => {
             }}>
               <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
                 <Bell size={15} color="var(--accent-primary)" />
-                <span style={{ fontWeight: 800, fontSize: '0.875rem', color: '#111' }}>Notifications</span>
+                <span style={{ fontWeight: 800, fontSize: '0.95rem', color: '#0f172a' }}>Notifications</span>
                 {unreadCount > 0 && (
                   <span style={{
                     background: '#FEF2F2',
@@ -237,12 +237,13 @@ const AdminNotificationBell = () => {
                       onClick={() => { if (!notif.is_read) markRead(notif.id); }}
                       style={{
                         display: 'flex',
-                        gap: '12px',
-                        padding: '12px 16px',
-                        borderBottom: '1px solid #f9fafb',
-                        background: notif.is_read ? 'white' : '#fef9f9',
+                        gap: '14px',
+                        padding: '14px 18px',
+                        borderBottom: '1px solid #f8fafc',
+                        background: notif.is_read ? 'white' : '#f0f9ff',
                         cursor: notif.is_read ? 'default' : 'pointer',
-                        transition: 'background 0.15s',
+                        transition: 'background 0.2s',
+                        borderLeft: notif.is_read ? 'none' : '4px solid #3b82f6',
                       }}
                     >
                       {/* Icon */}
@@ -263,10 +264,10 @@ const AdminNotificationBell = () => {
                       <div style={{ flex: 1, minWidth: 0 }}>
                         <div style={{ display: 'flex', justifyContent: 'space-between', gap: '6px', alignItems: 'flex-start' }}>
                           <span style={{
-                            fontWeight: notif.is_read ? 500 : 700,
-                            fontSize: '0.82rem',
-                            color: '#111',
-                            lineHeight: 1.3,
+                            fontWeight: 700,
+                            fontSize: '0.9rem',
+                            color: '#0f172a',
+                            lineHeight: 1.4,
                           }}>
                             {notif.title}
                           </span>
@@ -277,10 +278,10 @@ const AdminNotificationBell = () => {
 
                         {notif.message && (
                           <p style={{
-                            margin: '3px 0 0',
-                            fontSize: '0.78rem',
-                            color: '#6b7280',
-                            lineHeight: 1.45,
+                            margin: '4px 0 0',
+                            fontSize: '0.85rem',
+                            color: '#475569',
+                            lineHeight: 1.5,
                             overflow: 'hidden',
                             textOverflow: 'ellipsis',
                             display: '-webkit-box',
