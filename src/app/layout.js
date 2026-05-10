@@ -14,11 +14,19 @@ export const metadata = {
   title: "BIDPal",
   description: "Unlock the value of what you already have.",
   icons: {
-    icon: [{ url: "/icon.png", type: "image/png" }],
-    apple: [{ url: "/icon.png", type: "image/png" }],
-    shortcut: "/icon.png",
+    icon: [{ url: "/icon-192.png", type: "image/png" }],
+    apple: [{ url: "/icon-192.png", type: "image/png" }],
+    shortcut: "/icon-192.png",
   },
   manifest: "/manifest.json",
+  appleWebApp: {
+    capable: true,
+    statusBarStyle: "black-translucent",
+    title: "BIDPal",
+  },
+  formatDetection: {
+    telephone: false,
+  },
 };
 
 export const viewport = {
