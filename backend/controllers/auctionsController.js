@@ -1074,6 +1074,34 @@ export const endAuction = async (req, res) => {
         order_id: winnerOrderId
       } : null;
 
+      // Fetch top 3 unique bidders for the leaderboard
+      let top3 = [];
+      try {
+        const { data: allBidsRaw } = await supabase
+          .from('Bids')
+          .select('bid_id, bid_amount, user_id, placed_at, bidder:User(user_id, Fname, Lname, Avatar)')
+          .eq('auction_id', id)
+          .order('bid_amount', { ascending: false });
+
+        const seen = new Set();
+        for (const bid of allBidsRaw || []) {
+          if (seen.has(bid.user_id)) continue;
+          seen.add(bid.user_id);
+          top3.push({
+            rank: top3.length + 1,
+            user_id: bid.user_id,
+            bid_amount: bid.bid_amount,
+            bidder_name: bid.bidder
+              ? `${bid.bidder.Fname || ''} ${bid.bidder.Lname || ''}`.trim() || 'Bidder'
+              : 'Bidder',
+            bidder_avatar: bid.bidder?.Avatar || null,
+          });
+          if (top3.length === 3) break;
+        }
+      } catch (e) {
+        console.warn('Could not fetch top3 for socket broadcast:', e.message);
+      }
+
       req.app.locals.io.to(`auction:${id}`).emit('auction-ended', {
         auction_id: id,
         winner: winnerInfo,
@@ -1082,7 +1110,7 @@ export const endAuction = async (req, res) => {
         reserve_met: reserveMet,
         has_winner: !!(winningBid && reserveMet),
         has_bids: !!winningBid,
-        reserve_price: normalizedReservePrice,
+        top3_bidders: top3,
         highest_bidder: winningBid ? {
           user_id: winningBid.user_id,
           bid_amount: winningBid.bid_amount,
@@ -1122,7 +1150,7 @@ export const endAuction = async (req, res) => {
         bid_amount: winningBid.bid_amount,
         bidder_name: bidderName
       } : null,
-      reserve_price: normalizedReservePrice,
+      top3_bidders: top3,
       product_status: productStatus,
       reserve_met: reserveMet,
       has_winner: !!(winningBid && reserveMet)

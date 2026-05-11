@@ -79,7 +79,7 @@ function LivePageInner() {
     });
 
     // Stream-ended modal for non-winner buyers
-    const [streamEndedModal, setStreamEndedModal] = useState({ show: false, hasWinner: false, hasBids: false, winner: null, didParticipate: false });
+    const [streamEndedModal, setStreamEndedModal] = useState({ show: false, hasWinner: false, hasBids: false, winner: null, didParticipate: false, top3: [], myRank: null });
 
     // Result from the endAuction API call (for the seller's ended overlay)
     const [endAuctionResult, setEndAuctionResult] = useState(null);
@@ -359,7 +359,9 @@ function LivePageInner() {
             setStreamEnded(true);
 
             const userId = user?.user_id || user?.id;
-            const isWinner = data.has_winner && data.winner && userId && data.winner.user_id === userId;
+            const isWinner = data.has_winner && data.winner && userId && String(data.winner.user_id) === String(userId);
+            const top3 = data.top3_bidders || [];
+            const myRank = userId ? (top3.findIndex(b => String(b.user_id) === String(userId)) + 1) || null : null;
             const didParticipate = Boolean(userId && bidsRef.current.some(bid => String(bid.user_id) === String(userId)));
 
             if (isWinner) {
@@ -379,6 +381,8 @@ function LivePageInner() {
                     hasBids: data.has_bids,
                     winner: data.winner || null,
                     didParticipate,
+                    top3,
+                    myRank: myRank > 0 ? myRank : null,
                 });
             }
 
@@ -390,13 +394,18 @@ function LivePageInner() {
                     text: `🏆 Auction ended! Winner: ${data.winner.bidder_name} with ₱${data.winner.bid_amount?.toLocaleString('en-PH')}`,
                     time: 'Just now'
                 }]);
+            } else if (data.has_bids && top3.length > 0) {
+                setComments(prev => [...prev, {
+                    id: Date.now(),
+                    user: 'System',
+                    text: `🏁 Auction ended. Winner: ${top3[0].bidder_name} with ₱${top3[0].bid_amount?.toLocaleString('en-PH')}`,
+                    time: 'Just now'
+                }]);
             } else {
                 setComments(prev => [...prev, {
                     id: Date.now(),
                     user: 'System',
-                    text: data.has_bids
-                        ? '🏁 Auction ended. The reserve price was not met.'
-                        : '🏁 Auction ended. No bids were placed.',
+                    text: '🏁 Auction ended. No bids were placed.',
                     time: 'Just now'
                 }]);
             }
@@ -1381,80 +1390,99 @@ function LivePageInner() {
 
                 {/* Stream-ended modal — for non-winner buyers */}
                 {streamEndedModal.show && (
-                    <div className={styles.modalOverlay} onClick={() => setStreamEndedModal({ show: false, hasWinner: false, winner: null })}>
+                    <div className={styles.modalOverlay} onClick={() => setStreamEndedModal({ show: false, hasWinner: false, winner: null, top3: [], myRank: null })}>
                         <div style={{
-                            background: 'white', borderRadius: 24, padding: '2rem 1.5rem', width: '92%', maxWidth: 400,
+                            background: 'white', borderRadius: 24, padding: '2rem 1.5rem', width: '92%', maxWidth: 420,
                             boxShadow: '0 24px 64px rgba(0,0,0,0.22)',
-                            display: 'flex', flexDirection: 'column', alignItems: 'center', textAlign: 'center', gap: '0.75rem'
+                            display: 'flex', flexDirection: 'column', alignItems: 'center', textAlign: 'center', gap: '0.75rem',
+                            maxHeight: '90vh', overflowY: 'auto'
                         }} onClick={e => e.stopPropagation()}>
 
                             {/* Icon */}
-                            <div style={{ width: 64, height: 64, borderRadius: '50%', background: '#f1f5f9', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: '2rem', marginBottom: '0.25rem' }}>
+                            <div style={{ width: 64, height: 64, borderRadius: '50%', background: '#f1f5f9', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: '2rem', marginBottom: '0.25rem', flexShrink: 0 }}>
                                 🏁
                             </div>
 
-                            <h2 style={{ margin: 0, fontSize: '1.2rem', fontWeight: 800, color: '#0f172a' }}>
-                                {streamEndedModal.didParticipate && streamEndedModal.hasWinner
-                                    ? 'Auction Ended'
-                                    : 'Live Stream Ended'}
-                            </h2>
+                            <h2 style={{ margin: 0, fontSize: '1.2rem', fontWeight: 800, color: '#0f172a' }}>Auction Ended</h2>
                             <p style={{ margin: 0, fontSize: '0.85rem', color: '#64748b', lineHeight: 1.6 }}>
                                 The seller has closed this live auction session.
                             </p>
 
-                            {/* Winner result */}
-                            {streamEndedModal.hasWinner && streamEndedModal.winner ? (
-                                <div style={{ width: '100%', background: '#f8fafc', border: '1.5px solid #e2e8f0', borderRadius: 14, padding: '1rem', marginTop: '0.25rem' }}>
-                                    <div style={{ fontSize: '0.68rem', fontWeight: 700, color: '#94a3b8', textTransform: 'uppercase', letterSpacing: '0.07em', marginBottom: '0.5rem' }}>
-                                        {streamEndedModal.didParticipate ? 'Auction Result' : 'Winning Bid'}
-                                    </div>
-                                    <p style={{ margin: '0 0 0.65rem', fontSize: '0.9rem', color: '#0f172a', fontWeight: 700 }}>
-                                        {streamEndedModal.didParticipate
-                                            ? 'Auction Ended. Better luck next time!'
-                                            : 'Another buyer won this auction.'}
-                                    </p>
-                                    <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: '0.5rem' }}>
-                                        <span style={{ fontSize: '0.84rem', color: '#64748b', fontWeight: 600 }}>Final winning bid</span>
-                                        <span style={{ fontWeight: 800, fontSize: '1.1rem', color: '#D32F2F', flexShrink: 0 }}>
-                                            ₱{Number(streamEndedModal.winner.bid_amount || 0).toLocaleString('en-PH')}
-                                        </span>
-                                    </div>
+                            {/* Top 3 Leaderboard */}
+                            {streamEndedModal.top3 && streamEndedModal.top3.length > 0 ? (
+                                <div style={{ width: '100%', marginTop: '0.25rem' }}>
+                                    <div style={{ fontSize: '0.68rem', fontWeight: 700, color: '#94a3b8', textTransform: 'uppercase', letterSpacing: '0.07em', marginBottom: '0.6rem' }}>Final Rankings</div>
+                                    {streamEndedModal.top3.map((bidder) => {
+                                        const rankEmoji = bidder.rank === 1 ? '🥇' : bidder.rank === 2 ? '🥈' : '🥉';
+                                        const rankLabel = bidder.rank === 1 ? 'Winner' : bidder.rank === 2 ? '2nd Place' : '3rd Place';
+                                        const isMe = user && String(bidder.user_id) === String(user?.user_id || user?.id);
+                                        return (
+                                            <div key={bidder.user_id} style={{
+                                                display: 'flex', alignItems: 'center', justifyContent: 'space-between',
+                                                background: bidder.rank === 1 ? '#fffbeb' : isMe ? '#f0fdf4' : '#f8fafc',
+                                                border: `1.5px solid ${bidder.rank === 1 ? '#fde68a' : isMe ? '#bbf7d0' : '#e2e8f0'}`,
+                                                borderRadius: 12, padding: '0.7rem 1rem', marginBottom: '0.5rem', gap: '0.5rem'
+                                            }}>
+                                                <span style={{ fontSize: '1.4rem', flexShrink: 0 }}>{rankEmoji}</span>
+                                                <div style={{ flex: 1, textAlign: 'left' }}>
+                                                    <div style={{ fontWeight: 700, fontSize: '0.88rem', color: '#0f172a' }}>
+                                                        {isMe ? 'You' : bidder.bidder_name}
+                                                        {isMe && <span style={{ fontSize: '0.7rem', color: '#16a34a', marginLeft: 6, fontWeight: 700 }}>• You</span>}
+                                                    </div>
+                                                    <div style={{ fontSize: '0.72rem', color: '#64748b', fontWeight: 600 }}>{rankLabel}</div>
+                                                </div>
+                                                <div style={{ fontWeight: 800, fontSize: '1rem', color: bidder.rank === 1 ? '#D32F2F' : '#334155', flexShrink: 0 }}>
+                                                    ₱{Number(bidder.bid_amount || 0).toLocaleString('en-PH')}
+                                                </div>
+                                            </div>
+                                        );
+                                    })}
+                                    {/* Message for current user */}
+                                    {streamEndedModal.myRank && streamEndedModal.myRank <= 3 ? (
+                                        <div style={{ background: '#f0fdf4', border: '1.5px solid #bbf7d0', borderRadius: 12, padding: '0.7rem 1rem', marginTop: '0.25rem' }}>
+                                            <p style={{ margin: 0, fontWeight: 700, fontSize: '0.85rem', color: '#15803d' }}>
+                                                {streamEndedModal.myRank === 1 ? '🎉 You won! Proceed to checkout.' :
+                                                 streamEndedModal.myRank === 2 ? '🥈 You placed 2nd! You may be offered the item if the winner cancels.' :
+                                                 '🥉 You placed 3rd! You may be offered the item if higher bidders cancel.'}
+                                            </p>
+                                        </div>
+                                    ) : streamEndedModal.didParticipate ? (
+                                        <div style={{ background: '#f8fafc', border: '1.5px solid #e2e8f0', borderRadius: 12, padding: '0.7rem 1rem', marginTop: '0.25rem' }}>
+                                            <p style={{ margin: 0, fontWeight: 600, fontSize: '0.85rem', color: '#64748b' }}>Better luck next time! Keep bidding on other auctions.</p>
+                                        </div>
+                                    ) : null}
                                 </div>
                             ) : (
-                                <div style={{ width: '100%', background: '#fef9f0', border: '1.5px solid #fed7aa', borderRadius: 14, padding: '0.875rem 1rem', marginTop: '0.25rem' }}>
-                                    <p style={{ margin: 0, fontSize: '0.85rem', color: '#92400e', fontWeight: 600 }}>
-                                        {streamEndedModal.didParticipate
-                                            ? 'Auction Ended. Better luck next time!'
-                                            : (streamEndedModal.hasBids
-                                                ? 'No winner — the reserve price was not met.'
-                                                : 'No winner — no bids were placed.')}
-                                    </p>
+                                <div style={{ width: '100%', background: '#f8fafc', border: '1.5px solid #e2e8f0', borderRadius: 14, padding: '0.875rem 1rem', marginTop: '0.25rem' }}>
+                                    <p style={{ margin: 0, fontSize: '0.85rem', color: '#64748b', fontWeight: 600 }}>No bids were placed in this auction.</p>
                                 </div>
                             )}
 
-                            {/* Cascade notice */}
-                            <div style={{ width: '100%', background: '#fffbeb', border: '1.5px solid #fde68a', borderRadius: 14, padding: '0.875rem 1rem', textAlign: 'left' }}>
-                                <div style={{ display: 'flex', gap: '0.5rem', alignItems: 'flex-start' }}>
-                                    <span style={{ fontSize: '1rem', flexShrink: 0, marginTop: 1 }}>⚠️</span>
-                                    <div>
-                                        <p style={{ margin: '0 0 0.3rem', fontWeight: 700, fontSize: '0.8rem', color: '#92400e' }}>Order Cascade Notice</p>
-                                        <p style={{ margin: 0, fontSize: '0.76rem', color: '#78350f', lineHeight: 1.55 }}>
-                                            If the winner cancels their order, it will automatically be offered to the <strong>2nd highest bidder</strong>, then the <strong>3rd highest bidder</strong>. Each bidder will receive a notification if selected.
-                                        </p>
+                            {/* Cascade notice — only shown when there is a winner */}
+                            {streamEndedModal.hasWinner && (
+                                <div style={{ width: '100%', background: '#fffbeb', border: '1.5px solid #fde68a', borderRadius: 14, padding: '0.875rem 1rem', textAlign: 'left' }}>
+                                    <div style={{ display: 'flex', gap: '0.5rem', alignItems: 'flex-start' }}>
+                                        <span style={{ fontSize: '1rem', flexShrink: 0, marginTop: 1 }}>⚠️</span>
+                                        <div>
+                                            <p style={{ margin: '0 0 0.3rem', fontWeight: 700, fontSize: '0.8rem', color: '#92400e' }}>Order Cascade Notice</p>
+                                            <p style={{ margin: 0, fontSize: '0.76rem', color: '#78350f', lineHeight: 1.55 }}>
+                                                If the winner cancels, the order is offered to <strong>2nd place</strong>, then <strong>3rd place</strong>. You'll be notified if selected.
+                                            </p>
+                                        </div>
                                     </div>
                                 </div>
-                            </div>
+                            )}
 
                             {/* Actions */}
                             <button
-                                onClick={() => setStreamEndedModal({ show: false, hasWinner: false, winner: null })}
+                                onClick={() => setStreamEndedModal({ show: false, hasWinner: false, winner: null, top3: [], myRank: null })}
                                 style={{
                                     width: '100%', marginTop: '0.25rem', padding: '0.875rem', borderRadius: 14,
                                     background: '#0f172a', color: 'white', border: 'none', fontWeight: 700,
                                     fontSize: '0.92rem', cursor: 'pointer'
                                 }}
                             >
-                                View Auction Recap
+                                Close
                             </button>
                         </div>
                     </div>
@@ -1936,9 +1964,21 @@ function LivePageInner() {
                                         <h2 style={{ color: 'white', margin: 0, fontSize: '1.2rem', fontWeight: 800 }}>Stream Ended</h2>
                                         <p style={{ color: '#fca5a5', margin: 0, fontSize: '0.88rem', fontWeight: 600, lineHeight: 1.5, maxWidth: 300 }}>
                                             {endAuctionResult?.has_bids
-                                                ? 'No Order Created — Reserve price was not met.'
-                                                : 'No Order Created — No bids were placed.'}
+                                                ? 'Auction closed with no winning order.'
+                                                : 'No bids were placed in this session.'}
                                         </p>
+                                        {/* Top 3 for seller when no reserve-met winner */}
+                                        {endAuctionResult?.top3_bidders?.length > 0 && (
+                                            <div style={{ width: '100%', maxWidth: 300, marginTop: '0.5rem' }}>
+                                                {endAuctionResult.top3_bidders.map(b => (
+                                                    <div key={b.user_id} style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', background: 'rgba(255,255,255,0.08)', borderRadius: 8, padding: '6px 10px', marginBottom: 4 }}>
+                                                        <span style={{ color: '#94a3b8', fontSize: '0.75rem', fontWeight: 700 }}>{b.rank === 1 ? '🥇' : b.rank === 2 ? '🥈' : '🥉'} #{b.rank}</span>
+                                                        <span style={{ color: 'white', fontSize: '0.78rem', flex: 1, marginLeft: 8, textAlign: 'left' }}>{b.bidder_name}</span>
+                                                        <span style={{ color: '#86efac', fontSize: '0.82rem', fontWeight: 800 }}>₱{Number(b.bid_amount).toLocaleString('en-PH')}</span>
+                                                    </div>
+                                                ))}
+                                            </div>
+                                        )}
                                     </>
                                 )}
                                 <button

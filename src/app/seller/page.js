@@ -809,6 +809,7 @@ export default function SellerDashboard() {
                     hasBids: data.has_bids,
                     winner: data.winner,
                     highestBidder: data.highest_bidder,
+                    top3Bidders: data.top3_bidders || null,
                     auctionId: data.auction_id || activeItem.id
                 });
             } else {
@@ -1878,48 +1879,53 @@ export default function SellerDashboard() {
                                 </div>
                             </div>
                         ) : auctionEndModal.hasBids ? (
-                            /* ── STATE 2: Bids placed but reserve not met ── */
+                            /* ── STATE 2: Bids placed, no winning order ── */
                             <div className={styles.premiumModalContent}>
                                 <div className={styles.congratsIconWrapper}>
-                                    <div className={styles.congratsEmoji}>⚠️</div>
+                                    <div className={styles.congratsEmoji}>🏁</div>
                                 </div>
-                                <h2 className={styles.premiumModalTitle} style={{ fontSize: '1.15rem' }}>Reserve Not Met</h2>
-                                <p style={{ fontSize: '0.85rem', color: '#64748b', textAlign: 'center', margin: '0 0 1.25rem', lineHeight: 1.6 }}>
-                                    The auction ended but the highest bid did not reach the reserve price. No order has been created.
+                                <h2 className={styles.premiumModalTitle} style={{ fontSize: '1.15rem' }}>Auction Ended</h2>
+                                <p style={{ fontSize: '0.85rem', color: '#64748b', textAlign: 'center', margin: '0 0 1rem', lineHeight: 1.6 }}>
+                                    The auction has closed. Here are the top bidders from this session.
                                 </p>
 
-                                <div className={styles.winnerCard} style={{ borderColor: '#fde68a', background: '#fffbeb' }}>
-                                    <div className={styles.winnerHeader}>
-                                        <div className={styles.winnerAvatar} style={{ background: '#fef3c7', border: '1.5px solid #fde68a' }}>
-                                            <User size={24} color="#92400e" />
+                                {/* Top 3 bidder leaderboard */}
+                                {(auctionEndModal.top3Bidders || [auctionEndModal.highestBidder].filter(Boolean)).map((bidder, idx) => {
+                                    const rankEmoji = idx === 0 ? '🥇' : idx === 1 ? '🥈' : '🥉';
+                                    const rankLabel = idx === 0 ? '1st Place' : idx === 1 ? '2nd Place' : '3rd Place';
+                                    return (
+                                        <div key={bidder?.user_id || idx} style={{
+                                            display: 'flex', alignItems: 'center', justifyContent: 'space-between',
+                                            background: idx === 0 ? '#fffbeb' : '#f8fafc',
+                                            border: `1.5px solid ${idx === 0 ? '#fde68a' : '#e2e8f0'}`,
+                                            borderRadius: 12, padding: '0.7rem 1rem', marginBottom: '0.4rem', gap: '0.5rem', width: '100%'
+                                        }}>
+                                            <span style={{ fontSize: '1.3rem', flexShrink: 0 }}>{rankEmoji}</span>
+                                            <div style={{ flex: 1, textAlign: 'left' }}>
+                                                <div style={{ fontWeight: 700, fontSize: '0.88rem', color: '#0f172a' }}>
+                                                    {bidder?.bidder_name || 'Anonymous'}
+                                                </div>
+                                                <div style={{ fontSize: '0.72rem', color: '#64748b', fontWeight: 600 }}>{rankLabel}</div>
+                                            </div>
+                                            <div style={{ fontWeight: 800, fontSize: '1rem', color: idx === 0 ? '#D32F2F' : '#334155', flexShrink: 0 }}>
+                                                ₱{Number(bidder?.bid_amount || 0).toLocaleString('en-PH')}
+                                            </div>
                                         </div>
-                                        <div className={styles.winnerIdentity}>
-                                            <span className={styles.winnerLabelText} style={{ color: '#92400e' }}>Highest Bidder</span>
-                                            <span className={styles.winnerNameText}>
-                                                {auctionEndModal.highestBidder?.bidder_name || 'Anonymous'}
-                                            </span>
-                                        </div>
-                                    </div>
-                                    <div className={styles.priceContainer}>
-                                        <div className={styles.priceLabelText}>Highest Bid</div>
-                                        <div className={styles.priceValueText} style={{ color: '#92400e' }}>
-                                            ₱{auctionEndModal.highestBidder?.bid_amount?.toLocaleString('en-PH')}
-                                        </div>
-                                    </div>
-                                </div>
+                                    );
+                                })}
 
-                                <div style={{ display: 'flex', flexDirection: 'column', gap: '0.6rem', width: '100%' }}>
+                                <div style={{ display: 'flex', flexDirection: 'column', gap: '0.6rem', width: '100%', marginTop: '0.5rem' }}>
                                     <Link
                                         href={`/seller/auctions/${auctionEndModal.auctionId}/results`}
                                         className={styles.premiumModalBtn}
-                                        onClick={() => setAuctionEndModal({ show: false, hasWinner: false, hasBids: false, winner: null, highestBidder: null, auctionId: null })}
+                                        onClick={() => setAuctionEndModal({ show: false, hasWinner: false, hasBids: false, winner: null, highestBidder: null, top3Bidders: null, auctionId: null })}
                                         style={{ textAlign: 'center', textDecoration: 'none' }}
                                     >
-                                        View Results
+                                        View Full Results
                                     </Link>
                                     <button
                                         style={{ background: 'none', border: 'none', color: '#94a3b8', fontSize: '0.82rem', cursor: 'pointer', padding: '0.25rem' }}
-                                        onClick={() => setAuctionEndModal({ show: false, hasWinner: false, hasBids: false, winner: null, highestBidder: null, auctionId: null })}
+                                        onClick={() => setAuctionEndModal({ show: false, hasWinner: false, hasBids: false, winner: null, highestBidder: null, top3Bidders: null, auctionId: null })}
                                     >
                                         Close
                                     </button>

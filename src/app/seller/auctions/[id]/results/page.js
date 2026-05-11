@@ -499,9 +499,9 @@ export default function AuctionResultsPage() {
                     <p>
                         {neverWentLive
                             ? (auctionData.live_started_at
-                                ? 'This auction was streamed live but ended without any bids or the reserve price was not met.'
+                                ? 'This auction was streamed live but ended without a winning bid.'
                                 : 'This auction was never streamed live. You can reschedule it with a new date and time.')
-                            : 'This auction ended without any bids or the reserve price was not met.'}
+                            : 'This auction ended without a winning bid.'}
                     </p>
                     {neverWentLive && !showReschedule && (
                         <button
