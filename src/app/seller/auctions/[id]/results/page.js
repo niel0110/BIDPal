@@ -580,15 +580,15 @@ export default function AuctionResultsPage() {
                 </div>
             )}
 
-            {/* Top 3 Bidders */}
+            {/* Bidders Leaderboard */}
             {topBidders.length > 0 && (
                 <div className={styles.biddersSection}>
                     <div className={styles.sectionHeader}>
                         <TrendingUp size={24} />
-                        <h3>Top 3 Winning Bidders</h3>
+                        <h3>Auction Winner Ranking</h3>
                     </div>
                     <p className={styles.sectionNote}>
-                        Winner priority order. If #1 cancels, #2 becomes the winner, then #3.
+                        The current lead is assigned based on the highest valid bid. If a winner cancels, the next bidder in line is automatically assigned.
                     </p>
                     <div className={styles.biddersList}>
                         {(() => {
@@ -620,8 +620,11 @@ export default function AuctionResultsPage() {
                                                 {bid.bidder ? `${bid.bidder.Fname || ''} ${bid.bidder.Lname || ''}`.trim() : 'Anonymous'}
                                                 {isCurrentWinner && <span className={styles.currentWinner}>Current Winner</span>}
                                                 {hasCancelled && <span className={styles.cancelledBadge}>Cancelled</span>}
-                                                {!isCurrentWinner && !hasCancelled && backupOffset === 1 && <span className={styles.backupWinner}>Backup Winner</span>}
-                                                {!isCurrentWinner && !hasCancelled && backupOffset === 2 && <span className={styles.thirdPlace}>3rd Place</span>}
+                                                {!isCurrentWinner && !hasCancelled && backupOffset > 0 && (
+                                                    <span className={backupOffset === 1 ? styles.backupWinner : styles.thirdPlace}>
+                                                        {backupOffset === 1 ? 'Next in Line' : `Backup #${backupOffset}`}
+                                                    </span>
+                                                )}
                                             </h5>
                                             <p>{new Date(bid.placed_at).toLocaleString()}</p>
                                         </div>

@@ -1063,6 +1063,7 @@ export const endAuction = async (req, res) => {
     }
 
     // 6. Broadcast auction end via Socket.IO
+    let top3 = [];
     if (req.app.locals.io) {
       const winnerInfo = winningBid && reserveMet ? {
         user_id: winningBid.user_id,
@@ -1074,8 +1075,7 @@ export const endAuction = async (req, res) => {
         order_id: winnerOrderId
       } : null;
 
-      // Fetch top 3 unique bidders for the leaderboard
-      let top3 = [];
+      // Fetch top unique bidders for the leaderboard (increased limit for flexibility)
       try {
         const { data: allBidsRaw } = await supabase
           .from('Bids')
@@ -1096,10 +1096,10 @@ export const endAuction = async (req, res) => {
               : 'Bidder',
             bidder_avatar: bid.bidder?.Avatar || null,
           });
-          if (top3.length === 3) break;
+          if (top3.length === 10) break;
         }
       } catch (e) {
-        console.warn('Could not fetch top3 for socket broadcast:', e.message);
+        console.warn('Could not fetch bidders for socket broadcast:', e.message);
       }
 
       req.app.locals.io.to(`auction:${id}`).emit('auction-ended', {

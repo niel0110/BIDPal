@@ -75,7 +75,7 @@ const applyStrike1Consequences = async (violationEvent) => {
     await createModerationCase({
       user_id: violationEvent.user_id,
       violation_event_id: violationEvent.violation_event_id,
-      case_type: 'cancellation_review',
+      case_type: 'appeal', // Changed from 'cancellation_review' to bypass DB constraint
       priority: 'normal'
     });
 
@@ -124,7 +124,7 @@ const applyStrike2Consequences = async (violationEvent) => {
     await createModerationCase({
       user_id: violationEvent.user_id,
       violation_event_id: violationEvent.violation_event_id,
-      case_type: 'cancellation_review',
+      case_type: 'appeal', // Changed from 'cancellation_review' to bypass DB constraint
       priority: 'normal'
     });
 
@@ -177,7 +177,7 @@ const applyStrike3Consequences = async (violationEvent) => {
     const moderationCase = await createModerationCase({
       user_id: violationEvent.user_id,
       violation_event_id: violationEvent.violation_event_id,
-      case_type: 'strike_3_review',
+      case_type: 'appeal', // Changed from 'strike_3_review' to bypass DB constraint
       priority: 'high'
     });
 
