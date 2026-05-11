@@ -327,6 +327,14 @@
     border-color: #e0e0e0;
 }
 
+.activeWinnerCard {
+    background: linear-gradient(135deg, #fffbeb 0%, #fef3c7 100%) !important;
+    border-color: #fbbf24 !important;
+    box-shadow: 0 4px 12px rgba(251, 191, 36, 0.15);
+    transform: scale(1.02);
+    z-index: 2;
+}
+
 .bidderRank {
     width: 36px;
     height: 36px;

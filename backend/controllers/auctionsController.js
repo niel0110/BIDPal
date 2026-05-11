@@ -1651,6 +1651,7 @@ export const getAuctionBids = async (req, res) => {
   try {
     const { id } = req.params;
 
+    // Fetch bids
     const { data: bids, error } = await supabase
       .from('Bids')
       .select('bid_id, bid_amount, placed_at, user_id, bidder:User(user_id, Fname, Lname, Avatar, email)')
@@ -1659,7 +1660,21 @@ export const getAuctionBids = async (req, res) => {
 
     if (error) throw error;
 
-    res.json(bids || []);
+    // Fetch cancellations for this auction to mark bidders as cancelled
+    const { data: cancellations } = await supabase
+      .from('Order_Cancellations')
+      .select('user_id')
+      .eq('auction_id', id);
+
+    const cancelledUserIds = new Set((cancellations || []).map(c => c.user_id));
+
+    // Enrich bids with cancellation status
+    const bidsWithStatus = (bids || []).map(bid => ({
+      ...bid,
+      is_cancelled: cancelledUserIds.has(bid.user_id)
+    }));
+
+    res.json(bidsWithStatus);
   } catch (err) {
     console.error('Get auction bids error:', err);
     res.status(500).json({ error: err.message });

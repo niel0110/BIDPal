@@ -592,15 +592,21 @@ export default function AuctionResultsPage() {
                     </p>
                     <div className={styles.biddersList}>
                         {(() => {
-                            const currentWinnerIdx = auctionData.winner_user_id
-                                ? topBidders.findIndex(b => b.user_id === auctionData.winner_user_id)
-                                : 0;
+                            // The real lead is the highest ranked bidder who HAS NOT cancelled.
+                            // We use this for badges to ensure immediate visual feedback if the DB winner_user_id is stale.
+                            const leadBidder = topBidders.find(b => !b.is_cancelled);
+                            const leadId = leadBidder?.user_id;
+                            
                             return topBidders.map((bid, index) => {
-                                const isCurrentWinner = bid.user_id === auctionData.winner_user_id;
-                                const hasCancelled = auctionData.winner_user_id && index < currentWinnerIdx;
-                                const backupOffset = index - currentWinnerIdx;
+                                const isCurrentWinner = bid.user_id === leadId;
+                                const hasCancelled = bid.is_cancelled;
+                                
+                                // Calculate position relative to current winner for badge logic
+                                const currentWinnerIdx = topBidders.findIndex(b => b.user_id === leadId);
+                                const backupOffset = currentWinnerIdx >= 0 ? index - currentWinnerIdx : -1;
+
                                 return (
-                                    <div key={bid.bid_id} className={`${styles.bidderCard} ${hasCancelled ? styles.cancelledBidder : ''} ${index < 3 ? styles.topBidder : ''}`}>
+                                    <div key={bid.bid_id} className={`${styles.bidderCard} ${hasCancelled ? styles.cancelledBidder : ''} ${isCurrentWinner ? styles.activeWinnerCard : ''}`}>
                                         <div className={`${styles.bidderRank} ${hasCancelled ? styles.rankCancelled : ''}`}>#{index + 1}</div>
                                         <div className={styles.bidderAvatar}>
                                             {bid.bidder?.Avatar ? (
