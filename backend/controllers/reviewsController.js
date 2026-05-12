@@ -195,11 +195,13 @@ export const getSellerReviews = async (req, res) => {
       }
     }
 
+    let skippedInvalidRatings = 0;
     const formatted = data.map(r => {
       const uid = r.reviewers_id || r.user_id;
       const u = userMap[uid];
       const parsedRating = Number(r.rating);
       if (!Number.isFinite(parsedRating) || parsedRating < 1 || parsedRating > 5) {
+        skippedInvalidRatings += 1;
         console.warn('[getSellerReviews] skipping review with invalid rating', { review_id: r.review_id, rating: r.rating });
         return null;
       }
@@ -215,6 +217,9 @@ export const getSellerReviews = async (req, res) => {
         product_name: r.products_id ? (productMap[r.products_id] || null) : null
       };
     }).filter(Boolean);
+    if (skippedInvalidRatings > 0) {
+      console.warn('[getSellerReviews] skipped invalid rating reviews', { count: skippedInvalidRatings, seller_id });
+    }
 
     res.json(formatted);
   } catch (err) {
