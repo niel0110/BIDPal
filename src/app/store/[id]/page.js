@@ -8,6 +8,7 @@ import ProductCard from '@/components/card/ProductCard';
 import { useAuth } from '@/context/AuthContext';
 import { Calendar, Star, MessageCircle, CheckCircle, ShieldCheck, Users, Flag, X, ChevronLeft, ChevronRight, Camera } from 'lucide-react';
 import styles from './page.module.css';
+import ImageAdjuster from '@/components/ui/ImageAdjuster';
 
 export default function StorePage() {
     const { id } = useParams();
@@ -31,6 +32,7 @@ export default function StorePage() {
     const [reportSubmitting, setReportSubmitting] = useState(false);
     const [reportDone, setReportDone] = useState(false);
     const [logoUploading, setLogoUploading] = useState(false);
+    const [adjustingFile, setAdjustingFile] = useState(null);
     const logoInputRef = useRef(null);
     const onSaleScrollRef = useRef(null);
     const soldScrollRef = useRef(null);
@@ -170,14 +172,19 @@ export default function StorePage() {
         }
     };
 
-    const handleLogoUpload = async (e) => {
+    const handleLogoSelect = (e) => {
         const file = e.target.files?.[0];
         if (!file) return;
+        setAdjustingFile(file);
+    };
+
+    const handleLogoAdjusted = async (blob) => {
+        setAdjustingFile(null);
         setLogoUploading(true);
         try {
             const token = localStorage.getItem('bidpal_token');
             const formData = new FormData();
-            formData.append('logo', file);
+            formData.append('logo', blob, 'logo.jpg');
             const res = await fetch(`${apiUrl}/api/sellers/${id}/logo`, {
                 method: 'POST',
                 headers: { Authorization: `Bearer ${token}` },
@@ -308,7 +315,7 @@ export default function StorePage() {
                                     type="file"
                                     accept="image/*"
                                     style={{ display: 'none' }}
-                                    onChange={handleLogoUpload}
+                                    onChange={handleLogoSelect}
                                 />
                             </>
                         )}
@@ -688,6 +695,15 @@ export default function StorePage() {
                         )}
                     </div>
                 </div>
+            )}
+            {adjustingFile && (
+                <ImageAdjuster 
+                    file={adjustingFile}
+                    aspect={1}
+                    shape="round"
+                    onSave={handleLogoAdjusted}
+                    onCancel={() => setAdjustingFile(null)}
+                />
             )}
         </main>
     );

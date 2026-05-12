@@ -5,6 +5,7 @@ import { useRouter } from 'next/navigation';
 import { useAuth } from '@/context/AuthContext';
 import { Camera, Save, X, CheckCircle, ChevronLeft } from 'lucide-react';
 import styles from './page.module.css';
+import ImageAdjuster from '@/components/ui/ImageAdjuster';
 
 export default function SellerSettings() {
     const { user } = useAuth();
@@ -26,6 +27,10 @@ export default function SellerSettings() {
     const [saving, setSaving] = useState(false);
     const [showSuccessModal, setShowSuccessModal] = useState(false);
     const [errorMsg, setErrorMsg] = useState('');
+    const [adjustingFile, setAdjustingFile] = useState(null);
+    const [adjustType, setAdjustType] = useState('logo'); // 'logo' or 'banner'
+    const [pendingLogo, setPendingLogo] = useState(null); // { blob, previewUrl }
+    const [pendingBanner, setPendingBanner] = useState(null); // { blob, previewUrl }
 
     useEffect(() => {
         if (!user?.user_id) return;
@@ -66,6 +71,40 @@ export default function SellerSettings() {
         try {
             const apiUrl = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:5000';
             const token = localStorage.getItem('bidpal_token');
+
+            // 1. Upload pending images first if any
+            let finalLogoUrl = profile.logo_url;
+            let finalBannerUrl = profile.banner_url;
+
+            if (pendingLogo) {
+                const formData = new FormData();
+                formData.append('logo', pendingLogo.blob, 'logo.jpg');
+                const logoRes = await fetch(`${apiUrl}/api/sellers/${profile.seller_id}/logo`, {
+                    method: 'POST',
+                    headers: { 'Authorization': `Bearer ${token}` },
+                    body: formData
+                });
+                if (logoRes.ok) {
+                    const data = await logoRes.json();
+                    finalLogoUrl = data.logoUrl;
+                }
+            }
+
+            if (pendingBanner) {
+                const formData = new FormData();
+                formData.append('banner', pendingBanner.blob, 'banner.jpg');
+                const bannerRes = await fetch(`${apiUrl}/api/sellers/${profile.seller_id}/banner`, {
+                    method: 'POST',
+                    headers: { 'Authorization': `Bearer ${token}` },
+                    body: formData
+                });
+                if (bannerRes.ok) {
+                    const data = await bannerRes.json();
+                    finalBannerUrl = data.bannerUrl;
+                }
+            }
+
+            // 2. Save the rest of the profile data
             const res = await fetch(`${apiUrl}/api/sellers/${profile.seller_id}`, {
                 method: 'PUT',
                 headers: {
@@ -77,11 +116,15 @@ export default function SellerSettings() {
                     store_description: profile.store_description,
                     business_category: profile.business_category,
                     store_handle: profile.store_handle,
-                    logo_url: profile.logo_url || null,
-                    banner_url: profile.banner_url || null,
+                    logo_url: finalLogoUrl || null,
+                    banner_url: finalBannerUrl || null,
                 })
             });
+            
             if (res.ok) {
+                setPendingLogo(null);
+                setPendingBanner(null);
+                setProfile(prev => ({ ...prev, logo_url: finalLogoUrl, banner_url: finalBannerUrl }));
                 setShowSuccessModal(true);
             } else {
                 throw new Error('Failed to save settings');
@@ -93,71 +136,35 @@ export default function SellerSettings() {
         }
     };
 
-    const handleFileUpload = async (event, type) => {
+    const handleFileSelect = (event, type) => {
         const file = event.target.files[0];
         if (!file) return;
-        setSaving(true);
-
-        const formData = new FormData();
-        formData.append(type, file);
-
-        try {
-            const apiUrl = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:5000';
-            const token = localStorage.getItem('bidpal_token');
-            const endpoint = type === 'logo'
-                ? `/api/sellers/${profile.seller_id}/logo`
-                : `/api/sellers/${profile.seller_id}/banner`;
-
-            const res = await fetch(`${apiUrl}${endpoint}`, {
-                method: 'POST',
-                headers: { 'Authorization': `Bearer ${token}` },
-                body: formData
-            });
-
-            if (res.ok) {
-                const data = await res.json();
-                if (type === 'logo') {
-                    setProfile(prev => ({ ...prev, logo_url: data.logoUrl }));
-                } else {
-                    setProfile(prev => ({ ...prev, banner_url: data.bannerUrl }));
-                }
-            } else {
-                const errorData = await res.json();
-                setErrorMsg(errorData.error || `Failed to upload ${type}`);
-            }
-        } catch (err) {
-            setErrorMsg(err.message);
-        } finally {
-            setSaving(false);
-            event.target.value = '';
-        }
+        setAdjustType(type);
+        setAdjustingFile(file);
     };
 
-    const handleRemoveImage = async (type) => {
-        if (!profile.seller_id || saving) return;
-        setSaving(true);
-        try {
-            const apiUrl = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:5000';
-            const token = localStorage.getItem('bidpal_token');
-            const res = await fetch(`${apiUrl}/api/sellers/${profile.seller_id}`, {
-                method: 'PUT',
-                headers: {
-                    'Content-Type': 'application/json',
-                    'Authorization': `Bearer ${token}`
-                },
-                body: JSON.stringify({ [type === 'logo' ? 'logo_url' : 'banner_url']: null })
-            });
-            if (res.ok) {
-                if (type === 'logo') {
-                    setProfile(prev => ({ ...prev, logo_url: '' }));
-                } else {
-                    setProfile(prev => ({ ...prev, banner_url: '' }));
-                }
-            }
-        } catch (err) {
-            console.error('Remove image error:', err);
-        } finally {
-            setSaving(false);
+    const handleImageAdjusted = (blob) => {
+        const type = adjustType;
+        const previewUrl = URL.createObjectURL(blob);
+        
+        if (type === 'logo') {
+            setPendingLogo({ blob, previewUrl });
+        } else {
+            setPendingBanner({ blob, previewUrl });
+        }
+        
+        setAdjustingFile(null);
+        if (logoInputRef.current) logoInputRef.current.value = '';
+        if (bannerInputRef.current) bannerInputRef.current.value = '';
+    };
+
+    const handleRemoveImage = (type) => {
+        if (type === 'logo') {
+            setProfile(prev => ({ ...prev, logo_url: '' }));
+            setPendingLogo(null);
+        } else {
+            setProfile(prev => ({ ...prev, banner_url: '' }));
+            setPendingBanner(null);
         }
     };
 
@@ -202,14 +209,14 @@ export default function SellerSettings() {
                 {/* Banner */}
                 <div className={styles.mediaUploads}>
                     <div className={styles.bannerUpload}>
-                        {profile.banner_url && (
+                        {(pendingBanner?.previewUrl || profile.banner_url) && (
                             <img
-                                src={profile.banner_url}
+                                src={pendingBanner?.previewUrl || profile.banner_url}
                                 alt="Store banner"
                                 className={styles.bannerImg}
                             />
                         )}
-                        {!profile.banner_url && (
+                        {!(pendingBanner?.previewUrl || profile.banner_url) && (
                             <div
                                 className={styles.bannerPlaceholder}
                                 onClick={() => bannerInputRef.current?.click()}
@@ -218,7 +225,7 @@ export default function SellerSettings() {
                                 <span>Click to upload banner</span>
                             </div>
                         )}
-                        {profile.banner_url && (
+                        {(pendingBanner?.previewUrl || profile.banner_url) && (
                             <div className={styles.bannerOverlay}>
                                 <button
                                     type="button"
@@ -241,15 +248,15 @@ export default function SellerSettings() {
                             ref={bannerInputRef}
                             hidden
                             accept="image/*"
-                            onChange={(e) => handleFileUpload(e, 'banner')}
+                            onChange={(e) => handleFileSelect(e, 'banner')}
                         />
                     </div>
 
                     {/* Logo */}
                     <div className={styles.logoWrapper}>
                         <div className={styles.logoPlaceholder}>
-                            {profile.logo_url
-                                ? <img src={profile.logo_url} alt="Store logo" className={styles.logoImg} />
+                            {(pendingLogo?.previewUrl || profile.logo_url)
+                                ? <img src={pendingLogo?.previewUrl || profile.logo_url} alt="Store logo" className={styles.logoImg} />
                                 : <Camera size={24} color="#ccc" />
                             }
                         </div>
@@ -258,14 +265,14 @@ export default function SellerSettings() {
                             ref={logoInputRef}
                             hidden
                             accept="image/*"
-                            onChange={(e) => handleFileUpload(e, 'logo')}
+                            onChange={(e) => handleFileSelect(e, 'logo')}
                         />
                         <div className={styles.logoBtns}>
                             <span className={styles.logoBtnLabel}>Store Logo</span>
                             <button className={styles.changeBtn} onClick={() => logoInputRef.current?.click()}>
                                 Change Logo
                             </button>
-                            {profile.logo_url && (
+                            {(pendingLogo?.previewUrl || profile.logo_url) && (
                                 <button
                                     className={styles.removeBtn}
                                     onClick={() => handleRemoveImage('logo')}
@@ -336,6 +343,15 @@ export default function SellerSettings() {
                         </button>
                     </div>
                 </div>
+            )}
+            {adjustingFile && (
+                <ImageAdjuster 
+                    file={adjustingFile}
+                    aspect={adjustType === 'logo' ? 1 : 4}
+                    shape={adjustType === 'logo' ? 'round' : 'rect'}
+                    onSave={handleImageAdjusted}
+                    onCancel={() => setAdjustingFile(null)}
+                />
             )}
         </div>
     );

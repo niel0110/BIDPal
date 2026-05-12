@@ -56,6 +56,7 @@ import {
 } from 'lucide-react';
 import Link from 'next/link';
 import styles from './page.module.css';
+import ImageAdjuster from '@/components/ui/ImageAdjuster';
 import BackButton from '@/components/BackButton';
 import { useAuth } from '@/context/AuthContext';
 import { useRouter, useSearchParams } from 'next/navigation';
@@ -117,6 +118,7 @@ function AccountContent() {
     const [avatarLoading, setAvatarLoading] = useState(false);
     const [avatarMessage, setAvatarMessage] = useState('');
     const [mobileView, setMobileView] = useState('menu'); // 'menu' | 'content'
+    const [adjustingFile, setAdjustingFile] = useState(null);
 
     const handleNavClick = (tabId) => {
         setActiveTab(tabId);
@@ -154,7 +156,7 @@ function AccountContent() {
 
     const menuItems = isSeller ? sellerMenuItems : buyerMenuItems;
 
-    const handleAvatarUpload = async (e) => {
+    const handleAvatarSelect = (e) => {
         const file = e.target.files?.[0];
         if (!file || !user) return;
 
@@ -168,12 +170,17 @@ function AccountContent() {
             return;
         }
 
+        setAdjustingFile(file);
+    };
+
+    const handleAvatarAdjusted = async (blob) => {
+        setAdjustingFile(null);
         setAvatarLoading(true);
         setAvatarMessage('');
 
         try {
             const formData = new FormData();
-            formData.append('avatar', file);
+            formData.append('avatar', blob, 'avatar.jpg');
 
             const apiUrl = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:5000';
             const token = localStorage.getItem('bidpal_token');
@@ -269,7 +276,7 @@ function AccountContent() {
                                 id="avatarInput"
                                 className={styles.avatarFileInput}
                                 accept="image/*"
-                                onChange={handleAvatarUpload}
+                                onChange={handleAvatarSelect}
                                 disabled={avatarLoading}
                             />
                             <label
@@ -347,7 +354,16 @@ function AccountContent() {
                 {activeTab === 'merchant-insights' && <MerchantInsightsSection />}
                 {activeTab === 'store-profile' && <StoreProfileSection />}
                 {activeTab === 'pickup-address' && <SellerAddressSection state={sellerAddressState} setState={setSellerAddressState} />}
-            </main>
+                {adjustingFile && (
+                <ImageAdjuster 
+                    file={adjustingFile}
+                    aspect={1}
+                    shape="round"
+                    onSave={handleAvatarAdjusted}
+                    onCancel={() => setAdjustingFile(null)}
+                />
+            )}
+        </main>
         </div>
     );
 }
@@ -644,14 +660,16 @@ function StoreProfileSection() {
     const [businessCategory, setBusinessCategory] = useState('');
     const [logoUrl, setLogoUrl] = useState('');
     const [bannerUrl, setBannerUrl] = useState('');
+    const [pendingLogo, setPendingLogo] = useState(null); // { blob, previewUrl }
+    const [pendingBanner, setPendingBanner] = useState(null); // { blob, previewUrl }
     const [loading, setLoading] = useState(true);
     const [saving, setSaving] = useState(false);
-    const [logoUploading, setLogoUploading] = useState(false);
-    const [bannerUploading, setBannerUploading] = useState(false);
     const [message, setMessage] = useState('');
     const initialStoreRef = useRef(null);
     const logoInputRef = useRef(null);
     const bannerInputRef = useRef(null);
+    const [adjustingStoreFile, setAdjustingStoreFile] = useState(null);
+    const [adjustStoreType, setAdjustStoreType] = useState('logo');
 
     const apiUrl = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:5000';
     const token = typeof window !== 'undefined' ? localStorage.getItem('bidpal_token') : null;
@@ -692,7 +710,9 @@ function StoreProfileSection() {
             storeName !== initial.storeName ||
             storeHandle !== initial.storeHandle ||
             storeDescription !== initial.storeDescription ||
-            businessCategory !== initial.businessCategory
+            businessCategory !== initial.businessCategory ||
+            pendingLogo !== null ||
+            pendingBanner !== null
         );
     })();
 
@@ -703,6 +723,31 @@ function StoreProfileSection() {
         setSaving(true);
         setMessage('');
         try {
+            let finalLogoUrl = logoUrl;
+            let finalBannerUrl = bannerUrl;
+
+            if (pendingLogo) {
+                const formData = new FormData();
+                formData.append('logo', pendingLogo.blob, 'logo.jpg');
+                const res = await fetch(`${apiUrl}/api/sellers/${seller.seller_id}/logo`, {
+                    method: 'POST',
+                    headers: { ...(token && { Authorization: `Bearer ${token}` }) },
+                    body: formData,
+                });
+                if (res.ok) { const d = await res.json(); finalLogoUrl = d.logoUrl; }
+            }
+
+            if (pendingBanner) {
+                const formData = new FormData();
+                formData.append('banner', pendingBanner.blob, 'banner.jpg');
+                const res = await fetch(`${apiUrl}/api/sellers/${seller.seller_id}/banner`, {
+                    method: 'POST',
+                    headers: { ...(token && { Authorization: `Bearer ${token}` }) },
+                    body: formData,
+                });
+                if (res.ok) { const d = await res.json(); finalBannerUrl = d.bannerUrl; }
+            }
+
             const res = await fetch(`${apiUrl}/api/sellers/${seller.seller_id}`, {
                 method: 'PUT',
                 headers: {
@@ -714,11 +759,17 @@ function StoreProfileSection() {
                     store_handle: storeHandle,
                     store_description: storeDescription,
                     business_category: businessCategory,
+                    logo_url: finalLogoUrl || null,
+                    banner_url: finalBannerUrl || null,
                 }),
             });
             const data = await res.json();
             if (!res.ok) throw new Error(data.error || 'Failed to update store.');
             setSeller(data.data);
+            setLogoUrl(finalLogoUrl);
+            setBannerUrl(finalBannerUrl);
+            setPendingLogo(null);
+            setPendingBanner(null);
             initialStoreRef.current = { storeName, storeHandle, storeDescription, businessCategory };
             setMessage({ type: 'success', text: '✓ Store info updated successfully!' });
             setTimeout(() => setMessage(''), 4000);
@@ -729,51 +780,24 @@ function StoreProfileSection() {
         }
     };
 
-    const handleImageUpload = async (e, type) => {
+    const handleFileSelect = (e, type) => {
         const file = e.target.files?.[0];
-        if (!file || !seller?.seller_id) return;
-        const setUploading = type === 'logo' ? setLogoUploading : setBannerUploading;
-        setUploading(true);
-        try {
-            const formData = new FormData();
-            formData.append(type, file);
-            const endpoint = type === 'logo'
-                ? `/api/sellers/${seller.seller_id}/logo`
-                : `/api/sellers/${seller.seller_id}/banner`;
-            const res = await fetch(`${apiUrl}${endpoint}`, {
-                method: 'POST',
-                headers: { ...(token && { Authorization: `Bearer ${token}` }) },
-                body: formData,
-            });
-            if (!res.ok) throw new Error('Upload failed');
-            const data = await res.json();
-            if (type === 'logo') setLogoUrl(data.logoUrl || '');
-            else setBannerUrl(data.bannerUrl || '');
-        } catch {
-            setMessage({ type: 'error', text: `Failed to upload ${type}. Please try again.` });
-            setTimeout(() => setMessage(''), 4000);
-        } finally {
-            setUploading(false);
-            e.target.value = '';
-        }
+        if (!file) return;
+        setAdjustStoreType(type);
+        setAdjustingStoreFile(file);
+        e.target.value = '';
     };
 
-    const handleRemoveImage = async (type) => {
-        if (!seller?.seller_id) return;
-        const payload = type === 'logo' ? { logo_url: null } : { banner_url: null };
-        try {
-            const res = await fetch(`${apiUrl}/api/sellers/${seller.seller_id}`, {
-                method: 'PUT',
-                headers: { 'Content-Type': 'application/json', ...(token && { Authorization: `Bearer ${token}` }) },
-                body: JSON.stringify(payload),
-            });
-            if (!res.ok) throw new Error('Remove failed');
-            if (type === 'logo') setLogoUrl('');
-            else setBannerUrl('');
-        } catch {
-            setMessage({ type: 'error', text: `Failed to remove ${type}.` });
-            setTimeout(() => setMessage(''), 4000);
-        }
+    const handleImageAdjusted = (blob) => {
+        const previewUrl = URL.createObjectURL(blob);
+        if (adjustStoreType === 'logo') setPendingLogo({ blob, previewUrl });
+        else setPendingBanner({ blob, previewUrl });
+        setAdjustingStoreFile(null);
+    };
+
+    const handleRemoveImage = (type) => {
+        if (type === 'logo') { setLogoUrl(''); setPendingLogo(null); }
+        else { setBannerUrl(''); setPendingBanner(null); }
     };
 
     if (loading) {
@@ -808,13 +832,13 @@ function StoreProfileSection() {
             <div className={styles.formGroup} style={{ marginBottom: '1.25rem' }}>
                 <label className={styles.formLabel}>Store Banner</label>
                 <div className={styles.bannerUploadArea}>
-                    {bannerUrl ? (
+                    {(pendingBanner?.previewUrl || bannerUrl) ? (
                         <div className={styles.bannerPreviewWrap}>
-                            <img src={bannerUrl} alt="Store banner" className={styles.bannerPreviewImg} />
+                            <img src={pendingBanner?.previewUrl || bannerUrl} alt="Store banner" className={styles.bannerPreviewImg} />
+                            {pendingBanner && <div style={{ position: 'absolute', top: 8, left: 8, background: '#f59e0b', color: 'white', fontSize: '0.7rem', fontWeight: 700, padding: '2px 8px', borderRadius: 6 }}>Unsaved</div>}
                             <div className={styles.bannerOverlay}>
-                                <button onClick={() => bannerInputRef.current?.click()} disabled={bannerUploading} className={styles.bannerActionBtn}>
-                                    <Camera size={14} />
-                                    {bannerUploading ? 'Uploading…' : 'Change Banner'}
+                                <button onClick={() => bannerInputRef.current?.click()} className={styles.bannerActionBtn}>
+                                    <Camera size={14} /> Change Banner
                                 </button>
                                 <button onClick={() => handleRemoveImage('banner')} className={`${styles.bannerActionBtn} ${styles.bannerRemoveBtn}`}>
                                     <X size={14} /> Remove
@@ -822,13 +846,13 @@ function StoreProfileSection() {
                             </div>
                         </div>
                     ) : (
-                        <button onClick={() => bannerInputRef.current?.click()} disabled={bannerUploading} className={styles.bannerUploadPlaceholder}>
+                        <button onClick={() => bannerInputRef.current?.click()} className={styles.bannerUploadPlaceholder}>
                             <Camera size={22} color="#ccc" />
-                            <span>{bannerUploading ? 'Uploading…' : 'Upload Store Banner'}</span>
+                            <span>Upload Store Banner</span>
                             <small>Recommended: 1200 × 300 px · JPG or PNG</small>
                         </button>
                     )}
-                    <input ref={bannerInputRef} type="file" accept="image/*" style={{ display: 'none' }} onChange={e => handleImageUpload(e, 'banner')} />
+                    <input ref={bannerInputRef} type="file" accept="image/*" style={{ display: 'none' }} onChange={e => handleFileSelect(e, 'banner')} />
                 </div>
             </div>
 
@@ -836,24 +860,25 @@ function StoreProfileSection() {
             <div className={styles.formGroup} style={{ marginBottom: '1.75rem' }}>
                 <label className={styles.formLabel}>Store Logo</label>
                 <div className={styles.logoUploadRow}>
-                    <div className={styles.logoPreviewCircle}>
-                        {logoUrl
-                            ? <img src={logoUrl} alt="Store logo" className={styles.logoPreviewImg} />
+                    <div className={styles.logoPreviewCircle} style={{ position: 'relative' }}>
+                        {(pendingLogo?.previewUrl || logoUrl)
+                            ? <img src={pendingLogo?.previewUrl || logoUrl} alt="Store logo" className={styles.logoPreviewImg} />
                             : <Store size={26} color="#ccc" />
                         }
+                        {pendingLogo && <div style={{ position: 'absolute', bottom: -4, right: -4, background: '#f59e0b', color: 'white', fontSize: '0.6rem', fontWeight: 700, padding: '1px 5px', borderRadius: 4 }}>Unsaved</div>}
                     </div>
                     <div className={styles.logoUploadActions}>
-                        <button onClick={() => logoInputRef.current?.click()} disabled={logoUploading} className={styles.logoActionBtn}>
+                        <button onClick={() => logoInputRef.current?.click()} className={styles.logoActionBtn}>
                             <Camera size={14} />
-                            {logoUploading ? 'Uploading…' : logoUrl ? 'Change Logo' : 'Upload Logo'}
+                            {(pendingLogo?.previewUrl || logoUrl) ? 'Change Logo' : 'Upload Logo'}
                         </button>
-                        {logoUrl && (
+                        {(pendingLogo?.previewUrl || logoUrl) && (
                             <button onClick={() => handleRemoveImage('logo')} className={`${styles.logoActionBtn} ${styles.logoRemoveBtn}`}>
                                 <X size={14} /> Remove
                             </button>
                         )}
                     </div>
-                    <input ref={logoInputRef} type="file" accept="image/*" style={{ display: 'none' }} onChange={e => handleImageUpload(e, 'logo')} />
+                    <input ref={logoInputRef} type="file" accept="image/*" style={{ display: 'none' }} onChange={e => handleFileSelect(e, 'logo')} />
                 </div>
             </div>
 
@@ -928,6 +953,16 @@ function StoreProfileSection() {
                     {saving ? 'Saving...' : 'Save Store Info'}
                 </button>
             </div>
+
+            {adjustingStoreFile && (
+                <ImageAdjuster
+                    file={adjustingStoreFile}
+                    aspect={adjustStoreType === 'logo' ? 1 : 4}
+                    shape={adjustStoreType === 'logo' ? 'round' : 'rect'}
+                    onSave={handleImageAdjusted}
+                    onCancel={() => setAdjustingStoreFile(null)}
+                />
+            )}
         </div>
     );
 }

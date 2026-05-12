@@ -64,10 +64,10 @@
 .avatar {
     width: 100%;
     height: 100%;
-    border-radius: 50%;
-    object-fit: cover;
-    background: #fff8f8;
-    border: 2px solid #f0f0f0;
+    object-fit: contain;
+    display: block;
+    padding: 3px;
+    background: white;
     transition: all 0.2s;
 }
 
