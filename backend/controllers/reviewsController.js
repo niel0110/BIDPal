@@ -199,9 +199,8 @@ export const getSellerReviews = async (req, res) => {
       const uid = r.reviewers_id || r.user_id;
       const u = userMap[uid];
       const parsedRating = Number(r.rating);
-      const normalizedRating = Number.isFinite(parsedRating)
-        ? Math.min(5, Math.max(1, parsedRating))
-        : 1;
+      if (!Number.isFinite(parsedRating)) return null;
+      const normalizedRating = Math.min(5, Math.max(1, parsedRating));
       return {
         review_id: r.review_id,
         rating: normalizedRating,
@@ -213,7 +212,7 @@ export const getSellerReviews = async (req, res) => {
         },
         product_name: r.products_id ? (productMap[r.products_id] || null) : null
       };
-    });
+    }).filter(Boolean);
 
     res.json(formatted);
   } catch (err) {
