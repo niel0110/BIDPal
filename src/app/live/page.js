@@ -93,15 +93,6 @@ function LivePageInner() {
     const mobileChatScrollRef = useRef(null);
     const desktopChatScrollRef = useRef(null);
 
-    // Refs for socket listeners to access latest state without triggering reconnections
-    const showModalRef = useRef(showModal);
-    const currentUserIdRef = useRef(currentUserId);
-    const isHostRef = useRef(isHost);
-
-    // Sync refs
-    useEffect(() => { showModalRef.current = showModal; }, [showModal]);
-    useEffect(() => { currentUserIdRef.current = currentUserId; }, [currentUserId]);
-    useEffect(() => { isHostRef.current = isHost; }, [isHost]);
 
     const apiUrl = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:5000';
     const userIsVerified = Boolean(user?.is_verified) || user?.kyc_status === 'approved';
@@ -202,6 +193,16 @@ function LivePageInner() {
     const currentViewerKey = user
         ? `user:${user.user_id || user.id}`
         : viewerSessionKey;
+
+    // Refs for socket listeners to access latest state without triggering reconnections
+    const showModalRef = useRef(showModal);
+    const currentUserIdRef = useRef(currentUserId);
+    const isHostRef = useRef(isHost);
+
+    // Sync refs
+    useEffect(() => { showModalRef.current = showModal; }, [showModal]);
+    useEffect(() => { currentUserIdRef.current = currentUserId; }, [currentUserId]);
+    useEffect(() => { isHostRef.current = isHost; }, [isHost]);
 
     // ── Fetch own bidding eligibility + standing when user is known ──────────
     useEffect(() => {
