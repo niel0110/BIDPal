@@ -201,7 +201,7 @@ export const getSellerReviews = async (req, res) => {
       const parsedRating = Number(r.rating);
       const normalizedRating = Number.isFinite(parsedRating)
         ? Math.min(5, Math.max(1, parsedRating))
-        : 0;
+        : 1;
       return {
         review_id: r.review_id,
         rating: normalizedRating,
