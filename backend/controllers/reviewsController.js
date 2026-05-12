@@ -117,16 +117,16 @@ export const getReviewByOrder = async (req, res) => {
 
     const { data, error } = await supabase
       .from('Reviews')
-      .select('rating, comment, created_at')
+      .select('*')
       .eq('order_id', order_id)
-      .limit(1);
+      .maybeSingle();
 
     if (error) {
       console.error('[getReviewByOrder] error:', error.code, error.message);
       return res.status(500).json({ error: error.message });
     }
 
-    res.json(data?.[0] ?? null);
+    res.json(data ?? null);
   } catch (err) {
     console.error('[getReviewByOrder] unexpected:', err.message);
     res.status(500).json({ error: err.message });
@@ -151,15 +151,19 @@ export const getSellerReviews = async (req, res) => {
     // Step 1: fetch reviews without FK join (avoids silent failure when FK hint not defined)
     const { data, error } = await supabase
       .from('Reviews')
-      .select('review_id, rating, comment, created_at, products_id, order_id, reviewers_id, user_id')
+      .select('*')
       .in('seller_id', queryIds)
       .order('created_at', { ascending: false });
 
-    if (error) return res.status(500).json({ error: error.message });
+    if (error) {
+      console.error('getSellerReviews fetch error:', error);
+      return res.status(500).json({ error: error.message });
+    }
+
     if (!data || data.length === 0) return res.json([]);
 
     // Step 2: batch-fetch reviewer info separately
-    const reviewerIds = [...new Set(data.map(r => r.reviewers_id || r.user_id).filter(Boolean))];
+    const reviewerIds = [...new Set(data.map(r => r.user_id || r.reviewers_id).filter(Boolean))];
     let userMap = {};
     if (reviewerIds.length > 0) {
       const { data: users } = await supabase
@@ -185,10 +189,11 @@ export const getSellerReviews = async (req, res) => {
     }
 
     const formatted = data.map(r => {
-      const uid = r.reviewers_id || r.user_id;
+      const uid = r.user_id || r.reviewers_id;
       const u = userMap[uid];
+      const pid = r.products_id || r.product_id;
       return {
-        review_id: r.review_id,
+        review_id: r.review_id || r.id,
         rating: r.rating,
         comment: r.comment,
         created_at: r.created_at,
@@ -196,7 +201,7 @@ export const getSellerReviews = async (req, res) => {
           name: u ? `${u.Fname || ''} ${u.Lname || ''}`.trim() || 'Buyer' : 'Buyer',
           avatar: u?.Avatar || null
         },
-        product_name: r.products_id ? (productMap[r.products_id] || null) : null
+        product_name: pid ? (productMap[pid] || null) : null
       };
     });
 

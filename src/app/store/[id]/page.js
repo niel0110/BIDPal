@@ -77,6 +77,8 @@ export default function StorePage() {
                 }
                 if (reviewsRes.ok) {
                     setReviews(await reviewsRes.json());
+                } else {
+                    console.error('Failed to fetch reviews:', await reviewsRes.text());
                 }
                 if (ordersRes.ok) {
                     setSellerOrders(await ordersRes.json());
