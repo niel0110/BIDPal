@@ -200,10 +200,10 @@ export const getSellerReviews = async (req, res) => {
       const u = userMap[uid];
       const parsedRating = Number(r.rating);
       if (!Number.isFinite(parsedRating)) return null;
-      const normalizedRating = Math.min(5, Math.max(1, parsedRating));
+      if (parsedRating < 1 || parsedRating > 5) return null;
       return {
         review_id: r.review_id,
-        rating: normalizedRating,
+        rating: parsedRating,
         comment: r.comment,
         created_at: r.created_at,
         reviewer: {
