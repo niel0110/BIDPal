@@ -636,45 +636,82 @@ export default function CartPage() {
                     </div>
                 )}
 
-                {/* ── GCash Simulation Modal ── */}
+                {/* ── Premium GCash Simulation Modal ── */}
                 {showGcashModal && (
                     <div className={styles.modalOverlay}>
-                        <div className={`${styles.modal} ${styles.gcashModal}`}>
-                            <div className={styles.modalHeader}>
-                                <Smartphone size={22} className={styles.modalIcon} style={{ color: '#0070f3' }} />
-                                <h3>Pay via GCash</h3>
+                        <div className={`${styles.modal} ${styles.premiumGcashModal}`}>
+                            <div className={styles.bottomSheetHandle}></div>
+                            <div className={styles.premiumHeader}>
+                                <div className={styles.headerBrand}>
+                                    <div className={styles.gcashLogo}>G</div>
+                                    <div className={styles.headerTitle}>
+                                        <h3>GCash Payment</h3>
+                                        <p>Transaction Simulation</p>
+                                    </div>
+                                </div>
                                 <button className={styles.modalClose} onClick={() => setShowGcashModal(false)}>
                                     <X size={20} />
                                 </button>
                             </div>
-                            <div className={styles.modalBody}>
-                                <div className={styles.gcashInstructions}>
-                                    <p className={styles.gcashStep}>1. Open your GCash app and tap <strong>Send Money</strong></p>
-                                    <p className={styles.gcashStep}>2. Send payment to the BIDPal GCash number:</p>
-                                    <div className={styles.gcashNumberBox}>
-                                        <span className={styles.gcashNumber}>0917-123-4567</span>
-                                        <button className={styles.copyBtn} onClick={copyGcashNumber}>
+
+                            <div className={styles.premiumBody}>
+                                <div className={styles.paymentGuide}>
+                                    <span className={styles.guideStep}>Step 1: Send Payment</span>
+                                    <p>Send the exact amount to the merchant account below via GCash <strong>Express Send</strong>.</p>
+                                </div>
+
+                                <div className={styles.gcashCard}>
+                                    <div className={styles.cardHeader}>
+                                        <Smartphone size={14} />
+                                        <span>Merchant Account</span>
+                                    </div>
+                                    <div className={styles.cardNumberRow}>
+                                        <span className={styles.premiumNumber}>0917 123 4567</span>
+                                        <button className={styles.premiumCopyBtn} onClick={copyGcashNumber}>
                                             {gcashCopied ? <CheckCircle2 size={14} /> : <Copy size={14} />}
-                                            {gcashCopied ? 'Copied!' : 'Copy'}
+                                            <span>{gcashCopied ? 'Copied' : 'Copy'}</span>
                                         </button>
                                     </div>
-                                    <p className={styles.gcashStep}>3. Enter the exact amount:</p>
-                                    <div className={styles.gcashAmount}>₱{total.toLocaleString()}</div>
-                                    <div className={styles.gcashNotice}>
-                                        <AlertCircle size={14} />
-                                        <span>This is a payment simulation. No real money will be transferred.</span>
+                                </div>
+
+                                <div className={styles.amountCard}>
+                                    <span className={styles.amountLabel}>Amount to Pay</span>
+                                    <div className={styles.premiumAmount}>
+                                        <span className={styles.currency}>₱</span>
+                                        {total.toLocaleString('en-PH', { minimumFractionDigits: 2 })}
+                                    </div>
+                                </div>
+
+                                <div className={styles.premiumAlerts}>
+                                    <div className={styles.alertLine}>
+                                        <Shield size={16} />
+                                        <span>This is a <strong>secure simulation</strong>. No real funds will be deducted from your account.</span>
+                                    </div>
+                                    <div className={styles.alertLine}>
+                                        <Info size={16} />
+                                        <span>Ensure you copy the exact amount to prevent order processing delays.</span>
                                     </div>
                                 </div>
                             </div>
-                            <div className={styles.modalFooter}>
-                                <button className={styles.modalCancelBtn} onClick={() => setShowGcashModal(false)}>
-                                    Go Back
+
+                            <div className={styles.premiumFooter}>
+                                <button 
+                                    className={styles.secondaryBtn} 
+                                    onClick={() => setShowGcashModal(false)}
+                                    disabled={isCheckingOut}
+                                >
+                                    Cancel
                                 </button>
-                                <button className={styles.modalConfirmBtn} onClick={submitPayment} disabled={isCheckingOut}>
-                                    {isCheckingOut
-                                        ? <><Loader2 className={styles.spin} size={18} /> Processing…</>
-                                        : <><CheckCircle2 size={18} /> I&apos;ve Completed Payment</>
-                                    }
+                                <button 
+                                    className={styles.primaryBtn} 
+                                    onClick={submitPayment}
+                                    disabled={isCheckingOut}
+                                >
+                                    {isCheckingOut ? (
+                                        <><Loader2 size={18} className={styles.spin} /> Processing...</>
+                                    ) : (
+                                        'I have sent the payment'
+                                    )}
                                 </button>
                             </div>
                         </div>

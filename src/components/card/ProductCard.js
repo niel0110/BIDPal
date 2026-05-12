@@ -74,7 +74,6 @@ export default function ProductCard({ data, compact = false }) {
         if (isAlreadyInCart || isSoldOut) return;
         setIsAdding(true);
         await addToCart(data.products_id);
-        setLocalAvailability(prev => (prev != null ? Math.max(0, prev - 1) : prev));
         setIsAdding(false);
     };
 

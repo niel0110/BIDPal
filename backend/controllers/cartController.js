@@ -8,29 +8,6 @@ const getProductFixedPrice = (product) => {
   return price || startingPrice || 0;
 };
 
-// Helper to adjust product availability (stock)
-const adjustProductAvailability = async (product_id, delta) => {
-  try {
-    const { data: product, error: fetchError } = await supabase
-      .from('Products')
-      .select('availability, name')
-      .eq('products_id', product_id)
-      .single();
-    
-    if (fetchError || !product) return;
-
-    const newAvail = Math.max(0, (product.availability || 0) + delta);
-    
-    await supabase
-      .from('Products')
-      .update({ availability: newAvail })
-      .eq('products_id', product_id);
-      
-    console.log(`📦 Adjusted availability for "${product.name}" by ${delta}. New stock: ${newAvail}`);
-  } catch (err) {
-    console.error('Error adjusting availability:', err.message);
-  }
-};
 
 // Helper to get or create a cart for a user
 const getOrCreateCartId = async (user_id) => {
@@ -189,8 +166,6 @@ export const addToCart = async (req, res) => {
 
       if (error) return res.status(400).json({ error: error.message });
 
-      // Decrease availability
-      await adjustProductAvailability(products_id, -parseInt(quantity));
 
       return res.json({ message: 'Cart updated', data: data[0] });
     } else {
@@ -215,8 +190,6 @@ export const addToCart = async (req, res) => {
 
       if (error) return res.status(400).json({ error: error.message });
       
-      // Decrease availability
-      await adjustProductAvailability(products_id, -parseInt(quantity));
 
       // Post-process: Manage cart limits
       await enforceCartLimit(cart_id);
@@ -247,23 +220,6 @@ const enforceCartLimit = async (cart_id) => {
       const itemsToStash = activeItems.slice(ACTIVE_CART_LIMIT);
       const idsToStash = itemsToStash.map(item => item.cartItem_id);
 
-      // Fetch items to return stock
-      const { data: itemsReturningStock } = await supabase
-        .from('Cart_items')
-        .select('product_id, quantity')
-        .in('cartItem_id', idsToStash);
-
-      await supabase
-        .from('Cart_items')
-        .update({ is_stashed: true })
-        .in('cartItem_id', idsToStash);
-      
-      // Return stock for stashed items
-      if (itemsReturningStock) {
-        for (const item of itemsReturningStock) {
-          await adjustProductAvailability(item.product_id, item.quantity);
-        }
-      }
         
       console.log(`Auto-stashed ${idsToStash.length} items for cart ${cart_id} and returned stock.`);
     }
@@ -283,10 +239,6 @@ export const stashCartItem = async (req, res) => {
       .select('*');
 
     if (error) return res.status(400).json({ error: error.message });
-    if (data && data[0]) {
-      // Return stock to product
-      await adjustProductAvailability(data[0].product_id, data[0].quantity);
-    }
     res.json({ message: 'Item stashed', data: data[0] });
   } catch (err) {
     res.status(500).json({ error: err.message });
@@ -311,11 +263,6 @@ export const unstashCartItem = async (req, res) => {
     // 2. Enforce limit (this might stash the oldest active item)
     await enforceCartLimit(data[0].cart_id);
 
-    // 3. Take stock from product
-    const { data: item } = await supabase.from('Cart_items').select('product_id, quantity').eq('cartItem_id', cartItem_id).single();
-    if (item) {
-        await adjustProductAvailability(item.product_id, -item.quantity);
-    }
 
     res.json({ message: 'Item moved to active cart', data: data[0] });
   } catch (err) {
@@ -345,11 +292,6 @@ export const updateCartQuantity = async (req, res) => {
     if (error) return res.status(400).json({ error: error.message });
     if (!data || data.length === 0) return res.status(404).json({ error: 'Cart item found' });
 
-    // Adjust availability based on diff IF NOT STASHED
-    if (!existingItem.is_stashed) {
-      const diff = parseInt(quantity) - parseInt(existingItem.quantity);
-      await adjustProductAvailability(data[0].product_id, -diff);
-    }
 
     res.json({ message: 'Quantity updated', data: data[0] });
   } catch (err) {
@@ -371,10 +313,6 @@ export const removeFromCart = async (req, res) => {
 
     if (error) return res.status(400).json({ error: error.message });
     
-    if (data && data[0] && !data[0].is_stashed) {
-      // Return stock
-      await adjustProductAvailability(data[0].product_id, data[0].quantity);
-    }
 
     res.json({ message: 'Removed from cart', data: data[0] });
   } catch (err) {
@@ -403,11 +341,6 @@ export const clearCart = async (req, res) => {
 
     if (error) return res.status(400).json({ error: error.message });
 
-    if (activeItems) {
-      for (const item of activeItems) {
-        await adjustProductAvailability(item.product_id, item.quantity);
-      }
-    }
 
     res.json({ message: 'Cart cleared' });
   } catch (err) {

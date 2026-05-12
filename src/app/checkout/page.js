@@ -5,7 +5,7 @@ import BackButton from '@/components/BackButton';
 import ReceiptModal from '@/components/ReceiptModal';
 import { useState, useEffect, useCallback, Suspense } from 'react';
 import { useRouter, useSearchParams } from 'next/navigation';
-import { MapPin, Plus, CreditCard, Truck, CheckCircle2, Loader2, AlertCircle, X, ShoppingBag, Gavel, Smartphone, Copy, Tag, Info, AlertTriangle, ShieldCheck } from 'lucide-react';
+import { MapPin, Plus, CreditCard, Truck, CheckCircle2, Loader2, AlertCircle, X, ShoppingBag, Gavel, Smartphone, Copy, Tag, Info, AlertTriangle, ShieldCheck, Shield } from 'lucide-react';
 import { useAuth } from '@/context/AuthContext';
 import RouteGuard from '@/components/auth/RouteGuard';
 import styles from './page.module.css';
@@ -708,14 +708,14 @@ function CheckoutPageInner() {
 
                     <div className={styles.premiumBody}>
                         <div className={styles.paymentGuide}>
-                            <span className={styles.guideStep}>Step 1</span>
-                            <p>Send the exact amount below to our verified merchant number</p>
+                            <span className={styles.guideStep}>Step 1: Send Payment</span>
+                            <p>Send the exact amount to the merchant account below via GCash <strong>Express Send</strong>.</p>
                         </div>
 
                         <div className={styles.gcashCard}>
                             <div className={styles.cardHeader}>
-                                <Smartphone size={16} />
-                                <span>Merchant Number</span>
+                                <Smartphone size={14} />
+                                <span>Merchant Account</span>
                             </div>
                             <div className={styles.cardNumberRow}>
                                 <span className={styles.premiumNumber}>0917 123 4567</span>
@@ -730,14 +730,18 @@ function CheckoutPageInner() {
                             <span className={styles.amountLabel}>Total Amount to Pay</span>
                             <div className={styles.premiumAmount}>
                                 <span className={styles.currency}>₱</span>
-                                {((orderData?.total || 0) + shippingFee).toLocaleString()}
+                                {((orderData?.total || 0) + shippingFee).toLocaleString('en-PH', { minimumFractionDigits: 2 })}
                             </div>
                         </div>
 
                         <div className={styles.premiumAlerts}>
                             <div className={styles.alertLine}>
-                                <Info size={14} />
-                                <span>Simulation: No actual funds will be moved.</span>
+                                <Shield size={16} />
+                                <span>This is a <strong>secure simulation</strong>. No real funds will be deducted from your account.</span>
+                            </div>
+                            <div className={styles.alertLine}>
+                                <Info size={16} />
+                                <span>Ensure you copy the exact amount to prevent order processing delays.</span>
                             </div>
                         </div>
                     </div>
@@ -749,7 +753,7 @@ function CheckoutPageInner() {
                         <button className={styles.primaryBtn} onClick={submitPayment} disabled={processing}>
                             {processing
                                 ? <><Loader2 className={styles.spin} size={18} /> Processing…</>
-                                : 'I have paid'
+                                : 'I have sent the payment'
                             }
                         </button>
                     </div>

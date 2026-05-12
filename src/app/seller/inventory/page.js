@@ -227,91 +227,119 @@ export default function InventoryPage() {
     return (
         <div className={styles.container}>
             <header className={styles.header}>
-                <Link href="/seller/auctions" className={styles.backLink}>
-                    <span className={styles.backLinkIcon}><ChevronLeft size={18} strokeWidth={2.5} /></span>
-                    <span>My Auctions</span>
-                </Link>
-                <h1 className={styles.title}>My Products</h1>
-                <p className={styles.subtitle}>Draft products ready to be scheduled</p>
+                <div className={styles.headerTop}>
+                    <Link href="/seller/auctions" className={styles.backLink}>
+                        <span className={styles.backLinkIcon}><ChevronLeft size={18} strokeWidth={2.5} /></span>
+                        <span>My Auctions</span>
+                    </Link>
+                    <button onClick={fetchProducts} className={styles.refreshBtn} title="Refresh Inventory">
+                        <Clock size={16} />
+                    </button>
+                </div>
+                <div className={styles.headerTitle}>
+                    <div className={styles.titleIcon}>
+                        <Tag size={24} />
+                    </div>
+                    <div>
+                        <h1 className={styles.title}>My Products</h1>
+                        <p className={styles.subtitle}>Draft products ready to be scheduled</p>
+                    </div>
+                </div>
             </header>
 
             {loading ? (
-                <div style={{ textAlign: 'center', padding: '2rem' }}>Loading inventory...</div>
+                <div className={styles.loadingState}>
+                    <div className={styles.spinner}></div>
+                    <p>Loading inventory...</p>
+                </div>
             ) : (
-                <div className={styles.productGrid}>
+                <div className={styles.contentArea}>
                     {products.length === 0 ? (
-                        <div style={{ gridColumn: '1 / -1', textAlign: 'center', padding: '1.5rem 1rem', color: '#999' }}>
-                            <p style={{ fontSize: '0.9rem', fontWeight: 600, color: '#555', marginBottom: '0.35rem' }}>No draft products available</p>
-                            <p style={{ fontSize: '0.75rem', color: '#bbb' }}>Products that are scheduled or completed won't appear here</p>
+                        <div className={styles.emptyState}>
+                            <div className={styles.emptyIconWrapper}>
+                                <Plus size={48} strokeWidth={1} />
+                            </div>
+                            <h3>No Draft Products</h3>
+                            <p>You don't have any products in draft. Start by creating a new listing to get started with your auction.</p>
+                            <Link href="/seller/add-product" className={styles.createFirstBtn}>
+                                <Plus size={18} /> Create New Product
+                            </Link>
                         </div>
                     ) : (
-                        products.map((product) => {
-                            const isDeleting = deletingId === product.products_id;
-                            return (
-                                <div key={product.products_id} className={styles.productCard}>
-                                    <div className={styles.imageWrapper}>
-                                        <img
-                                            src={product.images && product.images.length > 0 ? product.images[0].image_url : 'https://placehold.co/200x200?text=No+Image'}
-                                            alt={product.name}
-                                            style={{ objectFit: 'cover', width: '100%', height: '100%' }}
-                                        />
-                                        <div className={styles.actionWrapper}>
-                                            <button
-                                                className={styles.actionBtn}
-                                                onClick={(e) => {
-                                                    e.stopPropagation();
-                                                    setActiveDropdownId(activeDropdownId === product.products_id ? null : product.products_id);
-                                                }}
-                                                title="Actions"
-                                            >
-                                                <MoreVertical size={18} />
-                                            </button>
+                        <div className={styles.productGrid}>
+                            {products.map((product) => {
+                                const isDeleting = deletingId === product.products_id;
+                                return (
+                                    <div key={product.products_id} className={styles.productCard}>
+                                        <div className={styles.imageWrapper}>
+                                            <img
+                                                src={product.images && product.images.length > 0 ? product.images[0].image_url : 'https://placehold.co/200x200?text=No+Image'}
+                                                alt={product.name}
+                                                className={styles.productImage}
+                                            />
+                                            <div className={styles.actionWrapper}>
+                                                <button
+                                                    className={styles.actionBtn}
+                                                    onClick={(e) => {
+                                                        e.stopPropagation();
+                                                        setActiveDropdownId(activeDropdownId === product.products_id ? null : product.products_id);
+                                                    }}
+                                                    title="Actions"
+                                                >
+                                                    <MoreVertical size={18} />
+                                                </button>
 
-                                            {activeDropdownId === product.products_id && (
-                                                <div className={styles.dropdown}>
-                                                    <button 
-                                                        className={styles.dropdownItem}
-                                                        onClick={() => handleEditClick(product)}
-                                                    >
-                                                        <Edit2 size={14} /> Edit
-                                                    </button>
-                                                    <button 
-                                                        className={`${styles.dropdownItem} ${styles.delete}`}
-                                                        onClick={() => handleDeleteClick(product)}
-                                                    >
-                                                        <Trash2 size={14} /> Delete
-                                                    </button>
-                                                </div>
-                                            )}
+                                                {activeDropdownId === product.products_id && (
+                                                    <div className={styles.dropdown}>
+                                                        <button 
+                                                            className={styles.dropdownItem}
+                                                            onClick={() => handleEditClick(product)}
+                                                        >
+                                                            <Edit2 size={14} /> Edit
+                                                        </button>
+                                                        <button 
+                                                            className={`${styles.dropdownItem} ${styles.delete}`}
+                                                            onClick={() => handleDeleteClick(product)}
+                                                        >
+                                                            <Trash2 size={14} /> Delete
+                                                        </button>
+                                                    </div>
+                                                )}
+                                            </div>
+                                            <div className={styles.badge}>Draft</div>
                                         </div>
+                                        <div className={styles.productInfo}>
+                                            <strong className={styles.productName}>{product.name}</strong>
+                                            <div className={styles.productMeta}>
+                                                <span className={styles.priceInfo}>
+                                                    Start: ₱{Number(product.starting_price || 0).toLocaleString()}
+                                                </span>
+                                            </div>
+                                        </div>
+                                        <button
+                                            className={styles.scheduleBtn}
+                                            onClick={() => openScheduleModal(product)}
+                                        >
+                                            <Calendar size={14} /> Schedule Now
+                                        </button>
                                     </div>
-                                    <div className={styles.productInfo}>
-                                        <strong>{product.name}</strong>
-                                        <span>Draft • Ready To Schedule</span>
-                                    </div>
-                                    <button
-                                        className={styles.scheduleBtn}
-                                        onClick={() => openScheduleModal(product)}
-                                    >
-                                        Schedule
-                                    </button>
-                                </div>
-                            );
-                        })
-                    )}
+                                );
+                            })}
 
-                    <Link href="/seller/add-product" className={styles.addCard}>
-                        <div className={styles.addCardImage}>
-                            <div className={styles.addCardPlusCircle}>
-                                <Plus size={26} strokeWidth={2.5} />
-                            </div>
+                            <Link href="/seller/add-product" className={styles.addCard}>
+                                <div className={styles.addCardImage}>
+                                    <div className={styles.addCardPlusCircle}>
+                                        <Plus size={26} strokeWidth={2.5} />
+                                    </div>
+                                </div>
+                                <div className={styles.addCardInfo}>
+                                    <strong>New Product</strong>
+                                    <span>Tap to create listing</span>
+                                </div>
+                                <span className={styles.addCardBtn}>+ Add New</span>
+                            </Link>
                         </div>
-                        <div className={styles.addCardInfo}>
-                            <strong>New Product</strong>
-                            <span>Tap to create listing</span>
-                        </div>
-                        <span className={styles.addCardBtn}>+ Add New</span>
-                    </Link>
+                    )}
                 </div>
             )}
 
@@ -319,40 +347,37 @@ export default function InventoryPage() {
             {scheduleProduct && (
                 <div className={styles.modalOverlay} onClick={closeScheduleModal}>
                     <div className={styles.modalContent} onClick={e => e.stopPropagation()}>
-                        {/* Modal header */}
-                        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '1.5rem' }}>
+                        <div className={styles.modalHeader}>
                             <div>
-                                <h2 style={{ margin: 0, fontSize: '1.1rem', fontWeight: 800, color: '#0f172a' }}>
+                                <h2 className={styles.modalTitle}>
                                     {saleType === 'sale' ? 'Post Product' : 'Schedule Auction'}
                                 </h2>
-                                <p style={{ margin: '2px 0 0', fontSize: '0.78rem', color: '#94a3b8' }}>
+                                <p className={styles.modalSubtitle}>
                                     {saleType === 'sale' ? 'Set a price and list this item immediately' : 'Set when this item goes live'}
                                 </p>
                             </div>
-                            <button onClick={closeScheduleModal} style={{ background: '#f1f5f9', border: 'none', borderRadius: 8, padding: '6px', cursor: 'pointer', display: 'flex' }}>
-                                <X size={18} color="#64748b" />
+                            <button onClick={closeScheduleModal} className={styles.modalCloseBtn}>
+                                <X size={20} />
                             </button>
                         </div>
                         
-                        {/* Rest of schedule modal content remains same... */}
-                        {/* Product brief */}
-                        <div style={{ display: 'flex', alignItems: 'center', gap: '0.85rem', padding: '0.85rem', background: '#f8fafc', borderRadius: 12, marginBottom: '1.5rem' }}>
+                        <div className={styles.modalProductBrief}>
                             <img
                                 src={scheduleProduct.images?.[0]?.image_url || 'https://placehold.co/56x56?text=No+Image'}
                                 alt={scheduleProduct.name}
-                                style={{ width: 52, height: 52, borderRadius: 10, objectFit: 'cover', flexShrink: 0 }}
+                                className={styles.modalProductImage}
                             />
-                            <div style={{ flex: 1, minWidth: 0 }}>
-                                <div style={{ fontWeight: 700, fontSize: '0.88rem', color: '#0f172a', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{scheduleProduct.name}</div>
-                                <div style={{ display: 'flex', gap: '1rem', marginTop: '0.3rem' }}>
+                            <div className={styles.modalProductInfo}>
+                                <div className={styles.modalProductName}>{scheduleProduct.name}</div>
+                                <div className={styles.modalProductPricing}>
                                     {scheduleProduct.reserve_price > 0 && (
-                                        <span style={{ fontSize: '0.73rem', color: '#64748b' }}>
-                                            Reserve: <strong style={{ color: '#cc2b41' }}>₱{Number(scheduleProduct.reserve_price).toLocaleString('en-PH', { minimumFractionDigits: 2 })}</strong>
+                                        <span>
+                                            Reserve: <strong>₱{Number(scheduleProduct.reserve_price).toLocaleString('en-PH', { minimumFractionDigits: 2 })}</strong>
                                         </span>
                                     )}
                                     {scheduleProduct.starting_price > 0 && (
-                                        <span style={{ fontSize: '0.73rem', color: '#64748b' }}>
-                                            Starting Bid: <strong style={{ color: '#0f172a' }}>₱{Number(scheduleProduct.starting_price).toLocaleString('en-PH', { minimumFractionDigits: 2 })}</strong>
+                                        <span>
+                                            Starting Bid: <strong>₱{Number(scheduleProduct.starting_price).toLocaleString('en-PH', { minimumFractionDigits: 2 })}</strong>
                                         </span>
                                     )}
                                 </div>
@@ -360,10 +385,9 @@ export default function InventoryPage() {
                         </div>
 
                         <form onSubmit={handleScheduleSubmit}>
-                            {/* Sale type */}
-                            <div style={{ marginBottom: '1.25rem' }}>
-                                <label style={{ fontSize: '0.78rem', fontWeight: 700, color: '#475569', textTransform: 'uppercase', letterSpacing: '0.05em', display: 'block', marginBottom: '0.5rem' }}>Sale Type</label>
-                                <div className={styles.modalGrid}>
+                            <div className={styles.formGroup}>
+                                <label className={styles.fieldLabel}>Sale Type</label>
+                                <div className={styles.saleTypeGrid}>
                                     {[
                                         { id: 'bid', icon: <Gavel size={15} />, label: 'Bid it', sub: 'Live auction' },
                                         { id: 'sale', icon: <Tag size={15} />, label: 'Fixed sale', sub: 'Set price' },
@@ -372,95 +396,73 @@ export default function InventoryPage() {
                                             key={opt.id}
                                             type="button"
                                             onClick={() => setSaleType(opt.id)}
-                                            style={{
-                                                display: 'flex', alignItems: 'center', gap: '0.5rem',
-                                                padding: '0.65rem 0.85rem', borderRadius: 12, cursor: 'pointer',
-                                                border: `2px solid ${saleType === opt.id ? '#cc2b41' : '#e2e8f0'}`,
-                                                background: saleType === opt.id ? '#fff1f2' : 'white',
-                                                color: saleType === opt.id ? '#cc2b41' : '#475569',
-                                                fontWeight: 600, fontSize: '0.82rem', textAlign: 'left',
-                                                transition: 'all 0.15s'
-                                            }}
+                                            className={`${styles.saleTypeBtn} ${saleType === opt.id ? styles.active : ''}`}
                                         >
-                                            {opt.icon}
-                                            <div>
-                                                <div style={{ fontWeight: 800, lineHeight: 1.1 }}>{opt.label}</div>
-                                                <div style={{ fontSize: '0.68rem', fontWeight: 500, opacity: 0.8, marginTop: '1px' }}>{opt.sub}</div>
+                                            <span className={styles.saleTypeIcon}>{opt.icon}</span>
+                                            <div className={styles.saleTypeText}>
+                                                <div className={styles.saleTypeLabel}>{opt.label}</div>
+                                                <div className={styles.saleTypeSub}>{opt.sub}</div>
                                             </div>
                                         </button>
                                     ))}
                                 </div>
                             </div>
 
-                            {/* Fixed price input (sale type only) */}
                             {saleType === 'sale' && (
-                                <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '1rem', marginBottom: '1.25rem' }}>
-                                    <div>
-                                        <label style={{ fontSize: '0.78rem', fontWeight: 700, color: '#475569', textTransform: 'uppercase', letterSpacing: '0.05em', display: 'block', marginBottom: '0.5rem' }}>Buy Now Price</label>
-                                        <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', border: '1.5px solid #e2e8f0', borderRadius: 10, padding: '0 0.85rem', background: '#fafafa' }}>
-                                            <span style={{ fontWeight: 700, color: '#475569', fontSize: '0.9rem' }}>₱</span>
+                                <div className={styles.modalPriceGrid}>
+                                    <div className={styles.formGroup}>
+                                        <label className={styles.fieldLabel}>Buy Now Price</label>
+                                        <div className={styles.inputContainer}>
+                                            <span className={styles.inputPrefix}>₱</span>
                                             <input
                                                 type="number" step="0.01" min="0" placeholder="0.00" required={saleType === 'sale'}
                                                 value={scheduleForm.fixedPrice}
                                                 onChange={e => setScheduleForm(p => ({ ...p, fixedPrice: e.target.value }))}
-                                                style={{ flex: 1, border: 'none', background: 'transparent', padding: '0.75rem 0', fontSize: '0.9rem', outline: 'none', color: '#0f172a' }}
+                                                className={styles.modalInput}
                                             />
                                         </div>
                                     </div>
-                                    <div>
-                                        <label style={{ fontSize: '0.78rem', fontWeight: 700, color: '#475569', textTransform: 'uppercase', letterSpacing: '0.05em', display: 'block', marginBottom: '0.5rem' }}>Stock (Quantity)</label>
-                                        <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', border: '1.5px solid #e2e8f0', borderRadius: 10, padding: '0 0.85rem', background: '#fafafa' }}>
+                                    <div className={styles.formGroup}>
+                                        <label className={styles.fieldLabel}>Stock</label>
+                                        <div className={`${styles.inputContainer} ${styles.disabled}`}>
                                             <input
                                                 type="number" value="1" disabled
-                                                style={{ flex: 1, border: 'none', background: 'transparent', padding: '0.75rem 0', fontSize: '0.9rem', outline: 'none', color: '#94a3b8', cursor: 'not-allowed' }}
+                                                className={styles.modalInput}
                                             />
                                         </div>
                                     </div>
                                 </div>
                             )}
 
-                            {/* Date & time (auction only) */}
                             {saleType !== 'sale' && (
-                                <div style={{ marginBottom: '1.25rem' }}>
-                                    <label style={{ fontSize: '0.78rem', fontWeight: 700, color: '#475569', textTransform: 'uppercase', letterSpacing: '0.05em', display: 'block', marginBottom: '0.5rem' }}>Date & Time</label>
-                                    <div className={styles.modalGrid}>
-                                        <div style={{ border: '1.5px solid #e2e8f0', borderRadius: 10, padding: '0.6rem 0.85rem', display: 'flex', alignItems: 'center', gap: '0.5rem', background: '#fafafa' }}>
-                                            <Calendar size={15} color="#94a3b8" />
+                                <div className={styles.formGroup}>
+                                    <label className={styles.fieldLabel}>Date & Time</label>
+                                    <div className={styles.dateTimeGrid}>
+                                        <div className={styles.inputContainer}>
+                                            <Calendar size={15} className={styles.inputIcon} />
                                             <input
                                                 type="date" required
                                                 value={scheduleForm.startDate}
                                                 onChange={e => setScheduleForm(p => ({ ...p, startDate: e.target.value }))}
-                                                style={{ border: 'none', background: 'transparent', fontSize: '0.85rem', outline: 'none', color: '#0f172a', flex: 1, minWidth: 0 }}
+                                                className={styles.modalInput}
                                             />
                                         </div>
-                                        <div style={{ border: '1.5px solid #e2e8f0', borderRadius: 10, padding: '0.6rem 0.85rem', display: 'flex', alignItems: 'center', gap: '0.5rem', background: '#fafafa' }}>
-                                            <Clock size={15} color="#94a3b8" />
+                                        <div className={styles.inputContainer}>
+                                            <Clock size={15} className={styles.inputIcon} />
                                             <input
                                                 type="time" required
                                                 value={scheduleForm.startTime}
                                                 onChange={e => setScheduleForm(p => ({ ...p, startTime: e.target.value }))}
-                                                style={{ border: 'none', background: 'transparent', fontSize: '0.85rem', outline: 'none', color: '#0f172a', flex: 1, minWidth: 0 }}
+                                                className={styles.modalInput}
                                             />
                                         </div>
                                     </div>
+                                    <p className={styles.inputHint}>Your item will automatically go live at the scheduled time.</p>
                                 </div>
                             )}
 
-                            {saleType !== 'sale' && (
-                                <p style={{ fontSize: '0.75rem', color: '#94a3b8', marginBottom: '1.25rem' }}>
-                                    Your item will automatically go live at the scheduled time.
-                                </p>
-                            )}
-
-                            {/* Toast */}
                             {scheduleToast && (
-                                <div style={{
-                                    padding: '0.75rem 1rem', borderRadius: 10, marginBottom: '1rem',
-                                    background: scheduleToast.type === 'success' ? '#f0fdf4' : '#fff1f2',
-                                    border: `1px solid ${scheduleToast.type === 'success' ? '#bbf7d0' : '#fecdd3'}`,
-                                    color: scheduleToast.type === 'success' ? '#166534' : '#991b1b',
-                                    fontSize: '0.82rem', fontWeight: 600
-                                }}>
+                                <div className={`${styles.toast} ${styles[scheduleToast.type]}`}>
                                     {scheduleToast.type === 'success' ? '✓ ' : '✕ '}{scheduleToast.message}
                                 </div>
                             )}
@@ -468,12 +470,7 @@ export default function InventoryPage() {
                             <button
                                 type="submit"
                                 disabled={isScheduling || isAlreadyScheduled}
-                                style={{
-                                    width: '100%', background: isAlreadyScheduled ? '#e2e8f0' : '#cc2b41', color: isAlreadyScheduled ? '#94a3b8' : 'white', border: 'none',
-                                    borderRadius: 12, padding: '0.9rem', fontWeight: 700, fontSize: '0.92rem',
-                                    cursor: (isScheduling || isAlreadyScheduled) ? 'not-allowed' : 'pointer', opacity: isScheduling ? 0.7 : 1,
-                                    transition: 'opacity 0.15s, background 0.15s'
-                                }}
+                                className={styles.modalSubmitBtn}
                             >
                                 {isScheduling
                                     ? (saleType === 'sale' ? 'Posting...' : 'Scheduling...')
@@ -489,19 +486,19 @@ export default function InventoryPage() {
             {productToEdit && (
                 <div className={styles.modalOverlay} onClick={() => setProductToEdit(null)}>
                     <div className={styles.modalContent} onClick={e => e.stopPropagation()}>
-                        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '1.75rem' }}>
+                        <div className={styles.modalHeader}>
                             <div>
-                                <h2 style={{ margin: 0, fontSize: '1.25rem', fontWeight: 800, color: '#0f172a', letterSpacing: '-0.02em' }}>Edit Product</h2>
-                                <p style={{ margin: '4px 0 0', fontSize: '0.85rem', color: '#64748b', fontWeight: 500 }}>Update your listing details</p>
+                                <h2 className={styles.modalTitle}>Edit Product</h2>
+                                <p className={styles.modalSubtitle}>Update your listing details</p>
                             </div>
-                            <button onClick={() => setProductToEdit(null)} style={{ background: '#f1f5f9', border: 'none', borderRadius: '50%', padding: '8px', cursor: 'pointer', display: 'flex', transition: 'all 0.2s' }}>
-                                <X size={20} color="#64748b" />
+                            <button onClick={() => setProductToEdit(null)} className={styles.modalCloseBtn}>
+                                <X size={20} />
                             </button>
                         </div>
 
                         <form onSubmit={handleUpdateProduct} className={styles.editForm}>
                             <div className={styles.formGroup}>
-                                <label>Product Name</label>
+                                <label className={styles.fieldLabel}>Product Name</label>
                                 <input 
                                     className={styles.formInput}
                                     value={productToEdit.name}
@@ -512,7 +509,7 @@ export default function InventoryPage() {
                             </div>
 
                             <div className={styles.formGroup}>
-                                <label>Description</label>
+                                <label className={styles.fieldLabel}>Description</label>
                                 <textarea 
                                     className={styles.formTextarea}
                                     value={productToEdit.description}
@@ -522,14 +519,14 @@ export default function InventoryPage() {
                                 />
                             </div>
 
-                            <div className={styles.priceGrid}>
+                            <div className={styles.modalPriceGrid}>
                                 <div className={styles.formGroup}>
-                                    <label>Starting Price</label>
-                                    <div className={styles.inputWithPrefix}>
+                                    <label className={styles.fieldLabel}>Starting Price</label>
+                                    <div className={styles.inputContainer}>
                                         <span className={styles.inputPrefix}>₱</span>
                                         <input 
                                             type="number"
-                                            className={styles.formInput}
+                                            className={styles.modalInput}
                                             value={productToEdit.starting_price}
                                             onChange={e => setProductToEdit({...productToEdit, starting_price: e.target.value})}
                                             placeholder="0.00"
@@ -538,12 +535,12 @@ export default function InventoryPage() {
                                     </div>
                                 </div>
                                 <div className={styles.formGroup}>
-                                    <label>Reserve Price</label>
-                                    <div className={styles.inputWithPrefix}>
+                                    <label className={styles.fieldLabel}>Reserve Price</label>
+                                    <div className={styles.inputContainer}>
                                         <span className={styles.inputPrefix}>₱</span>
                                         <input 
                                             type="number"
-                                            className={styles.formInput}
+                                            className={styles.modalInput}
                                             value={productToEdit.reserve_price}
                                             onChange={e => setProductToEdit({...productToEdit, reserve_price: e.target.value})}
                                             placeholder="0.00"
@@ -555,9 +552,8 @@ export default function InventoryPage() {
 
                             <button 
                                 type="submit" 
-                                className={styles.saveBtn}
+                                className={styles.modalSubmitBtn}
                                 disabled={isUpdating}
-                                style={{ width: '100%', justifyContent: 'center', marginTop: '1rem' }}
                             >
                                 {isUpdating ? 'Updating...' : 'Save Changes'}
                             </button>
