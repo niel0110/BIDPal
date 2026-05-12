@@ -392,7 +392,8 @@ export default function MyAuctions() {
                     // Fetch auctions for other tabs with search
                     const statusParam = activeTab !== 'all' ? `status=${activeTab}` : '';
                     const searchParam = debouncedSearch ? `search=${encodeURIComponent(debouncedSearch)}` : '';
-                    const params = [statusParam, searchParam].filter(Boolean).join('&');
+                    const viewParam = 'seller_view=true';
+                    const params = [statusParam, searchParam, viewParam].filter(Boolean).join('&');
                     const queryString = params ? `?${params}` : '';
 
                     const res = await fetch(`${apiUrl}/api/auctions/seller/${userId}${queryString}`, {

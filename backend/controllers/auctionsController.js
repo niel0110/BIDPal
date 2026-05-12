@@ -7,7 +7,7 @@ import { createPaymentWindow } from '../services/violationService.js';
 export const getSellerAuctions = async (req, res) => {
   try {
     const { seller_id } = req.params;
-    const { status, search, limit = 50, offset = 0 } = req.query;
+    const { status, search, limit = 50, offset = 0, seller_view } = req.query;
 
     let final_seller_id = seller_id;
 
@@ -83,12 +83,22 @@ export const getSellerAuctions = async (req, res) => {
       if (status === 'completed') {
         // 'completed' = successful auctions: had a winner (winner_user_id is set)
         // Includes 'success' (reserve met, awaiting payment) and 'completed' (fulfilled)
-        query = query.in('status', ['success', 'ended', 'completed']).not('winner_user_id', 'is', null);
+        // If seller_view=true, exclude archived ones so they vanish from the dashboard
+        const completedStatuses = ['success', 'ended', 'completed'];
+        if (seller_view !== 'true') {
+          completedStatuses.push('archived');
+        }
+        query = query.in('status', completedStatuses).not('winner_user_id', 'is', null);
       } else if (status === 'ended') {
         // 'ended' = unsuccessful auctions: status=ended and no winner
         query = query.eq('status', 'ended').is('winner_user_id', null);
       } else {
         query = query.eq('status', status);
+      }
+    } else {
+      // For 'all' or no status: exclude archived if seller_view=true
+      if (seller_view === 'true') {
+        query = query.neq('status', 'archived');
       }
     }
 
@@ -1703,14 +1713,27 @@ export const deleteAuction = async (req, res) => {
     }
 
     // 2. Check for Orders - Critical guard rail
-    const { data: hasOrder } = await supabase
+    const { data: order } = await supabase
         .from('Orders')
-        .select('order_id')
+        .select('order_id, status')
         .eq('auction_id', id)
         .maybeSingle();
 
-    if (hasOrder) {
-        return res.status(400).json({ error: 'This auction has an associated order. It cannot be deleted from records.' });
+    if (order) {
+        // SOFT DELETE / ARCHIVE: Preserve order history but hide from seller dashboard
+        console.log(`📦 Archiving auction ${id} to preserve order history`);
+        const { error: archiveError } = await supabase
+            .from('Auctions')
+            .update({ status: 'archived' })
+            .eq('auction_id', id);
+
+        if (archiveError) throw archiveError;
+
+        return res.json({ 
+            success: true, 
+            message: 'Auction removed from your inventory. It remains in your sales history and buyer receipts.',
+            archived: true 
+        });
     }
 
     // 3. Deep cascading cleanup of metadata
