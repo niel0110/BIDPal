@@ -156,14 +156,14 @@ export const getSellerReviews = async (req, res) => {
 
     if (productsError) return res.status(500).json({ error: productsError.message });
 
-    const productIds = [...new Set((sellerProducts || []).map(p => p.products_id).filter(Boolean))];
-    if (productIds.length === 0) return res.json([]);
+    const sellerProductIds = [...new Set((sellerProducts || []).map(p => p.products_id).filter(Boolean))];
+    if (sellerProductIds.length === 0) return res.json([]);
 
     // Step 2: fetch all reviews for those products
     const { data, error } = await supabase
       .from('Reviews')
       .select('review_id, rating, comment, created_at, products_id, order_id, reviewers_id, user_id')
-      .in('products_id', productIds)
+      .in('products_id', sellerProductIds)
       .order('created_at', { ascending: false });
 
     if (error) return res.status(500).json({ error: error.message });
@@ -196,18 +196,22 @@ export const getSellerReviews = async (req, res) => {
     }
 
     let skippedInvalidRatings = 0;
-    const formatted = data.map(r => {
-      const uid = r.reviewers_id || r.user_id;
-      const u = userMap[uid];
+    const validReviews = data.filter(r => {
       const parsedRating = Number(r.rating);
-      if (!Number.isFinite(parsedRating) || parsedRating < 1 || parsedRating > 5) {
+      const isValid = Number.isFinite(parsedRating) && parsedRating >= 1 && parsedRating <= 5;
+      if (!isValid) {
         skippedInvalidRatings += 1;
         console.warn('[getSellerReviews] skipping review with invalid rating', { review_id: r.review_id, rating: r.rating });
-        return null;
       }
+      return isValid;
+    });
+
+    const formatted = validReviews.map(r => {
+      const uid = r.reviewers_id || r.user_id;
+      const u = userMap[uid];
       return {
         review_id: r.review_id,
-        rating: parsedRating,
+        rating: Number(r.rating),
         comment: r.comment,
         created_at: r.created_at,
         reviewer: {
@@ -216,7 +220,7 @@ export const getSellerReviews = async (req, res) => {
         },
         product_name: r.products_id ? (productMap[r.products_id] || null) : null
       };
-    }).filter(Boolean);
+    });
     if (skippedInvalidRatings > 0) {
       console.warn('[getSellerReviews] skipped invalid rating reviews', { count: skippedInvalidRatings, seller_id });
     }
