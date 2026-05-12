@@ -297,7 +297,7 @@ export default function EditProductPage() {
                     <ChevronLeft size={20} />
                     <span>{currentStep > 0 ? 'Previous' : 'Back'}</span>
                 </button>
-                <h1 className={styles.pageTitle}>Edit Product Listing</h1>
+                <h1 className={styles.pageTitle}>Edit Product</h1>
             </div>
 
             <div className={styles.stepper}>
@@ -311,7 +311,9 @@ export default function EditProductPage() {
                                 <div className={`${styles.line} ${index < currentStep ? styles.activeLine : ''}`} />
                             )}
                         </div>
-                        <span className={`${styles.stepName} ${index === currentStep ? styles.activeName : ''}`}>{step.name}</span>
+                        <span className={`${styles.stepName} ${index === currentStep ? styles.activeName : ''}`}>
+                            {step.name}
+                        </span>
                     </div>
                 ))}
             </div>
@@ -446,9 +448,12 @@ export default function EditProductPage() {
                     </div>
                 )}
 
-                <div className={styles.formActions}>
+                <div className={styles.footer}>
+                    {currentStep > 0 && (
+                        <button className={styles.backLink} onClick={() => setCurrentStep(currentStep - 1)}>Back</button>
+                    )}
                     <button className={styles.nextBtn} onClick={handleNext} disabled={isSubmitting}>
-                        {isSubmitting ? 'Updating...' : currentStep === steps.length - 1 ? 'Save Changes' : 'Next Step'}
+                        {isSubmitting ? 'Saving...' : currentStep === steps.length - 1 ? 'Save Changes' : 'Next Step'}
                     </button>
                 </div>
             </div>

@@ -93,6 +93,16 @@ function LivePageInner() {
     const mobileChatScrollRef = useRef(null);
     const desktopChatScrollRef = useRef(null);
 
+    // Refs for socket listeners to access latest state without triggering reconnections
+    const showModalRef = useRef(showModal);
+    const currentUserIdRef = useRef(currentUserId);
+    const isHostRef = useRef(isHost);
+
+    // Sync refs
+    useEffect(() => { showModalRef.current = showModal; }, [showModal]);
+    useEffect(() => { currentUserIdRef.current = currentUserId; }, [currentUserId]);
+    useEffect(() => { isHostRef.current = isHost; }, [isHost]);
+
     const apiUrl = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:5000';
     const userIsVerified = Boolean(user?.is_verified) || user?.kyc_status === 'approved';
     const userNeedsVerification = Boolean(user) && !authLoading && !userIsVerified;
@@ -235,10 +245,16 @@ function LivePageInner() {
     useEffect(() => {
         if (!auctionId || !auction || (!isHost && !currentViewerKey)) return;
 
-        const socket = io(apiUrl, { transports: ['websocket', 'polling'] });
+        const socket = io(apiUrl, { 
+            transports: ['websocket', 'polling'],
+            reconnection: true,
+            reconnectionAttempts: 10,
+            reconnectionDelay: 1000
+        });
         socketRef.current = socket;
 
         socket.on('connect', () => {
+            console.log('🔌 Socket connected:', socket.id);
             socket.emit('join-auction', {
                 auctionId,
                 role: isHost ? 'seller' : 'viewer',
@@ -252,7 +268,7 @@ function LivePageInner() {
             if (highestBid) setCurrentBidAmount(prev => Math.max(prev, highestBid));
             if (minNext) {
                 setMinBid(prev => Math.max(Number(prev || 0), minNext));
-                if (showModal) {
+                if (showModalRef.current) {
                     setBidAmount(prev => {
                         const numericPrev = Number(prev);
                         if (!prev || Number.isNaN(numericPrev) || numericPrev < minNext) {
@@ -309,7 +325,7 @@ function LivePageInner() {
                         : `${bidderName} bid ₱${highestBid.toLocaleString('en-PH')}. ${minMessage}`.trim(),
                 });
 
-                if (showModal && minMessage) {
+                if (showModalRef.current && minMessage) {
                     setBidNotice({
                         title: isOwnBid ? 'Bid accepted' : 'Bid updated',
                         message: `Highest bid is now ₱${highestBid.toLocaleString('en-PH')}. ${minMessage}`,
@@ -412,10 +428,13 @@ function LivePageInner() {
         });
 
         return () => {
-            socket.emit('leave-auction', auctionId);
-            socket.disconnect();
+            if (socket) {
+                console.log('🔌 Socket disconnecting:', socket.id);
+                socket.emit('leave-auction', auctionId);
+                socket.disconnect();
+            }
         };
-    }, [auctionId, apiUrl, auction, currentUserId, currentViewerKey, isHost, showModal, user]);
+    }, [auctionId, apiUrl, auction?.auction_id, currentViewerKey, isHost]); // Only reconnect if auction ID or role changes
 
     // ── Auto-scroll chat to the latest message ───────────────────────────────
     useEffect(() => {
@@ -1606,10 +1625,10 @@ function LivePageInner() {
                                 <div className={styles.mobileProductInfo}>
                                     <span className={styles.mobileProductName}>{product?.name}</span>
                                     <span className={styles.mobileProductBidLabel}>Current Bid ({bids.length} Bid{bids.length !== 1 ? 's' : ''})</span>
-                                    <span style={{ fontSize: '0.72rem', color: isLeadingBidder ? '#dcfce7' : '#dbeafe', fontWeight: 700 }}>
+                                    <span style={{ fontSize: '0.72rem', color: isLeadingBidder ? '#16a34a' : '#1e40af', fontWeight: 700, display: 'block', margin: '2px 0' }}>
                                         {isLeadingBidder
                                             ? 'You are currently the highest bidder'
-                                            : (bids.length > 0 ? 'Another bidder currently leads' : 'No bids yet')}
+                                            : (bids.length > 0 ? 'Another bidder currently leads' : 'Waiting for first bid')}
                                     </span>
                                     <div className={styles.mobileProductPriceRow}>
                                         <span className={styles.mobileProductPrice}>₱{displayedBidAmount.toLocaleString('en-PH')}</span>
