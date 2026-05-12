@@ -199,8 +199,10 @@ export const getSellerReviews = async (req, res) => {
       const uid = r.reviewers_id || r.user_id;
       const u = userMap[uid];
       const parsedRating = Number(r.rating);
-      if (!Number.isFinite(parsedRating)) return null;
-      if (parsedRating < 1 || parsedRating > 5) return null;
+      if (!Number.isFinite(parsedRating) || parsedRating < 1 || parsedRating > 5) {
+        console.warn('[getSellerReviews] skipping review with invalid rating', { review_id: r.review_id, rating: r.rating });
+        return null;
+      }
       return {
         review_id: r.review_id,
         rating: parsedRating,
