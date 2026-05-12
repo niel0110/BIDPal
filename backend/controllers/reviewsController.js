@@ -138,7 +138,7 @@ export const getSellerReviews = async (req, res) => {
   try {
     const { seller_id } = req.params;
 
-    // Resolve seller's user_id so we can catch reviews stored with either ID
+    // Resolve seller's user_id so we can match products owned by either seller_id form
     const { data: sellerRow } = await supabase
       .from('Seller')
       .select('user_id')
@@ -148,17 +148,28 @@ export const getSellerReviews = async (req, res) => {
       ? [seller_id, sellerRow.user_id]
       : [seller_id];
 
-    // Step 1: fetch reviews without FK join (avoids silent failure when FK hint not defined)
+    // Step 1: get products that belong to this seller
+    const { data: sellerProducts, error: productsError } = await supabase
+      .from('Products')
+      .select('products_id')
+      .in('seller_id', queryIds);
+
+    if (productsError) return res.status(500).json({ error: productsError.message });
+
+    const productIds = [...new Set((sellerProducts || []).map(p => p.products_id).filter(Boolean))];
+    if (productIds.length === 0) return res.json([]);
+
+    // Step 2: fetch all reviews for those products
     const { data, error } = await supabase
       .from('Reviews')
       .select('review_id, rating, comment, created_at, products_id, order_id, reviewers_id, user_id')
-      .in('seller_id', queryIds)
+      .in('products_id', productIds)
       .order('created_at', { ascending: false });
 
     if (error) return res.status(500).json({ error: error.message });
     if (!data || data.length === 0) return res.json([]);
 
-    // Step 2: batch-fetch reviewer info separately
+    // Step 3: batch-fetch reviewer info separately
     const reviewerIds = [...new Set(data.map(r => r.reviewers_id || r.user_id).filter(Boolean))];
     let userMap = {};
     if (reviewerIds.length > 0) {
@@ -171,14 +182,14 @@ export const getSellerReviews = async (req, res) => {
       }
     }
 
-    // Step 3: batch-fetch product names
-    const productIds = [...new Set(data.filter(r => r.products_id).map(r => r.products_id))];
+    // Step 4: batch-fetch product names
+    const reviewedProductIds = [...new Set(data.filter(r => r.products_id).map(r => r.products_id))];
     let productMap = {};
-    if (productIds.length > 0) {
+    if (reviewedProductIds.length > 0) {
       const { data: products } = await supabase
         .from('Products')
         .select('products_id, name')
-        .in('products_id', productIds);
+        .in('products_id', reviewedProductIds);
       if (products) {
         products.forEach(p => { productMap[p.products_id] = p.name; });
       }
@@ -187,9 +198,13 @@ export const getSellerReviews = async (req, res) => {
     const formatted = data.map(r => {
       const uid = r.reviewers_id || r.user_id;
       const u = userMap[uid];
+      const parsedRating = Number(r.rating);
+      const normalizedRating = Number.isFinite(parsedRating)
+        ? Math.min(5, Math.max(1, parsedRating))
+        : 0;
       return {
         review_id: r.review_id,
-        rating: r.rating,
+        rating: normalizedRating,
         comment: r.comment,
         created_at: r.created_at,
         reviewer: {
