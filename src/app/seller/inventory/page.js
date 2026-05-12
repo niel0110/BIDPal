@@ -2,7 +2,8 @@
 
 import { useState, useEffect } from 'react';
 import Link from 'next/link';
-import { ChevronLeft, Plus, Trash2, X, Gavel, Tag, Calendar, Clock } from 'lucide-react';
+import { ChevronLeft, Plus, Trash2, X, Gavel, Tag, Calendar, Clock, MoreVertical, Edit2 } from 'lucide-react';
+import ConfirmationModal from '@/components/ui/ConfirmationModal';
 import styles from './page.module.css';
 import { useAuth } from '@/context/AuthContext';
 import { useRouter } from 'next/navigation';
@@ -20,6 +21,11 @@ export default function InventoryPage() {
     const [scheduleForm, setScheduleForm] = useState({ startDate: '', startTime: '', fixedPrice: '', bidIncrement: '' });
     const [isScheduling, setIsScheduling] = useState(false);
     const [scheduleToast, setScheduleToast] = useState(null);
+    const [activeDropdownId, setActiveDropdownId] = useState(null);
+    const [showDeleteConfirm, setShowDeleteConfirm] = useState(false);
+    const [productToDelete, setProductToDelete] = useState(null);
+    const [productToEdit, setProductToEdit] = useState(null);
+    const [isUpdating, setIsUpdating] = useState(false);
 
     const fetchProducts = async () => {
         if (!user) return;
@@ -53,9 +59,25 @@ export default function InventoryPage() {
         else setLoading(false);
     }, [user]);
 
-    const handleDelete = async (productId, productName) => {
-        if (!confirm(`Are you sure you want to delete "${productName}"?`)) return;
+    // Close dropdown when clicking outside
+    useEffect(() => {
+        const handleClickOutside = () => setActiveDropdownId(null);
+        if (activeDropdownId) {
+            window.addEventListener('click', handleClickOutside);
+        }
+        return () => window.removeEventListener('click', handleClickOutside);
+    }, [activeDropdownId]);
 
+    const handleDeleteClick = (product) => {
+        setProductToDelete(product);
+        setShowDeleteConfirm(true);
+        setActiveDropdownId(null);
+    };
+
+    const confirmDelete = async () => {
+        if (!productToDelete) return;
+        const productId = productToDelete.products_id;
+        
         setDeletingId(productId);
         try {
             const apiUrl = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:5000';
@@ -74,9 +96,53 @@ export default function InventoryPage() {
             }
         } catch (error) {
             console.error('Error deleting product:', error);
-            alert('Error deleting product. Please try again.');
         } finally {
             setDeletingId(null);
+            setProductToDelete(null);
+        }
+    };
+
+    const handleEditClick = (product) => {
+        setProductToEdit({ ...product });
+        setActiveDropdownId(null);
+    };
+
+    const handleUpdateProduct = async (e) => {
+        e.preventDefault();
+        if (!productToEdit) return;
+        setIsUpdating(true);
+
+        try {
+            const apiUrl = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:5000';
+            const token = localStorage.getItem('bidpal_token');
+
+            const res = await fetch(`${apiUrl}/api/products/${productToEdit.products_id}`, {
+                method: 'PUT',
+                headers: {
+                    'Content-Type': 'application/json',
+                    ...(token ? { 'Authorization': `Bearer ${token}` } : {})
+                },
+                body: JSON.stringify({
+                    name: productToEdit.name,
+                    description: productToEdit.description,
+                    starting_price: productToEdit.starting_price,
+                    reserve_price: productToEdit.reserve_price
+                })
+            });
+
+            if (res.ok) {
+                const updatedProduct = await res.json();
+                setProducts(products.map(p => p.products_id === productToEdit.products_id ? { ...p, ...productToEdit } : p));
+                setProductToEdit(null);
+            } else {
+                const errorData = await res.json();
+                alert(`Failed to update product: ${errorData.error || 'Unknown error'}`);
+            }
+        } catch (error) {
+            console.error('Error updating product:', error);
+            alert('Error updating product. Please try again.');
+        } finally {
+            setIsUpdating(false);
         }
     };
 
@@ -189,27 +255,39 @@ export default function InventoryPage() {
                                             alt={product.name}
                                             style={{ objectFit: 'cover', width: '100%', height: '100%' }}
                                         />
-                                        <button
-                                            onClick={() => handleDelete(product.products_id, product.name)}
-                                            disabled={isDeleting}
-                                            style={{
-                                                position: 'absolute', top: '8px', right: '8px',
-                                                background: 'rgba(220, 38, 38, 0.9)', color: 'white',
-                                                border: 'none', borderRadius: '4px', padding: '6px',
-                                                cursor: isDeleting ? 'not-allowed' : 'pointer',
-                                                display: 'flex', alignItems: 'center', justifyContent: 'center',
-                                                opacity: isDeleting ? 0.5 : 1
-                                            }}
-                                            title="Delete product"
-                                        >
-                                            <Trash2 size={16} />
-                                        </button>
+                                        <div className={styles.actionWrapper}>
+                                            <button
+                                                className={styles.actionBtn}
+                                                onClick={(e) => {
+                                                    e.stopPropagation();
+                                                    setActiveDropdownId(activeDropdownId === product.products_id ? null : product.products_id);
+                                                }}
+                                                title="Actions"
+                                            >
+                                                <MoreVertical size={18} />
+                                            </button>
+
+                                            {activeDropdownId === product.products_id && (
+                                                <div className={styles.dropdown}>
+                                                    <button 
+                                                        className={styles.dropdownItem}
+                                                        onClick={() => handleEditClick(product)}
+                                                    >
+                                                        <Edit2 size={14} /> Edit
+                                                    </button>
+                                                    <button 
+                                                        className={`${styles.dropdownItem} ${styles.delete}`}
+                                                        onClick={() => handleDeleteClick(product)}
+                                                    >
+                                                        <Trash2 size={14} /> Delete
+                                                    </button>
+                                                </div>
+                                            )}
+                                        </div>
                                     </div>
                                     <div className={styles.productInfo}>
                                         <strong>{product.name}</strong>
-                                        <span style={{ textTransform: 'capitalize', color: '#999', fontSize: '0.85rem' }}>
-                                            Draft • Ready to schedule
-                                        </span>
+                                        <span>Draft • Ready To Schedule</span>
                                     </div>
                                     <button
                                         className={styles.scheduleBtn}
@@ -241,7 +319,6 @@ export default function InventoryPage() {
             {scheduleProduct && (
                 <div className={styles.modalOverlay} onClick={closeScheduleModal}>
                     <div className={styles.modalContent} onClick={e => e.stopPropagation()}>
-
                         {/* Modal header */}
                         <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '1.5rem' }}>
                             <div>
@@ -256,7 +333,8 @@ export default function InventoryPage() {
                                 <X size={18} color="#64748b" />
                             </button>
                         </div>
-
+                        
+                        {/* Rest of schedule modal content remains same... */}
                         {/* Product brief */}
                         <div style={{ display: 'flex', alignItems: 'center', gap: '0.85rem', padding: '0.85rem', background: '#f8fafc', borderRadius: 12, marginBottom: '1.5rem' }}>
                             <img
@@ -269,7 +347,7 @@ export default function InventoryPage() {
                                 <div style={{ display: 'flex', gap: '1rem', marginTop: '0.3rem' }}>
                                     {scheduleProduct.reserve_price > 0 && (
                                         <span style={{ fontSize: '0.73rem', color: '#64748b' }}>
-                                            Reserve: <strong style={{ color: '#D32F2F' }}>₱{Number(scheduleProduct.reserve_price).toLocaleString('en-PH', { minimumFractionDigits: 2 })}</strong>
+                                            Reserve: <strong style={{ color: '#cc2b41' }}>₱{Number(scheduleProduct.reserve_price).toLocaleString('en-PH', { minimumFractionDigits: 2 })}</strong>
                                         </span>
                                     )}
                                     {scheduleProduct.starting_price > 0 && (
@@ -297,9 +375,9 @@ export default function InventoryPage() {
                                             style={{
                                                 display: 'flex', alignItems: 'center', gap: '0.65rem',
                                                 padding: '0.75rem 1rem', borderRadius: 12, cursor: 'pointer',
-                                                border: `2px solid ${saleType === opt.id ? '#D32F2F' : '#e2e8f0'}`,
+                                                border: `2px solid ${saleType === opt.id ? '#cc2b41' : '#e2e8f0'}`,
                                                 background: saleType === opt.id ? '#fff1f2' : 'white',
-                                                color: saleType === opt.id ? '#D32F2F' : '#475569',
+                                                color: saleType === opt.id ? '#cc2b41' : '#475569',
                                                 fontWeight: 600, fontSize: '0.85rem', textAlign: 'left'
                                             }}
                                         >
@@ -343,7 +421,6 @@ export default function InventoryPage() {
                             {/* Date & time (auction only) */}
                             {saleType !== 'sale' && (
                                 <div style={{ marginBottom: '1.25rem' }}>
-
                                     <label style={{ fontSize: '0.78rem', fontWeight: 700, color: '#475569', textTransform: 'uppercase', letterSpacing: '0.05em', display: 'block', marginBottom: '0.5rem' }}>Date & Time</label>
                                     <div className={styles.modalGrid}>
                                         <div style={{ border: '1.5px solid #e2e8f0', borderRadius: 10, padding: '0.6rem 0.85rem', display: 'flex', alignItems: 'center', gap: '0.5rem', background: '#fafafa' }}>
@@ -391,7 +468,7 @@ export default function InventoryPage() {
                                 type="submit"
                                 disabled={isScheduling || isAlreadyScheduled}
                                 style={{
-                                    width: '100%', background: isAlreadyScheduled ? '#e2e8f0' : '#D32F2F', color: isAlreadyScheduled ? '#94a3b8' : 'white', border: 'none',
+                                    width: '100%', background: isAlreadyScheduled ? '#e2e8f0' : '#cc2b41', color: isAlreadyScheduled ? '#94a3b8' : 'white', border: 'none',
                                     borderRadius: 12, padding: '0.9rem', fontWeight: 700, fontSize: '0.92rem',
                                     cursor: (isScheduling || isAlreadyScheduled) ? 'not-allowed' : 'pointer', opacity: isScheduling ? 0.7 : 1,
                                     transition: 'opacity 0.15s, background 0.15s'
@@ -406,6 +483,96 @@ export default function InventoryPage() {
                     </div>
                 </div>
             )}
+
+            {/* Edit Product Modal */}
+            {productToEdit && (
+                <div className={styles.modalOverlay} onClick={() => setProductToEdit(null)}>
+                    <div className={styles.modalContent} onClick={e => e.stopPropagation()}>
+                        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '1.5rem' }}>
+                            <div>
+                                <h2 style={{ margin: 0, fontSize: '1.1rem', fontWeight: 800, color: '#0f172a' }}>Edit Product</h2>
+                                <p style={{ margin: '2px 0 0', fontSize: '0.78rem', color: '#94a3b8' }}>Update your listing details</p>
+                            </div>
+                            <button onClick={() => setProductToEdit(null)} style={{ background: '#f1f5f9', border: 'none', borderRadius: 8, padding: '6px', cursor: 'pointer', display: 'flex' }}>
+                                <X size={18} color="#64748b" />
+                            </button>
+                        </div>
+
+                        <form onSubmit={handleUpdateProduct} className={styles.editForm}>
+                            <div className={styles.formGroup}>
+                                <label>Product Name</label>
+                                <input 
+                                    className={styles.formInput}
+                                    value={productToEdit.name}
+                                    onChange={e => setProductToEdit({...productToEdit, name: e.target.value})}
+                                    placeholder="Enter product name"
+                                    required
+                                />
+                            </div>
+
+                            <div className={styles.formGroup}>
+                                <label>Description</label>
+                                <textarea 
+                                    className={styles.formTextarea}
+                                    value={productToEdit.description}
+                                    onChange={e => setProductToEdit({...productToEdit, description: e.target.value})}
+                                    placeholder="Describe your product..."
+                                    required
+                                />
+                            </div>
+
+                            <div className={styles.priceGrid}>
+                                <div className={styles.formGroup}>
+                                    <label>Starting Price</label>
+                                    <div className={styles.inputWithPrefix}>
+                                        <span className={styles.inputPrefix}>₱</span>
+                                        <input 
+                                            type="number"
+                                            className={styles.formInput}
+                                            value={productToEdit.starting_price}
+                                            onChange={e => setProductToEdit({...productToEdit, starting_price: e.target.value})}
+                                            required
+                                        />
+                                    </div>
+                                </div>
+                                <div className={styles.formGroup}>
+                                    <label>Reserve Price</label>
+                                    <div className={styles.inputWithPrefix}>
+                                        <span className={styles.inputPrefix}>₱</span>
+                                        <input 
+                                            type="number"
+                                            className={styles.formInput}
+                                            value={productToEdit.reserve_price}
+                                            onChange={e => setProductToEdit({...productToEdit, reserve_price: e.target.value})}
+                                            required
+                                        />
+                                    </div>
+                                </div>
+                            </div>
+
+                            <button 
+                                type="submit" 
+                                className={styles.saveBtn}
+                                disabled={isUpdating}
+                                style={{ width: '100%', justifyContent: 'center', marginTop: '0.5rem' }}
+                            >
+                                {isUpdating ? 'Updating...' : 'Save Changes'}
+                            </button>
+                        </form>
+                    </div>
+                </div>
+            )}
+
+            {/* Delete Confirmation Modal */}
+            <ConfirmationModal 
+                isOpen={showDeleteConfirm}
+                onClose={() => setShowDeleteConfirm(false)}
+                onConfirm={confirmDelete}
+                title="Delete Product"
+                message={`Are you sure you want to delete "${productToDelete?.name}"? This action cannot be undone.`}
+                confirmText="Delete"
+                type="danger"
+            />
         </div>
     );
 }
