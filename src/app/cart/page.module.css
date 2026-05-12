@@ -1551,3 +1551,56 @@
     background-color: #f8fafc;
     border-color: #e2e8f0 !important;
 }
+/* ── Stashed Section Enhancements ── */
+.stashedItemUnavailable {
+    border-color: #f1f5f9;
+}
+
+.stashedMeta {
+    display: flex;
+    align-items: center;
+    gap: 0.75rem;
+    margin-top: 0.25rem;
+}
+
+.soldBadgeSmall {
+    font-size: 0.65rem;
+    background: #f1f5f9;
+    color: #64748b;
+    padding: 0.15rem 0.5rem;
+    border-radius: 4px;
+    font-weight: 700;
+    text-transform: uppercase;
+}
+
+.stashedOnlyBox {
+    margin-top: 1.5rem;
+    padding: 1.25rem;
+    background: #f8fafc;
+    border-radius: 12px;
+    border: 1px solid #e2e8f0;
+    text-align: center;
+}
+
+.stashedOnlyBox p {
+    margin-bottom: 0.75rem;
+    color: #475569;
+}
+
+.viewStashedBtn {
+    background: white;
+    border: 1px solid #cbd5e1;
+    color: #475569;
+    padding: 0.5rem 1.25rem;
+    border-radius: 8px;
+    font-size: 0.85rem;
+    font-weight: 600;
+    cursor: pointer;
+    transition: all 0.2s;
+}
+
+.viewStashedBtn:hover {
+    background: #f1f5f9;
+    border-color: #94a3b8;
+    color: #0f172a;
+}

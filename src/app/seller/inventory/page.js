@@ -365,26 +365,27 @@ export default function InventoryPage() {
                                 <label style={{ fontSize: '0.78rem', fontWeight: 700, color: '#475569', textTransform: 'uppercase', letterSpacing: '0.05em', display: 'block', marginBottom: '0.5rem' }}>Sale Type</label>
                                 <div className={styles.modalGrid}>
                                     {[
-                                        { id: 'bid', icon: <Gavel size={18} />, label: 'Bid it', sub: 'Live auction' },
-                                        { id: 'sale', icon: <Tag size={18} />, label: 'Fixed sale', sub: 'Set price' },
+                                        { id: 'bid', icon: <Gavel size={15} />, label: 'Bid it', sub: 'Live auction' },
+                                        { id: 'sale', icon: <Tag size={15} />, label: 'Fixed sale', sub: 'Set price' },
                                     ].map(opt => (
                                         <button
                                             key={opt.id}
                                             type="button"
                                             onClick={() => setSaleType(opt.id)}
                                             style={{
-                                                display: 'flex', alignItems: 'center', gap: '0.65rem',
-                                                padding: '0.75rem 1rem', borderRadius: 12, cursor: 'pointer',
+                                                display: 'flex', alignItems: 'center', gap: '0.5rem',
+                                                padding: '0.65rem 0.85rem', borderRadius: 12, cursor: 'pointer',
                                                 border: `2px solid ${saleType === opt.id ? '#cc2b41' : '#e2e8f0'}`,
                                                 background: saleType === opt.id ? '#fff1f2' : 'white',
                                                 color: saleType === opt.id ? '#cc2b41' : '#475569',
-                                                fontWeight: 600, fontSize: '0.85rem', textAlign: 'left'
+                                                fontWeight: 600, fontSize: '0.82rem', textAlign: 'left',
+                                                transition: 'all 0.15s'
                                             }}
                                         >
                                             {opt.icon}
                                             <div>
-                                                <div style={{ fontWeight: 700 }}>{opt.label}</div>
-                                                <div style={{ fontSize: '0.7rem', fontWeight: 400, opacity: 0.7 }}>{opt.sub}</div>
+                                                <div style={{ fontWeight: 800, lineHeight: 1.1 }}>{opt.label}</div>
+                                                <div style={{ fontSize: '0.68rem', fontWeight: 500, opacity: 0.8, marginTop: '1px' }}>{opt.sub}</div>
                                             </div>
                                         </button>
                                     ))}
@@ -488,13 +489,13 @@ export default function InventoryPage() {
             {productToEdit && (
                 <div className={styles.modalOverlay} onClick={() => setProductToEdit(null)}>
                     <div className={styles.modalContent} onClick={e => e.stopPropagation()}>
-                        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '1.5rem' }}>
+                        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '1.75rem' }}>
                             <div>
-                                <h2 style={{ margin: 0, fontSize: '1.1rem', fontWeight: 800, color: '#0f172a' }}>Edit Product</h2>
-                                <p style={{ margin: '2px 0 0', fontSize: '0.78rem', color: '#94a3b8' }}>Update your listing details</p>
+                                <h2 style={{ margin: 0, fontSize: '1.25rem', fontWeight: 800, color: '#0f172a', letterSpacing: '-0.02em' }}>Edit Product</h2>
+                                <p style={{ margin: '4px 0 0', fontSize: '0.85rem', color: '#64748b', fontWeight: 500 }}>Update your listing details</p>
                             </div>
-                            <button onClick={() => setProductToEdit(null)} style={{ background: '#f1f5f9', border: 'none', borderRadius: 8, padding: '6px', cursor: 'pointer', display: 'flex' }}>
-                                <X size={18} color="#64748b" />
+                            <button onClick={() => setProductToEdit(null)} style={{ background: '#f1f5f9', border: 'none', borderRadius: '50%', padding: '8px', cursor: 'pointer', display: 'flex', transition: 'all 0.2s' }}>
+                                <X size={20} color="#64748b" />
                             </button>
                         </div>
 
@@ -505,7 +506,7 @@ export default function InventoryPage() {
                                     className={styles.formInput}
                                     value={productToEdit.name}
                                     onChange={e => setProductToEdit({...productToEdit, name: e.target.value})}
-                                    placeholder="Enter product name"
+                                    placeholder="e.g. iPhone 15 Pro Max"
                                     required
                                 />
                             </div>
@@ -516,7 +517,7 @@ export default function InventoryPage() {
                                     className={styles.formTextarea}
                                     value={productToEdit.description}
                                     onChange={e => setProductToEdit({...productToEdit, description: e.target.value})}
-                                    placeholder="Describe your product..."
+                                    placeholder="Describe your product in detail..."
                                     required
                                 />
                             </div>
@@ -531,6 +532,7 @@ export default function InventoryPage() {
                                             className={styles.formInput}
                                             value={productToEdit.starting_price}
                                             onChange={e => setProductToEdit({...productToEdit, starting_price: e.target.value})}
+                                            placeholder="0.00"
                                             required
                                         />
                                     </div>
@@ -544,6 +546,7 @@ export default function InventoryPage() {
                                             className={styles.formInput}
                                             value={productToEdit.reserve_price}
                                             onChange={e => setProductToEdit({...productToEdit, reserve_price: e.target.value})}
+                                            placeholder="0.00"
                                             required
                                         />
                                     </div>
@@ -554,7 +557,7 @@ export default function InventoryPage() {
                                 type="submit" 
                                 className={styles.saveBtn}
                                 disabled={isUpdating}
-                                style={{ width: '100%', justifyContent: 'center', marginTop: '0.5rem' }}
+                                style={{ width: '100%', justifyContent: 'center', marginTop: '1rem' }}
                             >
                                 {isUpdating ? 'Updating...' : 'Save Changes'}
                             </button>

@@ -3,6 +3,8 @@
 import { useState, useEffect, useRef, Suspense, useCallback } from 'react';
 import { useAuth } from '@/context/AuthContext';
 import { useRouter, useSearchParams } from 'next/navigation';
+import { ChevronLeft, Plus, Trash2, X, Gavel, Tag, Calendar, Clock, ChevronRight } from 'lucide-react';
+import Link from 'next/link';
 import Header from '@/components/layout/Header';
 import CategoryNav from '@/components/home/CategoryNav';
 import HeroBanner from '@/components/home/HeroBanner';
@@ -10,7 +12,7 @@ import AuctionCard from '@/components/card/AuctionCard';
 import ProductCard from '@/components/card/ProductCard';
 import styles from './page.module.css';
 
-function ScrollSection({ title, children, empty }) {
+function ScrollSection({ title, children, empty, viewAllLink }) {
   const headerRef = useRef(null);
   const scrollRef = useRef(null);
   const [indicator, setIndicator] = useState({ left: 0, width: 120 });
@@ -52,7 +54,14 @@ function ScrollSection({ title, children, empty }) {
   return (
     <section className={styles.section}>
       <div ref={headerRef} className={styles.sectionHeader}>
-        <h2 className={styles.sectionTitle}>{title}</h2>
+        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-end', width: '100%' }}>
+          <h2 className={styles.sectionTitle}>{title}</h2>
+          {viewAllLink && (
+            <Link href={viewAllLink} className={styles.viewAll}>
+              View All <ChevronRight size={16} />
+            </Link>
+          )}
+        </div>
         <span
           className={styles.scrollIndicator}
           style={{
@@ -313,6 +322,7 @@ function HomeInner() {
           <ScrollSection
             title={selectedCategory === 'all' ? <>Live <span className={styles.redText}>Auctions</span></> : <><span className={styles.redText} style={{ textTransform: 'capitalize' }}>{selectedCategory}</span> Live</>}
             empty={<div className={styles.emptyState}>No live auctions at the moment.</div>}
+            viewAllLink="/live"
           >
             {liveAuctions.length > 0 && liveAuctions.map(item => <AuctionCard key={item.id} data={item} />)}
           </ScrollSection>
@@ -320,6 +330,7 @@ function HomeInner() {
           <ScrollSection
             title={selectedCategory === 'all' ? <>Scheduled <span className={styles.redText}>Auctions</span></> : <><span className={styles.redText} style={{ textTransform: 'capitalize' }}>{selectedCategory}</span> Scheduled</>}
             empty={<div className={styles.emptyState}>No scheduled auctions at the moment.</div>}
+            viewAllLink="/auctions?tab=scheduled"
           >
             {scheduledAuctions.length > 0 && scheduledAuctions.map(item => <AuctionCard key={item.id} data={item} />)}
           </ScrollSection>
@@ -329,6 +340,7 @@ function HomeInner() {
               ? <>Fixed Price <span className={styles.redText}>Sale</span></>
               : <><span className={styles.redText} style={{ textTransform: 'capitalize' }}>{selectedCategory}</span> Fixed Price</>}
             empty={<div className={styles.emptyState}>No fixed price items at the moment.</div>}
+            viewAllLink="/fixed-price"
           >
             {fixedProducts.length > 0 && fixedProducts.map(item => (
               <ProductCard key={item.products_id} data={{

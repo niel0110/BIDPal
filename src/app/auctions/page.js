@@ -1,17 +1,23 @@
 'use client';
 
-import { useState, useEffect } from 'react';
+import { useState, useEffect, Suspense } from 'react';
+import { useSearchParams } from 'next/navigation';
+import { ChevronLeft } from 'lucide-react';
+import Link from 'next/link';
 import Header from '@/components/layout/Header';
 import AuctionCard from '@/components/card/AuctionCard';
 import CategoryNav from '@/components/home/CategoryNav';
 import BIDPalLoader from '@/components/BIDPalLoader';
 import styles from './page.module.css';
 
-export default function AuctionsPage() {
+function AuctionsInner() {
+  const searchParams = useSearchParams();
+  const initialTab = searchParams.get('tab') || 'all';
+
   const [auctions, setAuctions] = useState([]);
   const [loading, setLoading] = useState(true);
   const [selectedCategory, setSelectedCategory] = useState('all');
-  const [activeTab, setActiveTab] = useState('all'); // 'all' | 'live' | 'scheduled'
+  const [activeTab, setActiveTab] = useState(initialTab); // 'all' | 'live' | 'scheduled'
 
   const fetchAuctions = async (category = 'all') => {
     setLoading(true);
@@ -54,6 +60,9 @@ export default function AuctionsPage() {
       <CategoryNav activeId={selectedCategory} onSelect={handleCategorySelect} />
 
       <div className={styles.pageHeader}>
+        <Link href="/" className={styles.backLink}>
+          <ChevronLeft size={18} /> Back to Home
+        </Link>
         <h1 className={styles.pageTitle}>
           Browse <span className={styles.red}>Auctions</span>
         </h1>
@@ -87,5 +96,13 @@ export default function AuctionsPage() {
         </div>
       )}
     </main>
+  );
+}
+
+export default function AuctionsPage() {
+  return (
+    <Suspense fallback={null}>
+      <AuctionsInner />
+    </Suspense>
   );
 }

@@ -353,49 +353,6 @@ export default function CartPage() {
                                     );
                                 })}
                             </div>
-
-                            {/* Stashed items section */}
-                            {stashedItems.length > 0 && (
-                                <div className={styles.stashedSection}>
-                                    <div className={styles.stashedHeader}>
-                                        <div className={styles.stashedTitle}>
-                                            <Clock size={18} />
-                                            <h2>Saved for Later</h2>
-                                            <span className={styles.stashedBadge}>{stashedItems.length}</span>
-                                        </div>
-                                        <p className={styles.stashedSub}>Items here don&apos;t count toward your cart limit and aren&apos;t included in checkout.</p>
-                                    </div>
-                                    
-                                    <div className={styles.stashedList}>
-                                        {stashedItems.map(item => (
-                                            <div key={item.cart_id} className={styles.stashedItem}>
-                                                <Link href={`/product/${item.id}`} className={styles.stashedImg} style={{ textDecoration: 'none' }}>
-                                                    <img src={item.image || 'https://placehold.co/100x100?text=No+Image'} alt={item.name} />
-                                                </Link>
-                                                <div className={styles.stashedInfo}>
-                                                    <Link href={`/product/${item.id}`} className={styles.stashedName} style={{ textDecoration: 'none', color: 'inherit' }}>{item.name}</Link>
-                                                    <p className={styles.stashedSeller}>Sold by: {item.seller}</p>
-                                                    <div className={styles.stashedPrice}>₱{item.price.toLocaleString('en-PH')}</div>
-                                                </div>
-                                                <div className={styles.stashedActions}>
-                                                    <button
-                                                        className={styles.unstashBtn}
-                                                        onClick={() => unstashItem(item.cart_id)}
-                                                    >
-                                                        Move to Cart
-                                                    </button>
-                                                    <button
-                                                        className={styles.stashedRemove}
-                                                        onClick={() => removeItem(item.cart_id)}
-                                                    >
-                                                        Remove
-                                                    </button>
-                                                </div>
-                                            </div>
-                                        ))}
-                                    </div>
-                                </div>
-                            )}
                         </div>
 
                         {/* Order summary */}
@@ -597,32 +554,42 @@ export default function CartPage() {
                         </div>
                         
                         <div className={styles.stashedList}>
-                            {stashedItems.map(item => (
-                                <div key={item.cart_id} className={styles.stashedItem}>
-                                    <Link href={`/product/${item.id}`} className={styles.stashedImg} style={{ textDecoration: 'none' }}>
-                                        <img src={item.image || 'https://placehold.co/100x100?text=No+Image'} alt={item.name} />
-                                    </Link>
-                                    <div className={styles.stashedInfo}>
-                                        <Link href={`/product/${item.id}`} className={styles.stashedName} style={{ textDecoration: 'none', color: 'inherit' }}>{item.name}</Link>
-                                        <p className={styles.stashedSeller}>Sold by: {item.seller}</p>
-                                        <div className={styles.stashedPrice}>₱{item.price.toLocaleString('en-PH')}</div>
+                            {stashedItems.map(item => {
+                                const isUnavailable = item.status === 'sold' || item.availability <= 0;
+                                return (
+                                    <div key={item.cart_id} className={`${styles.stashedItem} ${isUnavailable ? styles.stashedItemUnavailable : ''}`}>
+                                        <Link href={`/product/${item.id}`} className={styles.stashedImg} style={{ textDecoration: 'none', opacity: isUnavailable ? 0.6 : 1 }}>
+                                            <img src={item.image || 'https://placehold.co/100x100?text=No+Image'} alt={item.name} />
+                                        </Link>
+                                        <div className={styles.stashedInfo}>
+                                            <Link href={`/product/${item.id}`} className={styles.stashedName} style={{ textDecoration: 'none', color: 'inherit' }}>{item.name}</Link>
+                                            <p className={styles.stashedSeller}>Sold by: {item.seller}</p>
+                                            <div className={styles.stashedMeta}>
+                                                <div className={styles.stashedPrice}>₱{item.price.toLocaleString('en-PH')}</div>
+                                                {isUnavailable && (
+                                                    <span className={styles.soldBadgeSmall}>Sold Out</span>
+                                                )}
+                                            </div>
+                                        </div>
+                                        <div className={styles.stashedActions}>
+                                            <button
+                                                className={styles.unstashBtn}
+                                                onClick={() => !isUnavailable && unstashItem(item.cart_id)}
+                                                disabled={isUnavailable}
+                                                style={isUnavailable ? { opacity: 0.5, cursor: 'not-allowed' } : {}}
+                                            >
+                                                {isUnavailable ? 'Unavailable' : 'Move to Cart'}
+                                            </button>
+                                            <button
+                                                className={styles.stashedRemove}
+                                                onClick={() => removeItem(item.cart_id)}
+                                            >
+                                                Remove
+                                            </button>
+                                        </div>
                                     </div>
-                                    <div className={styles.stashedActions}>
-                                        <button
-                                            className={styles.unstashBtn}
-                                            onClick={() => unstashItem(item.cart_id)}
-                                        >
-                                            Move to Cart
-                                        </button>
-                                        <button
-                                            className={styles.stashedRemove}
-                                            onClick={() => removeItem(item.cart_id)}
-                                        >
-                                            Remove
-                                        </button>
-                                    </div>
-                                </div>
-                            ))}
+                                );
+                            })}
                         </div>
                     </div>
                 )}

@@ -12,6 +12,24 @@
     padding-bottom: 4rem;
 }
 
+.backLink {
+  display: flex;
+  align-items: center;
+  gap: 0.35rem;
+  color: #666;
+  font-size: 0.85rem;
+  font-weight: 600;
+  text-decoration: none;
+  margin-bottom: 1rem;
+  width: fit-content;
+  transition: all 0.2s;
+}
+
+.backLink:hover {
+  color: #D32F2F;
+  transform: translateX(-4px);
+}
+
 .liveHero {
     max-width: 1440px;
     margin: 0 auto;

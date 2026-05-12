@@ -3,9 +3,10 @@
 import BIDPalLoader from '@/components/BIDPalLoader';
 import { useState, useEffect, useRef, Suspense } from 'react';
 import { useSearchParams, useRouter } from 'next/navigation';
+import Link from 'next/link';
 import Header from '@/components/layout/Header';
 import AuctionCard from '@/components/card/AuctionCard';
-import { Clock, Eye, Heart, Send, X, Truck, Pencil, CheckCircle, Loader2, Mic, MicOff, Video, VideoOff, Share2, Users, Lock } from 'lucide-react';
+import { Clock, Eye, Heart, Send, X, Truck, Pencil, CheckCircle, Loader2, Mic, MicOff, Video, VideoOff, Share2, Users, Lock, ChevronLeft } from 'lucide-react';
 import styles from './page.module.css';
 import { io } from 'socket.io-client';
 import { useAuth } from '@/context/AuthContext';
@@ -1154,6 +1155,9 @@ function LivePageInner() {
                 <Header />
 
                 <section className={styles.liveHero}>
+                    <Link href="/" className={styles.backLink}>
+                        <ChevronLeft size={18} /> Back to Home
+                    </Link>
                     <div>
                         <span className={styles.liveEyebrow}>Live Auctions</span>
                         <h1>Join a live auction in progress.</h1>
