@@ -187,6 +187,60 @@ export const triggerPaymentViolation = async (paymentWindow) => {
       })
       .eq('payment_window_id', paymentWindow.payment_window_id);
 
+    // ── NEW: AUTOMATICALLY CANCEL THE ORDER ──
+    try {
+        console.log(`🚫 Auto-cancelling order for auction ${paymentWindow.auction_id} due to payment expiry`);
+        
+        // 1. Find the order
+        const { data: order } = await supabase
+            .from('Orders')
+            .select('order_id, seller_id')
+            .eq('auction_id', paymentWindow.auction_id)
+            .eq('user_id', paymentWindow.winner_user_id)
+            .eq('status', 'pending_payment')
+            .maybeSingle();
+
+        if (order) {
+            // 2. Mark as cancelled
+            await supabase
+                .from('Orders')
+                .update({ status: 'cancelled' })
+                .eq('order_id', order.order_id);
+
+            // 3. Record in Order_Cancellations so it counts toward their limit
+            const { data: vRec } = await supabase
+                .from('Violation_Records')
+                .select('cancellations_this_week')
+                .eq('user_id', paymentWindow.winner_user_id)
+                .single();
+
+            const newWeeklyCount = (vRec?.cancellations_this_week || 0) + 1;
+
+            await supabase
+                .from('Order_Cancellations')
+                .insert([{
+                    user_id: paymentWindow.winner_user_id,
+                    auction_id: paymentWindow.auction_id,
+                    order_id: order.order_id,
+                    reason: 'Payment Window Expired (Automated)',
+                    within_window: false,
+                    weekly_cancellation_number: newWeeklyCount,
+                    triggered_violation: true,
+                    violation_event_id: violationEvent.violation_event_id
+                }]);
+
+            // 4. Update weekly count in record
+            await supabase
+                .from('Violation_Records')
+                .update({ cancellations_this_week: newWeeklyCount })
+                .eq('user_id', paymentWindow.winner_user_id);
+                
+            console.log(`✅ Order ${order.order_id} cancelled and recorded for user ${paymentWindow.winner_user_id}`);
+        }
+    } catch (cancelErr) {
+        console.error('Failed to auto-cancel order on payment expiry:', cancelErr);
+    }
+
     // Process strike via Strike Engine
     const { processStrike } = await import('./strikeEngine.js');
     await processStrike(violationEvent);

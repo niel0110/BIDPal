@@ -2,7 +2,7 @@
 
 import { useState, useEffect } from 'react';
 import { useParams, useRouter } from 'next/navigation';
-import { ShoppingCart, Flag, X, CheckCircle, ShieldCheck, Star, Zap } from 'lucide-react';
+import { ShoppingCart, Flag, X, CheckCircle, ShieldCheck, Star, Zap, Edit, Trash2, AlertTriangle } from 'lucide-react';
 import { useAuth } from '@/context/AuthContext';
 import { useCart } from '@/context/CartContext';
 import BIDPalLoader from '@/components/BIDPalLoader';
@@ -26,6 +26,8 @@ export default function ProductDetailPage() {
     const [mainImg, setMainImg] = useState(null);
     const [isAdding, setIsAdding] = useState(false);
     const [addError, setAddError] = useState('');
+    const [showDeleteModal, setShowDeleteModal] = useState(false);
+    const [isDeleting, setIsDeleting] = useState(false);
 
     const [reportOpen, setReportOpen] = useState(false);
     const [reportReason, setReportReason] = useState('');
@@ -56,6 +58,32 @@ export default function ProductDetailPage() {
         };
         fetchProduct();
     }, [id]);
+
+    const handleDeleteProduct = async () => {
+        setIsDeleting(true);
+        try {
+            const apiUrl = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:5000';
+            const token = localStorage.getItem('bidpal_token');
+            const res = await fetch(`${apiUrl}/api/products/${product.products_id}`, {
+                method: 'DELETE',
+                headers: { Authorization: `Bearer ${token}` }
+            });
+            
+            if (res.ok) {
+                router.push('/seller/inventory');
+            } else {
+                const data = await res.json();
+                alert(data.error || 'Failed to delete product');
+                setShowDeleteModal(false);
+            }
+        } catch (err) {
+            console.error('Delete error:', err);
+            alert('Network error. Please try again.');
+            setShowDeleteModal(false);
+        } finally {
+            setIsDeleting(false);
+        }
+    };
 
     const handleAddToCart = async () => {
         if (!user) { router.push('/'); return; }
@@ -296,12 +324,20 @@ export default function ProductDetailPage() {
                                 <div className={styles.ownerNotice}>
                                     This is your fixed-price listing.
                                 </div>
-                                <button
-                                    className={styles.manageListingBtn}
-                                    onClick={() => router.push('/seller/orders')}
-                                >
-                                    Manage Fixed Price Listings
-                                </button>
+                                <div className={styles.ownerActionsGrid}>
+                                    <button
+                                        className={styles.editBtn}
+                                        onClick={() => router.push(`/seller/inventory/edit/${product.products_id}`)}
+                                    >
+                                        <Edit size={18} /> Edit Item
+                                    </button>
+                                    <button
+                                        className={styles.deleteBtn}
+                                        onClick={() => setShowDeleteModal(true)}
+                                    >
+                                        <Trash2 size={18} /> Delete Item
+                                    </button>
+                                </div>
                             </div>
                         ) : (
                             <>
@@ -395,6 +431,39 @@ export default function ProductDetailPage() {
                                 </div>
                             </form>
                         )}
+                    </div>
+                </div>
+            )}
+
+            {/* ── Delete Confirmation Modal ── */}
+            {showDeleteModal && (
+                <div className={styles.modalOverlay} onClick={() => !isDeleting && setShowDeleteModal(false)}>
+                    <div className={styles.modalBox} onClick={e => e.stopPropagation()} style={{ maxWidth: 400 }}>
+                        <div className={styles.deleteModalContent}>
+                            <div className={styles.deleteIconWrapper}>
+                                <AlertTriangle size={32} color="#D32F2F" />
+                            </div>
+                            <h3 className={styles.deleteModalTitle}>Delete Listing?</h3>
+                            <p className={styles.deleteModalMsg}>
+                                Are you sure you want to delete <strong>"{product.name}"</strong>? This action cannot be undone and the item will be removed from your inventory.
+                            </p>
+                            <div className={styles.deleteModalActions}>
+                                <button 
+                                    className={styles.cancelDeleteBtn} 
+                                    onClick={() => setShowDeleteModal(false)}
+                                    disabled={isDeleting}
+                                >
+                                    Cancel
+                                </button>
+                                <button 
+                                    className={styles.confirmDeleteBtn} 
+                                    onClick={handleDeleteProduct}
+                                    disabled={isDeleting}
+                                >
+                                    {isDeleting ? 'Deleting...' : 'Yes, Delete Listing'}
+                                </button>
+                            </div>
+                        </div>
                     </div>
                 </div>
             )}

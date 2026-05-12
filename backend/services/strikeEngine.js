@@ -196,7 +196,25 @@ const applyStrike3Consequences = async (violationEvent) => {
     // Notify seller(s) affected by this buyer's violations
     await notifyAffectedSellers(violationEvent);
 
-    console.log(`✅ Strike 3 suspension applied to user ${violationEvent.user_id}, case ${moderationCase.moderation_case_id}`);
+    // ── NEW: NOTIFY ADMIN ABOUT BOGUS BUYER (STRIKE 3) ──
+    try {
+        await supabase.from('Admin_Notifications').insert([{
+            type: 'bogus_buyer_flag',
+            title: '🚨 Bogus Buyer Detected: Strike 3',
+            message: `User ${violationEvent.user_id} has reached 3 strikes. Account suspended pending review.`,
+            payload: {
+                user_id: violationEvent.user_id,
+                violation_type: violationEvent.violation_type,
+                strike_count: 3,
+                moderation_case_id: moderationCase.moderation_case_id
+            },
+            is_read: false,
+            created_at: new Date().toISOString()
+        }]);
+        console.log(`🔔 Admin alerted about Strike 3 for user ${violationEvent.user_id}`);
+    } catch (adminNotifErr) {
+        console.error('Failed to notify admin about Strike 3:', adminNotifErr);
+    }
   } catch (err) {
     console.error('Error applying Strike 3 consequences:', err);
     throw err;

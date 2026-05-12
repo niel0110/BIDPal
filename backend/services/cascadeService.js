@@ -92,15 +92,24 @@ export const cascadeToNextWinner = async (auctionId, cancelledByUserId) => {
     if (!nextBid) {
       console.log(`ℹ️ No more eligible bidders for auction ${auctionId}`);
 
-      // Clear the winner so the cancelled buyer stops seeing the "To Pay" fallback
+      // Reset the auction fields so it can be rescheduled
       await supabase
         .from('Auctions')
-        .update({ winner_user_id: null, winning_bid_id: null, final_price: null })
+        .update({ 
+            winner_user_id: null, 
+            winning_bid_id: null, 
+            final_price: null,
+            status: 'ended' // Move to ended status (unsuccessful)
+        })
         .eq('auction_id', auctionId);
 
+      // Restore product availability
       await supabase
         .from('Products')
-        .update({ status: 'inactive' })
+        .update({ 
+            status: 'active', // Make it available for a new auction
+            availability: 1 
+        })
         .eq('products_id', auction.products_id);
 
       await _notifySeller(sellerUserId, {

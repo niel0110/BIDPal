@@ -90,7 +90,7 @@ export const getAllProducts = async (req, res) => {
       search,
       has_price,
       sort = 'recent',
-      limit = 50,
+      limit = 50,
       offset = 0
     } = req.query;
 
@@ -392,6 +392,7 @@ export const updateProduct = async (req, res) => {
       name, title, description, sku, condition, status,
       reserve_price, starting_price, bid_increment,
       brand, size, specifications, availability, categories,
+      price, existing_images,
     } = req.body;
 
     const updateData = {};
@@ -407,6 +408,7 @@ export const updateProduct = async (req, res) => {
     if (size !== undefined) updateData.size = size;
     if (specifications !== undefined) updateData.specifications = specifications;
     if (availability !== undefined) updateData.availability = availability;
+    if (price !== undefined) updateData.price = parseFloat(price);
 
     if (bid_increment !== undefined && bid_increment !== null && bid_increment !== '' && parseFloat(bid_increment) <= 0) {
       return res.status(400).json({ error: 'Bid increment must be greater than 0.' });
@@ -449,6 +451,33 @@ export const updateProduct = async (req, res) => {
           await supabase.from('Product_Categories').insert(
             catRows.map(c => ({ products_id, category_id: c.category_id }))
           );
+        }
+      }
+    }
+
+    // Handle existing images synchronization
+    if (existing_images !== undefined) {
+      const existingUrls = Array.isArray(existing_images)
+        ? existing_images
+        : (typeof existing_images === 'string' ? JSON.parse(existing_images) : []);
+
+      // Remove images that are no longer in the existing_images list
+      const { data: currentImages } = await supabase
+        .from('Product_Images')
+        .select('image_url')
+        .eq('products_id', products_id);
+
+      if (currentImages) {
+        const urlsToDelete = currentImages
+          .map(img => img.image_url)
+          .filter(url => !existingUrls.includes(url));
+
+        if (urlsToDelete.length > 0) {
+          await supabase
+            .from('Product_Images')
+            .delete()
+            .eq('products_id', products_id)
+            .in('image_url', urlsToDelete);
         }
       }
     }

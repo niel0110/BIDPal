@@ -1678,10 +1678,19 @@ export const getAuctionBids = async (req, res) => {
 
     const cancelledUserIds = new Set((cancellations || []).map(c => c.user_id));
 
+    // Also fetch payment violations to mark bidders whose payment window expired
+    const { data: violations } = await supabase
+      .from('Payment_Windows')
+      .select('winner_user_id')
+      .eq('auction_id', id)
+      .eq('violation_triggered', true);
+    
+    const violatedUserIds = new Set((violations || []).map(v => v.winner_user_id));
+
     // Enrich bids with cancellation status
     const bidsWithStatus = (bids || []).map(bid => ({
       ...bid,
-      is_cancelled: cancelledUserIds.has(bid.user_id)
+      is_cancelled: cancelledUserIds.has(bid.user_id) || violatedUserIds.has(bid.user_id)
     }));
 
     res.json(bidsWithStatus);
