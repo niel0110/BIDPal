@@ -629,6 +629,12 @@
     margin: 0;
 }
 
+.reviewFooter {
+    margin-top: 0.2rem;
+    padding-top: 0.35rem;
+    border-top: 1px solid #f3f4f6;
+}
+
 /* ── Responsive: Banner ── */
 @media (max-width: 640px) {
     .bannerSection { height: 150px; }

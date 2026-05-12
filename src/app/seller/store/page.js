@@ -402,7 +402,6 @@ export default function SellerStorePage() {
                                                         }
                                                         <div>
                                                             <p className={styles.reviewerName}>{r.reviewer?.name || 'Buyer'}</p>
-                                                            <p className={styles.reviewDate}>{new Date(r.created_at).toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' })}</p>
                                                         </div>
                                                     </div>
                                                     <div className={styles.reviewStars}>
@@ -411,6 +410,9 @@ export default function SellerStorePage() {
                                                 </div>
                                                 {r.product_name && <p className={styles.reviewProduct}>Purchased: {r.product_name}</p>}
                                                 {r.comment && <p className={styles.reviewComment}>{r.comment}</p>}
+                                                <div className={styles.reviewFooter}>
+                                                    <p className={styles.reviewDate}>{new Date(r.created_at).toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' })}</p>
+                                                </div>
                                             </div>
                                         );
                                     })}
