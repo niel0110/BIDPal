@@ -113,10 +113,26 @@ graph TD
 ```
 
 ### 3.2 The 4-Source Pipeline
-1.  **PH Retail Anchor (SRP):** Leverages OpenAI to fetch current Philippine Suggested Retail Prices, providing a "brand new" baseline.
-2.  **Mercari Market Data:** Cross-references a 1.4M item dataset from Mercari Japan (comparable to PH secondhand market) to establish secondary market value.
-3.  **Random Forest Model:** A machine learning model trained on high-volume categories to predict price based on specific specs (e.g., RAM, Storage, Condition).
-4.  **BIDPal Historical Sales:** Internal sales data is blended using a weighted decay model to adapt recommendations to real-time local demand.
+The core of BIDPal's valuation engine is a multi-dimensional pipeline that synthesizes data from four distinct sources to ensure price recommendations are both realistic and competitive. By converging global market data with local sales trends, the system minimizes the risk of "AI hallucination" and provides sellers with a data-driven baseline for their auctions, as detailed in the table below.
+
+**Table 3.1: The 4-Source Pricing Pipeline**
+
+| Source | Role | Technical Implementation |
+| :--- | :--- | :--- |
+| **OpenAI** | **SRP Anchor** | Fetches the current Philippine Suggested Retail Price (Brand New). |
+| **Mercari Dataset (1.4M)** | **Market Signal** | Provides global secondary market value for comparable items. |
+| **Random Forest Model** | **Feature Estimate** | Predicts price based on 25+ numerical features (Specs, Condition, Brand). |
+| **BIDPal History** | **Local Drift** | Adjusts price based on actual successful sales within the platform. |
+
+As illustrated in Table 3.1, the pipeline begins by establishing a "brand new" baseline using the OpenAI SRP Anchor. This source leverages real-time retail data to identify the current Philippine Suggested Retail Price, ensuring that secondhand recommendations never exceed the cost of a new unit. This is immediately balanced by the Mercari Market Signal, which cross-references a massive 1.4M item dataset. This secondary market signal is critical for establishing the "depreciated value" of goods, providing a global context for how similar items are priced in active secondhand markets.
+
+To further refine the estimate, the system incorporates a localized Feature Estimate powered by a Random Forest Model. As shown in Table 3.1, this model transforms unstructured product data into a 25-dimensional numerical vector, allowing the system to account for specific specifications like RAM, storage, and physical condition. Finally, the BIDPal Historical Sales data is applied to account for "Local Drift." This source ensures that the final recommendation reflects actual demand within the As illustrated in Table 3.1, the pipeline begins by establishing a "brand new" baseline using the OpenAI SRP Anchor. This source leverages real-time retail data to identify the current Philippine Suggested Retail Price, ensuring that secondhand recommendations never exceed the cost of a new unit. This is immediately balanced by the Mercari Market Signal, which cross-references a massive 1.4M item dataset. This secondary market signal is critical for establishing the "depreciated value" of goods, providing a global context for how similar items are priced in active secondhand markets.
+
+To further refine the estimate, the system incorporates a localized Feature Estimate powered by a Random Forest Model. As shown in Table 3.1, this model transforms unstructured product data into a 25-dimensional numerical vector, allowing the system to account for specific specifications like RAM, storage, and physical condition. Finally, the BIDPal Historical Sales data is applied to account for "Local Drift." This source ensures that the final recommendation reflects actual demand within the Philippine market, adjusting the price based on successful transactions and bidding velocity recorded directly on the platform.
+
+Technically, these four signals are converged using a weighted blending algorithm. If the primary AI estimate and the deterministic Mercari data diverge by a significant margin (greater than 2.5x), the system forces a convergence to prevent irrational pricing. This hybrid architecture ensures that every recommendation is substantiated by multiple independent data points, providing a robust and reliable pricing experience for all marketplace participants.Philippine market, adjusting the price based on successful transactions and bidding velocity recorded directly on the platform.
+
+Technically, these four signals are converged using a weighted blending algorithm. If the primary AI estimate and the deterministic Mercari data diverge by a significant margin (greater than 2.5x), the system forces a convergence to prevent irrational pricing. This hybrid architecture ensures that every recommendation is substantiated by multiple independent data points, providing a robust and reliable pricing experience for all marketplace participants.
 
 ### 3.3 Technical Substantiation (Code Reference)
 **File:** `priceRecommendationService.js` (L120-129)
@@ -229,42 +245,23 @@ await supabase
 ```
 
 #### 5.2.5 The Three-Strike Escalation Model:
-| Strike | Account Status | Consequence | Technical Mechanism |
-|--------|----------------|-------------|----------------------|
-| **1** | **Warned** | Official Warning | `applyStrike1Consequences()`: Issues persistent warning. |
-| **2** | **Restricted** | **Pre-Auth Required** | `applyStrike2Consequences()`: Enforces payment verification before bidding. |
-| **3** | **Suspended** | **Account Lock** | `applyStrike3Consequences()`: Suspends all privileges. |
+The BIDPal platform utilizes a progressive enforcement system designed to maintain marketplace integrity through a series of proportional penalties. This multi-layered security architecture ensures that user behavior is monitored and corrected through escalating technical restrictions, ranging from simple warnings to total account revocation. By automating the detection and enforcement cycle, the system provides a predictable and transparent moderation framework for both buyers and sellers, as summarized in the table below.
 
-#### Technical Substantiation (Code Reference):
-**File:** `strikeEngine.js` (L104-119)
-```javascript
-// STRIKE 2: Account Restriction + Pre-Authorization Requirement
-const { data: restriction, error: restrictionError } = await supabase
-  .from('Account_Restrictions')
-  .insert([{
-    user_id: violationEvent.user_id,
-    restriction_type: 'pre_authorization_required',
-    is_active: true,
-    details: {
-      requires_pre_auth: true,
-      reason: 'Strike 2 penalty',
-      applied_strike: 2
-    }
-  }])
-```
+**Table 5.1: Progressive Escalation and Strike Enforcement Model**
 
-#### Technical Substantiation (Code Reference):
-```javascript
-// strikeEngine.js:60
-const getStatusForStrike = (strikeCount) => {
-  switch (strikeCount) {
-    case 1: return 'warned';
-    case 2: return 'restricted';
-    case 3: return 'suspended';
-    default: return 'clean';
-  }
-};
-```
+| Level | Account Status | Technical Consequence | Primary Mechanism |
+| :--- | :--- | :--- | :--- |
+| **Strike 1** | **Probation/Warned** | Official Warning Issued | Persistent UI notification and moderation log entry. |
+| **Strike 2** | **Restricted** | **Pre-Authorization Required** | Users must verify payment methods before placing any new bids. |
+| **Strike 3** | **Suspended** | **Account Lock** | Total revocation of bidding and buying privileges; 48h review deadline. |
+
+As detailed in Table 5.1, the system initiates enforcement upon a user's first violation, such as an initial payment window expiry or a first instance of excessive cancellation. This Strike 1 phase is characterized by an official warning issued through a persistent UI notification and a corresponding entry in the moderation log. Technically, the `applyStrike1Consequences` function generates an in-app notification while simultaneously creating a normal-priority moderation case. This allows administrators to review the context of the violation without immediately restricting the user's core bidding functionality, serving primarily as a formal notice of non-compliance.
+
+If behavior does not improve and a second violation occurs, the account transitions to Strike 2, which imposes a behavioral restriction. The primary mechanism at this level, as indicated in Table 5.1, is the enforcement of a pre-authorization requirement for all future bidding activities. The `strikeEngine.js` service inserts a record into the `Account_Restrictions` table with a `pre_authorization_required` flag, creating a "verification wall." The bidding engine is programmatically configured to check for this restriction, blocking the user from submitting new bids until they have verified a valid payment method. This ensures a higher degree of financial commitment and filters out users who repeatedly fail to complete transactions.
+
+The final and most severe tier of enforcement is Strike 3, which results in full account suspension and a total lock of all platform privileges. This level is triggered by a third violation, signaling chronic non-compliance or malicious intent such as "bogus buying." As specified in the enforcement model, the `applyStrike3Consequences` function applies an `account_suspended` restriction and programmatically sets a strict 48-hour review deadline. During this window, a high-priority moderation case is processed for manual audit. All bidding and buying privileges are revoked, and if the suspension is confirmed by the moderation team, the account transitions from a temporary lock to a permanent ban from the marketplace.
+
+Technically, this escalation model is substantiated through the integration of the `strikeEngine.js` service and the `Account_Restrictions` relational schema. The system maintains data integrity by ensuring that every restriction is logged with an active status and specific metadata, such as the reason for the strike and the associated violation event ID. This allows the platform to programmatically enforce the consequences outlined in Table 5.1 in real-time across the bidding and checkout routes, ensuring that the marketplace remains secure and that penalties are applied consistently across all user accounts.
 
 ---
 
