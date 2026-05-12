@@ -21,6 +21,7 @@ import {
 } from 'lucide-react';
 import { useAuth } from '@/context/AuthContext';
 import { useSearchParams, useRouter } from 'next/navigation';
+import RouteGuard from '@/components/auth/RouteGuard';
 import styles from './page.module.css';
 
 const API_URL = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:5000';
@@ -874,8 +875,10 @@ function MessagesPageInner() {
 
 export default function MessagesPage() {
     return (
-        <Suspense fallback={<div style={{ minHeight: '100vh' }} />}>
-            <MessagesPageInner />
-        </Suspense>
+        <RouteGuard>
+            <Suspense fallback={<div style={{ minHeight: '100vh' }} />}>
+                <MessagesPageInner />
+            </Suspense>
+        </RouteGuard>
     );
 }

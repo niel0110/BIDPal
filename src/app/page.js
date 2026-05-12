@@ -99,7 +99,7 @@ function HomeInner() {
   useEffect(() => {
     if (loading) return;
     if (!user) {
-      router.replace('/signin');
+      // Allow unauthenticated users to view the homepage
       return;
     }
     if (user.role?.toLowerCase() === 'seller') {
@@ -259,7 +259,7 @@ function HomeInner() {
   const scheduledAuctions = allAuctions.filter(a => a.status === 'scheduled' && isBidAuction(a));
 
 
-  if (loading || !user) return null;
+  if (loading) return null;
 
   return (
     <main className={styles.main}>

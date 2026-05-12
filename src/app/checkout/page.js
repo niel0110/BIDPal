@@ -7,6 +7,7 @@ import { useState, useEffect, useCallback, Suspense } from 'react';
 import { useRouter, useSearchParams } from 'next/navigation';
 import { MapPin, Plus, CreditCard, Truck, CheckCircle2, Loader2, AlertCircle, X, ShoppingBag, Gavel, Smartphone, Copy, Tag, Info, AlertTriangle, ShieldCheck } from 'lucide-react';
 import { useAuth } from '@/context/AuthContext';
+import RouteGuard from '@/components/auth/RouteGuard';
 import styles from './page.module.css';
 
 const API_URL = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:5000';
@@ -791,8 +792,10 @@ function CheckoutPageInner() {
 
 export default function CheckoutPage() {
     return (
-        <Suspense fallback={<BIDPalLoader />}>
-            <CheckoutPageInner />
-        </Suspense>
+        <RouteGuard>
+            <Suspense fallback={<BIDPalLoader />}>
+                <CheckoutPageInner />
+            </Suspense>
+        </RouteGuard>
     );
 }

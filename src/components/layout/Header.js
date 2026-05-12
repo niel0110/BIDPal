@@ -103,6 +103,18 @@ function HeaderInner() {
     router.push('/');
   };
 
+  const handleProtectedAction = (e, targetPath) => {
+    if (!user) {
+      e.preventDefault();
+      router.push('/signin');
+      return;
+    }
+    if (targetPath) {
+      router.push(targetPath);
+      setIsMenuOpen(false);
+    }
+  };
+
   return (
     <div className={styles.headerContainer}>
       <header className={styles.mainHeader}>
@@ -125,13 +137,13 @@ function HeaderInner() {
                     </div>
                     <span>Home</span>
                   </Link>
-                  <Link href="/profile?tab=wishlist" className={styles.dropdownItem} onClick={() => setIsMenuOpen(false)}>
+                  <Link href="/profile?tab=wishlist" className={styles.dropdownItem} onClick={(e) => handleProtectedAction(e, '/profile?tab=wishlist')}>
                     <div className={`${styles.iconCircle} ${styles.red}`}>
                       <Heart size={18} />
                     </div>
                     <span>Wishlist</span>
                   </Link>
-                  <Link href="/messages" className={styles.dropdownItem} onClick={() => setIsMenuOpen(false)} style={{ display: 'flex', justifyContent: 'space-between' }}>
+                  <Link href="/messages" className={styles.dropdownItem} onClick={(e) => handleProtectedAction(e, '/messages')} style={{ display: 'flex', justifyContent: 'space-between' }}>
                     <div style={{ display: 'flex', alignItems: 'center', gap: '0.75rem' }}>
                       <div className={`${styles.iconCircle} ${styles.orange}`}>
                         <MessageCircle size={18} />
@@ -144,7 +156,7 @@ function HeaderInner() {
                         </span>
                     )}
                   </Link>
-                  <Link href="/profile" className={styles.dropdownItem} onClick={() => setIsMenuOpen(false)}>
+                  <Link href="/profile" className={styles.dropdownItem} onClick={(e) => handleProtectedAction(e, '/profile')}>
                     <div className={`${styles.iconCircle} ${styles.yellow}`}>
                       <User size={18} />
                     </div>
@@ -272,11 +284,11 @@ function HeaderInner() {
 
           {user && user.role?.toLowerCase() === 'seller' ? null : (
             <>
-              <Link href="/orders" className={styles.navItem}>
+              <Link href="/orders" className={styles.navItem} onClick={(e) => handleProtectedAction(e, '/orders')}>
                 <ClipboardList size={18} className={styles.navIcon} color="#673AB7" />
                 <span>Orders</span>
               </Link>
-              <Link href="/cart" className={styles.navItem}>
+              <Link href="/cart" className={styles.navItem} onClick={(e) => handleProtectedAction(e, '/cart')}>
                 <div style={{ position: 'relative', display: 'flex', alignItems: 'center' }}>
                   <ShoppingCart size={18} className={styles.cartIcon} color="#D32F2F" />
                   {cartItems.length > 0 && (

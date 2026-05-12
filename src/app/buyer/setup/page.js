@@ -5,6 +5,7 @@ import { useRouter } from 'next/navigation';
 import { useAuth } from '@/context/AuthContext';
 import Logo from '@/components/Logo';
 import PhilippineIDVerification from '@/components/PhilippineIDVerification';
+import RouteGuard from '@/components/auth/RouteGuard';
 import styles from './page.module.css';
 
 const GENDERS = ['Male', 'Female', 'Non-binary', 'Prefer not to say'];
@@ -462,8 +463,10 @@ function BuyerSetupInner() {
 
 export default function BuyerSetup() {
     return (
-        <Suspense fallback={null}>
-            <BuyerSetupInner />
-        </Suspense>
+        <RouteGuard>
+            <Suspense fallback={null}>
+                <BuyerSetupInner />
+            </Suspense>
+        </RouteGuard>
     );
 }

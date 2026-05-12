@@ -2,6 +2,7 @@
 
 import { usePathname } from 'next/navigation';
 import Header from '@/components/layout/Header';
+import RouteGuard from '@/components/auth/RouteGuard';
 import styles from './layout.module.css';
 
 export default function SellerLayout({ children }) {
@@ -10,17 +11,23 @@ export default function SellerLayout({ children }) {
 
     if (isHeaderless) {
         // Render setup pages with no header — standalone onboarding experience
-        return <>{children}</>;
+        return (
+            <RouteGuard>
+                {children}
+            </RouteGuard>
+        );
     }
 
     return (
-        <div className={styles.sellerContainer}>
-            <Header />
-            <div className={styles.mainWrapper}>
-                <main className={styles.content}>
-                    {children}
-                </main>
+        <RouteGuard>
+            <div className={styles.sellerContainer}>
+                <Header />
+                <div className={styles.mainWrapper}>
+                    <main className={styles.content}>
+                        {children}
+                    </main>
+                </div>
             </div>
-        </div>
+        </RouteGuard>
     );
 }

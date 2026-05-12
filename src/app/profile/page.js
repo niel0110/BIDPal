@@ -61,6 +61,7 @@ import BackButton from '@/components/BackButton';
 import { useAuth } from '@/context/AuthContext';
 import { useRouter, useSearchParams } from 'next/navigation';
 import { useGeolocation } from '@/hooks/useGeolocation';
+import RouteGuard from '@/components/auth/RouteGuard';
 
 const MapComponent = dynamic(() => import('@/components/map/MapComponent'), {
     ssr: false,
@@ -487,9 +488,11 @@ function AccountStandingSection() {
 
 export default function AccountPage() {
     return (
-        <Suspense fallback={<div>Loading...</div>}>
-            <AccountContent />
-        </Suspense>
+        <RouteGuard>
+            <Suspense fallback={<div>Loading...</div>}>
+                <AccountContent />
+            </Suspense>
+        </RouteGuard>
     );
 }
 
