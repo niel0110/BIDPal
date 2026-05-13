@@ -750,21 +750,9 @@ export const endAuction = async (req, res) => {
       return res.status(403).json({ error: 'You do not have permission to end this auction.' });
     }
 
-    // 3. Determine winner and reserve status BEFORE updating DB
-    let productStatus = 'inactive'; // Default if no bids
-    let reserveMet = false;
-    const normalizedReservePrice = Number(currentAuction?.reserve_price ?? 0) || 0;
-
     if (winningBid) {
-      const winningBidAmount = Number(winningBid.bid_amount || 0);
-      // No reserve (0/null) means the highest valid bid wins automatically.
-      if (normalizedReservePrice <= 0 || winningBidAmount >= normalizedReservePrice) {
-        productStatus = 'sold';
-        reserveMet = true;
-      } else {
-        productStatus = 'inactive'; // Reserve not met
-        console.log(`⚠️ Reserve price not met. Winning bid: ${winningBid.bid_amount}, Reserve: ${normalizedReservePrice}`);
-      }
+      productStatus = 'sold';
+      reserveMet = true;
     }
 
     // 4. Update Auction status — 'success' when reserve met & winner exists, 'ended' otherwise
@@ -995,53 +983,9 @@ export const endAuction = async (req, res) => {
           console.log(`🔔 Seller notification sent to user ${sellerUserId}`, sellerNotif);
         }
       }
-    } else if (winningBid && !reserveMet) {
-      // Fetch product name for richer notification message
-      const { data: noSaleProduct } = await supabase
-        .from('vw_product_details')
-        .select('name')
-        .eq('products_id', auction.products_id)
-        .maybeSingle();
-      const noSaleProductName = noSaleProduct?.name || 'the auction item';
-
-      // Notify buyer (highest bidder) that reserve wasn't met
-      await supabase
-        .from('Notifications')
-        .insert([{
-          user_id: winningBid.user_id,
-          type: 'auction_reserve_not_met',
-          payload: {
-            title: 'Auction ended — Reserve not met',
-            message: `The auction ended but the reserve price was not met. Your highest bid was ₱${winningBid.bid_amount.toLocaleString('en-PH')}.`,
-            auction_id: id,
-            product_id: auction.products_id,
-            product_name: noSaleProductName
-          },
-          reference_id: id,
-          reference_type: 'auction',
-          read_at: '2099-12-31T23:59:59.000Z'
-        }]);
-
-      // Notify seller that their auction ended without meeting reserve
-      const sellerUserIdNoSale = currentAuction?.Seller?.user_id;
-      if (sellerUserIdNoSale) {
-        await supabase
-          .from('Notifications')
-          .insert([{
-            user_id: sellerUserIdNoSale,
-            type: 'auction_no_sale',
-            payload: {
-              title: 'Auction ended — Reserve not met',
-              message: `"${noSaleProductName}" ended with a highest bid of ₱${winningBid.bid_amount.toLocaleString('en-PH')} which did not meet your reserve price. You may reschedule or relist the item.`,
-              auction_id: id,
-              product_id: auction.products_id,
-              product_name: noSaleProductName
-            },
-            reference_id: id,
-            reference_type: 'auction',
-            read_at: '2099-12-31T23:59:59.000Z'
-          }]);
-      }
+    } else if (winningBid) {
+      // Logic for reserve not met was removed here.
+      // All winning bids now proceed to checkout regardless of reserve price.
     } else {
       // No bids placed — notify seller
       const { data: noBidsProduct } = await supabase
@@ -1400,15 +1344,6 @@ export const placeBid = async (req, res) => {
       });
     }
 
-    const reserveLimit = parseFloat(auction.reserve_price || 0);
-    if (reserveLimit > 0 && bidAmount > reserveLimit) {
-      return res.status(400).json({
-        error: `Bid cannot exceed the reserve price limit of ₱${reserveLimit.toLocaleString('en-PH')}`,
-        bidLimit: reserveLimit,
-        minBid,
-        currentPrice
-      });
-    }
 
     // Insert bid into database (trigger will update Auctions.current_price)
     const { data: bid, error: bidError } = await supabase

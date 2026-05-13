@@ -22,7 +22,6 @@ function getNotificationIcon(type) {
         case 'auction_won': return <Gavel size={16} />;
         case 'auction_ended': return <Gavel size={16} />;
         case 'auction_sold': return <Package size={16} />;
-        case 'auction_reserve_not_met': return <Gavel size={16} />;
         case 'auction_no_sale': return <Package size={16} />;
         case 'order_update':
         case 'order_cancelled': return <Package size={16} />;
@@ -58,9 +57,6 @@ function getNotificationTarget(notification) {
         case 'auction_sold':
             return payloadAuctionId ? `/seller/auctions/${payloadAuctionId}/results` : '/seller';
 
-        // Reserve not met — show the auction recap live page (no order was created)
-        case 'auction_reserve_not_met':
-            return payloadAuctionId ? `/live?id=${payloadAuctionId}` : '/';
 
         // Seller: auction ended without a sale — go to auction results/recap
         case 'auction_no_sale':
@@ -227,7 +223,7 @@ export default function NotificationBell() {
                                                     )}
                                                 </>
                                             )}
-                                            {(n.type === 'auction_ended' || n.type === 'auction_sold' || n.type === 'auction_reserve_not_met' || n.type === 'auction_no_sale') && (
+                                            {(n.type === 'auction_ended' || n.type === 'auction_sold' || n.type === 'auction_no_sale') && (
                                                 <><strong className={styles.itemTitle}>{n.payload?.title}</strong>{n.payload?.message && <><br /><span className={styles.itemMessage}>{n.payload.message}</span></>}</>
                                             )}
                                             {(n.type === 'kyc_approved' || n.type === 'kyc_rejected' || n.type === 'system') && (
@@ -239,7 +235,7 @@ export default function NotificationBell() {
                                             {n.type === 'order_update' && !n.payload?.title && (
                                                 <>Your order has been updated</>
                                             )}
-                                            {!['new_bid', 'order_update', 'order_cancelled', 'auction_won', 'auction_ended', 'auction_sold', 'auction_reserve_not_met', 'auction_no_sale', 'account_violation', 'warning', 'kyc_approved', 'kyc_rejected', 'system'].includes(n.type) && (
+                                            {!['new_bid', 'order_update', 'order_cancelled', 'auction_won', 'auction_ended', 'auction_sold', 'auction_no_sale', 'account_violation', 'warning', 'kyc_approved', 'kyc_rejected', 'system'].includes(n.type) && (
                                                 <>{n.payload?.title ? <><strong className={styles.itemTitle}>{n.payload.title}</strong>{n.payload.message && <><br /><span className={styles.itemMessage}>{n.payload.message}</span></>}</> : <span className={styles.itemMessage}>{n.payload?.message || 'You have a new notification'}</span>}</>
                                             )}
                                         </p>

@@ -45,7 +45,6 @@ BIDPal implements a **Closed-Bid English Auction** variant, optimized for real-t
     *   **Logic Check:** User cannot outbid themselves if they are already the highest bidder.
 2.  **Price Enforcement:**
     *   **Bid Increment:** The bid must satisfy the formula: `amount ≥ current_price + incremental_bid_step`.
-    *   **Reserve Limit:** To prevent irrational bidding in specific variants, bids are capped by the `reserve_price` if defined as a ceiling.
 3.  **Persistence & Propagation:**
     *   **Atomic Update:** The bid is inserted into the `Bids` table. A database trigger automatically recalculates and updates the `current_price` in the `Auctions` table.
     *   **Real-time Broadcast:** Upon successful insertion, a `bid-update` event is emitted via **Socket.IO** to all connected clients, ensuring zero-latency UI updates.
@@ -64,14 +63,6 @@ if (bidAmount < minBid) {
   });
 }
 
-const reserveLimit = parseFloat(auction.reserve_price || 0);
-if (reserveLimit > 0 && bidAmount > reserveLimit) {
-  return res.status(400).json({
-    error: `Bid cannot exceed the reserve price limit of ₱${reserveLimit.toLocaleString('en-PH')}`,
-    bidLimit: reserveLimit,
-    minBid, currentPrice
-  });
-}
 ```
 
 ### 2.2 Comparative Justification
@@ -126,11 +117,7 @@ The core of BIDPal's valuation engine is a multi-dimensional pipeline that synth
 
 As illustrated in Table 3.1, the pipeline begins by establishing a "brand new" baseline using the OpenAI SRP Anchor. This source leverages real-time retail data to identify the current Philippine Suggested Retail Price, ensuring that secondhand recommendations never exceed the cost of a new unit. This is immediately balanced by the Mercari Market Signal, which cross-references a massive 1.4M item dataset. This secondary market signal is critical for establishing the "depreciated value" of goods, providing a global context for how similar items are priced in active secondhand markets.
 
-To further refine the estimate, the system incorporates a localized Feature Estimate powered by a Random Forest Model. As shown in Table 3.1, this model transforms unstructured product data into a 25-dimensional numerical vector, allowing the system to account for specific specifications like RAM, storage, and physical condition. Finally, the BIDPal Historical Sales data is applied to account for "Local Drift." This source ensures that the final recommendation reflects actual demand within the As illustrated in Table 3.1, the pipeline begins by establishing a "brand new" baseline using the OpenAI SRP Anchor. This source leverages real-time retail data to identify the current Philippine Suggested Retail Price, ensuring that secondhand recommendations never exceed the cost of a new unit. This is immediately balanced by the Mercari Market Signal, which cross-references a massive 1.4M item dataset. This secondary market signal is critical for establishing the "depreciated value" of goods, providing a global context for how similar items are priced in active secondhand markets.
-
 To further refine the estimate, the system incorporates a localized Feature Estimate powered by a Random Forest Model. As shown in Table 3.1, this model transforms unstructured product data into a 25-dimensional numerical vector, allowing the system to account for specific specifications like RAM, storage, and physical condition. Finally, the BIDPal Historical Sales data is applied to account for "Local Drift." This source ensures that the final recommendation reflects actual demand within the Philippine market, adjusting the price based on successful transactions and bidding velocity recorded directly on the platform.
-
-Technically, these four signals are converged using a weighted blending algorithm. If the primary AI estimate and the deterministic Mercari data diverge by a significant margin (greater than 2.5x), the system forces a convergence to prevent irrational pricing. This hybrid architecture ensures that every recommendation is substantiated by multiple independent data points, providing a robust and reliable pricing experience for all marketplace participants.Philippine market, adjusting the price based on successful transactions and bidding velocity recorded directly on the platform.
 
 Technically, these four signals are converged using a weighted blending algorithm. If the primary AI estimate and the deterministic Mercari data diverge by a significant margin (greater than 2.5x), the system forces a convergence to prevent irrational pricing. This hybrid architecture ensures that every recommendation is substantiated by multiple independent data points, providing a robust and reliable pricing experience for all marketplace participants.
 
@@ -176,7 +163,7 @@ The system was built in a logical sequence:
 
 ### 4.4 Phase 4: Integration & Verification
 Rigorous testing was performed to verify the system against the original requirements:
--   **Functional Testing**: Ensuring the `placeBid` algorithm correctly enforces reserve prices.
+-   **Functional Testing**: Ensuring the `placeBid` algorithm correctly enforces bid increments.
 -   **Security Testing**: Verifying that banned users (Strike 3) cannot access bidding routes.
 -   **Performance Testing**: Monitoring Socket.IO latency during high-frequency bid events.
 
