@@ -750,6 +750,10 @@ export const endAuction = async (req, res) => {
       return res.status(403).json({ error: 'You do not have permission to end this auction.' });
     }
 
+    // 3. Determine winner and reserve status BEFORE updating DB
+    let productStatus = 'inactive'; // Default if no bids
+    let reserveMet = false;
+
     if (winningBid) {
       productStatus = 'sold';
       reserveMet = true;
