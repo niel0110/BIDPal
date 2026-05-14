@@ -236,6 +236,83 @@ export const triggerPaymentViolation = async (paymentWindow) => {
                 .eq('user_id', paymentWindow.winner_user_id);
                 
             console.log(`✅ Order ${order.order_id} cancelled and recorded for user ${paymentWindow.winner_user_id}`);
+
+            // Notify seller about the expiry
+            try {
+                const { data: sellerRow } = await supabase
+                    .from('Seller')
+                    .select('user_id')
+                    .eq('seller_id', order.seller_id)
+                    .single();
+                
+                if (sellerRow?.user_id) {
+                    await supabase.from('Notifications').insert([{
+                        user_id: sellerRow.user_id,
+                        type: 'order_cancelled',
+                        payload: {
+                            title: '❌ Payment Window Expired',
+                            message: `The buyer failed to complete payment within the 24-hour window. The order has been cancelled and we are assigning the next eligible bidder.`
+                        },
+                        reference_id: paymentWindow.auction_id,
+                        reference_type: 'auction',
+                        read_at: '2099-12-31T23:59:59.000Z'
+                    }]);
+                }
+            } catch (notifErr) {
+                console.warn('Seller notification for payment expiry failed:', notifErr.message);
+            }
+            
+            // 5. Cascade to next winner
+            try {
+                console.log(`🔄 Triggering cascade for auction ${paymentWindow.auction_id}`);
+                const { cascadeToNextWinner } = await import('./cascadeService.js');
+                await cascadeToNextWinner(paymentWindow.auction_id, paymentWindow.winner_user_id);
+            } catch (cascadeErr) {
+                console.error('Failed to cascade auction on payment expiry:', cascadeErr);
+            }
+        } else {
+            // Even if no Order row exists (pre-checkout cancellation), we should still try to cascade
+            console.log(`ℹ️ No Order row found for auction ${paymentWindow.auction_id}, attempting cascade anyway`);
+            
+            // Try to notify seller via auction data if order doesn't exist
+            try {
+                const { data: auction } = await supabase
+                    .from('Auctions')
+                    .select('seller_id')
+                    .eq('auction_id', paymentWindow.auction_id)
+                    .single();
+                
+                if (auction?.seller_id) {
+                    const { data: sellerRow } = await supabase
+                        .from('Seller')
+                        .select('user_id')
+                        .eq('seller_id', auction.seller_id)
+                        .single();
+                    
+                    if (sellerRow?.user_id) {
+                        await supabase.from('Notifications').insert([{
+                            user_id: sellerRow.user_id,
+                            type: 'order_cancelled',
+                            payload: {
+                                title: '❌ Payment Window Expired',
+                                message: `A winner failed to complete payment. We are assigning the next eligible bidder.`
+                            },
+                            reference_id: paymentWindow.auction_id,
+                            reference_type: 'auction',
+                            read_at: '2099-12-31T23:59:59.000Z'
+                        }]);
+                    }
+                }
+            } catch (notifErr) {
+                console.warn('Seller notification (no order path) for payment expiry failed:', notifErr.message);
+            }
+
+            try {
+                const { cascadeToNextWinner } = await import('./cascadeService.js');
+                await cascadeToNextWinner(paymentWindow.auction_id, paymentWindow.winner_user_id);
+            } catch (cascadeErr) {
+                console.error('Failed to cascade auction (no order) on payment expiry:', cascadeErr);
+            }
         }
     } catch (cancelErr) {
         console.error('Failed to auto-cancel order on payment expiry:', cancelErr);

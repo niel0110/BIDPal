@@ -33,9 +33,9 @@ export const startPaymentWindowChecker = () => {
   });
 
   // Optional: Run immediately on startup for testing
-  // checkExpiredPaymentWindows().then(violations => {
-  //   console.log(`Initial check complete: ${violations?.length || 0} violations found`);
-  // });
+  checkExpiredPaymentWindows().then(violations => {
+    console.log(`Initial check complete: ${violations?.length || 0} violations found`);
+  });
 };
 
 export default startPaymentWindowChecker;

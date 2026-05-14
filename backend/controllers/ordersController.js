@@ -1101,7 +1101,7 @@ export const getSellerOrders = async (req, res) => {
     });
 
     // ── Also surface auctions that have a winner but no Order row yet (pending payment) ──
-    const orderedAuctionIds = new Set(data.map(o => o.auction_id));
+    const orderedAuctionIds = new Set(data.filter(o => o.status !== 'cancelled').map(o => o.auction_id));
     const pendingAuctions = (sellerAuctions || []).filter(
       a => a.winner_user_id && !orderedAuctionIds.has(a.auction_id) && ['success', 'ended'].includes(a.status)
     );
