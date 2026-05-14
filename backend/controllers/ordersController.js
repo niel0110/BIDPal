@@ -246,7 +246,7 @@ export const getOrdersByUser = async (req, res) => {
     if (allCheckIds.length) {
       const { data: allWindows } = await supabase
         .from('Payment_Windows')
-        .select('auction_id, winner_user_id, payment_deadline, payment_window_id, payment_completed')
+        .select('auction_id, winner_user_id, payment_deadline, payment_window_id, payment_completed, violation_triggered')
         .in('auction_id', allCheckIds);
 
       for (const w of (allWindows || [])) {
@@ -254,8 +254,8 @@ export const getOrdersByUser = async (req, res) => {
         if (w.winner_user_id !== user_id) {
           cascadedAuctionIds.add(w.auction_id);
         }
-        // Collect the active (incomplete) window for this user for payment deadline
-        if (w.winner_user_id === user_id && !w.payment_completed) {
+        // Collect the active (incomplete and non-violated) window for this user for payment deadline
+        if (w.winner_user_id === user_id && !w.payment_completed && !w.violation_triggered) {
           windowMap[w.auction_id] = {
             payment_deadline: w.payment_deadline,
             payment_window_id: w.payment_window_id
@@ -266,6 +266,8 @@ export const getOrdersByUser = async (req, res) => {
       for (const order of formattedData) {
         if (!order.auction_id) continue;
         if (cascadedAuctionIds.has(order.auction_id)) order.is_cascaded = true;
+        
+        // Only show payment info if window hasn't expired/violated
         if (order.status === 'pending_payment' && windowMap[order.auction_id]) {
           order.payment_deadline = windowMap[order.auction_id].payment_deadline;
           order.payment_window_id = windowMap[order.auction_id].payment_window_id;
@@ -571,6 +573,22 @@ export const processAuctionPayment = async (req, res) => {
     }
 
     await assertCanCheckout(user_id);
+
+    // 1b. Check if payment window is still valid
+    const { data: vPaymentWindow } = await supabase
+      .from('Payment_Windows')
+      .select('violation_triggered, payment_deadline')
+      .eq('auction_id', auction_id)
+      .eq('winner_user_id', user_id)
+      .maybeSingle();
+
+    if (vPaymentWindow?.violation_triggered) {
+      return res.status(403).json({ error: 'Payment window has expired and this order has been cancelled.' });
+    }
+    
+    if (vPaymentWindow && new Date() > new Date(vPaymentWindow.payment_deadline)) {
+       return res.status(403).json({ error: 'Payment window has expired.' });
+    }
 
     // 1. Verify the user is the winner
     const { data: auction, error: auctionError } = await supabase

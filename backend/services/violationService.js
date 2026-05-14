@@ -237,6 +237,23 @@ export const triggerPaymentViolation = async (paymentWindow) => {
                 
             console.log(`✅ Order ${order.order_id} cancelled and recorded for user ${paymentWindow.winner_user_id}`);
 
+            // Notify buyer about the cancellation
+            try {
+                await supabase.from('Notifications').insert([{
+                    user_id: paymentWindow.winner_user_id,
+                    type: 'order_cancelled',
+                    payload: {
+                        title: '❌ Order Cancelled: Payment Window Expired',
+                        message: `Your order for auction ${paymentWindow.auction_id} has been cancelled because the 24-hour payment window expired. A strike has been issued to your account.`
+                    },
+                    reference_id: paymentWindow.auction_id,
+                    reference_type: 'auction',
+                    read_at: '2099-12-31T23:59:59.000Z'
+                }]);
+            } catch (notifErr) {
+                console.warn('Buyer notification for payment expiry failed:', notifErr.message);
+            }
+
             // Notify seller about the expiry
             try {
                 const { data: sellerRow } = await supabase
